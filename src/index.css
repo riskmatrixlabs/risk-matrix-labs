@@ -32,62 +32,45 @@
   --scrollbar-thumb: #252525;
 }
 
-/* ── LIGHT THEME — warm cream base, NEON pops clearly ── */
+/* ── LIGHT THEME ── */
 [data-theme='light'] {
-  /* Warm ivory — neutral enough that #BDFF00 reads as bold accent */
-  --bg:           #EDE9E0;
-  --card:         #F8F5EE;
+  --bg:           #F0EDE6;
+  --card:         #F9F7F3;
   --card2:        #FFFFFF;
-  --border:       #D6D0C4;
-  --border2:      #BAB3A6;
-  --muted:        rgba(30,20,0,0.42);
-  --text:         #1A1400;        /* warm near-black */
-  --text-sub:     rgba(30,20,0,0.65);
-  --text-dim:     rgba(30,20,0,0.38);
+  --border:       #D8D2C8;
+  --border2:      #C0B8AE;
+  --muted:        rgba(20,16,0,0.4);
+  --text:         #141000;
+  --text-sub:     rgba(20,16,0,0.6);
+  --text-dim:     rgba(20,16,0,0.36);
   --input-bg:     #FFFFFF;
   --row-alt:      rgba(0,0,0,0.02);
-  --row-open:     rgba(189,255,0,0.07);
-  /* Dark olive for title text — readable + on-brand green family */
-  --neon-title:   #2A4400;
-  --neon-sub:     rgba(42,68,0,0.68);
-  --neon-accent:  rgba(42,68,0,0.58);
+  --row-open:     rgba(189,255,0,0.08);
+  /* Keep brand neon on backgrounds/borders — swap to dark olive only for plain text labels */
+  --neon-title:   #BDFF00;
+  --neon-sub:     rgba(189,255,0,0.55);
+  --neon-accent:  #BDFF00;
   --neon-glow:    none;
-  --neon-border:  rgba(42,68,0,0.22);
+  --neon-border:  rgba(189,255,0,0.5);
   --red-glow:     none;
-  --card-shadow:  0 1px 4px rgba(0,0,0,0.09), 0 1px 2px rgba(0,0,0,0.05);
-  --scrollbar-track: #D6D0C4;
-  --scrollbar-thumb: #A09890;
+  --card-shadow:  0 1px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --scrollbar-track: #D8D2C8;
+  --scrollbar-thumb: #A8A098;
 }
 
-/* Light: NEON green still works as accent pop — keep it bright on badge borders */
-[data-theme='light'] .badge-win  { color: #1E4000 !important; background: rgba(189,255,0,0.18) !important; border-color: rgba(189,255,0,0.5) !important; }
-[data-theme='light'] .badge-loss { color: #7A0000 !important; background: rgba(255,59,59,0.1)  !important; border-color: rgba(255,59,59,0.3) !important; }
-[data-theme='light'] input:focus, [data-theme='light'] select:focus {
-  border-color: #2C4A00 !important;
-  box-shadow: 0 0 0 2px rgba(44,74,0,0.12);
-}
-[data-theme='light'] select option { background: #FAFCF7; color: #0F1A0A; }
+/* Light: neon on cream backgrounds reads fine — darken only the text color of neon-colored labels */
+[data-theme='light'] .neon-label { color: #3A5C00 !important; }
 
-/* Light mode: Keep bright NEON as accent on borders/badges — it pops on grey */
-[data-theme='light'] .badge-win  { color: #1A3300 !important; background: rgba(189,255,0,0.15) !important; border-color: rgba(189,255,0,0.4) !important; }
-[data-theme='light'] .badge-loss { color: #8B0000 !important; background: rgba(255,59,59,0.1)  !important; border-color: rgba(255,59,59,0.3)  !important; }
-[data-theme='light'] input:focus, [data-theme='light'] select:focus {
-  border-color: #1A3300 !important;
-  box-shadow: 0 0 0 2px rgba(26,51,0,0.12);
-}
-[data-theme='light'] select option { background: #F8F8F6; color: #0A0A08; }
+[data-theme='light'] .badge-win  { color: #2A5000 !important; background: rgba(189,255,0,0.18) !important; border-color: rgba(189,255,0,0.55) !important; }
+[data-theme='light'] .badge-loss { color: #B51A1A !important; background: rgba(255,59,59,0.08) !important; border-color: rgba(255,59,59,0.25) !important; }
 
-/* Light mode: WIN/LOSS badge overrides */
-[data-theme='light'] .badge-win  { color: #1E4D00 !important; background: rgba(30,77,0,0.09) !important; border-color: rgba(30,77,0,0.22) !important; }
-[data-theme='light'] .badge-loss { color: #B51A1A !important; background: rgba(181,26,26,0.07) !important; border-color: rgba(181,26,26,0.2) !important; }
-
-/* Light mode: neon green accent on borders still pops */
 [data-theme='light'] input:focus,
 [data-theme='light'] select:focus {
-  border-color: #2E5000 !important;
-  box-shadow: 0 0 0 2px rgba(46,80,0,0.1);
+  border-color: #BDFF00 !important;
+  box-shadow: 0 0 0 2px rgba(189,255,0,0.2) !important;
 }
-[data-theme='light'] select option { background: #fff; color: #0D0D0B; }
+
+[data-theme='light'] select option { background: #FFFFFF; color: #141000; }
 
 body {
   background-color: var(--bg);
@@ -108,31 +91,6 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #BDFF00; }
 
 input, select, button { outline: none; }
-
-/* Light mode: inputs get proper focus ring */
-[data-theme='light'] input:focus,
-[data-theme='light'] select:focus {
-  border-color: #3D5200 !important;
-  box-shadow: 0 0 0 2px rgba(61,82,0,0.12);
-}
-
-/* Light mode select options */
-[data-theme='light'] select option {
-  background: #FFFFFF;
-  color: #1A1A16;
-}
-
-/* Light mode: WIN badge readable */
-[data-theme='light'] .badge-win {
-  color: #2D5A00 !important;
-  background: rgba(45,90,0,0.1) !important;
-  border-color: rgba(45,90,0,0.25) !important;
-}
-[data-theme='light'] .badge-loss {
-  color: #CC1A1A !important;
-  background: rgba(204,26,26,0.08) !important;
-  border-color: rgba(204,26,26,0.2) !important;
-}
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }

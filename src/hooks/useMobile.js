@@ -1,15 +1,28 @@
 import { useState, useEffect } from 'react'
 
+function getDims() {
+  return { width: window.innerWidth, height: window.innerHeight }
+}
+
 export function useMobile() {
-  const [width, setWidth] = useState(window.innerWidth)
+  const [dims, setDims] = useState(getDims)
+
   useEffect(() => {
-    const handler = () => setWidth(window.innerWidth)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
+    const update = () => setDims(getDims())
+    const onOrientation = () => setTimeout(update, 120)
+
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', onOrientation)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', onOrientation)
+    }
   }, [])
+
   return {
-    isMobile:  width < 640,
-    isTablet:  width < 1024,
-    width,
+    isMobile:  dims.width < 640,
+    isTablet:  dims.width < 1024,
+    isPortrait: dims.width < dims.height,
+    width: dims.width,
   }
 }

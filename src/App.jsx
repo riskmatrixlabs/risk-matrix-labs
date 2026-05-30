@@ -2234,7 +2234,7 @@ export default function App({ user, session }) {
           {isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button onClick={() => setDarkMode(d => !d)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer' }}>
-                {darkMode ? <Sun size={14} color={NEON} strokeWidth={2} /> : <Moon size={14} color='#3D5200' strokeWidth={2} />}
+                {darkMode ? <Sun size={14} color={NEON} strokeWidth={2} /> : <Moon size={14} color='var(--text-sub)' strokeWidth={2} />}
               </button>
               {user && (
                 <div data-user-menu style={{ position: 'relative' }}>
@@ -2258,25 +2258,25 @@ export default function App({ user, session }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: 'nowrap' }}>
 
           {/* Starting Bankroll */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Starting Bankroll</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: isMobile ? '1 1 0' : 'none' }}>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Starting BR</span>
             <input
               value={bankroll.toFixed(0)}
               onChange={e => setBankroll(parseFloat(e.target.value) || 0)}
               onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-              style={{ ...inputStyle, width: isMobile ? '90px' : '110px', padding: '5px 10px', fontSize: '13px', fontWeight: 700 }}
+              style={{ ...inputStyle, width: isMobile ? '100%' : '110px', padding: '5px 10px', fontSize: '13px', fontWeight: 700 }}
             />
           </div>
 
           {!isMobile && <div style={{ width: '1px', background: 'var(--border2)', height: '36px' }} />}
 
           {/* Operator */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: isMobile ? '1 1 0' : 'none' }}>
             <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Operator</span>
-            <input value={username} onChange={e => setUsername(e.target.value)} style={{ ...inputStyle, width: isMobile ? '90px' : '110px', padding: '5px 10px' }} />
+            <input value={username} onChange={e => setUsername(e.target.value)} style={{ ...inputStyle, width: isMobile ? '100%' : '110px', padding: '5px 10px' }} />
           </div>
 
           {/* Desktop-only controls */}
@@ -2287,7 +2287,7 @@ export default function App({ user, session }) {
               title={darkMode ? 'Light Mode' : 'Dark Mode'}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer', flexShrink: 0, boxShadow: 'var(--card-shadow)' }}
             >
-              {darkMode ? <Sun size={14} color={NEON} strokeWidth={2} /> : <Moon size={14} color='#3D5200' strokeWidth={2} />}
+              {darkMode ? <Sun size={14} color={NEON} strokeWidth={2} /> : <Moon size={14} color='var(--text-sub)' strokeWidth={2} />}
             </button>
 
             {/* Share button */}
@@ -2342,7 +2342,7 @@ export default function App({ user, session }) {
             fontFamily: R, fontSize: isMobile ? '9px' : '10px', fontWeight: 700, letterSpacing: isMobile ? '0.1em' : '0.22em',
             textTransform: 'uppercase', padding: isMobile ? '10px 12px' : '11px 20px',
             background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
-            color: tab === t ? NEON : 'rgba(255,255,255,0.28)',
+            color: tab === t ? NEON : 'var(--text-dim)',
             borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
             marginBottom: '-1px', transition: 'color 0.15s',
             textShadow: tab === t ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
