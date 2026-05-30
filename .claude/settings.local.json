@@ -7,7 +7,8 @@
       "Bash(curl -sf http://localhost:5173)",
       "Bash(break)",
       "Bash(node screenshot-dashboard.cjs)",
-      "Bash(node screenshot-v2.cjs)"
+      "Bash(node screenshot-v2.cjs)",
+      "Bash(~/bin/gh auth *)"
     ]
   }
 }
