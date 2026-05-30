@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node screenshot-rml.cjs)",
+      "Bash(node screenshot-header-crop.cjs)",
+      "Bash(npm run *)",
+      "Bash(curl -sf http://localhost:5173)",
+      "Bash(break)",
+      "Bash(node screenshot-dashboard.cjs)",
+      "Bash(node screenshot-v2.cjs)"
+    ]
+  }
+}

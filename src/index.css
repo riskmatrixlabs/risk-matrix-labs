@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── DARK THEME (default) ─────────────────────────────── */
+:root {
+  --bg:           #0A0A0A;
+  --card:         #0d0d0d;
+  --card2:        #111111;
+  --border:       #1e1e1e;
+  --border2:      #2a2a2a;
+  --muted:        rgba(255,255,255,0.32);
+  --text:         #e8e8e8;
+  --text-sub:     rgba(255,255,255,0.55);
+  --text-dim:     rgba(255,255,255,0.38);
+  --input-bg:     #111111;
+  --row-alt:      rgba(255,255,255,0.012);
+  --row-open:     rgba(245,166,35,0.05);
+  --neon-title:   #BDFF00;
+  --neon-sub:     rgba(189,255,0,0.4);
+  --neon-accent:  rgba(189,255,0,0.5);
+  --neon-glow:    0 0 18px rgba(189,255,0,0.28);
+  --neon-border:  rgba(189,255,0,0.28);
+  --red-glow:     0 0 14px rgba(255,59,59,0.2);
+  --card-shadow:  none;
+  --header-blur:  none;
+  --scrollbar-track: #0f0f0f;
+  --scrollbar-thumb: #252525;
+}
+
+/* ── LIGHT THEME — warm cream base, NEON pops clearly ── */
+[data-theme='light'] {
+  /* Warm ivory — neutral enough that #BDFF00 reads as bold accent */
+  --bg:           #EDE9E0;
+  --card:         #F8F5EE;
+  --card2:        #FFFFFF;
+  --border:       #D6D0C4;
+  --border2:      #BAB3A6;
+  --muted:        rgba(30,20,0,0.42);
+  --text:         #1A1400;        /* warm near-black */
+  --text-sub:     rgba(30,20,0,0.65);
+  --text-dim:     rgba(30,20,0,0.38);
+  --input-bg:     #FFFFFF;
+  --row-alt:      rgba(0,0,0,0.02);
+  --row-open:     rgba(189,255,0,0.07);
+  /* Dark olive for title text — readable + on-brand green family */
+  --neon-title:   #2A4400;
+  --neon-sub:     rgba(42,68,0,0.68);
+  --neon-accent:  rgba(42,68,0,0.58);
+  --neon-glow:    none;
+  --neon-border:  rgba(42,68,0,0.22);
+  --red-glow:     none;
+  --card-shadow:  0 1px 4px rgba(0,0,0,0.09), 0 1px 2px rgba(0,0,0,0.05);
+  --scrollbar-track: #D6D0C4;
+  --scrollbar-thumb: #A09890;
+}
+
+/* Light: NEON green still works as accent pop — keep it bright on badge borders */
+[data-theme='light'] .badge-win  { color: #1E4000 !important; background: rgba(189,255,0,0.18) !important; border-color: rgba(189,255,0,0.5) !important; }
+[data-theme='light'] .badge-loss { color: #7A0000 !important; background: rgba(255,59,59,0.1)  !important; border-color: rgba(255,59,59,0.3) !important; }
+[data-theme='light'] input:focus, [data-theme='light'] select:focus {
+  border-color: #2C4A00 !important;
+  box-shadow: 0 0 0 2px rgba(44,74,0,0.12);
+}
+[data-theme='light'] select option { background: #FAFCF7; color: #0F1A0A; }
+
+/* Light mode: Keep bright NEON as accent on borders/badges — it pops on grey */
+[data-theme='light'] .badge-win  { color: #1A3300 !important; background: rgba(189,255,0,0.15) !important; border-color: rgba(189,255,0,0.4) !important; }
+[data-theme='light'] .badge-loss { color: #8B0000 !important; background: rgba(255,59,59,0.1)  !important; border-color: rgba(255,59,59,0.3)  !important; }
+[data-theme='light'] input:focus, [data-theme='light'] select:focus {
+  border-color: #1A3300 !important;
+  box-shadow: 0 0 0 2px rgba(26,51,0,0.12);
+}
+[data-theme='light'] select option { background: #F8F8F6; color: #0A0A08; }
+
+/* Light mode: WIN/LOSS badge overrides */
+[data-theme='light'] .badge-win  { color: #1E4D00 !important; background: rgba(30,77,0,0.09) !important; border-color: rgba(30,77,0,0.22) !important; }
+[data-theme='light'] .badge-loss { color: #B51A1A !important; background: rgba(181,26,26,0.07) !important; border-color: rgba(181,26,26,0.2) !important; }
+
+/* Light mode: neon green accent on borders still pops */
+[data-theme='light'] input:focus,
+[data-theme='light'] select:focus {
+  border-color: #2E5000 !important;
+  box-shadow: 0 0 0 2px rgba(46,80,0,0.1);
+}
+[data-theme='light'] select option { background: #fff; color: #0D0D0B; }
+
+body {
+  background-color: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Smooth theme transition */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #BDFF00; }
+
+input, select, button { outline: none; }
+
+/* Light mode: inputs get proper focus ring */
+[data-theme='light'] input:focus,
+[data-theme='light'] select:focus {
+  border-color: #3D5200 !important;
+  box-shadow: 0 0 0 2px rgba(61,82,0,0.12);
+}
+
+/* Light mode select options */
+[data-theme='light'] select option {
+  background: #FFFFFF;
+  color: #1A1A16;
+}
+
+/* Light mode: WIN badge readable */
+[data-theme='light'] .badge-win {
+  color: #2D5A00 !important;
+  background: rgba(45,90,0,0.1) !important;
+  border-color: rgba(45,90,0,0.25) !important;
+}
+[data-theme='light'] .badge-loss {
+  color: #CC1A1A !important;
+  background: rgba(204,26,26,0.08) !important;
+  border-color: rgba(204,26,26,0.2) !important;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
