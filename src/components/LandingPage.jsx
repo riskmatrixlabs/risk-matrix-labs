@@ -182,22 +182,38 @@ export default function LandingPage({ onLogin }) {
             </div>
           </div>
 
-          <form
-            className="rml2-form"
-            action="https://formsubmit.co/support@riskmatrixlabs.com"
-            method="POST"
-          >
-            <input type="hidden" name="_captcha" value="false" />
-            <input type="hidden" name="_subject" value="New Risk Matrix Labs Waitlist Signup" />
-            <label className="rml2-field">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M4 6h16v12H4z" /><path d="M4 7l8 6 8-6" />
-              </svg>
-              <input type="email" name="email" placeholder="Enter your email address..." required />
-            </label>
-            <button type="submit">Join Waitlist →</button>
-            <p className="rml2-note">▣ We respect your privacy. No spam, ever.</p>
-          </form>
+          {/* Beehiiv embed */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+            <iframe
+              src="https://riskmatrixlabs.beehiiv.com/subscribe?slim=true"
+              data-test-id="beehiiv-embed"
+              height="52"
+              frameBorder="0"
+              scrolling="no"
+              style={{
+                margin: 0,
+                borderRadius: '16px',
+                border: 'none',
+                width: '100%',
+                display: 'none',
+              }}
+            />
+            <form
+              className="rml2-form"
+              action="https://riskmatrixlabs.beehiiv.com/subscribe"
+              method="POST"
+              target="_blank"
+            >
+              <label className="rml2-field">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M4 6h16v12H4z" /><path d="M4 7l8 6 8-6" />
+                </svg>
+                <input type="email" name="email" placeholder="Enter your email address..." required />
+              </label>
+              <button type="submit">Join Waitlist →</button>
+              <p className="rml2-note">▣ We respect your privacy. No spam, ever.</p>
+            </form>
+          </div>
         </div>
       </section>
 
