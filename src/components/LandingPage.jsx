@@ -657,7 +657,7 @@ export default function LandingPage({ onLogin }) {
                 <SocialBtn Icon={FaXTwitter}  href="https://x.com/riskmatrixlabs" label="X / Twitter" />
                 <SocialBtn Icon={FaTiktok}    href="https://www.tiktok.com/@riskmatrixlabs" label="TikTok" />
                 <SocialBtn Icon={FaYoutube}   href="https://www.youtube.com/@riskmatrixlabs" label="YouTube" />
-                <SocialBtn Icon={FaDiscord}   href="https://discord.gg/riskmatrixlabs" label="Discord" />
+                <SocialBtn Icon={FaDiscord}   href="https://discord.com/invite/fwZWBQxPY9" label="Discord" />
               </div>
             </div>
           </div>
