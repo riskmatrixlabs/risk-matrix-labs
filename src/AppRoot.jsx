@@ -6,6 +6,8 @@ import AuthScreen from './components/AuthScreen'
 import ResetPasswordScreen from './components/ResetPasswordScreen'
 import PaywallScreen from './components/PaywallScreen'
 import App from './App'
+import posthog from 'posthog-js'
+import * as Sentry from '@sentry/react'
 
 const R = 'Rajdhani, sans-serif'
 
@@ -17,9 +19,17 @@ export default function AppRoot() {
 
   // Check subscription whenever session changes
   useEffect(() => {
-    if (!session) { setSubStatus(null); return }
-    setSubStatus(null) // re-check
+    if (!session) {
+      setSubStatus(null)
+      posthog.reset()
+      return
+    }
+    setSubStatus(null)
     getSubscription(session.user).then(setSubStatus)
+
+    // Identify user in PostHog + Sentry
+    posthog.identify(session.user.id, { email: session.user.email })
+    Sentry.setUser({ id: session.user.id, email: session.user.email })
   }, [session?.user?.id])
 
   // Handle checkout success — re-check subscription

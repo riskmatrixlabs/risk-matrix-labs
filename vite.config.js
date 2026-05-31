@@ -19,6 +19,12 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
             return 'vendor-react';
           }
+          if (id.includes('node_modules/posthog-js')) {
+            return 'vendor-posthog';
+          }
+          if (id.includes('node_modules/@sentry')) {
+            return 'vendor-sentry';
+          }
         },
       },
     },
