@@ -283,7 +283,7 @@ export default function LandingPage({ onLogin }) {
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.color = '#fff' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
           >Log In</button>
-          <button onClick={() => scrollTo('beta')} style={{ background: NEON, border: 'none', borderRadius: '3px', padding: '7px 16px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', color: BG, textTransform: 'uppercase', transition: 'opacity 0.15s, transform 0.15s' }}
+          <button onClick={onLogin} style={{ background: NEON, border: 'none', borderRadius: '3px', padding: '7px 16px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', color: BG, textTransform: 'uppercase', transition: 'opacity 0.15s, transform 0.15s' }}
             onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
           >Request Beta</button>
@@ -303,7 +303,7 @@ export default function LandingPage({ onLogin }) {
               <button key={id} onClick={() => scrollTo(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 0', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{label}</button>
             ))}
             <button onClick={onLogin} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 0', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', textAlign: 'left' }}>Log In</button>
-            <button onClick={() => scrollTo('beta')} style={{ marginTop: '8px', background: NEON, border: 'none', borderRadius: '3px', padding: '12px', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: BG, textTransform: 'uppercase', cursor: 'pointer' }}>Request Beta Access</button>
+            <button onClick={onLogin} style={{ marginTop: '8px', background: NEON, border: 'none', borderRadius: '3px', padding: '12px', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: BG, textTransform: 'uppercase', cursor: 'pointer' }}>Start Free Trial</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -336,8 +336,12 @@ export default function LandingPage({ onLogin }) {
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
-                <WaitlistForm size="lg" label="Request Beta Access" />
-                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>No spam. No picks. Lock in beta pricing — $17/month forever.</div>
+                <button onClick={onLogin}
+                  style={{ padding: '15px 36px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, transition: 'opacity 0.15s, transform 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
+                >Start My Free Trial →</button>
+                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>7 days free · $17/month after · cancel anytime</div>
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.44 }}
@@ -489,14 +493,14 @@ export default function LandingPage({ onLogin }) {
                 ))}
               </div>
 
-              <button onClick={() => document.getElementById('beta')?.scrollIntoView({ behavior: 'smooth' })}
+              <button onClick={onLogin}
                 style={{ width: '100%', padding: '15px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, transition: 'opacity 0.15s, transform 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-              >Request Beta Access →</button>
+              >Start My Free Trial →</button>
 
               <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.22)', textAlign: 'center', marginTop: '16px' }}>
-                💳 Payments coming soon — join beta free while we build
+                7 days free · $17/month after · cancel anytime
               </div>
             </div>
           </FadeIn>
@@ -552,8 +556,8 @@ export default function LandingPage({ onLogin }) {
           <SectionHeader pill="FAQ" title="Common Questions" />
           <FAQItem delay={0}    q="What is Risk Matrix Dashboard?" a="A professional bankroll management and analytics platform built for disciplined sports bettors. Track every bet, manage your risk, and grade every session — like a professional operator." />
           <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your own bankroll better. Risk Matrix Dashboard is about discipline and process — not predictions." />
-          <FAQItem delay={0.1}  q="When does it launch?" a="We are currently in beta. Join now to lock in beta pricing forever and get first access when we open the doors." />
-          <FAQItem delay={0.15} q="How much does it cost?" a="$27/month or $197/year at regular pricing. Beta users lock in $17/month forever — that's the price you pay as long as you stay subscribed. Payments are coming soon — join beta free while we finish building." />
+          <FAQItem delay={0.1}  q="When does it launch?" a="We are live now in beta. Start your 7-day free trial today — no credit card charge until day 8. Lock in beta pricing forever." />
+          <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $147/year during beta (save 28%). Regular pricing will be $27/month. Beta subscribers lock in their rate forever as long as they stay subscribed." />
           <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Dashboard is fully responsive and works on desktop, tablet, and mobile. Your data syncs across all devices via Supabase cloud." />
           <FAQItem delay={0.25} q="Is my data safe?" a="All data is stored securely in Supabase with row-level security. You own your data and can export it at any time." />
         </div>
@@ -570,13 +574,18 @@ export default function LandingPage({ onLogin }) {
               Ready To Operate<br /><span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.18)' }}>With Discipline?</span>
             </h2>
             <p style={{ fontFamily: I, fontSize: '15px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.75, marginBottom: '36px' }}>
-              Join the beta. Lock in your price. Be first when we launch. <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Beta users pay $17/month forever.</strong>
+              Start your 7-day free trial today. No charge until day 8.<br />
+              <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Beta users lock in $17/month forever.</strong>
             </p>
           </FadeIn>
           <FadeIn delay={0.12}>
-            <WaitlistForm size="lg" label="Request Beta Access" />
+            <button onClick={onLogin}
+              style={{ padding: '16px 48px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, transition: 'opacity 0.15s, transform 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
+            >Start My Free Trial →</button>
             <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.18)', marginTop: '14px' }}>
-              Questions?{' '}
+              7 days free · cancel anytime · questions?{' '}
               <a href="mailto:hello@riskmatrixlabs.com" style={{ color: 'rgba(189,255,0,0.55)', textDecoration: 'none' }}
                 onMouseEnter={e => e.currentTarget.style.color = NEON}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.55)'}
