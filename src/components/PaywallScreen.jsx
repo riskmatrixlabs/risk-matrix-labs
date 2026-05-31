@@ -6,8 +6,8 @@ const RED    = '#FF3B3B'
 const YELLOW = '#F5A623'
 const R      = 'Rajdhani, sans-serif'
 
-const PRICE_BETA_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_BETA_MONTHLY
-const PRICE_BETA_YEARLY  = import.meta.env.VITE_STRIPE_PRICE_BETA_YEARLY
+const PRICE_BETA_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_BETA_MONTHLY || 'price_1Td5MzJEv6JkAZy9C5xTxiBj'
+const PRICE_BETA_YEARLY  = import.meta.env.VITE_STRIPE_PRICE_BETA_YEARLY  || 'price_1Td5MzJEv6JkAZy9DssU8aTH'
 
 const FEATURES = [
   'Full PHLT™ Bankroll Ladder Tracker',
