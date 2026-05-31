@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useSwipeable } from 'react-swipeable'
 import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
@@ -198,13 +199,14 @@ const cardStyle = {
   backgroundColor: 'var(--card)',
   border: `1px solid var(--border)`,
   borderTop: `1px solid var(--neon-border)`,
-  boxShadow: 'var(--card-shadow)',
+  borderRadius: 'var(--radius)',
+  boxShadow: 'var(--float-shadow)',
 }
 
 const inputStyle = {
   backgroundColor: 'var(--input-bg)',
   border: `1px solid var(--border2)`,
-  borderRadius: '2px',
+  borderRadius: 'var(--radius-xs)',
   color: 'var(--text)',
   fontFamily: R,
   fontSize: '12px', fontWeight: 600, letterSpacing: '0.05em',
@@ -217,11 +219,11 @@ const btnStyle = (active = false, danger = false) => ({
   border: active  ? `1px solid rgba(189,255,0,0.6)`
         : danger  ? `1px solid rgba(255,59,59,0.4)`
         : `1px solid var(--border2)`,
-  borderRadius: '2px',
+  borderRadius: 'var(--radius-sm)',
   backgroundColor: active ? 'rgba(189,255,0,0.1)' : danger ? 'rgba(255,59,59,0.06)' : 'var(--card)',
   color: active ? NEON : danger ? 'rgba(255,59,59,0.7)' : 'var(--text-dim)',
   cursor: 'pointer',
-  transition: 'all 0.12s',
+  transition: 'all 0.15s',
 })
 
 const StatCard = ({ label, value, color, icon: Icon, sub }) => {
@@ -1886,6 +1888,15 @@ export default function App({ user, session, subStatus }) {
   const [showWelcome,  setShowWelcome]  = useState(false)
   const [welcomeBr,    setWelcomeBr]    = useState('')
   const [showHelp,     setShowHelp]     = useState(false)
+  const [showMore,     setShowMore]     = useState(false)
+
+  // Tab order for swipe navigation
+  const TAB_ORDER = ['overview', 'bet log', 'ladder', 'rr engine', 'analytics', 'session']
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft:  () => { if (!isMobile) return; const i = TAB_ORDER.indexOf(tab); if (i < TAB_ORDER.length - 1) setTab(TAB_ORDER[i + 1]) },
+    onSwipedRight: () => { if (!isMobile) return; const i = TAB_ORDER.indexOf(tab); if (i > 0) setTab(TAB_ORDER[i - 1]) },
+    trackMouse: false, delta: 60,
+  })
   const [pushEnabled,  setPushEnabled]  = useState(false)
   const [pushLoading,  setPushLoading]  = useState(false)
 
@@ -2725,20 +2736,22 @@ export default function App({ user, session, subStatus }) {
         </div>
       </header>
 
-      {/* TABS */}
-      <div style={{ borderBottom: `1px solid var(--border)`, padding: isMobile ? '0 4px' : '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        {['overview', 'bet log', 'ladder', 'analytics', 'rr engine', 'session'].map(t => (
-          <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
-            fontFamily: R, fontSize: isMobile ? '9px' : '10px', fontWeight: 700, letterSpacing: isMobile ? '0.1em' : '0.22em',
-            textTransform: 'uppercase', padding: isMobile ? '10px 12px' : '11px 20px',
-            background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
-            color: tab === t ? NEON : 'var(--text-dim)',
-            borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
-            marginBottom: '-1px', transition: 'color 0.15s',
-            textShadow: tab === t && darkMode ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
-          }}>{t}</button>
-        ))}
-      </div>
+      {/* TABS — desktop only */}
+      {!isMobile && (
+        <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {['overview', 'bet log', 'ladder', 'analytics', 'rr engine', 'session'].map(t => (
+            <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
+              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
+              textTransform: 'uppercase', padding: '11px 20px',
+              background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
+              color: tab === t ? NEON : 'var(--text-dim)',
+              borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
+              marginBottom: '-1px', transition: 'color 0.15s',
+              textShadow: tab === t && darkMode ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
+            }}>{t}</button>
+          ))}
+        </div>
+      )}
 
       {/* TILT BANNER — always visible when triggered */}
       <div style={{ padding: `6px ${pad} 0` }}>
@@ -2746,7 +2759,32 @@ export default function App({ user, session, subStatus }) {
       </div>
 
       {/* CONTENT */}
-      <div style={{ padding: `4px ${pad} 0`, overflowX: 'hidden', width: '100%', boxSizing: 'border-box' }}>
+      <div {...(isMobile ? swipeHandlers : {})}
+        className={isMobile ? 'content-with-bottom-nav' : ''}
+        style={{ padding: isMobile ? '8px 10px 0' : `4px ${pad} 0`, overflowX: 'hidden', width: '100%', boxSizing: 'border-box', animation: 'tabIn 0.18s ease' }}
+        key={tab}
+      >
+
+      {/* OPEN BETS LIVE BANNER — mobile only, overview only */}
+      {isMobile && tab === 'overview' && stats.openBets > 0 && (
+        <div onClick={() => setTab('bet log')} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.25)',
+          borderRadius: 'var(--radius)', padding: '11px 16px', marginBottom: '10px',
+          cursor: 'pointer',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
+            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', color: YELLOW, textTransform: 'uppercase' }}>
+              {stats.openBets} Live {stats.openBets === 1 ? 'Bet' : 'Bets'}
+            </span>
+            <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+              {fmt$(stats.openRisk$)} at risk
+            </span>
+          </div>
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, opacity: 0.7 }}>VIEW →</span>
+        </div>
+      )}
 
         {/* ── OVERVIEW ── */}
         {tab === 'overview' && <>
@@ -3268,6 +3306,95 @@ export default function App({ user, session, subStatus }) {
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
 
       </div>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      {isMobile && (
+        <>
+          {/* More sheet backdrop */}
+          {showMore && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 190, background: 'rgba(0,0,0,0.6)' }} onClick={() => setShowMore(false)} />
+          )}
+
+          {/* More sheet */}
+          {showMore && (
+            <div style={{
+              position: 'fixed', bottom: '72px', left: '10px', right: '10px', zIndex: 200,
+              background: 'var(--card2)', borderRadius: 'var(--radius)', border: `1px solid var(--border2)`,
+              borderTop: `2px solid ${NEON}`, padding: '8px', boxShadow: 'var(--float-shadow)',
+              animation: 'slideUp 0.18s ease',
+            }}>
+              {[
+                { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+                { id: 'session',   label: 'Session',   icon: Flame },
+              ].map(({ id, label, icon: Icon }) => (
+                <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                  padding: '14px 16px', background: tab === id ? 'rgba(189,255,0,0.08)' : 'none',
+                  border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                  color: tab === id ? NEON : 'var(--text-dim)',
+                }}>
+                  <Icon size={16} strokeWidth={2} color={tab === id ? NEON : 'var(--muted)'} />
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{label}</span>
+                  {tab === id && <div style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: NEON }} />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Bottom nav bar */}
+          <nav style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+            background: 'var(--card2)', borderTop: `1px solid var(--border2)`,
+            display: 'flex', alignItems: 'stretch', height: '72px',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+          }}>
+            {[
+              { id: 'overview',  label: 'Home',    icon: BarChart3  },
+              { id: 'bet log',   label: 'Bets',    icon: BookMarked },
+              { id: 'ladder',    label: 'Ladder',  icon: Zap        },
+              { id: 'rr engine', label: 'RR',      icon: Target     },
+            ].map(({ id, label, icon: Icon }) => {
+              const active = tab === id
+              return (
+                <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: '4px', background: 'none', border: 'none', cursor: 'pointer',
+                  color: active ? NEON : 'var(--muted)', transition: 'color 0.12s',
+                  position: 'relative',
+                }}>
+                  {active && (
+                    <div style={{
+                      position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                      width: '28px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
+                      boxShadow: `0 0 8px ${NEON}`,
+                    }} />
+                  )}
+                  <Icon size={18} strokeWidth={active ? 2.5 : 2} color={active ? NEON : 'var(--muted)'} />
+                  <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
+                  {/* Live dot on Bets when open bets exist */}
+                  {id === 'bet log' && stats.openBets > 0 && (
+                    <div style={{ position: 'absolute', top: '8px', right: 'calc(50% - 16px)', width: '6px', height: '6px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
+                  )}
+                </button>
+              )
+            })}
+            {/* More button */}
+            <button onClick={() => setShowMore(m => !m)} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: '4px', background: 'none', border: 'none', cursor: 'pointer',
+              color: ['analytics','session'].includes(tab) ? NEON : 'var(--muted)',
+              transition: 'color 0.12s', position: 'relative',
+            }}>
+              {['analytics','session'].includes(tab) && (
+                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '28px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px', boxShadow: `0 0 8px ${NEON}` }} />
+              )}
+              <Sliders size={18} strokeWidth={['analytics','session'].includes(tab) ? 2.5 : 2} color={['analytics','session'].includes(tab) ? NEON : 'var(--muted)'} />
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>More</span>
+            </button>
+          </nav>
+        </>
+      )}
 
       {/* ── TEMPLATES MODAL ── */}
       {showTemplates && (

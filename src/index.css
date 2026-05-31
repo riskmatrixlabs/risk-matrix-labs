@@ -117,6 +117,33 @@ input, select, button { outline: none; }
   background-color: var(--row-hover-bg) !important;
 }
 
+/* ── Radius + shadow tokens ────────────────────────────────── */
+:root {
+  --radius:    10px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+  --float-shadow: 0 4px 20px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.25);
+  --float-shadow-neon: 0 4px 20px rgba(0,0,0,0.45), 0 0 0 1px rgba(189,255,0,0.12);
+}
+[data-theme='light'] {
+  --float-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06);
+  --float-shadow-neon: 0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px rgba(189,255,0,0.3);
+}
+
+/* ── Bottom nav safe area ──────────────────────────────────── */
+.content-with-bottom-nav {
+  padding-bottom: 80px;
+}
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .content-with-bottom-nav {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulseDot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.75); } }
+@keyframes tabIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
