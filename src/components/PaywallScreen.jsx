@@ -31,23 +31,30 @@ export default function PaywallScreen({ user, onSignOut }) {
     setLoading(true)
     setError(null)
 
+    const priceId    = isYearly ? PRICE_BETA_YEARLY : PRICE_BETA_MONTHLY
+    const userId     = user?.id
+    const email      = user?.email
+    const successUrl = `${window.location.origin}/?checkout=success`
+    const cancelUrl  = `${window.location.origin}/?checkout=canceled`
+
+    if (!priceId || !userId || !email) {
+      setError(`Debug: priceId=${priceId} userId=${userId} email=${email}`)
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          priceId:    isYearly ? PRICE_BETA_YEARLY : PRICE_BETA_MONTHLY,
-          userId:     user.id,
-          email:      user.email,
-          successUrl: `${window.location.origin}/?checkout=success`,
-          cancelUrl:  `${window.location.origin}/?checkout=canceled`,
-        }),
+        body: JSON.stringify({ priceId, userId, email, successUrl, cancelUrl }),
       })
 
-      const data = await res.json()
+      const text = await res.text()
+      let data
+      try { data = JSON.parse(text) } catch { setError(`Bad response: ${text.slice(0,200)}`); setLoading(false); return }
 
       if (data.bypass) {
-        // Owner bypass — reload to trigger dashboard
         window.location.reload()
         return
       }
@@ -55,7 +62,7 @@ export default function PaywallScreen({ user, onSignOut }) {
       if (data.url) {
         window.location.href = data.url
       } else {
-        setError(data.error || 'Something went wrong. Try again.')
+        setError(data.error || `No URL returned. Raw: ${text.slice(0,200)}`)
         setLoading(false)
       }
     } catch (err) {
