@@ -615,13 +615,27 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
       {/* Header bar */}
-      <div style={{ ...cardStyle, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ ...cardStyle, padding: '14px 18px' }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isMobile ? '10px' : 0 }}>
           <div>
-            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-title)' }}>PHLT™ LADDER TRACKER</div>
-            <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.18em', color: 'var(--neon-sub)', marginTop: '2px' }}>FUND EACH BET FROM PREVIOUS WINNINGS ONLY</div>
+            <div style={{ fontFamily: R, fontSize: isMobile ? '11px' : '13px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-title)' }}>PHLT™ LADDER TRACKER</div>
+            <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.14em', color: 'var(--neon-sub)', marginTop: '2px' }}>FUND EACH BET FROM PREVIOUS WINNINGS ONLY</div>
           </div>
-          <div style={{ width: '1px', height: '32px', background: 'var(--border2)' }} />
+          {/* Reset button always top-right on mobile */}
+          {isMobile && (
+            <button onClick={resetLadder} style={{
+              ...btnStyle(), display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px',
+              borderColor: 'rgba(255,59,59,0.35)', color: 'rgba(255,59,59,0.6)',
+            }}>
+              <RotateCcw size={11} /> Reset
+            </button>
+          )}
+        </div>
+
+        {/* Controls + stats row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? '10px' : '16px' }}>
+          {/* Starting Bankroll input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase' }}>Starting Bankroll</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -633,41 +647,41 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                   const v = parseFloat(startInput)
                   if (!isNaN(v) && v > 0) {
                     setLadderStarting(v)
-                    // Rescale stakes for ALL Open rungs proportionally
                     setBets(prev => prev.map(b => {
                       if (!b.ladder || b.result !== 'Open') return b
-                      // Use the rung's ladderId to pick the right ratio
                       const ratio = LADDER_RATIOS[(b.ladderId - 1)] ?? LADDER_RATIOS[LADDER_RATIOS.length - 1]
                       return { ...b, stake: scaleStake(v, ratio) }
                     }))
                   }
                 }}
                 onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-                style={{ ...inputStyle, width: '80px', padding: '4px 8px', fontSize: '13px', fontWeight: 700 }}
+                style={{ ...inputStyle, width: isMobile ? '90px' : '80px', padding: '4px 8px', fontSize: '13px', fontWeight: 700 }}
               />
             </div>
           </div>
-        </div>
 
-        {/* Summary stats */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {[
-            { label: 'W / L',         value: `${winsCount} — ${lossCount}`,             color: 'var(--text)' },
-            { label: 'Total Profit',  value: `+${fmt$(totalProfit)}`,                    color: NEON },
-            { label: 'Final Bankroll',value: fmt$(finalBankroll),                        color: finalBankroll > ladderStarting ? NEON : RED },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>{label}</div>
-              <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color,
-                textShadow: color === NEON && darkMode ? '0 0 12px rgba(189,255,0,0.25)' : 'none' }}>{value}</div>
-            </div>
-          ))}
-          <button onClick={resetLadder} style={{
-            ...btnStyle(), display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px',
-            borderColor: 'rgba(255,59,59,0.35)', color: 'rgba(255,59,59,0.6)',
-          }}>
-            <RotateCcw size={11} /> Reset
-          </button>
+          {/* Summary stats */}
+          <div style={{ display: 'flex', gap: isMobile ? '10px' : '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {[
+              { label: 'W / L',         value: `${winsCount} — ${lossCount}`,  color: 'var(--text)' },
+              { label: 'Profit',        value: `+${fmt$(totalProfit)}`,         color: NEON },
+              { label: 'Final BR',      value: fmt$(finalBankroll),             color: finalBankroll > ladderStarting ? NEON : RED },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontFamily: R, fontSize: isMobile ? '12px' : '14px', fontWeight: 700, color,
+                  textShadow: color === NEON && darkMode ? '0 0 12px rgba(189,255,0,0.25)' : 'none' }}>{value}</div>
+              </div>
+            ))}
+            {!isMobile && (
+              <button onClick={resetLadder} style={{
+                ...btnStyle(), display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px',
+                borderColor: 'rgba(255,59,59,0.35)', color: 'rgba(255,59,59,0.6)',
+              }}>
+                <RotateCcw size={11} /> Reset
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1086,14 +1100,14 @@ function RREngine({ unitSize, darkMode }) {
           {/* Key Metrics */}
           <div style={{ ...cardStyle, padding: '18px 18px' }}>
             <SectionLabel icon={BarChart3}>RR Summary</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '12px' }}>
               {[
-                { label: 'Total Combos',   value: totalCombos || '—',              color: 'var(--text)' },
-                { label: 'Total Risk',     value: totalRisk ? fmt$(totalRisk) : '—', color: totalRisk > 0 ? RED : 'var(--text)' },
-                { label: 'Max Payout',     value: maxPayout ? fmt$(maxPayout) : '—', color: NEON },
-                { label: 'Max Profit',     value: maxPayout ? fmt$(maxPayout - totalRisk) : '—', color: NEON },
-                { label: 'Worst Case',     value: totalRisk ? `-${fmt$(totalRisk)}` : '—', color: RED },
-                { label: 'Min Hits to +', value: totalCombos ? `${minHits} / ${n}` : '—', color: YELLOW },
+                { label: 'Combos',     value: totalCombos || '—',                       color: 'var(--text)' },
+                { label: 'Total Risk', value: totalRisk ? fmt$(totalRisk) : '—',         color: totalRisk > 0 ? RED : 'var(--text)' },
+                { label: 'Max Payout', value: maxPayout ? fmt$(maxPayout) : '—',         color: NEON },
+                { label: 'Max Profit', value: maxPayout ? fmt$(maxPayout - totalRisk) : '—', color: NEON },
+                { label: 'Worst Case', value: totalRisk ? `-${fmt$(totalRisk)}` : '—',   color: RED },
+                { label: 'Min Hits +', value: totalCombos ? `${minHits} / ${n}` : '—',  color: YELLOW },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ padding: '10px 12px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
                   <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
@@ -1126,11 +1140,11 @@ function RREngine({ unitSize, darkMode }) {
           {hasResults && (
             <div style={{ ...cardStyle, padding: '16px 18px', borderTop: `2px solid ${exactPL >= 0 ? NEON : RED}` }}>
               <SectionLabel icon={Zap}>Live Result</SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                 {[
-                  { label: 'Winning Combos', value: `${exactWinCombos} / ${totalCombos}`, color: 'var(--text)' },
-                  { label: 'Total Returned', value: fmt$(exactTotal), color: exactTotal > 0 ? NEON : 'var(--muted)' },
-                  { label: 'Net P / L',      value: fmt$(exactPL, true), color: healthColor(exactPL) },
+                  { label: 'Combos Won', value: `${exactWinCombos} / ${totalCombos}`, color: 'var(--text)' },
+                  { label: 'Returned',   value: fmt$(exactTotal), color: exactTotal > 0 ? NEON : 'var(--muted)' },
+                  { label: 'Net P / L',  value: fmt$(exactPL, true), color: healthColor(exactPL) },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ padding: '10px 12px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
                     <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
@@ -1167,59 +1181,84 @@ function RREngine({ unitSize, darkMode }) {
 
       {/* ── OUTCOME MATRIX ── */}
       {n > 0 && totalCombos > 0 && (
-        <div style={{ ...cardStyle, padding: '18px 18px' }}>
+        <div style={{ ...cardStyle, padding: '14px 16px' }}>
           <SectionLabel icon={BarChart3}>Outcome Matrix — {n}-leg RR {rrType}s · {fmt$(stakePerCombo)}/combo</SectionLabel>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid var(--border)` }}>
-                  {['Legs Correct', 'Winning Combos', 'Est. Return', 'Est. P / L', 'Result'].map(h => (
-                    <th key={h} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', padding: '8px 14px', textAlign: h === 'Legs Correct' || h === 'Winning Combos' ? 'center' : 'right', background: 'var(--card)', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {outcomeMatrix.map(({ hits, winningCombos, payout, pl }) => {
-                  const isBreakEven = hits === minHits
-                  const isMax       = hits === n
-                  return (
-                    <tr key={hits} style={{
-                      borderBottom: `1px solid var(--border)`,
-                      backgroundColor: isMax ? 'rgba(189,255,0,0.04)' : isBreakEven ? 'rgba(245,166,35,0.04)' : 'transparent',
-                    }}>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 14px', textAlign: 'center',
-                        color: hits === 0 ? RED : hits === n ? NEON : 'var(--text)' }}>
-                        {hits} / {n}
-                        {isBreakEven && hits > 0 && <span style={{ fontFamily: R, fontSize: '8px', color: YELLOW, marginLeft: '6px', letterSpacing: '0.1em' }}>MIN</span>}
-                        {isMax && <span style={{ fontFamily: R, fontSize: '8px', color: NEON, marginLeft: '6px', letterSpacing: '0.1em' }}>MAX</span>}
-                      </td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, padding: '9px 14px', textAlign: 'center', color: winningCombos > 0 ? NEON : 'var(--muted)' }}>
-                        {winningCombos > 0 ? winningCombos : '—'}
-                      </td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 14px', textAlign: 'right', color: payout > 0 ? 'var(--text)' : 'var(--muted)' }}>
-                        {payout > 0 ? fmt$(payout) : '—'}
-                      </td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 14px', textAlign: 'right',
-                        color: pl > 0 ? NEON : pl < 0 ? RED : YELLOW,
-                        textShadow: pl > 0 ? 'var(--neon-glow)' : pl < 0 ? 'var(--red-glow)' : 'none' }}>
-                        {pl > 0 ? '+' : ''}{fmt$(pl)}
-                      </td>
-                      <td style={{ padding: '9px 14px', textAlign: 'right' }}>
-                        <span style={{
-                          fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', padding: '2px 8px', borderRadius: '2px',
-                          color: pl > 0 ? NEON : pl < 0 ? RED : YELLOW,
-                          background: pl > 0 ? 'rgba(189,255,0,0.07)' : pl < 0 ? 'rgba(255,59,59,0.07)' : 'rgba(245,166,35,0.07)',
-                          border: `1px solid ${pl > 0 ? 'rgba(189,255,0,0.2)' : pl < 0 ? 'rgba(255,59,59,0.2)' : 'rgba(245,166,35,0.2)'}`,
-                        }}>
-                          {pl > 0 ? 'PROFIT' : pl < 0 ? 'LOSS' : 'BREAK EVEN'}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+
+          {isMobile ? (
+            /* Mobile: compact card rows */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {outcomeMatrix.map(({ hits, winningCombos, payout, pl }) => {
+                const isBreakEven = hits === minHits
+                const isMax       = hits === n
+                const plColor     = pl > 0 ? NEON : pl < 0 ? RED : YELLOW
+                return (
+                  <div key={hits} style={{
+                    display: 'grid', gridTemplateColumns: '52px 1fr 80px 80px',
+                    gap: '6px', alignItems: 'center',
+                    padding: '8px 10px',
+                    background: isMax ? 'rgba(189,255,0,0.04)' : isBreakEven ? 'rgba(245,166,35,0.04)' : 'var(--card2)',
+                    border: `1px solid ${isMax ? 'rgba(189,255,0,0.15)' : isBreakEven ? 'rgba(245,166,35,0.15)' : 'var(--border)'}`,
+                    borderRadius: '2px',
+                  }}>
+                    <div>
+                      <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: hits === 0 ? RED : isMax ? NEON : 'var(--text)', lineHeight: 1 }}>{hits}/{n}</div>
+                      <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)', letterSpacing: '0.08em', marginTop: '1px' }}>legs</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {isBreakEven && hits > 0 && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 5px', borderRadius: '2px', letterSpacing: '0.08em' }}>MIN</span>}
+                      {isMax && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, color: NEON, background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.2)', padding: '1px 5px', borderRadius: '2px', letterSpacing: '0.08em' }}>MAX</span>}
+                      {winningCombos > 0 && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{winningCombos} combo{winningCombos > 1 ? 's' : ''}</span>}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: payout > 0 ? 'var(--text-sub)' : 'var(--muted)' }}>{payout > 0 ? fmt$(payout) : '—'}</div>
+                      <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)' }}>return</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: plColor, textShadow: pl > 0 ? 'var(--neon-glow)' : pl < 0 ? 'var(--red-glow)' : 'none' }}>{pl > 0 ? '+' : ''}{fmt$(pl)}</div>
+                      <div style={{ fontFamily: R, fontSize: '7px', color: plColor, opacity: 0.7 }}>{pl > 0 ? 'profit' : pl < 0 ? 'loss' : 'even'}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            /* Desktop: full table */
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid var(--border)` }}>
+                    {['Legs Correct', 'Winning Combos', 'Est. Return', 'Est. P / L', 'Result'].map(h => (
+                      <th key={h} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', padding: '8px 14px', textAlign: h === 'Legs Correct' || h === 'Winning Combos' ? 'center' : 'right', background: 'var(--card)', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {outcomeMatrix.map(({ hits, winningCombos, payout, pl }) => {
+                    const isBreakEven = hits === minHits
+                    const isMax       = hits === n
+                    return (
+                      <tr key={hits} style={{ borderBottom: `1px solid var(--border)`, backgroundColor: isMax ? 'rgba(189,255,0,0.04)' : isBreakEven ? 'rgba(245,166,35,0.04)' : 'transparent' }}>
+                        <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 14px', textAlign: 'center', color: hits === 0 ? RED : hits === n ? NEON : 'var(--text)' }}>
+                          {hits} / {n}
+                          {isBreakEven && hits > 0 && <span style={{ fontFamily: R, fontSize: '8px', color: YELLOW, marginLeft: '6px', letterSpacing: '0.1em' }}>MIN</span>}
+                          {isMax && <span style={{ fontFamily: R, fontSize: '8px', color: NEON, marginLeft: '6px', letterSpacing: '0.1em' }}>MAX</span>}
+                        </td>
+                        <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, padding: '9px 14px', textAlign: 'center', color: winningCombos > 0 ? NEON : 'var(--muted)' }}>{winningCombos > 0 ? winningCombos : '—'}</td>
+                        <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 14px', textAlign: 'right', color: payout > 0 ? 'var(--text)' : 'var(--muted)' }}>{payout > 0 ? fmt$(payout) : '—'}</td>
+                        <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 14px', textAlign: 'right', color: pl > 0 ? NEON : pl < 0 ? RED : YELLOW, textShadow: pl > 0 ? 'var(--neon-glow)' : pl < 0 ? 'var(--red-glow)' : 'none' }}>{pl > 0 ? '+' : ''}{fmt$(pl)}</td>
+                        <td style={{ padding: '9px 14px', textAlign: 'right' }}>
+                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', padding: '2px 8px', borderRadius: '2px', color: pl > 0 ? NEON : pl < 0 ? RED : YELLOW, background: pl > 0 ? 'rgba(189,255,0,0.07)' : pl < 0 ? 'rgba(255,59,59,0.07)' : 'rgba(245,166,35,0.07)', border: `1px solid ${pl > 0 ? 'rgba(189,255,0,0.2)' : pl < 0 ? 'rgba(255,59,59,0.2)' : 'rgba(245,166,35,0.2)'}` }}>
+                            {pl > 0 ? 'PROFIT' : pl < 0 ? 'LOSS' : 'BREAK EVEN'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <div style={{ marginTop: '8px', fontFamily: R, fontSize: '8px', color: 'var(--muted)', letterSpacing: '0.1em' }}>
             ESTIMATES BASED ON AVERAGE LEG ODDS · ENTER RESULTS ABOVE FOR EXACT CALCULATION
           </div>
@@ -1889,6 +1928,8 @@ export default function App({ user, session, subStatus }) {
   const [welcomeBr,    setWelcomeBr]    = useState('')
   const [showHelp,     setShowHelp]     = useState(false)
   const [showMore,     setShowMore]     = useState(false)
+  const [overviewSection, setOverviewSection] = useState('stats')   // 'stats' | 'details'
+  const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
   const TAB_ORDER = ['overview', 'bet log', 'ladder', 'rr engine', 'analytics', 'session']
@@ -2789,6 +2830,24 @@ export default function App({ user, session, subStatus }) {
         {/* ── OVERVIEW ── */}
         {tab === 'overview' && <>
 
+          {/* ── MOBILE SUB-NAV ── */}
+          {isMobile && (
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: 'var(--radius)', padding: '4px' }}>
+              {[
+                { id: 'stats',   label: 'Command Center' },
+                { id: 'details', label: 'Analytics' },
+              ].map(({ id, label }) => (
+                <button key={id} onClick={() => setOverviewSection(id)} style={{
+                  flex: 1, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+                  padding: '8px 4px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
+                  background: overviewSection === id ? NEON : 'none',
+                  color: overviewSection === id ? '#000' : 'var(--muted)',
+                  transition: 'all 0.15s',
+                }}>{label}</button>
+              ))}
+            </div>
+          )}
+
           {/* ── ROW 1: 5 primary stat cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: g('repeat(5,1fr)', 'repeat(3,1fr)', 'repeat(2,1fr)'), gap: '6px', marginBottom: '6px' }}>
             {/* Starting Bankroll */}
@@ -2886,7 +2945,58 @@ export default function App({ user, session, subStatus }) {
             <SmallCard label="Units Risked" value={`${stats.totalUnits.toFixed(1)}u`} />
           </div>
 
-          {/* ── ROW 3: Bankroll Curve + Performance (bottom) ── */}
+          {/* ── MOBILE COMMAND CENTER: open bets + tilt ── */}
+          {isMobile && overviewSection === 'stats' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* Tilt + health row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${tilt.level === 'GREEN' ? NEON : tilt.level === 'YELLOW' ? YELLOW : RED}` }}>
+                  <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Tilt</div>
+                  <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: tilt.level === 'GREEN' ? NEON : tilt.level === 'YELLOW' ? YELLOW : RED }}>
+                    {tilt.level === 'GREEN' ? 'IN CONTROL' : tilt.level === 'YELLOW' ? 'WATCH IT' : 'STOP'}
+                  </div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>{tilt.streak > 0 ? `${tilt.streak}-loss streak` : 'no streak'}</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED}` }}>
+                  <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Bankroll</div>
+                  <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED }}>
+                    {risk.health === 'GOOD' ? 'HEALTHY' : risk.health === 'CAUTION' ? 'CAUTION' : 'DANGER'}
+                  </div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>{risk.currentRiskPct.toFixed(1)}% at risk</div>
+                </div>
+              </div>
+              {/* Open bets quick list */}
+              {openBets.length > 0 && (
+                <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid rgba(245,166,35,0.6)` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={11} color={YELLOW} strokeWidth={2} />
+                      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: YELLOW, textTransform: 'uppercase' }}>Open Bets</span>
+                    </div>
+                    <button onClick={() => setTab('bet log')} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: NEON, background: 'none', border: `1px solid rgba(189,255,0,0.3)`, borderRadius: '2px', padding: '2px 8px', cursor: 'pointer', letterSpacing: '0.1em' }}>VIEW ALL</button>
+                  </div>
+                  {openBets.slice(0, 4).map(b => (
+                    <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid var(--border)` }}>
+                      <div>
+                        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)' }}>{b.pick || b.event}</div>
+                        <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.sport} · {fmtOdds(b.odds)}{b.book ? ` · ${b.book}` : ''}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: YELLOW }}>{b.stake > 0 ? fmt$(b.stake) : `${b.units}u`}</div>
+                        <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>at risk</div>
+                      </div>
+                    </div>
+                  ))}
+                  {openBets.length > 4 && (
+                    <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', textAlign: 'center', paddingTop: '6px', letterSpacing: '0.1em' }}>+{openBets.length - 4} more</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── ROW 3: Bankroll Curve + Performance (bottom) — hidden on mobile stats view ── */}
+          {(!isMobile || overviewSection === 'details') && <>
           <div style={{ display: 'grid', gridTemplateColumns: g('2fr 1fr', '1fr', '1fr'), gap: '6px' }}>
             <div style={{ ...cardStyle, padding: '16px 18px 10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -3109,7 +3219,8 @@ export default function App({ user, session, subStatus }) {
                 ))}
               </div>
             </div>
-          </div>        </>}
+          </div>        </> /* end details-only section */}
+        </>}
 
         {/* ── BET LOG ── */}
         {tab === 'bet log' && (
@@ -3172,7 +3283,7 @@ export default function App({ user, session, subStatus }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((bet, i) => {
+                  {(betLogShowAll ? filtered : filtered.slice(0, 10)).map((bet, i) => {
                     const isOpen = bet.result === 'Open'
                     return (
                     <tr key={bet.id} style={{
@@ -3276,6 +3387,18 @@ export default function App({ user, session, subStatus }) {
                 </tbody>
               </table>
               </div>
+              {/* Show more / less toggle */}
+              {filtered.length > 10 && (
+                <div style={{ borderTop: `1px solid ${BORDER}`, padding: '8px 13px', textAlign: 'center' }}>
+                  <button onClick={() => setBetLogShowAll(v => !v)} style={{
+                    fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    background: 'none', border: `1px solid var(--border2)`, borderRadius: '2px',
+                    color: 'var(--muted)', cursor: 'pointer', padding: '5px 16px',
+                  }}>
+                    {betLogShowAll ? '▲ Show Less' : `▼ Show ${filtered.length - 10} More`}
+                  </button>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 13px', borderTop: `1px solid ${BORDER}` }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                   <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>{filtered.length} BETS</span>
