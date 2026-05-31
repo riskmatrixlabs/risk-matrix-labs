@@ -2139,7 +2139,7 @@ export default function App({ user, session }) {
   )
 
   return (
-    <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R }}>
+    <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: '100vw' }}>
       {showAdd && <AddBetModal onAdd={b => setBets(p => [...p, b])} onClose={() => setShowAdd(false)} unitSize={stats.unitSize} />}
 
       {/* SHARE MODAL */}
@@ -2356,7 +2356,7 @@ export default function App({ user, session }) {
       </div>
 
       {/* CONTENT */}
-      <div style={{ padding: `4px ${pad} 0` }}>
+      <div style={{ padding: `4px ${pad} 0`, overflowX: 'hidden', width: '100%', boxSizing: 'border-box' }}>
 
         {/* ── OVERVIEW ── */}
         {tab === 'overview' && <>
