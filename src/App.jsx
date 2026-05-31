@@ -2338,14 +2338,14 @@ export default function App({ user, session }) {
       {/* TABS */}
       <div style={{ borderBottom: `1px solid var(--border)`, padding: isMobile ? '0 4px' : '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {['overview', 'bet log', 'ladder', 'analytics', 'rr engine', 'session'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
+          <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
             fontFamily: R, fontSize: isMobile ? '9px' : '10px', fontWeight: 700, letterSpacing: isMobile ? '0.1em' : '0.22em',
             textTransform: 'uppercase', padding: isMobile ? '10px 12px' : '11px 20px',
             background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
             color: tab === t ? NEON : 'var(--text-dim)',
             borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
             marginBottom: '-1px', transition: 'color 0.15s',
-            textShadow: tab === t ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
+            textShadow: tab === t && darkMode ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
           }}>{t}</button>
         ))}
       </div>

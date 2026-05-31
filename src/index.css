@@ -30,10 +30,18 @@
   --header-blur:  none;
   --scrollbar-track: #0f0f0f;
   --scrollbar-thumb: #252525;
+  --btn-hover-bg:     rgba(189,255,0,0.08);
+  --btn-hover-border: rgba(189,255,0,0.4);
+  --btn-hover-color:  #BDFF00;
+  --row-hover-bg:     rgba(255,255,255,0.03);
 }
 
 /* ── LIGHT THEME ── */
 [data-theme='light'] {
+  --btn-hover-bg:     rgba(42,70,0,0.08);
+  --btn-hover-border: rgba(42,70,0,0.3);
+  --btn-hover-color:  #3A5C00;
+  --row-hover-bg:     rgba(0,0,0,0.04);
   --bg:           #F0EDE6;
   --card:         #F9F7F3;
   --card2:        #FFFFFF;
@@ -91,6 +99,23 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #BDFF00; }
 
 input, select, button { outline: none; }
+
+/* ── Global button hover — respects theme ── */
+[data-theme='light'] button:hover:not(:disabled) {
+  background-color: var(--btn-hover-bg) !important;
+  border-color: var(--btn-hover-border) !important;
+  color: var(--btn-hover-color) !important;
+}
+
+/* Tab bar active stays neon in both modes */
+[data-theme='light'] button[data-active='true'] {
+  color: #BDFF00 !important;
+}
+
+/* Table row hover */
+[data-theme='light'] tr:hover td {
+  background-color: var(--row-hover-bg) !important;
+}
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
