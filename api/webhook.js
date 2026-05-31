@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { sendWelcome, sendPaymentFailed, sendSubscriptionActivated } from './lib/emails.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -57,12 +58,14 @@ export default async function handler(req, res) {
     case 'checkout.session.completed': {
       const userId = obj.metadata?.supabase_user_id
       if (!userId) break
-      // Subscription details come via invoice.payment_succeeded; here just mark trialing
       await upsertSubscription(userId, {
         stripe_customer_id:      obj.customer,
         stripe_subscription_id:  obj.subscription,
         status: 'trialing',
       })
+      if (obj.customer_email) {
+        await sendWelcome({ email: obj.customer_email }).catch(console.error)
+      }
       break
     }
 
@@ -71,11 +74,22 @@ export default async function handler(req, res) {
       const userId = obj.metadata?.supabase_user_id
       if (!userId) break
       const priceId = obj.items?.data?.[0]?.price?.id
+      const plan    = planFromPriceId(priceId)
+
+      // Detect trial → active conversion
+      const prevStatus = event.data.previous_attributes?.status
+      if (prevStatus === 'trialing' && obj.status === 'active') {
+        const customer = await stripe.customers.retrieve(obj.customer)
+        if (customer.email) {
+          await sendSubscriptionActivated({ email: customer.email, plan }).catch(console.error)
+        }
+      }
+
       await upsertSubscription(userId, {
         stripe_customer_id:     obj.customer,
         stripe_subscription_id: obj.id,
         status:                 obj.status,
-        plan:                   planFromPriceId(priceId),
+        plan,
         trial_end:              obj.trial_end ? new Date(obj.trial_end * 1000).toISOString() : null,
         current_period_end:     new Date(obj.current_period_end * 1000).toISOString(),
       })
@@ -103,6 +117,9 @@ export default async function handler(req, res) {
         stripe_subscription_id: obj.subscription,
         status: 'past_due',
       })
+      if (obj.customer_email) {
+        await sendPaymentFailed({ email: obj.customer_email }).catch(console.error)
+      }
       break
     }
   }

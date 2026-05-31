@@ -59,8 +59,14 @@ export default function AuthScreen({ onAuth, onBack }) {
       }
     } else {
       const { error: err } = await signUpEmail(email, password)
-      if (err) setError(err.message)
-      else setSuccess('Check your email to confirm your account, then log in.')
+      if (err) {
+        if (err.message.includes('already registered') || err.message.includes('already been registered')) setError('An account with this email already exists. Try logging in.')
+        else if (err.message.includes('invalid') && err.message.toLowerCase().includes('email')) setError('Please enter a valid email address.')
+        else if (err.message.includes('weak') || err.message.includes('too short')) setError('Password must be at least 6 characters.')
+        else setError(err.message)
+      } else {
+        setSuccess('Check your email to confirm your account, then log in.')
+      }
     }
 
     setLoading(false)
@@ -69,7 +75,7 @@ export default function AuthScreen({ onAuth, onBack }) {
   const handleGoogle = async () => {
     setLoading(true)
     const { error: err } = await signInGoogle()
-    if (err) { setError(err.message); setLoading(false) }
+    if (err) { setError('Google sign-in failed. Please try again or use email.'); setLoading(false) }
   }
 
   return (

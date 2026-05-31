@@ -1844,7 +1844,7 @@ function loadSession() {
 }
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
-export default function App({ user, session }) {
+export default function App({ user, session, subStatus }) {
   const { isMobile, isTablet } = useMobile()
   // g(desktop, tablet, mobile) — grid-template-columns helper
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
@@ -1883,6 +1883,10 @@ export default function App({ user, session }) {
   const [templates,    setTemplates]    = useState(() => { try { return JSON.parse(localStorage.getItem(TMPL_KEY) || '[]') } catch { return [] } })
   const [showTemplates,setShowTemplates]= useState(false)
 
+  const [showWelcome,  setShowWelcome]  = useState(false)
+  const [welcomeBr,    setWelcomeBr]    = useState('')
+  const [showHelp,     setShowHelp]     = useState(false)
+
   const [masterBrInput,    setMasterBrInput]    = useState('')
   const [masterBrFocused,  setMasterBrFocused]  = useState(false)
   const [masterBrOverride, setMasterBrOverride] = useState(null) // null = auto-follow current bankroll
@@ -1920,6 +1924,10 @@ export default function App({ user, session }) {
       const { data: betRows, error: betErr } = await fetchBets(userId)
       if (!betErr && betRows?.length > 0) {
         setBets(betRows.map(rowToBet))
+      } else if (!betErr && betRows?.length === 0) {
+        // Brand new user — show welcome modal (once)
+        const welcomed = localStorage.getItem('rml_welcomed_v1')
+        if (!welcomed) setShowWelcome(true)
       }
 
       // Load settings from cloud
@@ -1974,6 +1982,16 @@ export default function App({ user, session }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [userMenuOpen])
 
+  // ── Close help panel on outside click ──
+  useEffect(() => {
+    if (!showHelp) return
+    const handler = (e) => {
+      if (!e.target.closest('[data-help-panel]') && !e.target.closest('[data-help-btn]')) setShowHelp(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showHelp])
+
   // ── Manual save ──
   const saveSession = useCallback(() => {
     setSaveStatus('saving')
@@ -2024,6 +2042,8 @@ export default function App({ user, session }) {
 
   // ── Export CSV ──────────────────────────────────────────────────────────────
   const exportCSV = useCallback(() => {
+    const exportable = bets.filter(b => !b.ladder)
+    if (!exportable.length) { alert('No bets to export yet.'); return }
     const headers = ['Date','Sport','Book','Bet Type','Event','Pick','Odds','Units','Stake','Result','P&L (units)','P&L ($)','Confidence','Notes']
     const rows = bets
       .filter(b => !b.ladder)
@@ -2254,6 +2274,181 @@ export default function App({ user, session }) {
         />
       )}
 
+      {/* WELCOME MODAL */}
+      {showWelcome && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ ...cardStyle, width: '100%', maxWidth: '460px', padding: '30px 32px', borderTop: `2px solid ${NEON}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+              <img src="/brand/logo-dashboard.png" alt="RML" style={{ height: '36px' }} />
+              <div>
+                <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, lineHeight: 1 }}>WELCOME TO RISK MATRIX LABS</div>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.28em', color: 'var(--muted)', marginTop: '3px' }}>OPERATE WITH DISCIPLINE</div>
+              </div>
+            </div>
+            <p style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-sub)', lineHeight: 1.6, margin: '16px 0', letterSpacing: '0.04em' }}>
+              Set your starting bankroll to calibrate unit sizes, risk limits, and the PHLT™ Ladder.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                Starting Bankroll ($)
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 500"
+                value={welcomeBr}
+                onChange={e => setWelcomeBr(e.target.value)}
+                autoFocus
+                style={{ ...inputStyle, fontSize: '16px', fontWeight: 700, padding: '9px 14px', width: '100%', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  const v = parseFloat(welcomeBr)
+                  if (!isNaN(v) && v > 0) setBankroll(v)
+                  setBets([])
+                  localStorage.setItem('rml_welcomed_v1', '1')
+                  setShowWelcome(false)
+                }}
+                style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '11px', border: `1px solid ${NEON}`, borderRadius: '2px', background: NEON, color: '#0A0A0A', cursor: 'pointer' }}
+              >
+                Start Fresh
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem('rml_welcomed_v1', '1')
+                  setShowWelcome(false)
+                }}
+                style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '11px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer' }}
+              >
+                Explore with Sample Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HELP PANEL */}
+      {showHelp && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300 }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowHelp(false)} />
+          <div data-help-panel style={{
+            position: 'absolute', top: 0, right: 0, bottom: 0, width: '340px',
+            background: 'var(--card2)', borderLeft: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`,
+            overflowY: 'auto', padding: '22px 22px 40px',
+            boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
+            animation: 'slideRight 0.2s ease',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.22em', color: NEON }}>HELP &amp; GUIDE</span>
+              <button onClick={() => setShowHelp(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', alignItems: 'center' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Subscription status */}
+            {subStatus?.sub && (
+              <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.2)`, borderRadius: '2px', padding: '10px 14px', marginBottom: '18px' }}>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Subscription</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    {subStatus.sub.plan || 'Pro'}
+                  </span>
+                  <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: '2px',
+                    background: subStatus.sub.status === 'trialing' ? 'rgba(245,166,35,0.15)' : 'rgba(189,255,0,0.1)',
+                    color: subStatus.sub.status === 'trialing' ? YELLOW : NEON,
+                    border: `1px solid ${subStatus.sub.status === 'trialing' ? 'rgba(245,166,35,0.4)' : 'rgba(189,255,0,0.3)'}`,
+                  }}>
+                    {subStatus.sub.status === 'trialing' ? 'Trialing' : 'Active'}
+                  </span>
+                </div>
+                {subStatus.sub.status === 'trialing' && subStatus.sub.trial_end && (
+                  <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+                    Trial ends {new Date(subStatus.sub.trial_end * 1000).toLocaleDateString()}
+                  </div>
+                )}
+                {subStatus.sub.status === 'active' && subStatus.sub.current_period_end && (
+                  <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+                    Next billing {new Date(subStatus.sub.current_period_end * 1000).toLocaleDateString()}
+                  </div>
+                )}
+                {subStatus.sub.stripe_customer_id && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerId: subStatus.sub.stripe_customer_id, returnUrl: window.location.href }) })
+                        const { url } = await res.json()
+                        if (url) window.location.href = url
+                      } catch {}
+                    }}
+                    style={{ marginTop: '10px', width: '100%', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '7px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer' }}
+                  >
+                    Manage Billing →
+                  </button>
+                )}
+              </div>
+            )}
+            {subStatus?.owner && (
+              <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.2)`, borderRadius: '2px', padding: '8px 14px', marginBottom: '18px' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON }}>OWNER ACCOUNT — FULL ACCESS</span>
+              </div>
+            )}
+
+            {/* Quick Start */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Quick Start</div>
+              {[
+                'Set your starting bankroll in the header',
+                'Log your first bet → Bet Log tab → LOG BET',
+                'Run the PHLT™ Ladder → Ladder tab',
+                'Check your discipline → Session tab after each session',
+                'Analyze your edge → Analytics tab weekly',
+              ].map((step, i) => (
+                <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON, flexShrink: 0, width: '16px' }}>{i + 1}.</span>
+                  <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-sub)', lineHeight: 1.5, letterSpacing: '0.03em' }}>{step}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Tab Guide */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Tab Guide</div>
+              {[
+                ['Overview', 'Bankroll curve, stats, tilt meter & risk panel'],
+                ['Bet Log', 'Log, edit, settle, and filter all your bets'],
+                ['Ladder', 'PHLT™ Ladder — step-by-step session roadmap'],
+                ['Analytics', 'Charts, ROI, Kelly Criterion, book breakdown'],
+                ['RR Engine', 'Round Robin calculator & Missed By One tool'],
+                ['Session', 'Discipline score, grade, mood journal & recap'],
+              ].map(([tab, desc]) => (
+                <div key={tab} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '7px' }}>
+                  <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: 'var(--text)', flexShrink: 0, minWidth: '68px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{tab}</span>
+                  <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', lineHeight: 1.5 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* PHLT Ladder */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>PHLT™ Ladder</div>
+              {[
+                'Each rung stakes a calculated amount based on your starting bankroll',
+                'Pull checkpoints let you lock in profit before climbing the next rung',
+                'Complete all 6 rungs to bank the majority — session complete',
+              ].map((pt, i) => (
+                <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '7px' }}>
+                  <span style={{ color: NEON, flexShrink: 0, marginTop: '1px' }}>·</span>
+                  <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-sub)', lineHeight: 1.5, letterSpacing: '0.03em' }}>{pt}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <header style={{
         backgroundColor: 'var(--bg)', borderBottom: `1px solid var(--border)`,
@@ -2284,11 +2479,45 @@ export default function App({ user, session }) {
                     <Lock size={10} color={NEON} strokeWidth={2} />
                   </button>
                   {userMenuOpen && (
-                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '180px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '200px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
                       <div style={{ padding: '8px 16px 10px', borderBottom: `1px solid var(--border)` }}>
                         <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Signed in as</div>
                         <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', wordBreak: 'break-all' }}>{user.email}</div>
                       </div>
+                      {subStatus?.sub && (
+                        <div style={{ padding: '8px 16px', borderBottom: `1px solid var(--border)` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{subStatus.sub.plan || 'Pro'}</span>
+                            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', padding: '2px 6px', borderRadius: '2px',
+                              background: subStatus.sub.status === 'trialing' ? 'rgba(245,166,35,0.15)' : 'rgba(189,255,0,0.1)',
+                              color: subStatus.sub.status === 'trialing' ? YELLOW : NEON,
+                              border: `1px solid ${subStatus.sub.status === 'trialing' ? 'rgba(245,166,35,0.4)' : 'rgba(189,255,0,0.3)'}`,
+                            }}>
+                              {subStatus.sub.status === 'trialing' ? 'Trialing' : 'Active'}
+                            </span>
+                          </div>
+                          {subStatus.sub.status === 'trialing' && subStatus.sub.trial_end && (
+                            <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>
+                              Trial ends {new Date(subStatus.sub.trial_end * 1000).toLocaleDateString()}
+                            </div>
+                          )}
+                          {subStatus.sub.stripe_customer_id && (
+                            <button
+                              onClick={async () => {
+                                setUserMenuOpen(false)
+                                try {
+                                  const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerId: subStatus.sub.stripe_customer_id, returnUrl: window.location.href }) })
+                                  const { url } = await res.json()
+                                  if (url) window.location.href = url
+                                } catch {}
+                              }}
+                              style={{ marginTop: '8px', width: '100%', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '6px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer', textAlign: 'center' }}
+                            >
+                              Manage Billing →
+                            </button>
+                          )}
+                        </div>
+                      )}
                       <button onClick={async () => { setUserMenuOpen(false); await signOut() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.7)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,59,59,0.06)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                         <X size={11} strokeWidth={2.5} /> Sign Out
                       </button>
@@ -2346,6 +2575,22 @@ export default function App({ user, session }) {
             </button>
           )}
 
+          {/* Help button — mobile */}
+          {isMobile && (
+            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer' }}>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON : 'var(--text-dim)' }}>?</span>
+            </button>
+          )}
+
+          {/* Help button — desktop */}
+          {!isMobile && (
+            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, backgroundColor: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON : 'var(--text-dim)' }}>?</span>
+            </button>
+          )}
+
           {/* Desktop: sync + user menu + version */}
           {!isMobile && <>
             {syncing && (
@@ -2360,11 +2605,51 @@ export default function App({ user, session }) {
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>{user.email?.split('@')[0].toUpperCase()}</span>
                 </button>
                 {userMenuOpen && (
-                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '200px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '220px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
                     <div style={{ padding: '8px 16px 10px', borderBottom: `1px solid var(--border)` }}>
                       <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Signed in as</div>
                       <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', wordBreak: 'break-all' }}>{user.email}</div>
                     </div>
+                    {/* Subscription info in user menu */}
+                    {subStatus?.sub && (
+                      <div style={{ padding: '8px 16px', borderBottom: `1px solid var(--border)` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{subStatus.sub.plan || 'Pro'}</span>
+                          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', padding: '2px 6px', borderRadius: '2px',
+                            background: subStatus.sub.status === 'trialing' ? 'rgba(245,166,35,0.15)' : 'rgba(189,255,0,0.1)',
+                            color: subStatus.sub.status === 'trialing' ? YELLOW : NEON,
+                            border: `1px solid ${subStatus.sub.status === 'trialing' ? 'rgba(245,166,35,0.4)' : 'rgba(189,255,0,0.3)'}`,
+                          }}>
+                            {subStatus.sub.status === 'trialing' ? 'Trialing' : 'Active'}
+                          </span>
+                        </div>
+                        {subStatus.sub.status === 'trialing' && subStatus.sub.trial_end && (
+                          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>
+                            Trial ends {new Date(subStatus.sub.trial_end * 1000).toLocaleDateString()}
+                          </div>
+                        )}
+                        {subStatus.sub.status === 'active' && subStatus.sub.current_period_end && (
+                          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>
+                            Next billing {new Date(subStatus.sub.current_period_end * 1000).toLocaleDateString()}
+                          </div>
+                        )}
+                        {subStatus.sub.stripe_customer_id && (
+                          <button
+                            onClick={async () => {
+                              setUserMenuOpen(false)
+                              try {
+                                const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerId: subStatus.sub.stripe_customer_id, returnUrl: window.location.href }) })
+                                const { url } = await res.json()
+                                if (url) window.location.href = url
+                              } catch {}
+                            }}
+                            style={{ marginTop: '8px', width: '100%', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '6px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer', textAlign: 'center' }}
+                          >
+                            Manage Billing →
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <button onClick={async () => { setUserMenuOpen(false); await signOut() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.7)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,59,59,0.06)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                       <X size={11} strokeWidth={2.5} /> Sign Out
                     </button>
@@ -2873,7 +3158,19 @@ export default function App({ user, session }) {
                     </tr>
                   )})}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={9} style={{ fontFamily: R, fontSize: '11px', color: MUTED, padding: '30px', textAlign: 'center', letterSpacing: '0.12em' }}>NO BETS FOUND</td></tr>
+                    <tr><td colSpan={11} style={{ padding: '44px 20px', textAlign: 'center' }}>
+                      {bets.filter(b => !b.ladder).length === 0 ? (
+                        <div>
+                          <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--text)', marginBottom: '8px' }}>NO BETS LOGGED YET</div>
+                          <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.08em', marginBottom: '16px' }}>Track your first bet to start building your edge.</div>
+                          <button onClick={() => setShowAdd(true)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '9px 20px', border: `1px solid ${NEON}`, borderRadius: '2px', background: 'rgba(189,255,0,0.1)', color: NEON, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <Plus size={11} /> Log Your First Bet
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.12em' }}>NO BETS MATCH FILTERS</span>
+                      )}
+                    </td></tr>
                   )}
                 </tbody>
               </table>

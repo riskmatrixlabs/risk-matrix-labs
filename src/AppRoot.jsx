@@ -94,5 +94,5 @@ export default function AppRoot() {
   }
 
   // ── Subscribed → dashboard ──────────────────────────────────────────────────
-  return <App user={session.user} session={session} />
+  return <App user={session.user} session={session} subStatus={subStatus} />
 }

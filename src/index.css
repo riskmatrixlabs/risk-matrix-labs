@@ -119,3 +119,4 @@ input, select, button { outline: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
