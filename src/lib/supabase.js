@@ -26,6 +26,14 @@ export const signInGoogle = () =>
 
 export const signOut = () => supabase.auth.signOut()
 
+export const resetPassword = (email) =>
+  supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+
+export const updatePassword = (newPassword) =>
+  supabase.auth.updateUser({ password: newPassword })
+
 export const getSession = () => supabase.auth.getSession()
 
 // ─── DATA HELPERS ─────────────────────────────────────────────────────────────

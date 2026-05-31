@@ -809,7 +809,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                       ><Pencil size={10} /></button>
                       <button onClick={() => removeRung(row.id)} style={{
                         background: 'none', border: 'none', cursor: rows.length > 1 ? 'pointer' : 'default',
-                        padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'rgba(255,255,255,0.06)',
+                        padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'var(--border2)',
                         display: 'flex', alignItems: 'center',
                       }}
                         onMouseEnter={e => rows.length > 1 && (e.currentTarget.style.color = RED)}
@@ -1038,11 +1038,11 @@ function RREngine({ unitSize, darkMode }) {
                 </select>
                 <button onClick={() => removeLeg(i)} style={{
                   background: 'none', border: 'none', cursor: legs.length > 2 ? 'pointer' : 'default',
-                  color: legs.length > 2 ? 'rgba(255,59,59,0.3)' : 'rgba(255,255,255,0.08)',
+                  color: legs.length > 2 ? 'rgba(255,59,59,0.3)' : 'var(--border2)',
                   display: 'flex', alignItems: 'center', padding: '2px',
                 }}
                   onMouseEnter={e => legs.length > 2 && (e.currentTarget.style.color = RED)}
-                  onMouseLeave={e => e.currentTarget.style.color = legs.length > 2 ? 'rgba(255,59,59,0.3)' : 'rgba(255,255,255,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.color = legs.length > 2 ? 'rgba(255,59,59,0.3)' : 'var(--border2)'}
                 ><Trash2 size={11} /></button>
               </div>
             ))}
@@ -1827,7 +1827,7 @@ export default function App({ user, session }) {
   const { isMobile, isTablet } = useMobile()
   // g(desktop, tablet, mobile) — grid-template-columns helper
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
-  const pad = isMobile ? '4px' : '8px'
+  const pad = isMobile ? '10px' : '8px'
 
   const saved          = useRef(loadSession())
   const [syncing,      setSyncing]      = useState(false)
@@ -2713,7 +2713,7 @@ export default function App({ user, session }) {
                     : r === 'OPEN' ? (resultFilter === r ? NEON : YELLOW)
                     : r === 'W'    ? 'rgba(189,255,0,0.55)'
                     : r === 'L'    ? 'rgba(255,59,59,0.55)'
-                    : 'rgba(255,255,255,0.5)',
+                    : 'var(--text-sub)',
                   borderColor: r === 'OPEN' && resultFilter !== r ? 'rgba(245,166,35,0.35)' : undefined,
                 }}>{r}{r === 'OPEN' && stats.openBets > 0 ? ` (${stats.openBets})` : ''}</button>)}
               </div>
@@ -2745,7 +2745,7 @@ export default function App({ user, session }) {
                     return (
                     <tr key={bet.id} style={{
                       borderBottom: `1px solid ${BORDER}`,
-                      backgroundColor: isOpen ? 'rgba(245,166,35,0.04)' : i % 2 ? 'rgba(255,255,255,0.01)' : 'transparent',
+                      backgroundColor: isOpen ? 'rgba(245,166,35,0.04)' : i % 2 ? 'var(--card2)' : 'transparent',
                       borderLeft: isOpen ? `3px solid rgba(245,166,35,0.5)` : '3px solid transparent',
                     }}>
                       <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 600, color: isOpen ? YELLOW : MUTED, padding: '9px 13px', letterSpacing: '0.05em' }}>{bet.date}</td>
@@ -2758,9 +2758,9 @@ export default function App({ user, session }) {
                           : <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--border2)' }}>—</span>}
                       </td>
                       <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 600, color: 'var(--text-sub)', padding: '9px 13px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.event}</td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: '#fff', padding: '9px 13px' }}>{bet.pick}</td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'rgba(255,255,255,0.75)', padding: '9px 13px', textAlign: 'right' }}>{fmtOdds(bet.odds)}</td>
-                      <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.75)', padding: '9px 13px', textAlign: 'right' }}>
+                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', padding: '9px 13px' }}>{bet.pick}</td>
+                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text)', padding: '9px 13px', textAlign: 'right' }}>{fmtOdds(bet.odds)}</td>
+                      <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', padding: '9px 13px', textAlign: 'right' }}>
                         {bet.units}u
                         {bet.stake > 0 && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, fontWeight: 600 }}>{fmt$(bet.stake)}</div>}
                       </td>
@@ -2775,7 +2775,7 @@ export default function App({ user, session }) {
                                 fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em',
                                 padding: '2px 7px', borderRadius: '2px', cursor: 'pointer',
                                 border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : BORDER2}`,
-                                background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : '#111',
+                                background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
                                 color: r === 'W' ? NEON : r === 'L' ? RED : MUTED,
                               }}>{r}</button>
                             ))}
