@@ -23,11 +23,9 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for API and auth calls
   if (e.request.url.includes('/api/') || e.request.url.includes('supabase') || e.request.url.includes('stripe')) {
     return;
   }
-  // Cache-first for everything else
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
       if (res.ok && e.request.method === 'GET') {
@@ -36,5 +34,32 @@ self.addEventListener('fetch', e => {
       }
       return res;
     }))
+  );
+});
+
+// ── Push Notifications ────────────────────────────────────────────────────────
+self.addEventListener('push', e => {
+  const data = e.data?.json() || {};
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Risk Matrix Labs', {
+      body:    data.body  || 'Time to log your session.',
+      icon:    '/icon-192.png',
+      badge:   '/icon-192.png',
+      tag:     'rml-reminder',
+      renotify: true,
+      data:    { url: data.url || '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
   );
 });

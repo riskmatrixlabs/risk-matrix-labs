@@ -1886,6 +1886,20 @@ export default function App({ user, session, subStatus }) {
   const [showWelcome,  setShowWelcome]  = useState(false)
   const [welcomeBr,    setWelcomeBr]    = useState('')
   const [showHelp,     setShowHelp]     = useState(false)
+  const [pushEnabled,  setPushEnabled]  = useState(false)
+  const [pushLoading,  setPushLoading]  = useState(false)
+
+  // Check if push is already enabled on mount
+  useEffect(() => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return
+    if (Notification.permission === 'granted') {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          setPushEnabled(!!sub)
+        })
+      })
+    }
+  }, [])
 
   const [masterBrInput,    setMasterBrInput]    = useState('')
   const [masterBrFocused,  setMasterBrFocused]  = useState(false)
@@ -2445,6 +2459,55 @@ export default function App({ user, session, subStatus }) {
                 </div>
               ))}
             </div>
+
+            {/* Session Reminders */}
+            {'Notification' in window && 'serviceWorker' in navigator && (
+              <div style={{ marginTop: '4px' }}>
+                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Session Reminders</div>
+                <p style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-sub)', lineHeight: 1.5, margin: '0 0 12px', letterSpacing: '0.03em' }}>
+                  Get a daily push notification at 8pm to log your session.
+                </p>
+                <button
+                  disabled={pushLoading}
+                  onClick={async () => {
+                    setPushLoading(true)
+                    try {
+                      if (pushEnabled) {
+                        // Unsubscribe
+                        const reg = await navigator.serviceWorker.ready
+                        const sub = await reg.pushManager.getSubscription()
+                        if (sub) await sub.unsubscribe()
+                        await fetch('/api/push-subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user?.id }) })
+                        setPushEnabled(false)
+                      } else {
+                        // Subscribe
+                        const perm = await Notification.requestPermission()
+                        if (perm !== 'granted') { setPushLoading(false); return }
+                        const reg = await navigator.serviceWorker.ready
+                        const sub = await reg.pushManager.subscribe({
+                          userVisibleOnly: true,
+                          applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+                        })
+                        await fetch('/api/push-subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user?.id, subscription: sub.toJSON() }) })
+                        setPushEnabled(true)
+                      }
+                    } catch {}
+                    setPushLoading(false)
+                  }}
+                  style={{
+                    width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.14em', textTransform: 'uppercase', padding: '10px',
+                    border: pushEnabled ? `1px solid rgba(255,59,59,0.4)` : `1px solid rgba(189,255,0,0.5)`,
+                    borderRadius: '2px',
+                    background: pushEnabled ? 'rgba(255,59,59,0.08)' : 'rgba(189,255,0,0.1)',
+                    color: pushEnabled ? 'rgba(255,59,59,0.8)' : NEON,
+                    cursor: pushLoading ? 'wait' : 'pointer',
+                  }}
+                >
+                  {pushLoading ? 'Working...' : pushEnabled ? 'Disable Reminders' : 'Enable Session Reminders'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
