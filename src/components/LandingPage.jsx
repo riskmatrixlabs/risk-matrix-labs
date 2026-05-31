@@ -362,7 +362,7 @@ export default function LandingPage({ onLogin }) {
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
                   <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX DASHBOARD — OPERATOR VIEW</div>
                 </div>
-                <img src="/brand/dashboard-v2.png" alt="Dashboard Preview" style={{ width: '100%', display: 'block' }} />
+                <img src="/brand/dashboard-overview-full.png" alt="Dashboard Preview" style={{ width: '100%', display: 'block' }} />
               </div>
             </motion.div>
           </div>
@@ -436,7 +436,7 @@ export default function LandingPage({ onLogin }) {
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
                   <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>OVERVIEW — OPERATOR SESSION</div>
                 </div>
-                <img src="/brand/dashboard-v2.png" alt="Dashboard Stats" style={{ width: '100%', display: 'block' }} />
+                <img src="/brand/dashboard-overview-header.png" alt="Dashboard Stats" style={{ width: '100%', display: 'block' }} />
               </div>
             </motion.div>
           </FadeIn>
