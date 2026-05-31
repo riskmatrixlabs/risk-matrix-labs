@@ -308,7 +308,7 @@ const BOOKS = ['DraftKings','FanDuel','BetMGM','Caesars','ESPN Bet','PointsBet',
 
 const EMPTY = {
   date: '', sport: 'NFL', book: '', betType: 'Straight', event: '', pick: '',
-  odds: '', units: '', stake: '', result: 'Open',
+  odds: '', units: '', stake: '', result: 'Open', confidence: 0,
 }
 
 function profitFromOdds(stake, odds) {
@@ -486,6 +486,27 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
               </div>
             </div>
           )}
+
+          {/* Confidence stars */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>Confidence</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                  fontSize: '18px', lineHeight: 1,
+                  opacity: n <= (form.confidence || 0) ? 1 : 0.2,
+                  filter: n <= (form.confidence || 0) ? 'drop-shadow(0 0 4px rgba(189,255,0,0.6))' : 'none',
+                  transition: 'all 0.1s',
+                }}>⭐</button>
+              ))}
+            </div>
+            {form.confidence > 0 && (
+              <span style={{ fontFamily: R, fontSize: '9px', color: NEON, letterSpacing: '0.08em' }}>
+                {['','Low','Moderate','Average','High','Lock 🔒'][form.confidence]}
+              </span>
+            )}
+          </div>
 
           {/* Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
@@ -2001,6 +2022,27 @@ export default function App({ user, session }) {
     try { localStorage.setItem(TMPL_KEY, JSON.stringify(updated)) } catch {}
   }, [templates])
 
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+  const exportCSV = useCallback(() => {
+    const headers = ['Date','Sport','Book','Bet Type','Event','Pick','Odds','Units','Stake','Result','P&L (units)','P&L ($)','Confidence','Notes']
+    const rows = bets
+      .filter(b => !b.ladder)
+      .map(b => [
+        b.date, b.sport, b.book || '', b.betType, b.event, b.pick,
+        b.odds, b.units, b.stake,
+        b.result, b.pnl.toFixed(2), (b.pnl * (bankroll / 100)).toFixed(2),
+        b.confidence || 0, (b.notes || '').replace(/,/g, ';'),
+      ])
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = `rml-bets-${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [bets, bankroll])
+
   // ── Export PDF (print-to-PDF via formatted print window) ──
   const exportPDF = useCallback(() => {
     const settled = bets.filter(b => b.result === 'W' || b.result === 'L')
@@ -2717,6 +2759,9 @@ export default function App({ user, session }) {
                   borderColor: r === 'OPEN' && resultFilter !== r ? 'rgba(245,166,35,0.35)' : undefined,
                 }}>{r}{r === 'OPEN' && stats.openBets > 0 ? ` (${stats.openBets})` : ''}</button>)}
               </div>
+              <button onClick={exportCSV} style={{ ...btnStyle(false), display: 'flex', alignItems: 'center', gap: '5px' }} title="Export to CSV">
+                <FileDown size={11} /> CSV
+              </button>
               <button onClick={() => setShowAdd(true)} style={{ ...btnStyle(true), display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Plus size={11} /> LOG BET
               </button>
@@ -2727,15 +2772,16 @@ export default function App({ user, session }) {
               <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                    <TH col="date"   label="Date" />
-                    <TH col="sport"  label="Sport" />
-                    <TH col="book"   label="📚 Book" />
-                    <TH col="event"  label="Event" />
-                    <TH col="pick"   label="Pick" />
-                    <TH col="odds"   label="Odds" right />
-                    <TH col="units"  label="Units" right />
-                    <TH col="result" label="Result" />
-                    <TH col="pnl"    label="P&L" right />
+                    <TH col="date"       label="Date" />
+                    <TH col="sport"      label="Sport" />
+                    <TH col="book"       label="📚 Book" />
+                    <TH col="event"      label="Event" />
+                    <TH col="pick"       label="Pick" />
+                    <TH col="odds"       label="Odds" right />
+                    <TH col="units"      label="Units" right />
+                    <TH col="confidence" label="⭐" />
+                    <TH col="result"     label="Result" />
+                    <TH col="pnl"        label="P&L" right />
                     <th style={{ width: '32px', background: CARD }} />
                   </tr>
                 </thead>
@@ -2763,6 +2809,13 @@ export default function App({ user, session }) {
                       <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', padding: '9px 13px', textAlign: 'right' }}>
                         {bet.units}u
                         {bet.stake > 0 && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, fontWeight: 600 }}>{fmt$(bet.stake)}</div>}
+                      </td>
+
+                      {/* Confidence stars */}
+                      <td style={{ padding: '9px 10px', whiteSpace: 'nowrap' }}>
+                        {bet.confidence > 0
+                          ? <span style={{ fontSize: '11px', letterSpacing: '-1px', opacity: 0.85 }}>{'⭐'.repeat(bet.confidence)}</span>
+                          : <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--border2)' }}>—</span>}
                       </td>
 
                       {/* Result cell — inline settle for Open bets */}
