@@ -4,10 +4,24 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 const OWNER_EMAIL = 'michaeltejeda08@gmail.com'
 
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    // Already parsed (Vercel auto-parse)
+    if (req.body && typeof req.body === 'object') return resolve(req.body)
+    // Manual parse from raw stream
+    let data = ''
+    req.on('data', chunk => data += chunk)
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)) } catch { resolve({}) }
+    })
+    req.on('error', reject)
+  })
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { priceId, userId, email, successUrl, cancelUrl } = req.body
+  const { priceId, userId, email, successUrl, cancelUrl } = await parseBody(req)
 
   if (!priceId || !userId || !email) {
     return res.status(400).json({ error: 'Missing required fields' })
