@@ -1405,7 +1405,18 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
     betCurve.push({ n: i + 1, value: +runCum.toFixed(2), pick: b.pick || b.event, result: b.result })
   })
 
-  // Monthly
+  // Daily
+  const dailyMap = {}
+  settled.forEach(b => {
+    const day = b.date?.slice(0, 10) || 'N/A'
+    if (!dailyMap[day]) dailyMap[day] = { day: day.slice(5), pnl: 0, bets: 0, wins: 0 }
+    dailyMap[day].pnl += b.pnl; dailyMap[day].bets++
+    if (b.result === 'W') dailyMap[day].wins++
+  })
+  const daily = Object.values(dailyMap).sort((a, z) => a.day.localeCompare(z.day))
+  daily.forEach(d => { d.wr = d.bets > 0 ? +(d.wins / d.bets * 100).toFixed(1) : 0 })
+
+  // Monthly (for win rate chart)
   const monthlyMap = {}
   settled.forEach(b => {
     const mo = b.date?.slice(0, 7) || 'N/A'
@@ -1451,7 +1462,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
 
   const chartViews = [
     { id: 'cumulative', label: '📈 Cumulative P&L' },
-    { id: 'monthly',    label: '📅 Monthly Bars' },
+    { id: 'daily',      label: '📅 Daily Bars' },
     { id: 'winrate',    label: '🎯 Win Rate' },
   ]
 
@@ -1523,9 +1534,9 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
               fill={betCurve[betCurve.length - 1]?.value >= 0 ? 'url(#aGrad)' : 'url(#aGradRed)'}
               dot={false} activeDot={{ r: 4, fill: NEON, strokeWidth: 0 }} />
           </AreaChart>
-        ) : chartView === 'monthly' ? (
-          <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-            <XAxis dataKey="month" tick={{ fontFamily: R, fontSize: 11, fill: 'var(--muted)', fontWeight: 700 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
+        ) : chartView === 'daily' ? (
+          <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <XAxis dataKey="day" tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)', fontWeight: 700 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} interval="preserveStartEnd" />
             <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}u`} width={42} />
             <Tooltip content={<ATip fmtFn={(p) => (
               <div>
@@ -1535,7 +1546,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
             )} />} />
             <ReferenceLine y={0} stroke="var(--border)" />
             <Bar dataKey="pnl" radius={[3, 3, 0, 0]}>
-              {monthly.map((m, i) => <Cell key={i} fill={m.pnl >= 0 ? NEON : RED} opacity={0.88} />)}
+              {daily.map((d, i) => <Cell key={i} fill={d.pnl >= 0 ? NEON : RED} opacity={0.88} />)}
             </Bar>
           </BarChart>
         ) : (
@@ -1578,7 +1589,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
       <div className="analytics-pills">
         {[
           ['curve',   'P&L Curve',  'cumulative'],
-          ['monthly', 'Monthly',    'monthly'],
+          ['monthly', 'Daily',      'daily'],
           ['winrate', 'Win Rate',   'winrate'],
         ].map(([id, label, view]) => {
           const active = analyticspill === id
@@ -1600,6 +1611,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
 
       {/* Sub-panel */}
       {(analyticspill === 'curve' || analyticspill === 'monthly' || analyticspill === 'winrate') && chartPanel}
+      {/* Note: 'monthly' pill now opens daily bars — chartView set to 'daily' in onClick */}
 
       {analyticspill === 'bytype' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '60vh', overflowY: 'auto' }}>
@@ -3468,9 +3480,8 @@ export default function App({ user, session, subStatus }) {
                 </div>
               </div>
 
-              {/* ── 5 sub-panel pills ── */}
               {/* ── ROI + W/L + Win Rate in one row ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
                   <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>ROI<InfoTip text="Return on units risked across all settled bets." /></div>
                   <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
@@ -3490,7 +3501,7 @@ export default function App({ user, session, subStatus }) {
 
 
               {/* ── 8 small stat chips ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px', marginTop: '2px' }}>
                 <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
                 <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
                 <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
