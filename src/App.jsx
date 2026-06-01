@@ -2874,21 +2874,6 @@ export default function App({ user, session, subStatus }) {
                 </div>
               </div>
 
-              {/* ── Stat cards row 2: Open Risk + Total P/L ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Open Risk</div>
-                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
-                </div>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netUnits) ? NEON : RED}` }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total P / L</div>
-                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netUnits) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netUnits * stats.unitSize, true)}</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{fmtU(stats.netUnits)} net units</div>
-                </div>
-              </div>
-
-              {/* ── 5 sub-panel pills ── */}
               {(() => {
                 const pills = [
                   { id: 'limits',      label: 'BR Limits' },
@@ -3036,7 +3021,7 @@ export default function App({ user, session, subStatus }) {
                   {/* Standalone BR input */}
                   <div style={{ ...cardStyle, padding: '12px 14px', border: `1px solid var(--neon-border)` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--neon-accent)', textTransform: 'uppercase' }}>Bankroll</span>
+                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--neon-accent)', textTransform: 'uppercase' }}>Master Bankroll</span>
                       {limitsCalcBr !== null && (
                         <button onClick={() => { setLimitsCalcBr(null); setLimitsCalcInput('') }} style={{ fontFamily: R, fontSize: '8px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.4)`, borderRadius: '2px', cursor: 'pointer', padding: '1px 6px' }}>↺ LADDER</button>
                       )}
@@ -3115,6 +3100,22 @@ export default function App({ user, session, subStatus }) {
                 </div>
               )}
 
+
+              {/* ── Stat cards row 2: Open Risk + Total P/L ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Open Risk</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netUnits) ? NEON : RED}` }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total P / L</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netUnits) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netUnits * stats.unitSize, true)}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{fmtU(stats.netUnits)} net units</div>
+                </div>
+              </div>
+
+              {/* ── 5 sub-panel pills ── */}
               {/* ── ROI + W/L + Win Rate in one row ── */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
