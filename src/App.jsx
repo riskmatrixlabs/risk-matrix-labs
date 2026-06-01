@@ -2904,18 +2904,6 @@ export default function App({ user, session, subStatus }) {
                 </div>
               </div>
 
-              {/* ── 8 small stat chips ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px' }}>
-                <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
-                <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
-                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
-                <SmallCard label="Settled"    value={String(stats.total)} />
-                <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
-                <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
-                <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
-                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
-              </div>
-
               {/* ── 5 sub-panel pills ── */}
               {(() => {
                 const pills = [
@@ -2947,6 +2935,18 @@ export default function App({ user, session, subStatus }) {
                   </div>
                 )
               })()}
+
+              {/* ── 8 small stat chips ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px' }}>
+                <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
+                <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
+                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
+                <SmallCard label="Settled"    value={String(stats.total)} />
+                <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
+                <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
+                <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
+                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
+              </div>
 
               {/* ── Active sub-panel ── */}
 
