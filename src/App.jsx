@@ -260,6 +260,25 @@ const SectionLabel = ({ children, icon: Icon }) => (
   </div>
 )
 
+function InfoTip({ text }) {
+  const [open, setOpen] = React.useState(false)
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
+        <span style={{ fontFamily: 'sans-serif', fontSize: '10px', fontWeight: 700, color: 'var(--muted)', border: '1px solid var(--border2)', borderRadius: '50%', width: '13px', height: '13px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: 0.65 }}>i</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '6px', zIndex: 300,
+          background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '4px', padding: '7px 10px',
+          width: '180px', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'var(--text-sub)', lineHeight: 1.45 }}>{text}</div>
+          <div style={{ position: 'absolute', bottom: '-4px', left: '50%', transform: 'translateX(-50%)', width: '8px', height: '8px', background: 'var(--card2)', border: '1px solid var(--border2)', borderTop: 'none', borderLeft: 'none', transform: 'translateX(-50%) rotate(45deg)' }} />
+        </div>
+      )}
+    </span>
+  )
+}
+
 const TiltBanner = ({ tilt, dismissed, onDismiss }) => {
   if (tilt.level === 'GREEN' || dismissed) return null
   const isRed = tilt.level === 'RED'
@@ -1284,10 +1303,8 @@ function RREngine({ unitSize, darkMode }) {
 
       {/* Empty state */}
       {n === 0 && (
-        <div style={{ ...cardStyle, padding: '48px', textAlign: 'center' }}>
-          <Target size={32} color='rgba(189,255,0,0.2)' strokeWidth={1.5} style={{ margin: '0 auto 12px' }} />
-          <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>Enter Leg Odds to Begin</div>
-          <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-dim)', marginTop: '6px', letterSpacing: '0.06em' }}>Add 2–10 legs with American odds. Select RR type and stake per combo.</div>
+        <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em', textAlign: 'center', padding: '8px 0' }}>
+          Enter odds above to generate RR summary &amp; matrix
         </div>
       )}
 
@@ -1341,7 +1358,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
-  const [analyticspill,  setAnalyticsPill]  = useState(null)
+  const [analyticspill,  setAnalyticsPill]  = useState('curve')
 
   const settled = bets.filter(b => b.result === 'W' || b.result === 'L')
 
@@ -1525,21 +1542,32 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
       {/* Pills */}
       <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
         {[
-          ['curve',    'P&L Curve'],
-          ['monthly',  'Monthly'],
-          ['winrate',  'Win Rate'],
-          ['bytype',   'By Type'],
-          ['kelly',    'Kelly'],
-        ].map(([id, label]) => pillBtn(id, label, analyticspill, setAnalyticsPill))}
+          ['curve',   'P&L Curve',  'cumulative'],
+          ['monthly', 'Monthly',    'monthly'],
+          ['winrate', 'Win Rate',   'winrate'],
+        ].map(([id, label, view]) => {
+          const active = analyticspill === id
+          return (
+            <button key={id} onClick={() => { setAnalyticsPill(s => s === id ? null : id); setChartView(view) }} style={{
+              flexShrink: 0, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+              padding: '6px 14px', borderRadius: '100px', cursor: 'pointer',
+              border: `1px solid ${active ? NEON : 'var(--border2)'}`,
+              background: active ? NEON : 'var(--card2)',
+              color: active ? '#000' : 'var(--muted)',
+              boxShadow: active ? `0 0 10px rgba(189,255,0,0.3)` : 'none',
+              transition: 'all 0.12s',
+            }}>{label}</button>
+          )
+        })}
+        {pillBtn('bytype', 'By Type', analyticspill, setAnalyticsPill)}
+        {pillBtn('kelly',  'Kelly',   analyticspill, setAnalyticsPill)}
       </div>
 
       {/* Sub-panel */}
-      {analyticspill === 'curve'   && (() => { setChartView('cumulative'); return chartPanel })()}
-      {analyticspill === 'monthly' && (() => { setChartView('monthly');    return chartPanel })()}
-      {analyticspill === 'winrate' && (() => { setChartView('winrate');    return chartPanel })()}
+      {(analyticspill === 'curve' || analyticspill === 'monthly' || analyticspill === 'winrate') && chartPanel}
 
       {analyticspill === 'bytype' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '60vh', overflowY: 'auto' }}>
           <div style={{ ...cardStyle, padding: '12px 14px' }}>
             <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Bet Type</div>
             {byType.length === 0
@@ -1557,7 +1585,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
 
       {analyticspill === 'kelly' && (
         <div style={{ ...cardStyle, padding: '12px 14px' }}>
-          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Kelly Criterion · -110</div>
+          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center' }}>Kelly Criterion · -110<InfoTip text="Mathematically optimal bet size for your edge. Use ½ Kelly to reduce variance." /></div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {[0.52, 0.54, 0.56, 0.58, 0.60].map(wr => {
               const b = 100 / 110
@@ -1758,7 +1786,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
   const [trigger,      setTrigger]      = useState('')
   const [style,        setStyle]        = useState('balanced')
   const [checks,       setChecks]       = useState({})
-  const [sessionPill,  setSessionPill]  = useState(null)
+  const [sessionPill,  setSessionPill]  = useState('checklist')
   const [gradeOverride,setGradeOverride]= useState(null)
 
   const { score, reasons } = useMemo(
@@ -1976,8 +2004,8 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
       <div style={{ ...cardStyle, padding: '20px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.28em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '4px' }}>
-              🏆 Discipline Score™
+            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.28em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
+              🏆 Discipline Score™<InfoTip text="0–100 score based on sizing discipline, tilt control, and process rules." />
             </div>
             <div style={{ fontFamily: R, fontSize: '48px', fontWeight: 700, lineHeight: 1, color: scoreColor,
               textShadow: scoreColor === NEON && darkMode ? '0 0 24px rgba(189,255,0,0.35)' : 'none' }}>
@@ -2197,7 +2225,8 @@ export default function App({ user, session, subStatus }) {
   const [welcomeBr,    setWelcomeBr]    = useState('')
   const [showHelp,     setShowHelp]     = useState(false)
   const [showMore,     setShowMore]     = useState(false)
-  const [overviewSection, setOverviewSection] = useState('home')    // pill panel id
+  const [settingsPill, setSettingsPill] = useState(null)
+  const [overviewSection, setOverviewSection] = useState('limits')
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
@@ -3059,6 +3088,88 @@ export default function App({ user, session, subStatus }) {
         <TiltBanner tilt={tilt} dismissed={tiltDismissed} onDismiss={() => setTiltDismissed(true)} />
       </div>
 
+      {/* ── MOBILE SETTINGS PILL BAR ── */}
+      {isMobile && (
+        <div style={{ padding: '4px 10px 0' }}>
+          {/* Pill row */}
+          <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
+            {[
+              { id: 'save',     label: '💾 Save',      active: saveStatus === 'saved' },
+              { id: 'resume',   label: '📂 Resume',    active: false },
+              { id: 'templates',label: '🗂 Templates', active: false },
+              { id: 'export',   label: '📄 Export',    active: false },
+              { id: 'reset',    label: '↺ Reset',      active: false, danger: true },
+            ].map(({ id, label, active, danger }) => (
+              <button key={id} onClick={() => {
+                if (id === 'save') { saveSession(); setSettingsPill(null) }
+                else if (id === 'export') { exportPDF(); setSettingsPill(null) }
+                else setSettingsPill(s => s === id ? null : id)
+              }} style={{
+                flexShrink: 0, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+                padding: '5px 12px', borderRadius: '100px', cursor: 'pointer',
+                border: `1px solid ${danger ? 'rgba(255,59,59,0.4)' : active ? NEON : 'var(--border2)'}`,
+                background: danger ? 'rgba(255,59,59,0.06)' : active ? 'rgba(189,255,0,0.12)' : 'var(--card2)',
+                color: danger ? 'rgba(255,59,59,0.75)' : active ? NEON : 'var(--muted)',
+                transition: 'all 0.12s',
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Inline panel for Resume */}
+          {settingsPill === 'resume' && (
+            <div style={{ ...{background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '6px'}, padding: '12px 14px', marginTop: '6px' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Resume Last Session</div>
+              <button onClick={() => {
+                const s = loadSession()
+                if (s) { setBets(s.bets||[]); setBankroll(s.bankroll||0); setUsername(s.username||'OPERATOR'); setLadderStarting(s.ladderStarting||150); setRiskSettings(s.riskSettings||{}); setSaveStatus('saved'); setTimeout(()=>setSaveStatus(null),1500) }
+                setSettingsPill(null)
+              }} style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', padding: '8px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: `1px solid rgba(189,255,0,0.35)`, background: 'rgba(189,255,0,0.06)', color: NEON }}>
+                Load Saved Data
+              </button>
+            </div>
+          )}
+
+          {/* Inline panel for Templates */}
+          {settingsPill === 'templates' && (
+            <div style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '6px', padding: '12px 14px', marginTop: '6px' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Templates</div>
+              {templates.length === 0
+                ? <div style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)', marginBottom: '8px' }}>No saved templates yet.</div>
+                : <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                    {templates.map(t => (
+                      <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '2px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)' }}>{t.name}</div>
+                          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>{t.date} · ${t.bankroll?.toFixed(0)}</div>
+                        </div>
+                        <button onClick={() => { loadTemplate(t); setSettingsPill(null) }} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, padding: '4px 10px', borderRadius: '2px', cursor: 'pointer', border: `1px solid ${NEON}`, background: 'transparent', color: NEON }}>Load</button>
+                        <button onClick={() => deleteTemplate(t.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.4)', padding: '4px' }}><Trash2 size={12} /></button>
+                      </div>
+                    ))}
+                  </div>}
+              <button onClick={() => { saveTemplate(); }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '7px 14px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: `1px solid rgba(189,255,0,0.35)`, background: 'rgba(189,255,0,0.06)', color: NEON }}>
+                + Save Current as Template
+              </button>
+            </div>
+          )}
+
+          {/* Inline panel for Reset */}
+          {settingsPill === 'reset' && (
+            <div style={{ background: 'var(--card2)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '6px', padding: '12px 14px', marginTop: '6px' }}>
+              <div style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-sub)', marginBottom: '10px' }}>This will erase all bets, reset bankroll to $0, and wipe cloud data. Are you sure?</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => { resetSession(); setSettingsPill(null) }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: '1px solid rgba(255,59,59,0.5)', background: 'rgba(255,59,59,0.08)', color: RED }}>
+                  Yes, Reset All
+                </button>
+                <button onClick={() => setSettingsPill(null)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: '1px solid var(--border2)', background: 'var(--card)', color: 'var(--muted)' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* CONTENT */}
       <div {...(isMobile ? swipeHandlers : {})}
         className={isMobile ? 'content-with-bottom-nav' : ''}
@@ -3153,7 +3264,7 @@ export default function App({ user, session, subStatus }) {
               {/* ── Active sub-panel ── */}
 
               {overviewSection === 'curve' && (
-                <div style={{ ...cardStyle, padding: '14px 14px 10px' }}>
+                <div style={{ ...cardStyle, padding: '14px 14px 10px', maxHeight: '60vh', overflowY: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <SectionLabel icon={BarChart3}>Bankroll Curve</SectionLabel>
                     <div style={{ display: 'flex', gap: '10px' }}>
@@ -3180,7 +3291,7 @@ export default function App({ user, session, subStatus }) {
               )}
 
               {overviewSection === 'performance' && (
-                <div style={{ ...cardStyle, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ ...cardStyle, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '60vh', overflowY: 'auto' }}>
                   <SectionLabel icon={Target}>Performance</SectionLabel>
                   {[
                     { label: 'Win Rate',   val: stats.winRate,                              target: 0.525, disp: `${(stats.winRate*100).toFixed(1)}%` },
@@ -3212,7 +3323,7 @@ export default function App({ user, session, subStatus }) {
               )}
 
               {overviewSection === 'exposure' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '60vh', overflowY: 'auto' }}>
                   <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {risk.health === 'GOOD' ? <ShieldCheck size={20} color={NEON} strokeWidth={2} /> : risk.health === 'CAUTION' ? <AlertTriangle size={20} color={YELLOW} strokeWidth={2} /> : <ShieldAlert size={20} color={RED} strokeWidth={2} />}
                     <div style={{ flex: 1 }}>
@@ -3251,7 +3362,7 @@ export default function App({ user, session, subStatus }) {
               )}
 
               {overviewSection === 'limits' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '60vh', overflowY: 'auto' }}>
                   {/* Stop Loss + Profit Lock — derived from masterBankroll */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     <div style={{ padding: '10px 12px', border: `1px solid rgba(255,59,59,0.3)`, background: 'rgba(255,59,59,0.05)', borderRadius: 'var(--radius-sm)' }}>
@@ -3281,7 +3392,7 @@ export default function App({ user, session, subStatus }) {
               )}
 
               {overviewSection === 'riskset' && (
-                <div style={{ ...cardStyle, padding: '14px' }}>
+                <div style={{ ...cardStyle, padding: '14px', maxHeight: '60vh', overflowY: 'auto' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '12px' }}>
                     {[
                       { label: 'CONSERVATIVE', vals: { unitPct:1,maxRiskPerBetPct:2,maxRiskTodayPct:6,stopLossPct:8,profitLockPct:15 }, color: NEON },
@@ -3332,7 +3443,7 @@ export default function App({ user, session, subStatus }) {
               {/* ── ROI + W/L + Win Rate in one row ── */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>ROI<InfoTip text="Return on units risked across all settled bets." /></div>
                   <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
                 </div>
@@ -3342,7 +3453,7 @@ export default function App({ user, session, subStatus }) {
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
                 </div>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.winRate >= 0.525 ? NEON : 'transparent'}` }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Win Rate</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Win Rate<InfoTip text="52.5% is breakeven at -110 odds. Above is profitable." /></div>
                   <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: stats.winRate >= 0.525 ? NEON : 'var(--text)', lineHeight: 1 }}>{(stats.winRate * 100).toFixed(1)}%</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>target 52.5%</div>
                 </div>
@@ -3596,12 +3707,12 @@ export default function App({ user, session, subStatus }) {
               {/* Stop loss + profit lock */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '12px' }}>
                 <div style={{ padding: '10px 12px', border: `1px solid rgba(255,59,59,0.3)`, background: 'rgba(255,59,59,0.05)', borderRadius: '2px' }}>
-                  <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px' }}>Stop Loss</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Stop Loss<InfoTip text="Walk away when your session loss hits this amount." /></div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED }}>-{fmt$(risk.stopLoss$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>walk away trigger</div>
                 </div>
                 <div style={{ padding: '10px 12px', border: `1px solid rgba(189,255,0,0.28)`, background: 'rgba(189,255,0,0.05)', borderRadius: '2px' }}>
-                  <div style={{ fontFamily: R, fontSize: '9px', color: NEON, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px' }}>Profit Lock</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', color: NEON, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Profit Lock<InfoTip text="Lock in gains — stop betting once you're up this much." /></div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON, textShadow: darkMode ? '0 0 10px rgba(189,255,0,0.25)' : 'none' }}>+{fmt$(risk.profitLock$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>protect your gains</div>
                 </div>
@@ -3642,15 +3753,15 @@ export default function App({ user, session, subStatus }) {
               {/* Settings — dollar first, % small */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[
-                  { label: 'Unit Size',   key: 'unitPct',          desc: 'per 1 unit' },
+                  { label: 'Unit Size',   key: 'unitPct',          desc: 'per 1 unit', tip: 'Your standard bet size — X% of master bankroll.' },
                   { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet' },
                   { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap' },
-                  { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away' },
-                  { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in' },
-                ].map(({ label, key, desc }) => (
+                  { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away', tip: 'Walk away when your session loss hits this amount.' },
+                  { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in', tip: "Lock in gains — stop betting once you're up this much." },
+                ].map(({ label, key, desc, tip }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text-sub)', letterSpacing: '0.08em' }}>{label}</div>
+                      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text-sub)', letterSpacing: '0.08em', display: 'flex', alignItems: 'center' }}>{label}{tip && <InfoTip text={tip} />}</div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', marginTop: '1px' }}>{desc}</div>
                     </div>
                     <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON, minWidth: '62px', textAlign: 'right',
