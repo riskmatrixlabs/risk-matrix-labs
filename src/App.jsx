@@ -637,7 +637,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? '10px' : '16px' }}>
           {/* Starting Bankroll input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase' }}>Starting Bankroll</span>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase' }}>Ladder Starting</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>$</span>
               <input
@@ -1340,7 +1340,8 @@ const ATip = ({ active, payload, label: tLabel, fmt: fmtFn }) => {
 function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
-  const [chartView, setChartView] = useState('cumulative')
+  const [chartView,      setChartView]      = useState('cumulative')
+  const [analyticspill,  setAnalyticsPill]  = useState(null)
 
   const settled = bets.filter(b => b.result === 'W' || b.result === 'L')
 
@@ -1402,10 +1403,203 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
     { id: 'winrate',    label: '🎯 Win Rate' },
   ]
 
+  const pillBtn = (id, label, state, setState) => {
+    const active = state === id
+    return (
+      <button key={id} onClick={() => setState(s => s === id ? null : id)} style={{
+        flexShrink: 0, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+        padding: '6px 14px', borderRadius: '100px', cursor: 'pointer',
+        border: `1px solid ${active ? NEON : 'var(--border2)'}`,
+        background: active ? NEON : 'var(--card2)',
+        color: active ? '#000' : 'var(--muted)',
+        boxShadow: active ? `0 0 10px rgba(189,255,0,0.3)` : 'none',
+        transition: 'all 0.12s',
+      }}>{label}</button>
+    )
+  }
+
+  const chartPanel = (
+    <div style={{ ...cardStyle, padding: '14px 14px 10px' }}>
+      {isMobile && (
+        <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {chartViews.map(v => (
+            <button key={v.id} onClick={() => setChartView(v.id)} style={{
+              flexShrink: 0, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+              padding: '5px 12px', borderRadius: '2px', cursor: 'pointer',
+              border: `1px solid ${chartView === v.id ? NEON : 'var(--border2)'}`,
+              background: chartView === v.id ? 'rgba(189,255,0,0.1)' : 'var(--card2)',
+              color: chartView === v.id ? NEON : 'var(--muted)',
+            }}>{v.label.replace(/^.+? /, '')}</button>
+          ))}
+        </div>
+      )}
+      {!isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <SectionLabel>Performance Chart</SectionLabel>
+          <div style={{ display: 'flex', gap: '5px' }}>
+            {chartViews.map(v => (
+              <button key={v.id} onClick={() => setChartView(v.id)} style={{ ...btnStyle(chartView === v.id), padding: '5px 14px', fontSize: '10px' }}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <ResponsiveContainer width="100%" height={isMobile ? 160 : 240}>
+        {chartView === 'cumulative' ? (
+          <AreaChart data={betCurve} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={NEON} stopOpacity={0.2} />
+                <stop offset="95%" stopColor={NEON} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="aGradRed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={RED} stopOpacity={0.15} />
+                <stop offset="95%" stopColor={RED} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="n" tick={false} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
+            <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}u`} width={42} />
+            <Tooltip content={<ATip fmtFn={(p) => (
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: p[0].value >= 0 ? NEON : RED }}>{fmtU(p[0].value)} cumulative</div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Bet #{p[0].payload.n} · {p[0].payload.pick}</div>
+              </div>
+            )} />} />
+            <ReferenceLine y={0} stroke="var(--border2)" strokeDasharray="4 4" />
+            <Area type="monotone" dataKey="value" stroke={betCurve[betCurve.length - 1]?.value >= 0 ? NEON : RED} strokeWidth={2.5}
+              fill={betCurve[betCurve.length - 1]?.value >= 0 ? 'url(#aGrad)' : 'url(#aGradRed)'}
+              dot={false} activeDot={{ r: 4, fill: NEON, strokeWidth: 0 }} />
+          </AreaChart>
+        ) : chartView === 'monthly' ? (
+          <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <XAxis dataKey="month" tick={{ fontFamily: R, fontSize: 11, fill: 'var(--muted)', fontWeight: 700 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
+            <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}u`} width={42} />
+            <Tooltip content={<ATip fmtFn={(p) => (
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: p[0].value >= 0 ? NEON : RED }}>{fmtU(p[0].value)}</div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>{p[0].payload.bets} bets · {p[0].payload.wins}W</div>
+              </div>
+            )} />} />
+            <ReferenceLine y={0} stroke="var(--border)" />
+            <Bar dataKey="pnl" radius={[3, 3, 0, 0]}>
+              {monthly.map((m, i) => <Cell key={i} fill={m.pnl >= 0 ? NEON : RED} opacity={0.88} />)}
+            </Bar>
+          </BarChart>
+        ) : (
+          <LineChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <XAxis dataKey="month" tick={{ fontFamily: R, fontSize: 11, fill: 'var(--muted)', fontWeight: 700 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
+            <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} width={42} domain={[0, 100]} />
+            <Tooltip content={<ATip fmtFn={(p) => (
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: parseFloat(p[0].value) >= 52.5 ? NEON : RED }}>{p[0].value}% WR</div>
+                <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>{p[0].payload.bets} bets</div>
+              </div>
+            )} />} />
+            <ReferenceLine y={52.5} stroke={NEON} strokeDasharray="4 4" strokeOpacity={0.45}
+              label={{ value: '52.5% target', position: 'insideTopRight', fill: NEON, fontSize: 9, fontFamily: R }} />
+            <Line type="monotone" dataKey="wr" stroke={YELLOW} strokeWidth={2.5}
+              dot={{ r: 4, fill: YELLOW, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+          </LineChart>
+        )}
+      </ResponsiveContainer>
+    </div>
+  )
+
+  if (isMobile) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* Always visible: Net Units + ROI */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+        <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.netUnits >= 0 ? NEON : RED}` }}>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Net Units</div>
+          <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.netUnits >= 0 ? NEON : RED, lineHeight: 1 }}>{fmtU(stats.netUnits)}</div>
+          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} settled</div>
+        </div>
+        <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.roi >= 0 ? NEON : RED}` }}>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
+          <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.roi >= 0 ? NEON : RED, lineHeight: 1 }}>{stats.roi >= 0 ? '+' : ''}{(stats.roi * 100).toFixed(1)}%</div>
+          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>profit factor {profitFactor}</div>
+        </div>
+      </div>
+
+      {/* Pills */}
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+        {[
+          ['curve',    'P&L Curve'],
+          ['monthly',  'Monthly'],
+          ['winrate',  'Win Rate'],
+          ['bytype',   'By Type'],
+          ['kelly',    'Kelly'],
+        ].map(([id, label]) => pillBtn(id, label, analyticspill, setAnalyticsPill))}
+      </div>
+
+      {/* Sub-panel */}
+      {analyticspill === 'curve'   && (() => { setChartView('cumulative'); return chartPanel })()}
+      {analyticspill === 'monthly' && (() => { setChartView('monthly');    return chartPanel })()}
+      {analyticspill === 'winrate' && (() => { setChartView('winrate');    return chartPanel })()}
+
+      {analyticspill === 'bytype' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ ...cardStyle, padding: '12px 14px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Bet Type</div>
+            {byType.length === 0
+              ? <div style={{ fontFamily: R, fontSize: '12px', color: 'var(--muted)' }}>No settled bets yet</div>
+              : byType.map(t => <BreakRow key={t.type} label={t.type} wins={t.wins} total={t.bets} pnl={t.pnl} darkMode={darkMode} />)}
+          </div>
+          <div style={{ ...cardStyle, padding: '12px 14px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>By Book</div>
+            {byBook.length === 0
+              ? <div style={{ fontFamily: R, fontSize: '12px', color: 'var(--muted)' }}>No book data</div>
+              : byBook.map(b => <BreakRow key={b.book} label={b.book} wins={b.wins} total={b.bets} pnl={b.pnl} darkMode={darkMode} />)}
+          </div>
+        </div>
+      )}
+
+      {analyticspill === 'kelly' && (
+        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Kelly Criterion · -110</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            {[0.52, 0.54, 0.56, 0.58, 0.60].map(wr => {
+              const b = 100 / 110
+              const k = (b * wr - (1 - wr)) / b
+              const isYours = Math.abs(wr - stats.winRate) < 0.015
+              return (
+                <div key={wr} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center', padding: '8px 10px',
+                  background: isYours ? 'rgba(189,255,0,0.06)' : 'var(--card2)',
+                  border: `1px solid ${isYours ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`, borderRadius: '2px' }}>
+                  <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: isYours ? NEON : 'var(--text-sub)' }}>
+                    {(wr * 100).toFixed(0)}% WR{isYours ? ' ←' : ''}
+                  </span>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON }}>{(k * 100).toFixed(1)}%</span>
+                  <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)' }}>{fmt$(masterBankroll * k / 2)} ½K</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Always-visible bottom stat chips */}
+      {!analyticspill && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '4px' }}>
+          {[
+            { label: 'Win Streak', value: maxW ? `${maxW}W` : '—', color: NEON },
+            { label: 'Loss Streak', value: maxL ? `${maxL}L` : '—', color: RED },
+            { label: 'Profit Factor', value: profitFactor, color: parseFloat(profitFactor) >= 1 ? NEON : RED },
+            { label: 'Avg Win', value: stats.wins ? fmtU(stats.unitsWon / stats.wins) : '—', color: NEON },
+            { label: 'Avg Loss', value: stats.losses ? fmtU(-stats.unitsLost / stats.losses) : '—', color: RED },
+            { label: 'Avg Odds', value: fmtOdds(Math.round(stats.avgOdds)), color: 'var(--text)' },
+          ].map(({ label, value, color }) => (
+            <SmallCard key={label} label={label} value={value} color={color} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  // Desktop layout (unchanged)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
-      {/* ── ROW 1: Stat cards — same style as overview ── */}
       <div style={{ display: 'grid', gridTemplateColumns: g('repeat(6,1fr)', 'repeat(3,1fr)', 'repeat(2,1fr)'), gap: '6px' }}>
         {[
           { label: 'Current Streak',  value: curStreak ? `${curStreak.count} ${curStreak.result === 'W' ? 'W' : 'L'}` : '—', color: curStreak?.result === 'W' ? NEON : curStreak?.result === 'L' ? RED : 'var(--text)', sub: 'in a row' },
@@ -1423,83 +1617,8 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
           </div>
         ))}
       </div>
-
-      {/* ── ROW 2: Chart with toggle — same width as bankroll curve on overview ── */}
-      <div style={{ ...cardStyle, padding: '18px 20px 14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <SectionLabel>Performance Chart</SectionLabel>
-          <div style={{ display: 'flex', gap: '5px' }}>
-            {chartViews.map(v => (
-              <button key={v.id} onClick={() => setChartView(v.id)} style={{ ...btnStyle(chartView === v.id), padding: '5px 14px', fontSize: '10px' }}>
-                {v.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <ResponsiveContainer width="100%" height={240}>
-          {chartView === 'cumulative' ? (
-            <AreaChart data={betCurve} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="aGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={NEON} stopOpacity={0.2} />
-                  <stop offset="95%" stopColor={NEON} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="aGradRed" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={RED} stopOpacity={0.15} />
-                  <stop offset="95%" stopColor={RED} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="n" tick={false} axisLine={{ stroke: 'var(--border)' }} tickLine={false} label={{ value: `${settled.length} bets`, position: 'insideBottomRight', fill: 'var(--muted)', fontSize: 9, fontFamily: R }} />
-              <YAxis tick={{ fontFamily: R, fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false}
-                tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}u`} width={46} />
-              <Tooltip content={<ATip fmtFn={(p) => (
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: p[0].value >= 0 ? NEON : RED }}>{fmtU(p[0].value)} cumulative</div>
-                  <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>Bet #{p[0].payload.n} · {p[0].payload.pick}</div>
-                </div>
-              )} />} />
-              <ReferenceLine y={0} stroke="var(--border2)" strokeDasharray="4 4" />
-              <Area type="monotone" dataKey="value" stroke={betCurve[betCurve.length - 1]?.value >= 0 ? NEON : RED} strokeWidth={2.5}
-                fill={betCurve[betCurve.length - 1]?.value >= 0 ? 'url(#aGrad)' : 'url(#aGradRed)'}
-                dot={false} activeDot={{ r: 4, fill: NEON, strokeWidth: 0 }} />
-            </AreaChart>
-          ) : chartView === 'monthly' ? (
-            <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <XAxis dataKey="month" tick={{ fontFamily: R, fontSize: 11, fill: 'var(--muted)', fontWeight: 700 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
-              <YAxis tick={{ fontFamily: R, fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}u`} width={44} />
-              <Tooltip content={<ATip fmtFn={(p) => (
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: p[0].value >= 0 ? NEON : RED }}>{fmtU(p[0].value)}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>{p[0].payload.bets} bets · {p[0].payload.wins}W</div>
-                </div>
-              )} />} />
-              <ReferenceLine y={0} stroke="var(--border)" />
-              <Bar dataKey="pnl" radius={[3, 3, 0, 0]}>
-                {monthly.map((m, i) => <Cell key={i} fill={m.pnl >= 0 ? NEON : RED} opacity={0.88} />)}
-              </Bar>
-            </BarChart>
-          ) : (
-            <LineChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <XAxis dataKey="month" tick={{ fontFamily: R, fontSize: 11, fill: 'var(--muted)', fontWeight: 700 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
-              <YAxis tick={{ fontFamily: R, fontSize: 10, fill: 'var(--muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} width={44} domain={[0, 100]} />
-              <Tooltip content={<ATip fmtFn={(p) => (
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: parseFloat(p[0].value) >= 52.5 ? NEON : RED }}>{p[0].value}% WR</div>
-                  <div style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>{p[0].payload.bets} bets</div>
-                </div>
-              )} />} />
-              <ReferenceLine y={52.5} stroke={NEON} strokeDasharray="4 4" strokeOpacity={0.45}
-                label={{ value: '52.5% target', position: 'insideTopRight', fill: NEON, fontSize: 9, fontFamily: R }} />
-              <Line type="monotone" dataKey="wr" stroke={YELLOW} strokeWidth={2.5}
-                dot={{ r: 4, fill: YELLOW, strokeWidth: 0 }} activeDot={{ r: 5 }} />
-            </LineChart>
-          )}
-        </ResponsiveContainer>
-      </div>
-
-      {/* ── ROW 3: Bet Type + Book breakdown ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '6px' }}>
+      {chartPanel}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
         <div style={{ ...cardStyle, padding: '16px 18px' }}>
           <SectionLabel>🎯 Bet Type Performance</SectionLabel>
           {byType.length === 0
@@ -1513,9 +1632,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
             : byBook.map(b => <BreakRow key={b.book} label={b.book} wins={b.wins} total={b.bets} pnl={b.pnl} darkMode={darkMode} />)}
         </div>
       </div>
-
-      {/* ── ROW 4: Kelly + Quick Stats ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '6px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px' }}>
         <div style={{ ...cardStyle, padding: '16px 18px' }}>
           <SectionLabel>🎯 Kelly Criterion at -110</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
@@ -1541,7 +1658,6 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
             })}
           </div>
         </div>
-
         <div style={{ ...cardStyle, padding: '16px 18px' }}>
           <SectionLabel>📊 Quick Stats</SectionLabel>
           {[
@@ -1560,7 +1676,6 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
           ))}
         </div>
       </div>
-
     </div>
   )
 }
@@ -1643,6 +1758,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
   const [trigger,      setTrigger]      = useState('')
   const [style,        setStyle]        = useState('balanced')
   const [checks,       setChecks]       = useState({})
+  const [sessionPill,  setSessionPill]  = useState(null)
   const [gradeOverride,setGradeOverride]= useState(null)
 
   const { score, reasons } = useMemo(
@@ -1665,6 +1781,194 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 
   const scoreColor = score >= 80 ? NEON : score >= 60 ? '#F5A623' : score >= 40 ? '#FF6B35' : RED
 
+  const pillBtn = (id, label) => {
+    const active = sessionPill === id
+    return (
+      <button key={id} onClick={() => setSessionPill(s => s === id ? null : id)} style={{
+        flexShrink: 0, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+        padding: '6px 14px', borderRadius: '100px', cursor: 'pointer',
+        border: `1px solid ${active ? NEON : 'var(--border2)'}`,
+        background: active ? NEON : 'var(--card2)',
+        color: active ? '#000' : 'var(--muted)',
+        boxShadow: active ? `0 0 10px rgba(189,255,0,0.3)` : 'none',
+        transition: 'all 0.12s',
+      }}>{label}</button>
+    )
+  }
+
+  const gradeCard = (
+    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${gradeColor}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Session Grade</div>
+          <div style={{ fontFamily: R, fontSize: '40px', fontWeight: 700, lineHeight: 1, color: gradeColor }}>{displayGrade}</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: gradeColor, marginTop: '3px', opacity: 0.8 }}>{gradeOverride ? {A:'Elite',B:'Strong',C:'Average',D:'Needs Work',F:'Restart'}[gradeOverride] : gradeLabel}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Discipline</div>
+          <div style={{ fontFamily: R, fontSize: '32px', fontWeight: 700, color: scoreColor, lineHeight: 1 }}>{score}</div>
+          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>/100</div>
+        </div>
+      </div>
+      <div style={{ height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden', marginTop: '10px' }}>
+        <div style={{ height: '100%', width: `${score}%`, background: scoreColor, borderRadius: '2px', transition: 'width 0.5s' }} />
+      </div>
+      <div style={{ display: 'flex', gap: '4px', marginTop: '8px', justifyContent: 'center' }}>
+        {['A','B','C','D','F'].map(g => (
+          <button key={g} onClick={() => setGradeOverride(gradeOverride === g ? null : g)} style={{
+            fontFamily: R, fontSize: '9px', fontWeight: 700, padding: '2px 7px', borderRadius: '2px', cursor: 'pointer',
+            border: `1px solid ${displayGrade === g ? gradeColor : 'var(--border2)'}`,
+            background: displayGrade === g ? `${gradeColor}18` : 'var(--card)',
+            color: displayGrade === g ? gradeColor : 'var(--muted)',
+          }}>{g}</button>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (isMobile) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {gradeCard}
+
+      {/* Pills */}
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+        {['checklist','structure','recap','breakdown'].map((id, i) =>
+          pillBtn(id, ['Checklist','Structure','Recap','Breakdown'][i])
+        )}
+      </div>
+
+      {/* Checklist panel */}
+      {sessionPill === 'checklist' && (
+        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Pre-Bet Checklist</div>
+            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: allChecked ? NEON : 'var(--muted)' }}>{checksPassed}/{CHECKLIST.length} {allChecked ? '✓' : ''}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            {CHECKLIST.map(({ id, label }) => {
+              const checked = !!checks[id]
+              return (
+                <button key={id} onClick={() => toggleCheck(id)} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', borderRadius: '2px', cursor: 'pointer', textAlign: 'left',
+                  background: checked ? 'rgba(189,255,0,0.06)' : 'var(--card2)',
+                  border: `1px solid ${checked ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`, transition: 'all 0.15s',
+                }}>
+                  <div style={{ width: '14px', height: '14px', borderRadius: '2px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: `2px solid ${checked ? NEON : 'var(--border2)'}`, background: checked ? 'rgba(189,255,0,0.15)' : 'var(--card)' }}>
+                    {checked && <span style={{ color: NEON, fontSize: '9px', fontWeight: 700 }}>✓</span>}
+                  </div>
+                  <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 600, color: checked ? 'var(--text)' : 'var(--muted)' }}>{label}</span>
+                </button>
+              )
+            })}
+          </div>
+          {allChecked && (
+            <div style={{ marginTop: '10px', padding: '9px 12px', background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.3)', borderRadius: '2px' }}>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>🛡️ FULL DISCIPLINE — YOU ARE IN CONTROL</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Structure panel */}
+      {sessionPill === 'structure' && (
+        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Bet Structure</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+            {STYLES.map(s => {
+              const active = style === s.id
+              return (
+                <button key={s.id} onClick={() => setStyle(s.id)} style={{
+                  padding: '10px 12px', borderRadius: '2px', cursor: 'pointer', textAlign: 'left',
+                  background: active ? `${s.color}10` : 'var(--card2)',
+                  border: `1px solid ${active ? `${s.color}50` : 'var(--border)'}`,
+                  borderLeft: active ? `3px solid ${s.color}` : '3px solid transparent', transition: 'all 0.15s',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: active ? s.color : 'var(--text)' }}>{s.icon} {s.label}</span>
+                    {active && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: s.color, letterSpacing: '0.12em' }}>ACTIVE</span>}
+                  </div>
+                  <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', lineHeight: 1.4 }}>{s.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ padding: '10px 12px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              {style === 'conservative' ? '🛡️ Conservative Rules' : style === 'balanced' ? '⚖️ Balanced Rules' : '⚡ Aggressive Rules'}
+            </div>
+            {(style === 'conservative'
+              ? ['Max 1-2 bets per day','Straight bets only','Minimum -130 odds or better','Never bet > 2u per play','Stop after 2 losses in a day']
+              : style === 'balanced'
+              ? ['4-6 bets per day max','Straights + small parlays OK','Mix of favorites and dogs','Max 3u on any single play','Reset after hitting stop loss']
+              : ['7+ bets per day allowed','RR bets and parlays welcome','Chase value at any odds','Larger units when confident','Aggressive profit targets']
+            ).map(rule => (
+              <div key={rule} style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '4px' }}>
+                <span style={{ color: style === 'conservative' ? NEON : style === 'balanced' ? YELLOW : RED, fontSize: '9px' }}>▸</span>
+                <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-sub)' }}>{rule}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recap panel */}
+      {sessionPill === 'recap' && (
+        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Today's Recap</div>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {MOODS.map(m => (
+                <button key={m} onClick={() => setMood(mood === m ? '' : m)} style={{
+                  fontFamily: R, fontSize: '9px', fontWeight: 700, padding: '3px 8px', borderRadius: '2px', cursor: 'pointer',
+                  border: `1px solid ${mood === m ? 'rgba(189,255,0,0.5)' : 'var(--border2)'}`,
+                  background: mood === m ? 'rgba(189,255,0,0.08)' : 'var(--card)',
+                  color: mood === m ? NEON : 'var(--text-dim)', transition: 'all 0.12s',
+                }}>{m}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {[
+              { label: '✅ What went well?', val: wentWell, set: setWentWell, placeholder: 'Stayed disciplined, hit 3/4 picks...' },
+              { label: '🔧 What needs work?', val: improve, set: setImprove, placeholder: 'Avoided chasing that late bet...' },
+              { label: '⚡ What triggered bad bets?', val: trigger, set: setTrigger, placeholder: 'Frustration after loss 2...' },
+              { label: '🎓 Main lesson', val: lesson, set: setLesson, placeholder: 'Trust the process...' },
+            ].map(({ label, val, set, placeholder }) => (
+              <div key={label}>
+                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
+                <textarea value={val} onChange={e => set(e.target.value)} placeholder={placeholder} rows={2}
+                  style={{ ...inputStyle, resize: 'vertical', padding: '8px 10px', fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: '1.5', fontWeight: 400 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Breakdown panel */}
+      {sessionPill === 'breakdown' && (
+        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Score Breakdown</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {reasons.map(({ label, pts, pass }) => (
+              <div key={label} style={{ padding: '9px 11px', background: 'var(--card2)',
+                border: `1px solid ${pass ? 'rgba(189,255,0,0.18)' : 'rgba(255,59,59,0.18)'}`, borderRadius: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', lineHeight: 1.3, flex: 1 }}>{label}</span>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: pass ? NEON : RED, marginLeft: '8px' }}>{pts > 0 ? `+${pts}` : '0'}</span>
+                </div>
+                <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pts}%`, background: pass ? NEON : RED, borderRadius: '2px' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // Desktop layout
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
@@ -1683,22 +1987,13 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
               {score >= 80 ? 'Operate With Discipline 🛡️' : score >= 60 ? 'Solid — keep tightening' : 'Review your process'}
             </div>
           </div>
-
-          {/* Session Grade */}
-          <div style={{ textAlign: 'center', padding: '16px 24px', background: 'var(--card2)',
-            border: `2px solid ${gradeColorAlpha}`, borderRadius: '4px',
-            background: `${gradeColor}08`, transition: 'all 0.2s' }}>
+          <div style={{ textAlign: 'center', padding: '16px 24px', border: `2px solid ${gradeColorAlpha}`, borderRadius: '4px', background: `${gradeColor}08`, transition: 'all 0.2s' }}>
             <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Session Grade</div>
             <div style={{ fontFamily: R, fontSize: '56px', fontWeight: 700, lineHeight: 1, color: gradeColor,
-              textShadow: gradeColor === NEON && darkMode ? '0 0 24px rgba(189,255,0,0.4)' : 'none' }}>
-              {displayGrade}
+              textShadow: gradeColor === NEON && darkMode ? '0 0 24px rgba(189,255,0,0.4)' : 'none' }}>{displayGrade}</div>
+            <div style={{ fontFamily: R, fontSize: '10px', color: gradeColor, marginTop: '5px', opacity: 0.8 }}>
+              {gradeOverride ? { A: 'Elite Discipline', B: 'Strong Session', C: 'Average', D: 'Needs Work', F: 'Restart' }[gradeOverride] : gradeLabel}
             </div>
-            <div style={{ fontFamily: R, fontSize: '10px', color: gradeColor, marginTop: '5px', opacity: 0.8, transition: 'color 0.2s' }}>
-              {gradeOverride
-                ? { A: 'Elite Discipline', B: 'Strong Session', C: 'Average', D: 'Needs Work', F: 'Restart' }[gradeOverride]
-                : gradeLabel}
-            </div>
-            {/* Manual override */}
             <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '10px' }}>
               {['A','B','C','D','F'].map(g => (
                 <button key={g} onClick={() => setGradeOverride(gradeOverride === g ? null : g)} style={{
@@ -1712,81 +2007,55 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
             <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', marginTop: '4px' }}>tap to override</div>
           </div>
         </div>
-
-        {/* Score breakdown bars */}
-        <div style={{ display: 'grid', gridTemplateColumns: g('repeat(5,1fr)', 'repeat(3,1fr)', 'repeat(2,1fr)'), gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '8px' }}>
           {reasons.map(({ label, pts, pass }) => (
             <div key={label} style={{ padding: '10px 12px', background: 'var(--card2)',
               border: `1px solid ${pass ? 'rgba(189,255,0,0.18)' : 'rgba(255,59,59,0.18)'}`, borderRadius: '2px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em', lineHeight: 1.3 }}>{label}</span>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: pass ? NEON : RED, marginLeft: '6px', flexShrink: 0 }}>
-                  {pts > 0 ? `+${pts}` : '0'}
-                </span>
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: pass ? NEON : RED, marginLeft: '6px', flexShrink: 0 }}>{pts > 0 ? `+${pts}` : '0'}</span>
               </div>
               <div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pts}%`, background: pass ? NEON : RED, borderRadius: '2px',
-                  boxShadow: pass && darkMode ? '0 0 6px rgba(189,255,0,0.35)' : 'none' }} />
+                <div style={{ height: '100%', width: `${pts}%`, background: pass ? NEON : RED, borderRadius: '2px' }} />
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── ROW 2: Emotional Checklist + Bet Structure ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
-
-        {/* Emotional Checklist */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <div style={{ ...cardStyle, padding: '18px 20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <SectionLabel>🧠 Pre-Bet Discipline Checklist</SectionLabel>
-            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700,
-              color: allChecked ? NEON : 'var(--muted)', letterSpacing: '0.08em' }}>
-              {checksPassed}/{CHECKLIST.length} {allChecked ? '✓' : ''}
-            </span>
+            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: allChecked ? NEON : 'var(--muted)', letterSpacing: '0.08em' }}>{checksPassed}/{CHECKLIST.length} {allChecked ? '✓' : ''}</span>
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {CHECKLIST.map(({ id, label }) => {
               const checked = !!checks[id]
               return (
                 <button key={id} onClick={() => toggleCheck(id)} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '11px 14px', borderRadius: '2px', cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px', borderRadius: '2px', cursor: 'pointer', textAlign: 'left',
                   background: checked ? 'rgba(189,255,0,0.06)' : 'var(--card2)',
-                  border: `1px solid ${checked ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`,
-                  transition: 'all 0.15s',
+                  border: `1px solid ${checked ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`, transition: 'all 0.15s',
                 }}>
                   <div style={{ width: '16px', height: '16px', borderRadius: '2px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: `2px solid ${checked ? NEON : 'var(--border2)'}`,
-                    background: checked ? 'rgba(189,255,0,0.15)' : 'var(--card)',
-                    boxShadow: checked && darkMode ? '0 0 6px rgba(189,255,0,0.25)' : 'none' }}>
+                    border: `2px solid ${checked ? NEON : 'var(--border2)'}`, background: checked ? 'rgba(189,255,0,0.15)' : 'var(--card)' }}>
                     {checked && <span style={{ color: NEON, fontSize: '10px', fontWeight: 700 }}>✓</span>}
                   </div>
-                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, color: checked ? 'var(--text)' : 'var(--muted)', letterSpacing: '0.03em' }}>
-                    {label}
-                  </span>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, color: checked ? 'var(--text)' : 'var(--muted)' }}>{label}</span>
                 </button>
               )
             })}
           </div>
-
           {allChecked && (
             <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.3)', borderRadius: '2px' }}>
-              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>
-                🛡️ FULL DISCIPLINE — YOU ARE IN CONTROL
-              </span>
+              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>🛡️ FULL DISCIPLINE — YOU ARE IN CONTROL</span>
             </div>
           )}
         </div>
-
-        {/* Bet Structure Guide */}
         <div style={{ ...cardStyle, padding: '18px 20px' }}>
           <SectionLabel>⚙️ Bet Structure Guide</SectionLabel>
-          <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-dim)', marginBottom: '12px', letterSpacing: '0.06em' }}>
-            Choose your style for this session
-          </div>
-
+          <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-dim)', marginBottom: '12px', letterSpacing: '0.06em' }}>Choose your style for this session</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {STYLES.map(s => {
               const active = style === s.id
@@ -1795,13 +2064,10 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
                   padding: '14px 16px', borderRadius: '2px', cursor: 'pointer', textAlign: 'left',
                   background: active ? `${s.color}10` : 'var(--card2)',
                   border: `1px solid ${active ? `${s.color}50` : 'var(--border)'}`,
-                  borderLeft: active ? `3px solid ${s.color}` : `3px solid transparent`,
-                  transition: 'all 0.15s',
+                  borderLeft: active ? `3px solid ${s.color}` : '3px solid transparent', transition: 'all 0.15s',
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: active ? s.color : 'var(--text)' }}>
-                      {s.icon} {s.label}
-                    </span>
+                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: active ? s.color : 'var(--text)' }}>{s.icon} {s.label}</span>
                     {active && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: s.color, letterSpacing: '0.12em' }}>ACTIVE</span>}
                   </div>
                   <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', lineHeight: 1.5 }}>{s.desc}</div>
@@ -1809,17 +2075,15 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
               )
             })}
           </div>
-
-          {/* Style-based rules */}
-          <div style={{ marginTop: '14px', padding: '12px 14px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
+          <div style={{ marginTop: '14px', padding: '12px 14px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px' }}>
             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '8px' }}>
               {style === 'conservative' ? '🛡️ Conservative Rules' : style === 'balanced' ? '⚖️ Balanced Rules' : '⚡ Aggressive Rules'}
             </div>
             {(style === 'conservative'
-              ? ['Max 1-2 bets per day', 'Straight bets only', 'Minimum -130 odds or better', 'Never bet > 2u per play', 'Stop after 2 losses in a day']
+              ? ['Max 1-2 bets per day','Straight bets only','Minimum -130 odds or better','Never bet > 2u per play','Stop after 2 losses in a day']
               : style === 'balanced'
-              ? ['4-6 bets per day max', 'Straights + small parlays OK', 'Mix of favorites and dogs', 'Max 3u on any single play', 'Reset after hitting stop loss']
-              : ['7+ bets per day allowed', 'RR bets and parlays welcome', 'Chase value at any odds', 'Larger units when confident', 'Aggressive profit targets']
+              ? ['4-6 bets per day max','Straights + small parlays OK','Mix of favorites and dogs','Max 3u on any single play','Reset after hitting stop loss']
+              : ['7+ bets per day allowed','RR bets and parlays welcome','Chase value at any odds','Larger units when confident','Aggressive profit targets']
             ).map(rule => (
               <div key={rule} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
                 <span style={{ color: style === 'conservative' ? NEON : style === 'balanced' ? '#F5A623' : RED, fontSize: '10px' }}>▸</span>
@@ -1830,7 +2094,6 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
         </div>
       </div>
 
-      {/* ── ROW 3: Today's Recap ── */}
       <div style={{ ...cardStyle, padding: '20px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
           <SectionLabel>📝 Today's Recap</SectionLabel>
@@ -1842,48 +2105,37 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
                   fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '4px 10px', borderRadius: '2px', cursor: 'pointer',
                   border: `1px solid ${mood === m ? 'rgba(189,255,0,0.5)' : 'var(--border2)'}`,
                   background: mood === m ? 'rgba(189,255,0,0.08)' : 'var(--card)',
-                  color: mood === m ? NEON : 'var(--text-dim)',
-                  transition: 'all 0.12s',
+                  color: mood === m ? NEON : 'var(--text-dim)', transition: 'all 0.12s',
                 }}>{m}</button>
               ))}
             </div>
           </div>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
           {[
-            { label: '✅ What went well today?',    val: wentWell, set: setWentWell, placeholder: 'e.g. Stayed disciplined, hit 3/4 picks...' },
-            { label: '🔧 What needs improvement?', val: improve,  set: setImprove,  placeholder: 'e.g. Avoided chasing that late bet...' },
+            { label: '✅ What went well today?', val: wentWell, set: setWentWell, placeholder: 'e.g. Stayed disciplined, hit 3/4 picks...' },
+            { label: '🔧 What needs improvement?', val: improve, set: setImprove, placeholder: 'e.g. Avoided chasing that late bet...' },
             { label: '⚡ What triggered any bad bets?', val: trigger, set: setTrigger, placeholder: 'e.g. Frustration after loss 2...' },
-            { label: '🎓 Main lesson from this session', val: lesson,  set: setLesson,  placeholder: 'e.g. Trust the process, ignore the noise...' },
+            { label: '🎓 Main lesson from this session', val: lesson, set: setLesson, placeholder: 'e.g. Trust the process, ignore the noise...' },
           ].map(({ label, val, set, placeholder }) => (
             <div key={label}>
               <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{label}</div>
-              <textarea
-                value={val}
-                onChange={e => set(e.target.value)}
-                placeholder={placeholder}
-                rows={3}
-                style={{ ...inputStyle, resize: 'vertical', padding: '10px 12px', fontSize: '12px', fontFamily: 'Inter, sans-serif',
-                  lineHeight: '1.5', fontWeight: 400, letterSpacing: '0.02em' }}
-              />
+              <textarea value={val} onChange={e => set(e.target.value)} placeholder={placeholder} rows={3}
+                style={{ ...inputStyle, resize: 'vertical', padding: '10px 12px', fontSize: '12px', fontFamily: 'Inter, sans-serif', lineHeight: '1.5', fontWeight: 400, letterSpacing: '0.02em' }} />
             </div>
           ))}
         </div>
-
-        {/* Session summary strip */}
-        <div style={{ display: 'grid', gridTemplateColumns: g('repeat(5,1fr)', 'repeat(3,1fr)', 'repeat(2,1fr)'), gap: '8px', paddingTop: '16px', borderTop: `1px solid var(--border)` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '8px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
           {[
             { label: 'Discipline Score', value: `${score}/100`, color: scoreColor },
-            { label: 'Session Grade',    value: displayGrade,   color: gradeColorMap[displayGrade] },
-            { label: 'Record',           value: `${stats.wins}W – ${stats.losses}L`, color: 'var(--text)' },
-            { label: 'Net P/L',          value: fmt$(stats.netUnits * (masterBankroll / 100), true), color: stats.netUnits >= 0 ? NEON : RED },
-            { label: 'Checklist',        value: `${checksPassed}/${CHECKLIST.length}`, color: allChecked ? NEON : 'var(--muted)' },
+            { label: 'Session Grade', value: displayGrade, color: gradeColorMap[displayGrade] },
+            { label: 'Record', value: `${stats.wins}W – ${stats.losses}L`, color: 'var(--text)' },
+            { label: 'Net P/L', value: fmt$(stats.netUnits * (masterBankroll / 100), true), color: stats.netUnits >= 0 ? NEON : RED },
+            { label: 'Checklist', value: `${checksPassed}/${CHECKLIST.length}`, color: allChecked ? NEON : 'var(--muted)' },
           ].map(({ label, value, color }) => (
-            <div key={label} style={{ padding: '10px 14px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px', textAlign: 'center' }}>
+            <div key={label} style={{ padding: '10px 14px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px', textAlign: 'center' }}>
               <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>{label}</div>
-              <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color,
-                textShadow: color === NEON && darkMode ? '0 0 10px rgba(189,255,0,0.25)' : 'none' }}>{value}</div>
+              <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color }}>{value}</div>
             </div>
           ))}
         </div>
@@ -2664,19 +2916,6 @@ export default function App({ user, session, subStatus }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: 'nowrap' }}>
-
-          {/* Starting Bankroll */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: isMobile ? '1 1 0' : 'none' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Starting BR</span>
-            <input
-              value={bankroll.toFixed(0)}
-              onChange={e => setBankroll(parseFloat(e.target.value) || 0)}
-              onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-              style={{ ...inputStyle, width: isMobile ? '100%' : '110px', padding: '5px 10px', fontSize: '13px', fontWeight: 700 }}
-            />
-          </div>
-
-          {!isMobile && <div style={{ width: '1px', background: 'var(--border2)', height: '36px' }} />}
 
           {/* Operator */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: isMobile ? '1 1 0' : 'none' }}>
