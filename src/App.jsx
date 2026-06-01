@@ -2089,8 +2089,8 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 
       {/* ── ROW 1: Discipline Score™ (full width) ── */}
       <div style={{ ...cardStyle, padding: '20px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ flex: 1, marginRight: '32px' }}>
             <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.28em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
               🏆 Discipline Score™<InfoTip text="0–100 score based on sizing discipline, tilt control, and process rules." />
             </div>
@@ -2098,8 +2098,12 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
               textShadow: scoreColor === NEON && darkMode ? '0 0 24px rgba(189,255,0,0.35)' : 'none' }}>
               {score}<span style={{ fontSize: '20px', color: 'var(--muted)', fontWeight: 500 }}>/100</span>
             </div>
-            <div style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px', letterSpacing: '0.06em' }}>
+            <div style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-dim)', marginTop: '6px', letterSpacing: '0.06em' }}>
               {score >= 80 ? 'Operate With Discipline 🛡️' : score >= 60 ? 'Solid — keep tightening' : 'Review your process'}
+            </div>
+            <div style={{ height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden', marginTop: '10px' }}>
+              <div style={{ height: '100%', width: `${score}%`, background: scoreColor, borderRadius: '2px', transition: 'width 0.5s',
+                boxShadow: scoreColor === NEON && darkMode ? '0 0 8px rgba(189,255,0,0.5)' : 'none' }} />
             </div>
           </div>
           <div style={{ textAlign: 'center', padding: '16px 24px', border: `2px solid ${gradeColorAlpha}`, borderRadius: '4px', background: `${gradeColor}08`, transition: 'all 0.2s' }}>
@@ -2283,7 +2287,7 @@ export default function App({ user, session, subStatus }) {
   const [darkMode,       setDarkMode]       = useState(saved.current?.darkMode       ?? true)
   const [tiltDismissed,  setTiltDismissed]  = useState(false)
   const [ladderStarting, setLadderStarting] = useState(saved.current?.ladderStarting ?? LADDER_STARTING_BR)
-  const [bets,           setBets]           = useState(saved.current?.bets            ?? INITIAL_BETS)
+  const [bets,           setBets]           = useState(saved.current?.bets            ?? [])
   const [bankroll,       setBankroll]       = useState(saved.current?.bankroll        ?? 1000)
   const [username,       setUsername]       = useState(saved.current?.username        ?? 'OPERATOR')
   const [sportFilter,  setSportFilter]  = useState('ALL')
@@ -2691,8 +2695,8 @@ export default function App({ user, session, subStatus }) {
         }
 
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ ...cardStyle, width: '520px', padding: '26px 28px', borderTop: `2px solid ${NEON}` }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
+            <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '90vh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, borderRadius: isMobile ? '8px 8px 0 0' : 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Share2 size={14} color={NEON} strokeWidth={2} />
@@ -3859,6 +3863,118 @@ export default function App({ user, session, subStatus }) {
               </button>
             </div>
 
+            {/* ── Mobile card view ── */}
+            {isMobile && (
+              <div>
+                {(betLogShowAll ? filtered : filtered.slice(0, 10)).map((bet) => {
+                  const isOpen = bet.result === 'Open'
+                  const resultColor = bet.result === 'W' ? NEON : bet.result === 'L' ? RED : MUTED
+                  return (
+                    <div key={bet.id} style={{
+                      ...cardStyle, marginBottom: '6px', padding: '10px 12px',
+                      borderLeft: isOpen ? `3px solid rgba(245,166,35,0.6)` : bet.result === 'W' ? `3px solid rgba(189,255,0,0.4)` : bet.result === 'L' ? `3px solid rgba(255,59,59,0.4)` : `3px solid var(--border)`,
+                    }}>
+                      {/* Row 1: pick + result badge */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                        <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', flex: 1, marginRight: '8px', lineHeight: 1.2 }}>{bet.pick || '—'}</div>
+                        {isOpen ? (
+                          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 7px', borderRadius: '2px', flexShrink: 0 }}>OPEN</span>
+                        ) : (
+                          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: resultColor, background: bet.result === 'W' ? 'rgba(189,255,0,0.07)' : bet.result === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card2)', border: `1px solid ${bet.result === 'W' ? 'rgba(189,255,0,0.2)' : bet.result === 'L' ? 'rgba(255,59,59,0.2)' : 'var(--border)'}`, padding: '2px 7px', borderRadius: '2px', flexShrink: 0 }}>
+                            {bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : bet.result === 'P' ? 'PUSH' : bet.result}
+                          </span>
+                        )}
+                      </div>
+                      {/* Row 2: sport, book, event, date */}
+                      <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginBottom: '7px', flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--muted)', background: 'var(--card)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: '2px' }}>{bet.sport}</span>
+                        {bet.book && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: NEON, background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.2)', padding: '1px 5px', borderRadius: '2px' }}>{bet.book}</span>}
+                        {bet.event && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{bet.event}</span>}
+                        <span style={{ fontFamily: R, fontSize: '8px', color: isOpen ? YELLOW : 'var(--text-dim)', marginLeft: 'auto' }}>{bet.date}</span>
+                      </div>
+                      {/* Row 3: odds | units | P&L */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px', marginBottom: isOpen ? '8px' : '6px' }}>
+                        <div style={{ padding: '4px 6px', background: 'var(--card2)', borderRadius: '2px' }}>
+                          <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '2px' }}>ODDS</div>
+                          <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text)' }}>{fmtOdds(bet.odds)}</div>
+                        </div>
+                        <div style={{ padding: '4px 6px', background: 'var(--card2)', borderRadius: '2px' }}>
+                          <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '2px' }}>UNITS</div>
+                          <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{bet.units}u</div>
+                          {bet.stake > 0 && <div style={{ fontFamily: R, fontSize: '8px', color: MUTED }}>{fmt$(bet.stake)}</div>}
+                        </div>
+                        <div style={{ padding: '4px 6px', background: 'var(--card2)', borderRadius: '2px' }}>
+                          <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '2px' }}>P&L</div>
+                          <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: isOpen ? YELLOW : bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED }}>
+                            {isOpen ? 'pend.' : fmtU(bet.pnl)}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Row 4: actions */}
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {isOpen && ['W','L','P'].map(r => (
+                          <button key={r} onClick={() => settleBet(bet.id, r)} style={{
+                            fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+                            padding: '4px 12px', borderRadius: '2px', cursor: 'pointer', flex: 1,
+                            border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : BORDER2}`,
+                            background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
+                            color: r === 'W' ? NEON : r === 'L' ? RED : MUTED,
+                          }}>{r === 'W' ? 'WIN ✓' : r === 'L' ? 'LOSS ✗' : 'PUSH'}</button>
+                        ))}
+                        <div style={{ marginLeft: isOpen ? '4px' : 'auto', display: 'flex', gap: '8px' }}>
+                          <button onClick={() => setEditingBet(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}
+                            onTouchStart={e => e.currentTarget.style.color = NEON} onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}>
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => setBets(b => b.filter(x => x.id !== bet.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}
+                            onTouchStart={e => e.currentTarget.style.color = RED} onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.3)'}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {filtered.length === 0 && (
+                  <div style={{ ...cardStyle, padding: '40px 20px', textAlign: 'center' }}>
+                    {bets.filter(b => !b.ladder).length === 0 ? (
+                      <div>
+                        <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--text)', marginBottom: '8px' }}>NO BETS LOGGED YET</div>
+                        <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.08em', marginBottom: '16px' }}>Track your first bet to start building your edge.</div>
+                        <button onClick={() => setShowAdd(true)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '9px 20px', border: `1px solid ${NEON}`, borderRadius: '2px', background: 'rgba(189,255,0,0.1)', color: NEON, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <Plus size={11} /> Log Your First Bet
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.12em' }}>NO BETS MATCH FILTERS</span>
+                    )}
+                  </div>
+                )}
+                {filtered.length > 10 && (
+                  <button onClick={() => setBetLogShowAll(v => !v)} style={{
+                    width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    background: 'none', border: `1px solid var(--border2)`, borderRadius: '2px',
+                    color: 'var(--muted)', cursor: 'pointer', padding: '10px', marginBottom: '6px',
+                  }}>
+                    {betLogShowAll ? '▲ Show Less' : `▼ Show ${filtered.length - 10} More`}
+                  </button>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 2px' }}>
+                  <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>{filtered.length} BETS</span>
+                  {filtered.filter(b => b.result === 'Open').length > 0 && (
+                    <span style={{ fontFamily: R, fontSize: '9px', color: YELLOW, letterSpacing: '0.1em', fontWeight: 700 }}>
+                      {filtered.filter(b => b.result === 'Open').length} OPEN · {fmt$(filtered.filter(b => b.result === 'Open').reduce((s, b) => s + (b.stake || 0), 0))} AT RISK
+                    </span>
+                  )}
+                  <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>
+                    NET: <span style={{ color: filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + b.pnl, 0) >= 0 ? NEON : RED, fontWeight: 700 }}>
+                      {fmtU(filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + b.pnl, 0))}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            )}
+            {!isMobile && (
             <div style={{ ...cardStyle, overflow: 'hidden' }}>
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse' }}>
@@ -4010,6 +4126,7 @@ export default function App({ user, session, subStatus }) {
                 </span>
               </div>
             </div>
+            )}
           </div>
         )}
 
