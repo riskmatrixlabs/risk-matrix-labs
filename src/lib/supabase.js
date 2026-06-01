@@ -13,7 +13,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
 export const signUpEmail = (email, password) =>
-  supabase.auth.signUp({ email, password })
+  supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: 'https://app.riskmatrixlabs.com' },
+  })
 
 export const signInEmail = (email, password) =>
   supabase.auth.signInWithPassword({ email, password })
