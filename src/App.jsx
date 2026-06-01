@@ -996,46 +996,63 @@ function RREngine({ unitSize, darkMode }) {
           <SectionLabel icon={Target}>Round Robin Legs</SectionLabel>
 
           {/* RR Type + Stake */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-            <div>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>RR Type</div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {[2, 3, 4, 5].map(t => (
-                  <button key={t} onClick={() => setRrType(t)} style={{
-                    ...btnStyle(rrType === t), padding: '5px 10px', fontSize: '11px', fontWeight: 700,
-                  }}>{t}s</button>
-                ))}
+          {isMobile ? (
+            /* Mobile: 2-row compact config */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>RR Type</span>
+                <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+                  {[2, 3, 4, 5].map(t => (
+                    <button key={t} onClick={() => setRrType(t)} style={{ ...btnStyle(rrType === t), flex: 1, padding: '5px 0', fontSize: '12px', fontWeight: 700 }}>{t}s</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Stake</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['units', 'dollars'].map(m => (
+                    <button key={m} onClick={() => setStakeMode(m)} style={{ ...btnStyle(stakeMode === m), padding: '5px 10px', fontSize: '10px' }}>{m === 'units' ? 'Units' : '$'}</button>
+                  ))}
+                </div>
+                <input value={stakeVal} onChange={e => setStakeVal(e.target.value)} placeholder={stakeMode === 'units' ? '1.0' : '10'} type="number" step="0.25" min="0"
+                  style={{ ...inputStyle, flex: 1, padding: '5px 10px' }} />
+                {stakeMode === 'units' && <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>1u={fmt$(unitSize)}</span>}
               </div>
             </div>
-            <div>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>Stake Mode</div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {['units', 'dollars'].map(m => (
-                  <button key={m} onClick={() => setStakeMode(m)} style={{
-                    ...btnStyle(stakeMode === m), padding: '5px 10px', fontSize: '10px',
-                  }}>{m === 'units' ? 'Units' : '$'}</button>
-                ))}
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>RR Type</div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[2, 3, 4, 5].map(t => (
+                    <button key={t} onClick={() => setRrType(t)} style={{ ...btnStyle(rrType === t), padding: '5px 10px', fontSize: '11px', fontWeight: 700 }}>{t}s</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>Stake Mode</div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['units', 'dollars'].map(m => (
+                    <button key={m} onClick={() => setStakeMode(m)} style={{ ...btnStyle(stakeMode === m), padding: '5px 10px', fontSize: '10px' }}>{m === 'units' ? 'Units' : '$'}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>
+                  Stake / Combo {stakeMode === 'units' ? `(1u=${fmt$(unitSize)})` : ''}
+                </div>
+                <input value={stakeVal} onChange={e => setStakeVal(e.target.value)} placeholder={stakeMode === 'units' ? '1.0' : '10.00'} type="number" step="0.25" min="0"
+                  style={{ ...inputStyle, padding: '5px 10px' }} />
               </div>
             </div>
-            <div>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '5px' }}>
-                Stake / Combo {stakeMode === 'units' ? `(1u=${fmt$(unitSize)})` : ''}
-              </div>
-              <input
-                value={stakeVal}
-                onChange={e => setStakeVal(e.target.value)}
-                placeholder={stakeMode === 'units' ? '1.0' : '10.00'}
-                type="number" step="0.25" min="0"
-                style={{ ...inputStyle, padding: '5px 10px' }}
-              />
-            </div>
-          </div>
+          )}
 
           {/* Leg rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {legs.map((leg, i) => (
               <div key={i} style={{
-                display: 'grid', gridTemplateColumns: '22px 1fr 1fr 80px 26px',
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '20px 1fr 72px 26px' : '22px 1fr 1fr 80px 26px',
                 gap: '6px', alignItems: 'center',
                 padding: '6px 8px',
                 background: leg.result === 'W' ? 'rgba(189,255,0,0.04)' : leg.result === 'L' ? 'rgba(255,59,59,0.04)' : 'var(--card2)',
@@ -1046,22 +1063,22 @@ function RREngine({ unitSize, darkMode }) {
                 <input
                   value={leg.odds}
                   onChange={e => setLeg(i, 'odds', e.target.value)}
-                  placeholder="Odds e.g. -110"
+                  placeholder={isMobile ? '-110' : 'Odds e.g. -110'}
                   type="number"
                   style={{ ...inputStyle, padding: '4px 8px', fontSize: '12px' }}
                 />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                  <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
-                    {leg.odds && parseInt(leg.odds) !== 0
-                      ? `payout: ${fmt$(stakePerCombo * toDecimal(parseInt(leg.odds)))}`
-                      : 'enter odds'}
-                  </span>
-                  {leg.odds && parseInt(leg.odds) !== 0 && (
-                    <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>
-                      impl: {(100 / (parseInt(leg.odds) > 0 ? parseInt(leg.odds) + 100 : Math.abs(parseInt(leg.odds)) + 100) * 100).toFixed(1)}%
+                {!isMobile && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
+                      {leg.odds && parseInt(leg.odds) !== 0 ? `payout: ${fmt$(stakePerCombo * toDecimal(parseInt(leg.odds)))}` : 'enter odds'}
                     </span>
-                  )}
-                </div>
+                    {leg.odds && parseInt(leg.odds) !== 0 && (
+                      <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>
+                        impl: {(100 / (parseInt(leg.odds) > 0 ? parseInt(leg.odds) + 100 : Math.abs(parseInt(leg.odds)) + 100) * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                )}
                 <select
                   value={leg.result}
                   onChange={e => setLeg(i, 'result', e.target.value)}
@@ -1933,11 +1950,7 @@ export default function App({ user, session, subStatus }) {
 
   // Tab order for swipe navigation
   const TAB_ORDER = ['overview', 'bet log', 'ladder', 'rr engine', 'analytics', 'session']
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft:  () => { if (!isMobile) return; const i = TAB_ORDER.indexOf(tab); if (i < TAB_ORDER.length - 1) setTab(TAB_ORDER[i + 1]) },
-    onSwipedRight: () => { if (!isMobile) return; const i = TAB_ORDER.indexOf(tab); if (i > 0) setTab(TAB_ORDER[i - 1]) },
-    trackMouse: false, delta: 60,
-  })
+  const swipeHandlers = {}  // disabled — conflicts with vertical scroll on mobile
   const [pushEnabled,  setPushEnabled]  = useState(false)
   const [pushLoading,  setPushLoading]  = useState(false)
 
@@ -2922,8 +2935,8 @@ export default function App({ user, session, subStatus }) {
               <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>{fmtU(stats.netUnits)} net units</div>
             </div>
 
-            {/* ROI */}
-            <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(roi) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}` }}>
+            {/* ROI — spans full row on mobile so no orphan gap */}
+            <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(roi) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}`, ...(isMobile ? { gridColumn: 'span 2' } : {}) }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>ROI</span>
                 <Target size={11} color={up(roi) ? NEON : RED} strokeWidth={2} />
@@ -3441,7 +3454,7 @@ export default function App({ user, session, subStatus }) {
           {/* More sheet */}
           {showMore && (
             <div style={{
-              position: 'fixed', bottom: '72px', left: '10px', right: '10px', zIndex: 200,
+              position: 'fixed', bottom: '56px', left: '10px', right: '10px', zIndex: 200,
               background: 'var(--card2)', borderRadius: 'var(--radius)', border: `1px solid var(--border2)`,
               borderTop: `2px solid ${NEON}`, padding: '8px', boxShadow: 'var(--float-shadow)',
               animation: 'slideUp 0.18s ease',
@@ -3468,7 +3481,7 @@ export default function App({ user, session, subStatus }) {
           <nav style={{
             position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
             background: 'var(--card2)', borderTop: `1px solid var(--border2)`,
-            display: 'flex', alignItems: 'stretch', height: '72px',
+            display: 'flex', alignItems: 'stretch', height: '56px',
             paddingBottom: 'env(safe-area-inset-bottom)',
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>

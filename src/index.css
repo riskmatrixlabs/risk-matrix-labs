@@ -132,11 +132,11 @@ input, select, button { outline: none; }
 
 /* ── Bottom nav safe area ──────────────────────────────────── */
 .content-with-bottom-nav {
-  padding-bottom: 80px;
+  padding-bottom: 72px;
 }
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .content-with-bottom-nav {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
   }
 }
 
