@@ -2846,31 +2846,101 @@ export default function App({ user, session, subStatus }) {
           {/* ══ MOBILE OVERVIEW — pill-nav command center ══ */}
           {isMobile ? (
             <>
-              {/* ── Pill nav ── */}
+              {/* ══ MOBILE HOME — stats always visible + 5 sub-panel pills ══ */}
+
+              {/* ── Big stat cards row 1: Starting BR + Current BR ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                <div style={{ ...cardStyle, padding: '10px 12px' }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Starting BR</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{fmt$(bankroll)}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>1u = {fmt$(stats.unitSize)}</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Current BR</div>
+                    {masterBrOverride !== null && <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }} style={{ fontFamily: R, fontSize: '7px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.35)`, borderRadius: '2px', cursor: 'pointer', padding: '0 4px' }}>↺</button>}
+                  </div>
+                  <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
+                    onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
+                    onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
+                    onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
+                    style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON : RED }} />
+                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON : RED, marginTop: '3px', opacity: 0.85 }}>
+                    {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)} ({up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}%)
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Stat cards row 2: Open Risk + Total P/L ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Open Risk</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netUnits) ? NEON : RED}` }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total P / L</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netUnits) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netUnits * stats.unitSize, true)}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{fmtU(stats.netUnits)} net units</div>
+                </div>
+              </div>
+
+              {/* ── ROI + W/L + Win Rate in one row ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
+                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px' }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>W / L</div>
+                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{stats.wins} — {stats.losses}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.winRate >= 0.525 ? NEON : 'transparent'}` }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Win Rate</div>
+                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: stats.winRate >= 0.525 ? NEON : 'var(--text)', lineHeight: 1 }}>{(stats.winRate * 100).toFixed(1)}%</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>target 52.5%</div>
+                </div>
+              </div>
+
+              {/* ── 8 small stat chips ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px' }}>
+                <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
+                <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
+                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
+                <SmallCard label="Settled"    value={String(stats.total)} />
+                <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
+                <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
+                <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
+                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
+              </div>
+
+              {/* ── 5 sub-panel pills ── */}
               {(() => {
                 const pills = [
-                  { id: 'home',   label: 'Home',    dot: null },
-                  { id: 'bets',   label: 'Bets',    dot: openBets.length > 0 ? YELLOW : null },
-                  { id: 'stats',  label: 'Stats',   dot: null },
-                  { id: 'curve',  label: 'Curve',   dot: null },
-                  { id: 'risk',   label: 'Risk',    dot: risk.health !== 'GOOD' ? (risk.health === 'CAUTION' ? YELLOW : RED) : null },
-                  { id: 'settings', label: 'Settings', dot: null },
+                  { id: 'curve',       label: 'Bankroll Curve' },
+                  { id: 'performance', label: 'Performance' },
+                  { id: 'exposure',    label: 'Risk Exposure',   dot: risk.health !== 'GOOD' ? (risk.health === 'CAUTION' ? YELLOW : RED) : null },
+                  { id: 'limits',      label: 'Bankroll Limits' },
+                  { id: 'riskset',     label: 'Risk Settings' },
                 ]
                 return (
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '2px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '2px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {pills.map(({ id, label, dot }) => {
                       const active = overviewSection === id
                       return (
-                        <button key={id} onClick={() => setOverviewSection(id)} style={{
-                          flexShrink: 0, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase',
-                          padding: '7px 14px', borderRadius: '100px', border: 'none', cursor: 'pointer', position: 'relative',
+                        <button key={id} onClick={() => setOverviewSection(s => s === id ? null : id)} style={{
+                          flexShrink: 0, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                          padding: '6px 14px', borderRadius: '100px', cursor: 'pointer', position: 'relative',
+                          border: `1px solid ${active ? NEON : 'var(--border2)'}`,
                           background: active ? NEON : 'var(--card2)',
                           color: active ? '#000' : 'var(--muted)',
-                          boxShadow: active ? `0 0 12px rgba(189,255,0,0.35)` : 'none',
-                          transition: 'all 0.15s',
+                          boxShadow: active ? `0 0 10px rgba(189,255,0,0.3)` : 'none',
+                          transition: 'all 0.12s',
                         }}>
                           {label}
-                          {dot && !active && <span style={{ position: 'absolute', top: '4px', right: '4px', width: '5px', height: '5px', borderRadius: '50%', background: dot }} />}
+                          {dot && !active && <span style={{ position: 'absolute', top: '3px', right: '3px', width: '5px', height: '5px', borderRadius: '50%', background: dot }} />}
                         </button>
                       )
                     })}
@@ -2878,238 +2948,69 @@ export default function App({ user, session, subStatus }) {
                 )
               })()}
 
-              {overviewSection === 'home' ? (
-                /* ── COMMAND CENTER: fits 1 screen ── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* ── Active sub-panel ── */}
 
-                  {/* Hero bankroll card */}
-                  <div style={{ ...cardStyle, padding: '16px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Current Bankroll</div>
-                        <input
-                          value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
-                          onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
-                          onChange={e => setMasterBrInput(e.target.value)}
-                          onBlur={applyMasterBr}
-                          onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
-                          style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text',
-                            color: up(masterBankroll - bankroll) ? NEON : RED,
-                            textShadow: darkMode && up(masterBankroll - bankroll) ? '0 0 20px rgba(189,255,0,0.35)' : 'none' }}
-                        />
-                        <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON : RED, marginTop: '2px', opacity: 0.85 }}>
-                          {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
-                          <span style={{ fontSize: '11px', marginLeft: '6px', opacity: 0.7 }}>({up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}%)</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Started</div>
-                        <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: 'var(--text-sub)' }}>{fmt$(bankroll)}</div>
-                        <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>1u = {fmt$(stats.unitSize)}</div>
-                        {masterBrOverride !== null && (
-                          <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }}
-                            style={{ fontFamily: R, fontSize: '7px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.4)`, borderRadius: '2px', cursor: 'pointer', padding: '1px 5px', marginTop: '4px' }}>↺ auto</button>
-                        )}
-                      </div>
+              {overviewSection === 'curve' && (
+                <div style={{ ...cardStyle, padding: '14px 14px 10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <SectionLabel icon={BarChart3}>Bankroll Curve</SectionLabel>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>Start: <strong style={{ color: 'var(--text)' }}>{fmt$(bankroll)}</strong></span>
+                      <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>Now: <strong style={{ color: up(masterBankroll-bankroll) ? NEON : RED }}>{fmt$(masterBankroll)}</strong></span>
                     </div>
                   </div>
-
-                  {/* 4-stat 2x2 grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `1px solid ${up(stats.netUnits) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}` }}>
-                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total P / L</div>
-                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netUnits) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netUnits * stats.unitSize, true)}</div>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{fmtU(stats.netUnits)} units</div>
-                    </div>
-                    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `1px solid ${up(roi) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}` }}>
-                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
-                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(2)}%</div>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{stats.total} bets · {(stats.winRate * 100).toFixed(0)}% win</div>
-                    </div>
-                    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: stats.openBets > 0 ? `1px solid rgba(245,166,35,0.5)` : undefined }}>
-                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Open Risk</div>
-                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
-                    </div>
-                    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `1px solid ${tilt.level === 'GREEN' ? 'rgba(189,255,0,0.3)' : tilt.level === 'YELLOW' ? 'rgba(245,166,35,0.4)' : 'rgba(255,59,59,0.5)'}` }}>
-                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Tilt</div>
-                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: tilt.level === 'GREEN' ? NEON : tilt.level === 'YELLOW' ? YELLOW : RED, lineHeight: 1 }}>
-                        {tilt.level === 'GREEN' ? 'CLEAR' : tilt.level === 'YELLOW' ? 'WATCH' : 'STOP'}
-                      </div>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>
-                        {risk.health === 'GOOD' ? 'bankroll healthy' : risk.health === 'CAUTION' ? `${risk.currentRiskPct.toFixed(0)}% at risk` : 'danger zone'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Open bets list */}
-                  {openBets.length > 0 && (
-                    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid rgba(245,166,35,0.55)` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
-                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: YELLOW, textTransform: 'uppercase' }}>{openBets.length} Live {openBets.length === 1 ? 'Bet' : 'Bets'}</span>
-                        </div>
-                        <button onClick={() => setTab('bet log')} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: NEON, background: 'none', border: `1px solid rgba(189,255,0,0.3)`, borderRadius: '2px', padding: '2px 8px', cursor: 'pointer' }}>VIEW ALL →</button>
-                      </div>
-                      {openBets.slice(0, 3).map(b => (
-                        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid var(--border)` }}>
-                          <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
-                            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.pick || b.event}</div>
-                            <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.sport} · {fmtOdds(b.odds)}{b.book ? ` · ${b.book}` : ''}</div>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: YELLOW }}>{b.stake > 0 ? fmt$(b.stake) : `${b.units}u`}</div>
-                          </div>
-                        </div>
-                      ))}
-                      {openBets.length > 3 && <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', textAlign: 'center', paddingTop: '6px' }}>+{openBets.length - 3} more in Bets tab</div>}
-                    </div>
-                  )}
-
-                  {/* Quick-action buttons */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    {[
-                      { label: '+ Log Bet',    action: () => setShowAdd(true),        accent: NEON },
-                      { label: 'View Bets',    action: () => setTab('bet log'),        accent: 'var(--muted)' },
-                      { label: 'PHLT Ladder',  action: () => setTab('ladder'),         accent: 'var(--muted)' },
-                      { label: 'RR Engine',    action: () => setTab('rr engine'),      accent: 'var(--muted)' },
-                    ].map(({ label, action, accent }) => (
-                      <button key={label} onClick={action} style={{
-                        fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                        padding: '12px 8px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                        border: `1px solid ${accent === NEON ? 'rgba(189,255,0,0.5)' : 'var(--border2)'}`,
-                        background: accent === NEON ? 'rgba(189,255,0,0.1)' : 'var(--card2)',
-                        color: accent,
-                      }}>{label}</button>
-                    ))}
-                  </div>
-
+                  <ResponsiveContainer width="100%" height={160}>
+                    <AreaChart data={curve} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="gradm" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor={NEON} stopOpacity={0.2} />
+                          <stop offset="95%" stopColor={NEON} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="label" tick={false} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
+                      <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)', fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(1)}k`} width={42} />
+                      <Tooltip content={<BankrollTip />} />
+                      <ReferenceLine y={bankroll} stroke="var(--border2)" strokeDasharray="4 4" />
+                      <Area type="monotone" dataKey="value" stroke={NEON} strokeWidth={2} fill="url(#gradm)" dot={false} activeDot={{ r: 4, fill: NEON, strokeWidth: 0 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              ) : overviewSection === 'bets' ? (
-                /* ── BETS PANEL ── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                    {[
-                      { label: 'Open',    value: String(stats.openBets),           color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
-                      { label: 'At Risk', value: fmt$(stats.openRisk$),            color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
-                      { label: 'W / L',   value: `${stats.wins}–${stats.losses}`,  color: 'var(--text)' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} style={{ ...cardStyle, padding: '10px 12px' }}>
-                        <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
-                        <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
+              )}
+
+              {overviewSection === 'performance' && (
+                <div style={{ ...cardStyle, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <SectionLabel icon={Target}>Performance</SectionLabel>
+                  {[
+                    { label: 'Win Rate',   val: stats.winRate,                              target: 0.525, disp: `${(stats.winRate*100).toFixed(1)}%` },
+                    { label: 'ROI',        val: Math.min(1, Math.max(0, roi+0.3)/0.6),      target: 0.5,   disp: `${(roi*100).toFixed(1)}%` },
+                    { label: 'Discipline', val: Math.min(1, stats.total/30),                target: 0.8,   disp: `${Math.round(Math.min(1,stats.total/30)*100)}/100` },
+                  ].map(({ label, val, target, disp }) => (
+                    <div key={label}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase' }}>{label}</span>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: val >= target ? NEON : 'var(--text-sub)' }}>{disp}</span>
                       </div>
-                    ))}
-                  </div>
-                  {openBets.length > 0 ? (
-                    <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid rgba(245,166,35,0.55)` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: YELLOW, textTransform: 'uppercase' }}>{openBets.length} Live {openBets.length === 1 ? 'Bet' : 'Bets'}</span>
-                        <button onClick={() => setTab('bet log')} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: NEON, background: 'none', border: `1px solid rgba(189,255,0,0.3)`, borderRadius: '2px', padding: '2px 8px', cursor: 'pointer' }}>SETTLE →</button>
+                      <div style={{ height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(100,val*100)}%`, background: val >= target ? NEON : 'var(--border2)', borderRadius: '2px', transition: 'width 0.5s' }} />
                       </div>
-                      {openBets.map(b => (
-                        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: `1px solid var(--border)` }}>
-                          <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
-                            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.pick || b.event}</div>
-                            <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.sport} · {fmtOdds(b.odds)}{b.book ? ` · ${b.book}` : ''}</div>
-                          </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: YELLOW }}>{b.stake > 0 ? fmt$(b.stake) : `${b.units}u`}</div>
-                          </div>
+                    </div>
+                  ))}
+                  <div style={{ borderTop: `1px solid var(--border)`, paddingTop: '10px' }}>
+                    <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Unit Sizes</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '4px' }}>
+                      {[[1,'1u'],[2,'2u'],[3,'3u']].map(([m,l]) => (
+                        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
+                          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{l}</span>
+                          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text-sub)' }}>{fmt$(stats.unitSize * m)}</span>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div style={{ ...cardStyle, padding: '28px 14px', textAlign: 'center' }}>
-                      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.14em' }}>NO OPEN BETS</div>
-                      <button onClick={() => setShowAdd(true)} style={{ marginTop: '10px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '7px 18px', border: `1px solid ${NEON}`, borderRadius: '2px', background: 'rgba(189,255,0,0.08)', color: NEON, cursor: 'pointer' }}>+ Log Bet</button>
-                    </div>
-                  )}
-                </div>
-
-              ) : overviewSection === 'stats' ? (
-                /* ── STATS PANEL ── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '6px' }}>
-                    {[
-                      { label: 'Total P / L',   value: fmt$(stats.netUnits * stats.unitSize, true), color: up(stats.netUnits) ? NEON : RED },
-                      { label: 'ROI',            value: `${roi >= 0 ? '+' : ''}${(roi * 100).toFixed(2)}%`, color: up(roi) ? NEON : RED },
-                      { label: 'Win Rate',       value: `${(stats.winRate * 100).toFixed(1)}%`, color: stats.winRate >= 0.525 ? NEON : 'var(--text)' },
-                      { label: 'W / L',          value: `${stats.wins} — ${stats.losses}`, color: 'var(--text)' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} style={{ ...cardStyle, padding: '12px 14px' }}>
-                        <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
-                        <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '5px' }}>
-                    <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
-                    <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
-                    <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
-                    <SmallCard label="Settled"    value={String(stats.total)} />
-                    <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
-                    <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
-                    <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
-                    <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
                   </div>
                 </div>
+              )}
 
-              ) : overviewSection === 'curve' ? (
-                /* ── CURVE PANEL ── */
+              {overviewSection === 'exposure' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                    {[
-                      { label: 'Started',  value: fmt$(bankroll),      color: 'var(--text-sub)' },
-                      { label: 'Now',      value: fmt$(masterBankroll), color: up(masterBankroll-bankroll) ? NEON : RED },
-                      { label: 'Change',   value: `${up(masterBankroll-bankroll)?'+':''}${fmt$(masterBankroll-bankroll)}`, color: up(masterBankroll-bankroll) ? NEON : RED },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} style={{ ...cardStyle, padding: '10px 12px' }}>
-                        <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
-                        <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ ...cardStyle, padding: '14px 14px 10px' }}>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <AreaChart data={curve} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                        <defs>
-                          <linearGradient id="gradm" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%"  stopColor={NEON} stopOpacity={0.2} />
-                            <stop offset="95%" stopColor={NEON} stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="label" tick={false} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
-                        <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)', fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(1)}k`} width={42} />
-                        <Tooltip content={<BankrollTip />} />
-                        <ReferenceLine y={bankroll} stroke="var(--border2)" strokeDasharray="4 4" />
-                        <Area type="monotone" dataKey="value" stroke={NEON} strokeWidth={2} fill="url(#gradm)" dot={false} activeDot={{ r: 4, fill: NEON, strokeWidth: 0 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                  {/* Performance bars */}
-                  <div style={{ ...cardStyle, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {[
-                      { label: 'Win Rate',   val: stats.winRate, target: 0.525, disp: `${(stats.winRate*100).toFixed(1)}%` },
-                      { label: 'ROI',        val: Math.min(1, Math.max(0, roi+0.3)/0.6), target: 0.5, disp: `${(roi*100).toFixed(1)}%` },
-                    ].map(({ label, val, target, disp }) => (
-                      <div key={label}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase' }}>{label}</span>
-                          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: val >= target ? NEON : 'var(--text-sub)' }}>{disp}</span>
-                        </div>
-                        <div style={{ height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.min(100,val*100)}%`, background: val >= target ? NEON : 'var(--border2)', borderRadius: '2px', transition: 'width 0.5s' }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              ) : overviewSection === 'risk' ? (
-                /* ── RISK PANEL ── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {/* Health banner */}
                   <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {risk.health === 'GOOD' ? <ShieldCheck size={20} color={NEON} strokeWidth={2} /> : risk.health === 'CAUTION' ? <AlertTriangle size={20} color={YELLOW} strokeWidth={2} /> : <ShieldAlert size={20} color={RED} strokeWidth={2} />}
                     <div style={{ flex: 1 }}>
@@ -3118,12 +3019,11 @@ export default function App({ user, session, subStatus }) {
                       </div>
                       <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>Tilt: <span style={{ color: tilt.level === 'GREEN' ? NEON : tilt.level === 'YELLOW' ? YELLOW : RED, fontWeight: 700 }}>{tilt.level === 'GREEN' ? 'IN CONTROL' : tilt.level === 'YELLOW' ? 'WATCH YOURSELF' : 'STOP BETTING'}</span></div>
                     </div>
-                    <div style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED }}>{risk.currentRiskPct.toFixed(1)}%</div>
+                    <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED }}>{risk.currentRiskPct.toFixed(1)}%</div>
                   </div>
-                  {/* Risk bar */}
-                  <div style={{ ...cardStyle, padding: '12px 14px' }}>
-                    <div style={{ height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden', marginBottom: '4px' }}>
-                      <div style={{ height: '100%', width: `${Math.min(100, risk.currentRiskPct * 5)}%`, background: risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED, borderRadius: '4px', transition: 'width 0.5s' }} />
+                  <div style={{ ...cardStyle, padding: '10px 14px' }}>
+                    <div style={{ height: '7px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                      <div style={{ height: '100%', width: `${Math.min(100, risk.currentRiskPct * 5)}%`, background: risk.health === 'GOOD' ? NEON : risk.health === 'CAUTION' ? YELLOW : RED, borderRadius: '3px', transition: 'width 0.5s' }} />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontFamily: R, fontSize: '8px', color: NEON }}>SAFE 0–10%</span>
@@ -3131,58 +3031,99 @@ export default function App({ user, session, subStatus }) {
                       <span style={{ fontFamily: R, fontSize: '8px', color: RED }}>DANGER 20%+</span>
                     </div>
                   </div>
-                  {/* 4 exposure boxes */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     {[
-                      { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), color: 'var(--text)' },
-                      { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    color: 'var(--text)' },
-                      { label: 'Stop Loss',   value: `-${fmt$(risk.stopLoss$)}`,  color: RED },
-                      { label: 'Profit Lock', value: `+${fmt$(risk.profitLock$)}`, color: NEON },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} style={{ ...cardStyle, padding: '10px 12px' }}>
-                        <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
-                        <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color }}>{value}</div>
+                      { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
+                      { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
+                      { label: 'Open Now',    value: fmt$(risk.totalOpenRisk),  sub: `${stats.openBets} active`,                      color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
+                      { label: 'Remaining',   value: fmt$(risk.remainingRisk$), sub: 'capacity left',                                 color: risk.remainingRisk$ <= 0 ? RED : NEON },
+                    ].map(({ label, value, sub, color }) => (
+                      <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
+                        <div style={{ fontFamily: R, fontSize: '7px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
+                        <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color }}>{value}</div>
+                        <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '1px' }}>{sub}</div>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-              ) : overviewSection === 'settings' ? (
-                /* ── SETTINGS PANEL ── */
+              {overviewSection === 'limits' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ ...cardStyle, padding: '14px' }}>
-                    <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '10px' }}>Risk Preset</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '14px' }}>
-                      {[
-                        { label: 'CONSERVATIVE', vals: { unitPct: 1, maxRiskPerBetPct: 2, maxRiskTodayPct: 6,  stopLossPct: 8,  profitLockPct: 15 }, color: NEON },
-                        { label: 'BALANCED',     vals: { unitPct: 2, maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20 }, color: YELLOW },
-                        { label: 'AGGRESSIVE',   vals: { unitPct: 3, maxRiskPerBetPct: 5, maxRiskTodayPct: 15, stopLossPct: 15, profitLockPct: 25 }, color: RED },
-                      ].map(({ label, vals, color }) => (
-                        <button key={label} onClick={() => setRiskSettings(vals)} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', padding: '9px 4px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: `1px solid ${color === NEON ? 'rgba(189,255,0,0.4)' : color === YELLOW ? 'rgba(245,166,35,0.4)' : 'rgba(255,59,59,0.4)'}`, background: color === NEON ? 'rgba(189,255,0,0.07)' : color === YELLOW ? 'rgba(245,166,35,0.07)' : 'rgba(255,59,59,0.07)', color }}>{label}</button>
-                      ))}
+                  <div style={{ ...cardStyle, padding: '12px 14px', border: `1px solid var(--neon-border)` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--neon-accent)', textTransform: 'uppercase' }}>Master Bankroll</span>
+                      {masterBrOverride !== null && <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }} style={{ fontFamily: R, fontSize: '8px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.4)`, borderRadius: '2px', cursor: 'pointer', padding: '1px 6px' }}>↺ AUTO</button>}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {[
-                        { label: 'Unit Size',   key: 'unitPct',          desc: 'per unit' },
-                        { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet' },
-                        { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap' },
-                        { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away' },
-                        { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in' },
-                      ].map(({ label, key, desc }) => (
-                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text-sub)' }}>{label}</div>
-                            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{desc} · {fmt$(masterBankroll * (riskSettings[key] / 100))}</div>
-                          </div>
-                          <input type="number" min="0" max="100" step="0.5" value={riskSettings[key]} onChange={setRS(key)}
-                            style={{ ...inputStyle, width: '50px', padding: '5px 6px', textAlign: 'center', fontSize: '13px', fontWeight: 700 }} />
-                          <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', fontWeight: 600 }}>%</span>
+                    <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
+                      onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
+                      onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
+                      onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
+                      style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll-bankroll) ? NEON : RED }} />
+                    <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: up(masterBankroll-bankroll) ? NEON : RED, marginTop: '4px' }}>
+                      {up(masterBankroll-bankroll) ? '+' : ''}{fmt$(masterBankroll-bankroll)} ({up(masterBankroll-bankroll) ? '+' : ''}{((masterBankroll-bankroll)/bankroll*100).toFixed(1)}%)
+                    </div>
+                    <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>from starting {fmt$(bankroll)}</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    <div style={{ padding: '10px 12px', border: `1px solid rgba(255,59,59,0.3)`, background: 'rgba(255,59,59,0.05)', borderRadius: 'var(--radius-sm)' }}>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Stop Loss</div>
+                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED }}>-{fmt$(risk.stopLoss$)}</div>
+                      <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>walk away trigger</div>
+                    </div>
+                    <div style={{ padding: '10px 12px', border: `1px solid rgba(189,255,0,0.28)`, background: 'rgba(189,255,0,0.05)', borderRadius: 'var(--radius-sm)' }}>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: NEON, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Profit Lock</div>
+                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON }}>+{fmt$(risk.profitLock$)}</div>
+                      <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>protect your gains</div>
+                    </div>
+                  </div>
+                  <div style={{ ...cardStyle, padding: '10px 12px' }}>
+                    <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Unit Reference</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '4px' }}>
+                      {[['0.5u',0.5],['1u',1],['2u',2],['3u',3],['4u',4],['5u',5]].map(([label,mult]) => (
+                        <div key={label} style={{ padding: '4px 8px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{label}</span>
+                          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text-sub)' }}>{fmt$(stats.unitSize * mult)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              ) : null}
+              )}
+
+              {overviewSection === 'riskset' && (
+                <div style={{ ...cardStyle, padding: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '12px' }}>
+                    {[
+                      { label: 'CONSERVATIVE', vals: { unitPct:1,maxRiskPerBetPct:2,maxRiskTodayPct:6,stopLossPct:8,profitLockPct:15 }, color: NEON },
+                      { label: 'BALANCED',     vals: { unitPct:2,maxRiskPerBetPct:3,maxRiskTodayPct:10,stopLossPct:10,profitLockPct:20 }, color: YELLOW },
+                      { label: 'AGGRESSIVE',   vals: { unitPct:3,maxRiskPerBetPct:5,maxRiskTodayPct:15,stopLossPct:15,profitLockPct:25 }, color: RED },
+                    ].map(({ label, vals, color }) => (
+                      <button key={label} onClick={() => setRiskSettings(vals)} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.06em', padding: '9px 4px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: `1px solid ${color === NEON ? 'rgba(189,255,0,0.4)' : color === YELLOW ? 'rgba(245,166,35,0.4)' : 'rgba(255,59,59,0.4)'}`, background: color === NEON ? 'rgba(189,255,0,0.07)' : color === YELLOW ? 'rgba(245,166,35,0.07)' : 'rgba(255,59,59,0.07)', color }}>{label}</button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {[
+                      { label: 'Unit Size',   key: 'unitPct',          desc: 'per unit' },
+                      { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet' },
+                      { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap' },
+                      { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away' },
+                      { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in' },
+                    ].map(({ label, key, desc }) => (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text-sub)' }}>{label}</div>
+                          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{desc} · {fmt$(masterBankroll * (riskSettings[key]/100))}</div>
+                        </div>
+                        <input type="number" min="0" max="100" step="0.5" value={riskSettings[key]} onChange={setRS(key)}
+                          style={{ ...inputStyle, width: '50px', padding: '5px 6px', textAlign: 'center', fontSize: '13px', fontWeight: 700 }} />
+                        <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', fontWeight: 600 }}>%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </>
           ) : (
             /* ══ DESKTOP OVERVIEW — unchanged ══ */
