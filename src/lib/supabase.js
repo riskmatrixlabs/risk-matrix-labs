@@ -48,6 +48,9 @@ export const upsertBet = (bet, userId) =>
 export const deleteBet = (clientId, userId) =>
   supabase.from('bets').delete().eq('client_id', String(clientId)).eq('user_id', userId)
 
+export const deleteAllBets = (userId) =>
+  supabase.from('bets').delete().eq('user_id', userId)
+
 export const syncAllBets = (bets, userId) =>
   supabase.from('bets').upsert(
     bets.map(b => betToRow(b, userId)),

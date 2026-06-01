@@ -3,7 +3,7 @@ import { useSwipeable } from 'react-swipeable'
 import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
-  fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet,
+  fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet, deleteAllBets,
   fetchSettings, upsertSettings,
   fetchTemplates, upsertTemplate, deleteTemplate as dbDeleteTemplate,
   rowToBet,
@@ -2340,15 +2340,17 @@ export default function App({ user, session, subStatus }) {
 
   // ── Reset session ──
   const resetSession = useCallback(() => {
-    if (!window.confirm('Reset everything to defaults? This cannot be undone.')) return
+    if (!window.confirm('Reset everything to zero? All bets and data will be cleared. This cannot be undone.')) return
     localStorage.removeItem(LS_KEY)
-    setBets(INITIAL_BETS)
-    setBankroll(1000)
+    setBets([])
+    setBankroll(0)
+    setMasterBrOverride(null)
+    setMasterBrInput('')
     setUsername('OPERATOR')
     setLadderStarting(LADDER_STARTING_BR)
-    setRiskSettings({ maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20, unitPct: 1 })
-    setMasterBrOverride(null)
-  }, [])
+    setRiskSettings({ maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20, unitPct: 2 })
+    if (userId) deleteAllBets(userId)
+  }, [userId])
 
   // ── Save template ──
   const saveTemplate = useCallback(() => {
