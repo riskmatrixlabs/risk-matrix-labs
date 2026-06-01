@@ -2920,38 +2920,6 @@ export default function App({ user, session, subStatus }) {
                 )
               })()}
 
-              {/* ── ROI + W/L + Win Rate in one row ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
-                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
-                </div>
-                <div style={{ ...cardStyle, padding: '10px 12px' }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>W / L</div>
-                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{stats.wins} — {stats.losses}</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
-                </div>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.winRate >= 0.525 ? NEON : 'transparent'}` }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Win Rate</div>
-                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: stats.winRate >= 0.525 ? NEON : 'var(--text)', lineHeight: 1 }}>{(stats.winRate * 100).toFixed(1)}%</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>target 52.5%</div>
-                </div>
-              </div>
-
-
-              {/* ── 8 small stat chips ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px' }}>
-                <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
-                <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
-                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
-                <SmallCard label="Settled"    value={String(stats.total)} />
-                <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
-                <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
-                <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
-                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
-              </div>
-
               {/* ── Active sub-panel ── */}
 
               {overviewSection === 'curve' && (
@@ -3146,6 +3114,38 @@ export default function App({ user, session, subStatus }) {
                   </div>
                 </div>
               )}
+
+              {/* ── ROI + W/L + Win Rate in one row ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
+                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px' }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>W / L</div>
+                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{stats.wins} — {stats.losses}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
+                </div>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.winRate >= 0.525 ? NEON : 'transparent'}` }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Win Rate</div>
+                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: stats.winRate >= 0.525 ? NEON : 'var(--text)', lineHeight: 1 }}>{(stats.winRate * 100).toFixed(1)}%</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>target 52.5%</div>
+                </div>
+              </div>
+
+
+              {/* ── 8 small stat chips ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px' }}>
+                <SmallCard label="Units +"    value={fmtU(stats.unitsWon)}   color={NEON} />
+                <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
+                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
+                <SmallCard label="Settled"    value={String(stats.total)} />
+                <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
+                <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
+                <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
+                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
+              </div>
 
             </>
           ) : (
