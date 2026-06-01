@@ -534,16 +534,21 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             )}
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
-            <button type="button" onClick={onClose} style={btnStyle()}>Cancel</button>
+          {/* Actions — sticky at bottom so always visible on mobile */}
+          <div style={{
+            display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px',
+            position: 'sticky', bottom: isMobile ? '-20px' : 'auto',
+            background: 'var(--card2)', paddingTop: '10px', paddingBottom: '4px',
+            borderTop: `1px solid var(--border)`, zIndex: 10,
+          }}>
+            <button type="button" onClick={onClose} style={{ ...btnStyle(), flex: isMobile ? 1 : 'none' }}>Cancel</button>
             <button type="submit" style={{
               ...btnStyle(true),
-              padding: '7px 20px',
-              fontSize: '11px',
+              padding: '10px 20px', fontSize: '12px',
+              flex: isMobile ? 2 : 'none',
               opacity: (!form.event || !form.pick || !form.odds || (!form.units && !form.stake)) ? 0.4 : 1,
             }}>
-              {isEdit ? 'Save Changes' : 'Log Bet'}
+              {isEdit ? '💾 Save Changes' : '+ Log Bet'}
             </button>
           </div>
 
@@ -1569,46 +1574,6 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
         </div>
       </div>
 
-      {/* Open bets — compact settle cards */}
-      {(() => {
-        const openBets = bets.filter(b => b.result === 'Open').slice(0, 6)
-        if (!openBets.length) return null
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
-              Live · {openBets.length} Open
-            </div>
-            {openBets.map(b => (
-              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
-                background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '2px' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.pick}</div>
-                  <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>
-                    {b.sport} · {b.odds > 0 ? '+' : ''}{b.odds} · {b.stake > 0 ? `$${b.stake.toFixed(0)}` : `${b.units}u`}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                  {['W','L','P'].map(r => (
-                    <button key={r} onClick={() => onSettle?.(b.id, r)} style={{
-                      fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em',
-                      padding: '4px 8px', borderRadius: '2px', cursor: 'pointer',
-                      border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : 'var(--border2)'}`,
-                      background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
-                      color: r === 'W' ? NEON : r === 'L' ? RED : 'var(--muted)',
-                    }}>{r}</button>
-                  ))}
-                  {onEdit && (
-                    <button onClick={() => onEdit(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}>
-                      <Pencil size={11} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      })()}
-
       {/* Pills */}
       <div className="analytics-pills">
         {[
@@ -1692,6 +1657,46 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
           ))}
         </div>
       )}
+
+      {/* Live Open Bets — always at the bottom */}
+      {(() => {
+        const openBets = bets.filter(b => b.result === 'Open').slice(0, 6)
+        if (!openBets.length) return null
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+              ● Live — {openBets.length} Open
+            </div>
+            {openBets.map(b => (
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
+                background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '2px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.pick}</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>
+                    {b.sport} · {b.odds > 0 ? '+' : ''}{b.odds} · {b.stake > 0 ? `$${b.stake.toFixed(0)}` : `${b.units}u`}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  {['W','L','P'].map(r => (
+                    <button key={r} onClick={() => onSettle?.(b.id, r)} style={{
+                      fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em',
+                      padding: '4px 8px', borderRadius: '2px', cursor: 'pointer',
+                      border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : 'var(--border2)'}`,
+                      background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
+                      color: r === 'W' ? NEON : r === 'L' ? RED : 'var(--muted)',
+                    }}>{r}</button>
+                  ))}
+                  {onEdit && (
+                    <button onClick={() => onEdit(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                      <Pencil size={11} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 
@@ -2900,6 +2905,9 @@ export default function App({ user, session, subStatus }) {
                 <button onClick={() => { exportPDF(); setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
                   <FileDown size={12} strokeWidth={2} /> Export PDF
                 </button>
+                <button onClick={() => { exportCSV(); setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
+                  <FileDown size={12} strokeWidth={2} /> Export CSV
+                </button>
                 {settingsPill === 'reset'
                   ? <div style={{ background: 'rgba(255,59,59,0.06)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '2px', padding: '10px 14px' }}>
                       <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-sub)', marginBottom: '8px' }}>Erase all bets, bankroll → $0, wipe cloud data?</div>
@@ -3835,9 +3843,6 @@ export default function App({ user, session, subStatus }) {
                   borderColor: r === 'OPEN' && resultFilter !== r ? 'rgba(245,166,35,0.35)' : undefined,
                 }}>{r}{r === 'OPEN' && stats.openBets > 0 ? ` (${stats.openBets})` : ''}</button>)}
               </div>
-              <button onClick={exportCSV} style={{ ...btnStyle(false), display: 'flex', alignItems: 'center', gap: '5px' }} title="Export to CSV">
-                <FileDown size={11} /> CSV
-              </button>
               <button onClick={() => setShowAdd(true)} style={{ ...btnStyle(true), display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Plus size={11} /> LOG BET
               </button>
@@ -4130,69 +4135,17 @@ export default function App({ user, session, subStatus }) {
         </div>
       )}
 
-      {/* ── ACTION BAR ── */}
-      <footer style={{ borderTop: `1px solid var(--border)`, backgroundColor: 'var(--bg)', marginTop: '18px', position: 'sticky', bottom: 0, zIndex: 50 }}>
-        {/* Main bar */}
-        <div style={{ padding: '10px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-
-            {/* Save Session */}
-            <button onClick={saveSession} style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-              padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase',
-              border: `1px solid ${saveStatus === 'saved' ? 'rgba(189,255,0,0.6)' : 'rgba(189,255,0,0.35)'}`,
-              background: saveStatus === 'saved' ? 'rgba(189,255,0,0.12)' : 'rgba(189,255,0,0.06)',
-              color: NEON, transition: 'all 0.15s',
-            }}>
-              {saveStatus === 'saved' ? <><CheckCheck size={12} /> Saved!</> : saveStatus === 'saving' ? <><Save size={12} /> Saving...</> : <><Save size={12} /> Save Session</>}
-            </button>
-
-            {/* Resume / Load */}
-            <button onClick={() => { const s = loadSession(); if (s) { setBets(s.bets||INITIAL_BETS); setBankroll(s.bankroll||1000); setUsername(s.username||'OPERATOR'); setLadderStarting(s.ladderStarting||LADDER_STARTING_BR); setRiskSettings(s.riskSettings||{}); setSaveStatus('saved'); setTimeout(()=>setSaveStatus(null),1500) } }}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-                padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase',
-                border: `1px solid var(--border2)`, background: 'var(--card)', color: 'var(--text-sub)' }}>
-              <FolderOpen size={12} /> Resume Ladder
-            </button>
-
-            {/* Templates */}
-            <button onClick={() => setShowTemplates(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-                padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase',
-                border: `1px solid var(--border2)`, background: 'var(--card)', color: 'var(--text-sub)' }}>
-              <BookMarked size={12} /> Templates
-            </button>
-
-            {/* Export PDF */}
-            <button onClick={exportPDF}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-                padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase',
-                border: `1px solid var(--border2)`, background: 'var(--card)', color: 'var(--text-sub)' }}>
-              <FileDown size={12} /> Export PDF
-            </button>
-
-            {/* Reset */}
-            <button onClick={resetSession}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-                padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase',
-                border: `1px solid rgba(255,59,59,0.3)`, background: 'rgba(255,59,59,0.05)', color: 'rgba(255,59,59,0.65)',
-                transition: 'all 0.15s' }}>
-              <RefreshCcw size={12} /> Reset
-            </button>
+      {/* ── FOOTER ── desktop only branding strip */}
+      {!isMobile && (
+        <footer style={{ borderTop: `1px solid var(--border)`, backgroundColor: 'var(--bg)', marginTop: '18px', padding: '10px 28px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: darkMode ? '0 0 6px rgba(189,255,0,0.5)' : 'none' }} />
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Auto-saving</span>
           </div>
-
-          <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
-            {/* Auto-save indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: darkMode ? '0 0 6px rgba(189,255,0,0.5)' : 'none' }} />
-              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Auto-saving</span>
-            </div>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs © 2025</span>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-sub)', textTransform: 'uppercase' }}>Operate With Discipline</span>
-          </div>
-        </div>
-      </footer>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs © 2025</span>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-sub)', textTransform: 'uppercase' }}>Operate With Discipline</span>
+        </footer>
+      )}
     </div>
   )
 }
