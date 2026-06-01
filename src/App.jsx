@@ -1868,7 +1868,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 
       {/* Checklist panel */}
       {sessionPill === 'checklist' && (
-        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+        <div style={{ ...cardStyle, padding: '12px 14px', maxHeight: 'calc(100dvh - 220px)', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Pre-Bet Checklist</div>
             <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: allChecked ? NEON : 'var(--muted)' }}>{checksPassed}/{CHECKLIST.length} {allChecked ? '✓' : ''}</span>
@@ -1901,7 +1901,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 
       {/* Structure panel */}
       {sessionPill === 'structure' && (
-        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+        <div style={{ ...cardStyle, padding: '12px 14px', maxHeight: 'calc(100dvh - 220px)', overflowY: 'auto' }}>
           <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Bet Structure</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
             {STYLES.map(s => {
@@ -1943,7 +1943,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 
       {/* Recap panel */}
       {sessionPill === 'recap' && (
-        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+        <div style={{ ...cardStyle, padding: '12px 14px', maxHeight: 'calc(100dvh - 220px)', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Today's Recap</div>
             <div style={{ display: 'flex', gap: '4px' }}>
@@ -1976,7 +1976,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 
       {/* Breakdown panel */}
       {sessionPill === 'breakdown' && (
-        <div style={{ ...cardStyle, padding: '12px 14px' }}>
+        <div style={{ ...cardStyle, padding: '12px 14px', maxHeight: 'calc(100dvh - 220px)', overflowY: 'auto' }}>
           <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Score Breakdown</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {reasons.map(({ label, pts, pass }) => (
