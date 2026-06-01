@@ -2948,11 +2948,13 @@ export default function App({ user, session, subStatus }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: 'nowrap' }}>
 
-          {/* Operator */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: isMobile ? '1 1 0' : 'none' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Operator</span>
-            <input value={username} onChange={e => setUsername(e.target.value)} style={{ ...inputStyle, width: isMobile ? '100%' : '110px', padding: '5px 10px' }} />
-          </div>
+          {/* Operator — desktop only; mobile shows user email in the user menu button */}
+          {!isMobile && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Operator</span>
+              <input value={username} onChange={e => setUsername(e.target.value)} style={{ ...inputStyle, width: '110px', padding: '5px 10px' }} />
+            </div>
+          )}
 
           {/* Desktop-only controls */}
           {!isMobile && <>
