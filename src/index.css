@@ -151,3 +151,33 @@ input, select, button { outline: none; }
 
 /* Hide scrollbar on pill nav */
 .pill-nav::-webkit-scrollbar { display: none; }
+
+/* ── Landscape mobile ────────────────────────────────────────── */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  .content-with-bottom-nav {
+    min-height: auto;
+    padding-bottom: calc(56px + 12px);
+  }
+  /* Compact header */
+  header { padding-top: 6px !important; padding-bottom: 6px !important; }
+  /* Smaller logo in landscape */
+  header img { height: 28px !important; }
+  /* Tighter content padding */
+  .content-with-bottom-nav > div { padding-top: 4px !important; }
+}
+
+/* ── Analytics pill row — always scrollable, never wraps ─────── */
+.analytics-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+  width: 100%;
+}
+.analytics-pills::-webkit-scrollbar { display: none; }
+.analytics-pills button { flex-shrink: 0; }

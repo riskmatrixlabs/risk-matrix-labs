@@ -19,10 +19,14 @@ export function useMobile() {
     }
   }, [])
 
+  // Use the shorter dimension so phones stay in mobile layout when rotated
+  const shortSide = Math.min(dims.width, dims.height)
   return {
-    isMobile:  dims.width < 640,
-    isTablet:  dims.width < 1024,
-    isPortrait: dims.width < dims.height,
+    isMobile:   shortSide < 640,
+    isTablet:   dims.width < 1024,
+    isPortrait: dims.width <= dims.height,
+    isLandscape: dims.width > dims.height,
     width: dims.width,
+    height: dims.height,
   }
 }

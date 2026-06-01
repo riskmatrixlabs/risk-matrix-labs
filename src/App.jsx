@@ -1303,8 +1303,9 @@ function RREngine({ unitSize, darkMode }) {
 
       {/* Empty state */}
       {n === 0 && (
-        <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em', textAlign: 'center', padding: '8px 0' }}>
-          Enter odds above to generate RR summary &amp; matrix
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 0' }}>
+          <Target size={14} color='rgba(189,255,0,0.3)' strokeWidth={1.5} />
+          <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em' }}>Enter odds above to generate RR summary &amp; outcome matrix</span>
         </div>
       )}
 
@@ -1540,7 +1541,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
       </div>
 
       {/* Pills */}
-      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+      <div className="analytics-pills">
         {[
           ['curve',   'P&L Curve',  'cumulative'],
           ['monthly', 'Monthly',    'monthly'],
@@ -1859,7 +1860,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
       {gradeCard}
 
       {/* Pills */}
-      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+      <div className="analytics-pills">
         {['checklist','structure','recap','breakdown'].map((id, i) =>
           pillBtn(id, ['Checklist','Structure','Recap','Breakdown'][i])
         )}
@@ -2183,7 +2184,7 @@ function loadSession() {
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App({ user, session, subStatus }) {
-  const { isMobile, isTablet } = useMobile()
+  const { isMobile, isTablet, isLandscape } = useMobile()
   // g(desktop, tablet, mobile) — grid-template-columns helper
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const pad = isMobile ? '10px' : '8px'
@@ -2814,6 +2815,36 @@ export default function App({ user, session, subStatus }) {
               ))}
             </div>
 
+            {/* Session Actions */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Session Actions</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <button onClick={() => { saveSession(); setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: saveStatus === 'saved' ? 'rgba(189,255,0,0.12)' : 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '2px', cursor: 'pointer', color: NEON, textAlign: 'left' }}>
+                  <Save size={12} strokeWidth={2} /> {saveStatus === 'saved' ? 'Saved!' : 'Save Session'}
+                </button>
+                <button onClick={() => { const s = loadSession(); if (s) { setBets(s.bets||[]); setBankroll(s.bankroll||0); setUsername(s.username||'OPERATOR'); setLadderStarting(s.ladderStarting||150); setRiskSettings(s.riskSettings||{}); setSaveStatus('saved'); setTimeout(()=>setSaveStatus(null),1500) } setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
+                  <FolderOpen size={12} strokeWidth={2} /> Resume Last Session
+                </button>
+                <button onClick={() => { setShowHelp(false); setShowTemplates(true) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
+                  <BookMarked size={12} strokeWidth={2} /> Templates
+                </button>
+                <button onClick={() => { exportPDF(); setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
+                  <FileDown size={12} strokeWidth={2} /> Export PDF
+                </button>
+                {settingsPill === 'reset'
+                  ? <div style={{ background: 'rgba(255,59,59,0.06)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '2px', padding: '10px 14px' }}>
+                      <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-sub)', marginBottom: '8px' }}>Erase all bets, bankroll → $0, wipe cloud data?</div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => { resetSession(); setSettingsPill(null); setShowHelp(false) }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '6px 14px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: '1px solid rgba(255,59,59,0.5)', background: 'rgba(255,59,59,0.1)', color: RED }}>Yes, Reset</button>
+                        <button onClick={() => setSettingsPill(null)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '6px 14px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: '1px solid var(--border2)', background: 'var(--card)', color: 'var(--muted)' }}>Cancel</button>
+                      </div>
+                    </div>
+                  : <button onClick={() => setSettingsPill('reset')} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'rgba(255,59,59,0.05)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '2px', cursor: 'pointer', color: 'rgba(255,59,59,0.7)', textAlign: 'left' }}>
+                      <RefreshCcw size={12} strokeWidth={2} /> Reset All Data
+                    </button>}
+              </div>
+            </div>
+
             {/* Session Reminders */}
             {'Notification' in window && 'serviceWorker' in navigator && (
               <div style={{ marginTop: '4px' }}>
@@ -3090,87 +3121,6 @@ export default function App({ user, session, subStatus }) {
         <TiltBanner tilt={tilt} dismissed={tiltDismissed} onDismiss={() => setTiltDismissed(true)} />
       </div>
 
-      {/* ── MOBILE SETTINGS PILL BAR ── */}
-      {isMobile && (
-        <div style={{ padding: '4px 10px 0' }}>
-          {/* Pill row */}
-          <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '2px' }}>
-            {[
-              { id: 'save',     label: '💾 Save',      active: saveStatus === 'saved' },
-              { id: 'resume',   label: '📂 Resume',    active: false },
-              { id: 'templates',label: '🗂 Templates', active: false },
-              { id: 'export',   label: '📄 Export',    active: false },
-              { id: 'reset',    label: '↺ Reset',      active: false, danger: true },
-            ].map(({ id, label, active, danger }) => (
-              <button key={id} onClick={() => {
-                if (id === 'save') { saveSession(); setSettingsPill(null) }
-                else if (id === 'export') { exportPDF(); setSettingsPill(null) }
-                else setSettingsPill(s => s === id ? null : id)
-              }} style={{
-                flexShrink: 0, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-                padding: '5px 12px', borderRadius: '100px', cursor: 'pointer',
-                border: `1px solid ${danger ? 'rgba(255,59,59,0.4)' : active ? NEON : 'var(--border2)'}`,
-                background: danger ? 'rgba(255,59,59,0.06)' : active ? 'rgba(189,255,0,0.12)' : 'var(--card2)',
-                color: danger ? 'rgba(255,59,59,0.75)' : active ? NEON : 'var(--muted)',
-                transition: 'all 0.12s',
-              }}>{label}</button>
-            ))}
-          </div>
-
-          {/* Inline panel for Resume */}
-          {settingsPill === 'resume' && (
-            <div style={{ ...{background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '6px'}, padding: '12px 14px', marginTop: '6px' }}>
-              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Resume Last Session</div>
-              <button onClick={() => {
-                const s = loadSession()
-                if (s) { setBets(s.bets||[]); setBankroll(s.bankroll||0); setUsername(s.username||'OPERATOR'); setLadderStarting(s.ladderStarting||150); setRiskSettings(s.riskSettings||{}); setSaveStatus('saved'); setTimeout(()=>setSaveStatus(null),1500) }
-                setSettingsPill(null)
-              }} style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', padding: '8px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: `1px solid rgba(189,255,0,0.35)`, background: 'rgba(189,255,0,0.06)', color: NEON }}>
-                Load Saved Data
-              </button>
-            </div>
-          )}
-
-          {/* Inline panel for Templates */}
-          {settingsPill === 'templates' && (
-            <div style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '6px', padding: '12px 14px', marginTop: '6px' }}>
-              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Templates</div>
-              {templates.length === 0
-                ? <div style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)', marginBottom: '8px' }}>No saved templates yet.</div>
-                : <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-                    {templates.map(t => (
-                      <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '2px' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)' }}>{t.name}</div>
-                          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>{t.date} · ${t.bankroll?.toFixed(0)}</div>
-                        </div>
-                        <button onClick={() => { loadTemplate(t); setSettingsPill(null) }} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, padding: '4px 10px', borderRadius: '2px', cursor: 'pointer', border: `1px solid ${NEON}`, background: 'transparent', color: NEON }}>Load</button>
-                        <button onClick={() => deleteTemplate(t.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.4)', padding: '4px' }}><Trash2 size={12} /></button>
-                      </div>
-                    ))}
-                  </div>}
-              <button onClick={() => { saveTemplate(); }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '7px 14px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: `1px solid rgba(189,255,0,0.35)`, background: 'rgba(189,255,0,0.06)', color: NEON }}>
-                + Save Current as Template
-              </button>
-            </div>
-          )}
-
-          {/* Inline panel for Reset */}
-          {settingsPill === 'reset' && (
-            <div style={{ background: 'var(--card2)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '6px', padding: '12px 14px', marginTop: '6px' }}>
-              <div style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-sub)', marginBottom: '10px' }}>This will erase all bets, reset bankroll to $0, and wipe cloud data. Are you sure?</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => { resetSession(); setSettingsPill(null) }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: '1px solid rgba(255,59,59,0.5)', background: 'rgba(255,59,59,0.08)', color: RED }}>
-                  Yes, Reset All
-                </button>
-                <button onClick={() => setSettingsPill(null)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', padding: '7px 16px', borderRadius: '2px', cursor: 'pointer', textTransform: 'uppercase', border: '1px solid var(--border2)', background: 'var(--card)', color: 'var(--muted)' }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* CONTENT */}
       <div {...(isMobile ? swipeHandlers : {})}
@@ -3241,7 +3191,7 @@ export default function App({ user, session, subStatus }) {
                   { id: 'riskset',     label: 'Risk Settings' },
                 ]
                 return (
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '2px', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <div className="analytics-pills" style={{ marginBottom: '8px' }}>
                     {pills.map(({ id, label, dot }) => {
                       const active = overviewSection === id
                       return (
