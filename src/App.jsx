@@ -3683,48 +3683,36 @@ export default function App({ user, session, subStatus }) {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
-              { id: 'overview',  label: 'Home',    icon: BarChart3  },
-              { id: 'bet log',   label: 'Bets',    icon: BookMarked },
-              { id: 'ladder',    label: 'Ladder',  icon: Zap        },
-              { id: 'rr engine', label: 'RR',      icon: Target     },
+              { id: 'overview',  label: 'Home',     icon: BarChart3  },
+              { id: 'ladder',    label: 'Ladder',   icon: Zap        },
+              { id: 'bet log',   label: 'Bets',     icon: BookMarked },
+              { id: 'rr engine', label: 'RR',       icon: Target     },
+              { id: 'analytics', label: 'Stats',    icon: TrendingUp },
+              { id: 'session',   label: 'Session',  icon: Sliders    },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: '4px', background: 'none', border: 'none', cursor: 'pointer',
+                  gap: '3px', background: 'none', border: 'none', cursor: 'pointer',
                   color: active ? NEON : 'var(--muted)', transition: 'color 0.12s',
-                  position: 'relative',
+                  position: 'relative', minWidth: 0,
                 }}>
                   {active && (
                     <div style={{
                       position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                      width: '28px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
+                      width: '24px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
                       boxShadow: `0 0 8px ${NEON}`,
                     }} />
                   )}
-                  <Icon size={18} strokeWidth={active ? 2.5 : 2} color={active ? NEON : 'var(--muted)'} />
-                  <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
-                  {/* Live dot on Bets when open bets exist */}
+                  <Icon size={16} strokeWidth={active ? 2.5 : 2} color={active ? NEON : 'var(--muted)'} />
+                  <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
                   {id === 'bet log' && stats.openBets > 0 && (
-                    <div style={{ position: 'absolute', top: '8px', right: 'calc(50% - 16px)', width: '6px', height: '6px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
+                    <div style={{ position: 'absolute', top: '8px', right: 'calc(50% - 14px)', width: '5px', height: '5px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
                   )}
                 </button>
               )
             })}
-            {/* More button */}
-            <button onClick={() => setShowMore(m => !m)} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: '4px', background: 'none', border: 'none', cursor: 'pointer',
-              color: ['analytics','session'].includes(tab) ? NEON : 'var(--muted)',
-              transition: 'color 0.12s', position: 'relative',
-            }}>
-              {['analytics','session'].includes(tab) && (
-                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '28px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px', boxShadow: `0 0 8px ${NEON}` }} />
-              )}
-              <Sliders size={18} strokeWidth={['analytics','session'].includes(tab) ? 2.5 : 2} color={['analytics','session'].includes(tab) ? NEON : 'var(--muted)'} />
-              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>More</span>
-            </button>
           </nav>
         </>
       )}
