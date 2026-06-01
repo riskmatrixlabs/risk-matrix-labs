@@ -26,3 +26,23 @@ create policy "Service role full access"
   on public.subscriptions for all
   using (true)
   with check (true);
+
+-- Push notification subscriptions
+create table if not exists public.push_subscriptions (
+  id           uuid default gen_random_uuid() primary key,
+  user_id      uuid references auth.users(id) on delete cascade unique not null,
+  subscription jsonb not null,
+  updated_at   timestamptz default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+
+create policy "Users can manage own push subscription"
+  on public.push_subscriptions for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Service role full access push"
+  on public.push_subscriptions for all
+  using (true)
+  with check (true);
