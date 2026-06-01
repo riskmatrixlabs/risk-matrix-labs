@@ -93,21 +93,25 @@ const fmtOdds = (v) => v > 0 ? `+${v}` : `${v}`
 
 function calcStats(bets, bankroll) {
   // Only settled bets count toward stats and bankroll
-  const settled = bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P')
-  const wins    = settled.filter(b => b.result === 'W')
-  const losses  = settled.filter(b => b.result === 'L')
-  const netUnits    = settled.reduce((s, b) => s + b.pnl, 0)
-  const totalUnits  = settled.reduce((s, b) => s + b.units, 0)
+  const settled        = bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P')
+  const regular        = settled.filter(b => !b.ladder)   // unit-based bets
+  const ladderSettled  = settled.filter(b => b.ladder)    // dollar-based pnl
+  const wins    = regular.filter(b => b.result === 'W')
+  const losses  = regular.filter(b => b.result === 'L')
+  const netUnits    = regular.reduce((s, b) => s + b.pnl, 0)
+  const totalUnits  = regular.reduce((s, b) => s + b.units, 0)
   const unitsWon    = wins.reduce((s, b) => s + b.pnl, 0)
   const unitsLost   = losses.reduce((s, b) => s + Math.abs(b.pnl), 0)
   const unitSize    = bankroll / 100
-  const currentBankroll = bankroll + netUnits * unitSize
+  // Ladder net P&L is in dollars — add directly without unit conversion
+  const ladderNetDollars = ladderSettled.reduce((s, b) => s + b.pnl, 0)
+  const currentBankroll  = bankroll + netUnits * unitSize + ladderNetDollars
   const openBets    = bets.filter(b => b.result === 'Open')
   const openRisk$   = openBets.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const openUnits   = openBets.reduce((s, b) => s + b.units, 0)
   const largestWin  = wins.length   ? Math.max(...wins.map(b => b.pnl))             : 0
   const largestLoss = losses.length ? Math.max(...losses.map(b => Math.abs(b.pnl))) : 0
-  const avgOdds     = settled.length ? settled.reduce((s, b) => s + b.odds, 0) / settled.length : 0
+  const avgOdds     = regular.length ? regular.reduce((s, b) => s + b.odds, 0) / regular.length : 0
   const winRate     = (wins.length + losses.length) > 0 ? wins.length / (wins.length + losses.length) : 0
   const roi         = totalUnits > 0 ? netUnits / totalUnits : 0
   return {
@@ -115,6 +119,7 @@ function calcStats(bets, bankroll) {
     wins: wins.length, losses: losses.length, total: wins.length + losses.length,
     largestWin, largestLoss, avgOdds, winRate, roi, unitSize,
     openBets: openBets.length, openRisk$, openUnits,
+    ladderNetDollars,
   }
 }
 
@@ -602,7 +607,12 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   const finalBankroll = computed.length ? computed[computed.length - 1].bankOut : ladderStarting
 
   const settleRow = (id, result) => {
-    setBets(p => p.map(b => b.id === id ? { ...b, result } : b))
+    setBets(p => p.map(b => {
+      if (b.id !== id) return b
+      const profit = profitFromLadderOdds(b.stake, b.odds)
+      const pnl = result === 'W' ? +(profit.toFixed(2)) : result === 'L' ? -(b.stake) : 0
+      return { ...b, result, pnl }
+    }))
     setEditRow(null)
   }
 
@@ -719,8 +729,27 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         ))}
       </div>
 
+      {/* START SESSION — shown only when no ladder rungs exist */}
+      {rows.length === 0 && (
+        <div style={{ ...cardStyle, padding: '32px 24px', textAlign: 'center' }}>
+          <Zap size={28} color='rgba(189,255,0,0.25)' strokeWidth={1.5} style={{ margin: '0 auto 12px' }} />
+          <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.22em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>No Active Session</div>
+          <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-dim)', letterSpacing: '0.06em', marginBottom: '20px' }}>
+            Set your Ladder Starting amount above, then tap Start to generate your 6 rungs.
+          </div>
+          <button onClick={resetLadder} style={{
+            fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase',
+            padding: '12px 32px', borderRadius: '2px', cursor: 'pointer',
+            border: `1px solid rgba(189,255,0,0.5)`, background: 'rgba(189,255,0,0.1)', color: NEON,
+            boxShadow: '0 0 16px rgba(189,255,0,0.15)',
+          }}>
+            ⚡ Start Session
+          </button>
+        </div>
+      )}
+
       {/* Main ladder table */}
-      <div style={{ ...cardStyle, overflow: 'hidden' }}>
+      {rows.length > 0 && <div style={{ ...cardStyle, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
           <thead>
@@ -896,7 +925,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
             </span>
           </div>
         </div>
-      </div>
+      </div>}
 
     </div>
   )
@@ -1355,7 +1384,7 @@ const ATip = ({ active, payload, label: tLabel, fmt: fmtFn }) => {
 }
 
 // ─── ANALYTICS PANEL ─────────────────────────────────────────────────────────
-function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
+function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdit }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
@@ -1539,6 +1568,46 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode }) {
           <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>profit factor {profitFactor}</div>
         </div>
       </div>
+
+      {/* Open bets — compact settle cards */}
+      {(() => {
+        const openBets = bets.filter(b => b.result === 'Open').slice(0, 6)
+        if (!openBets.length) return null
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>
+              Live · {openBets.length} Open
+            </div>
+            {openBets.map(b => (
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
+                background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '2px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.pick}</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>
+                    {b.sport} · {b.odds > 0 ? '+' : ''}{b.odds} · {b.stake > 0 ? `$${b.stake.toFixed(0)}` : `${b.units}u`}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  {['W','L','P'].map(r => (
+                    <button key={r} onClick={() => onSettle?.(b.id, r)} style={{
+                      fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em',
+                      padding: '4px 8px', borderRadius: '2px', cursor: 'pointer',
+                      border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : 'var(--border2)'}`,
+                      background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
+                      color: r === 'W' ? NEON : r === 'L' ? RED : 'var(--muted)',
+                    }}>{r}</button>
+                  ))}
+                  {onEdit && (
+                    <button onClick={() => onEdit(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                      <Pencil size={11} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Pills */}
       <div className="analytics-pills">
@@ -3102,7 +3171,7 @@ export default function App({ user, session, subStatus }) {
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {['overview', 'bet log', 'ladder', 'analytics', 'rr engine', 'session'].map(t => (
+          {[['overview','Stats'],['bet log','Bet Log'],['ladder','Ladder'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -3111,7 +3180,7 @@ export default function App({ user, session, subStatus }) {
               borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
               marginBottom: '-1px', transition: 'color 0.15s',
               textShadow: tab === t && darkMode ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
-            }}>{t}</button>
+            }}>{label}</button>
           ))}
         </div>
       )}
@@ -3932,7 +4001,7 @@ export default function App({ user, session, subStatus }) {
         {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} />}
 
         {/* ── ANALYTICS ── */}
-        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} darkMode={darkMode} />}
+        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} />}
 
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} />}
@@ -3983,11 +4052,11 @@ export default function App({ user, session, subStatus }) {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
-              { id: 'overview',  label: 'Home',     icon: BarChart3  },
+              { id: 'overview',  label: 'Stats',    icon: BarChart3  },
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
               { id: 'rr engine', label: 'RR',       icon: Target     },
-              { id: 'analytics', label: 'Stats',    icon: TrendingUp },
+              { id: 'analytics', label: 'Overview', icon: TrendingUp },
               { id: 'session',   label: 'Session',  icon: Sliders    },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
