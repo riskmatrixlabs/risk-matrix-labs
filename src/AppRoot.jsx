@@ -32,16 +32,23 @@ export default function AppRoot() {
     Sentry.setUser({ id: session.user.id, email: session.user.email })
   }, [session?.user?.id])
 
-  // Handle checkout success — re-check subscription
+  // Handle checkout success — re-check subscription with retries
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success' && session?.user) {
-      // Give webhook a moment to fire, then re-check
-      setTimeout(() => {
-        getSubscription(session.user).then(setSubStatus)
-        // Clean URL
-        window.history.replaceState({}, '', '/')
-      }, 2000)
+      window.history.replaceState({}, '', '/')
+      // Poll up to 5 times (every 2s) until subscription is active
+      let attempts = 0
+      const poll = () => {
+        attempts++
+        getSubscription(session.user).then(result => {
+          setSubStatus(result)
+          if (!result?.active && attempts < 5) {
+            setTimeout(poll, 2000)
+          }
+        })
+      }
+      setTimeout(poll, 2000)
     }
     if (params.get('checkout') === 'canceled') {
       window.history.replaceState({}, '', '/')
@@ -99,6 +106,7 @@ export default function AppRoot() {
       <PaywallScreen
         user={session.user}
         onSignOut={async () => { await signOut(); setSession(null) }}
+        onRefreshAccess={() => getSubscription(session.user).then(setSubStatus)}
       />
     )
   }

@@ -20,10 +20,17 @@ const FEATURES = [
   'PDF session reports',
 ]
 
-export default function PaywallScreen({ user, onSignOut }) {
+export default function PaywallScreen({ user, onSignOut, onRefreshAccess }) {
   const [billing,  setBilling]  = useState('yearly') // 'monthly' | 'yearly'
   const [loading,  setLoading]  = useState(false)
+  const [checking, setChecking] = useState(false)
   const [error,    setError]    = useState(null)
+
+  const handleCheckAccess = async () => {
+    setChecking(true)
+    await onRefreshAccess?.()
+    setTimeout(() => setChecking(false), 3000)
+  }
 
   const isYearly = billing === 'yearly'
 
@@ -221,6 +228,16 @@ export default function PaywallScreen({ user, onSignOut }) {
 
         <div style={{ textAlign: 'center', marginTop: '12px', fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
           Cancel anytime · Secured by Stripe
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <button onClick={handleCheckAccess} disabled={checking} style={{
+            background: 'none', border: 'none', cursor: checking ? 'default' : 'pointer',
+            fontFamily: R, fontSize: '11px', color: checking ? 'var(--text-dim)' : 'rgba(189,255,0,0.5)',
+            letterSpacing: '0.1em', textDecoration: 'underline', padding: 0,
+          }}>
+            {checking ? 'Checking...' : 'Already subscribed? Click here to access your dashboard →'}
+          </button>
         </div>
       </div>
 

@@ -14,7 +14,7 @@ function shell(content) {
 <body style="margin:0;padding:20px;background:#111;">
 <table width="100%" cellpadding="0" cellspacing="0" style="${BASE}">
   <tr><td style="border-top:3px solid ${NEON};padding:32px 36px 0;">
-    <img src="https://www.riskmatrixlabs.com/brand/logo-dashboard.png" height="44" alt="Risk Matrix Labs" style="display:block;margin-bottom:24px;" />
+    <img src="https://app.riskmatrixlabs.com/brand/logo-dashboard.png" height="44" alt="Risk Matrix Labs" style="display:block;margin-bottom:24px;" />
   </td></tr>
   <tr><td style="padding:0 36px 36px;">${content}</td></tr>
   <tr><td style="padding:20px 36px 32px;border-top:1px solid #1e1e1e;">
@@ -54,7 +54,7 @@ export async function sendWelcome({ email, plan = 'Beta' }) {
         <li>Run your first PHLT™ Ladder session</li>
         <li>Check your discipline score after each session</li>
       </ol>
-      ${btn('Open Dashboard', 'https://www.riskmatrixlabs.com')}
+      ${btn('Open Dashboard', 'https://app.riskmatrixlabs.com')}
       ${p('Questions? Reply to this email — it goes straight to me.')}
     `),
   })
@@ -72,7 +72,7 @@ export async function sendTrialEnding({ email, trialEnd }) {
       ${chip('Trial Ending', '#F5A623')}
       ${p(`Your free trial expires on <strong style="color:#fff;">${date}</strong>. After that your dashboard will be locked until you subscribe.`)}
       ${p('Everything you\'ve built — your bet history, ladder settings, discipline scores — stays saved. You won\'t lose anything.')}
-      ${btn('Subscribe Now', 'https://www.riskmatrixlabs.com')}
+      ${btn('Subscribe Now', 'https://app.riskmatrixlabs.com')}
       ${p('If you have questions about the plan, just reply here.')}
     `),
   })
@@ -89,7 +89,7 @@ export async function sendPaymentFailed({ email }) {
       ${chip('Action Required', '#FF3B3B')}
       ${p('We couldn\'t process your subscription payment. Your access is still active for now, but we\'ll need a valid payment method to keep it running.')}
       ${p('Update your billing info in 60 seconds:')}
-      ${btn('Update Payment Method', 'https://www.riskmatrixlabs.com')}
+      ${btn('Update Payment Method', 'https://app.riskmatrixlabs.com')}
       ${p('Once updated, your subscription continues automatically — no interruption to your dashboard.')}
       ${p('If you think this is a mistake, reply here and we\'ll sort it out.')}
     `),
@@ -107,7 +107,7 @@ export async function sendSubscriptionActivated({ email, plan = 'Beta' }) {
       ${chip('Active Member')}
       ${p(`Your <strong style="color:#fff;">${plan}</strong> subscription is now active. Full dashboard access, PHLT™ Ladder, analytics, and everything else — no limits.`)}
       ${p('Manage your billing, update your plan, or cancel anytime from inside the dashboard → click your username → Manage Billing.')}
-      ${btn('Open Dashboard', 'https://www.riskmatrixlabs.com')}
+      ${btn('Open Dashboard', 'https://app.riskmatrixlabs.com')}
       ${p('Appreciate you. Now go operate with discipline.')}
     `),
   })
