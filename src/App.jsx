@@ -261,7 +261,7 @@ const SectionLabel = ({ children, icon: Icon }) => (
 )
 
 function InfoTip({ text }) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState(false)
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
       <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
