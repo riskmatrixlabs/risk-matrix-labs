@@ -1968,17 +1968,20 @@ export default function App({ user, session, subStatus }) {
 
   const [masterBrInput,    setMasterBrInput]    = useState('')
   const [masterBrFocused,  setMasterBrFocused]  = useState(false)
-  const [masterBrOverride, setMasterBrOverride] = useState(null) // null = auto-follow current bankroll
-  const [limitsCalcBr,     setLimitsCalcBr]     = useState(null) // null = use ladderStarting as default
-  const [limitsCalcInput,  setLimitsCalcInput]  = useState('')
-  const [limitsCalcFocused,setLimitsCalcFocused]= useState(false)
+  const [masterBrOverride, setMasterBrOverride] = useState(null) // null = auto-follow bets
 
-  const stats = useMemo(() => calcStats(bets, bankroll), [bets, bankroll])
-  const curve = useMemo(() => buildCurve(bets, bankroll), [bets, bankroll])
-  const tilt  = useMemo(() => { setTiltDismissed(false); return calcTilt(bets) }, [bets])
+  const _stats = useMemo(() => calcStats(bets, bankroll), [bets, bankroll])
+  const curve  = useMemo(() => buildCurve(bets, bankroll), [bets, bankroll])
+  const tilt   = useMemo(() => { setTiltDismissed(false); return calcTilt(bets) }, [bets])
 
-  // Master Bankroll = manual override if set, otherwise auto-follows current bankroll
-  const masterBankroll = masterBrOverride !== null ? masterBrOverride : stats.currentBankroll
+  // Master Bankroll = manual override OR auto-follows P/L from bets
+  const masterBankroll = masterBrOverride !== null ? masterBrOverride : _stats.currentBankroll
+
+  // Unit size flows from masterBankroll (grows/shrinks with your balance)
+  const stats = useMemo(() => ({
+    ..._stats,
+    unitSize: masterBankroll * (riskSettings.unitPct ?? 2) / 100,
+  }), [_stats, masterBankroll, riskSettings.unitPct])
 
   const risk  = useMemo(() => calcRisk(bets, masterBankroll, bankroll, riskSettings), [bets, masterBankroll, bankroll, riskSettings])
   const setRS = (k) => (e) => setRiskSettings(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))
@@ -2851,26 +2854,27 @@ export default function App({ user, session, subStatus }) {
             <>
               {/* ══ MOBILE HOME — stats always visible + 5 sub-panel pills ══ */}
 
-              {/* ── Big stat cards row 1: Starting BR + Current BR ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
-                <div style={{ ...cardStyle, padding: '10px 12px' }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Starting BR</div>
-                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{fmt$(bankroll)}</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>1u = {fmt$(stats.unitSize)}</div>
-                </div>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Current BR</div>
-                    {masterBrOverride !== null && <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }} style={{ fontFamily: R, fontSize: '7px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.35)`, borderRadius: '2px', cursor: 'pointer', padding: '0 4px' }}>↺</button>}
+              {/* ── Master Bankroll — single editable top card ── */}
+              <div style={{ ...cardStyle, padding: '12px 14px', marginBottom: '6px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Master Bankroll</div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {masterBrOverride !== null && <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }} style={{ fontFamily: R, fontSize: '7px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.35)`, borderRadius: '2px', cursor: 'pointer', padding: '0 4px' }}>↺ AUTO</button>}
+                    <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>1u = <strong style={{ color: 'var(--text)' }}>{fmt$(stats.unitSize)}</strong></span>
                   </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                   <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
                     onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
                     onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
                     onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
-                    style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON : RED }} />
-                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON : RED, marginTop: '3px', opacity: 0.85 }}>
-                    {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)} ({up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}%)
+                    style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON : RED }} />
+                  <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON : RED, whiteSpace: 'nowrap' }}>
+                    {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
                   </div>
+                </div>
+                <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>
+                  started {fmt$(bankroll)} · {up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time
                 </div>
               </div>
 
@@ -3005,67 +3009,35 @@ export default function App({ user, session, subStatus }) {
                 </div>
               )}
 
-              {overviewSection === 'limits' && (() => {
-                const calcBr = limitsCalcBr !== null ? limitsCalcBr : ladderStarting
-                const unitPct = riskSettings.unitPct ?? 2
-                const calcUnit = calcBr * unitPct / 100
-                const calcStop = calcBr * (riskSettings.stopLossPct ?? 10) / 100
-                const calcLock = calcBr * (riskSettings.profitLockPct ?? 20) / 100
-                const applyLimitsBr = () => {
-                  const v = parseFloat(limitsCalcInput)
-                  if (!isNaN(v) && v > 0) setLimitsCalcBr(v)
-                  setLimitsCalcFocused(false)
-                }
-                return (
+              {overviewSection === 'limits' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {/* Standalone BR input */}
-                  <div style={{ ...cardStyle, padding: '12px 14px', border: `1px solid var(--neon-border)` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--neon-accent)', textTransform: 'uppercase' }}>Master Bankroll</span>
-                      {limitsCalcBr !== null && (
-                        <button onClick={() => { setLimitsCalcBr(null); setLimitsCalcInput('') }} style={{ fontFamily: R, fontSize: '8px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.4)`, borderRadius: '2px', cursor: 'pointer', padding: '1px 6px' }}>↺ LADDER</button>
-                      )}
-                    </div>
-                    <input
-                      value={limitsCalcFocused ? limitsCalcInput : calcBr.toFixed(2)}
-                      onFocus={() => { setLimitsCalcFocused(true); setLimitsCalcInput(calcBr.toFixed(2)) }}
-                      onChange={e => setLimitsCalcInput(e.target.value)}
-                      onBlur={applyLimitsBr}
-                      onKeyDown={e => e.key === 'Enter' && applyLimitsBr()}
-                      style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: NEON }}
-                    />
-                    <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>
-                      {limitsCalcBr !== null ? 'custom bankroll' : `ladder starting · 1u = ${fmt$(calcUnit)}`}
-                    </div>
-                  </div>
-                  {/* Stop Loss + Profit Lock */}
+                  {/* Stop Loss + Profit Lock — derived from masterBankroll */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     <div style={{ padding: '10px 12px', border: `1px solid rgba(255,59,59,0.3)`, background: 'rgba(255,59,59,0.05)', borderRadius: 'var(--radius-sm)' }}>
                       <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Stop Loss</div>
-                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED }}>-{fmt$(calcStop)}</div>
+                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED }}>-{fmt$(risk.stopLoss$)}</div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>{riskSettings.stopLossPct ?? 10}% · walk away</div>
                     </div>
                     <div style={{ padding: '10px 12px', border: `1px solid rgba(189,255,0,0.28)`, background: 'rgba(189,255,0,0.05)', borderRadius: 'var(--radius-sm)' }}>
                       <div style={{ fontFamily: R, fontSize: '9px', color: NEON, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Profit Lock</div>
-                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON }}>+{fmt$(calcLock)}</div>
+                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON }}>+{fmt$(risk.profitLock$)}</div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>{riskSettings.profitLockPct ?? 20}% · protect gains</div>
                     </div>
                   </div>
-                  {/* Unit reference grid */}
+                  {/* Unit reference — flows from masterBankroll via stats.unitSize */}
                   <div style={{ ...cardStyle, padding: '10px 12px' }}>
-                    <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Unit Reference · {unitPct}% per unit</div>
+                    <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Unit Reference · {riskSettings.unitPct ?? 2}% per unit · 1u = {fmt$(stats.unitSize)}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '4px' }}>
                       {[['0.5u',0.5],['1u',1],['2u',2],['3u',3],['4u',4],['5u',5]].map(([label,mult]) => (
                         <div key={label} style={{ padding: '4px 8px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{label}</span>
-                          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text-sub)' }}>{fmt$(calcUnit * mult)}</span>
+                          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--text-sub)' }}>{fmt$(stats.unitSize * mult)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-                )
-              })()}
+              )}
 
               {overviewSection === 'riskset' && (
                 <div style={{ ...cardStyle, padding: '14px' }}>
