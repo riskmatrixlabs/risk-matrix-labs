@@ -268,27 +268,29 @@ const SectionLabel = ({ children, icon: Icon }) => (
 
 function InfoTip({ text }) {
   const [open, setOpen] = useState(false)
+  const btnRef = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+
+  const toggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({
+        top: r.bottom + 6,
+        left: Math.max(4, Math.min(r.left, window.innerWidth - 190)),
+      })
+    }
+    setOpen(o => !o)
+  }
+
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
+      <button ref={btnRef} onClick={toggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
         <span style={{ fontFamily: 'sans-serif', fontSize: '10px', fontWeight: 700, color: 'var(--muted)', border: '1px solid var(--border2)', borderRadius: '50%', width: '13px', height: '13px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: 0.65 }}>i</span>
       </button>
       {open && (
-        <div style={{ position: 'fixed', zIndex: 9999,
+        <div style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
           background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '4px', padding: '7px 10px',
-          width: '180px', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-          top: 'var(--tip-y, auto)', left: 'var(--tip-x, auto)',
-        }} ref={el => {
-          if (el) {
-            const btn = el.previousSibling
-            if (btn) {
-              const r = btn.getBoundingClientRect()
-              el.style.setProperty('--tip-y', `${r.bottom + 6}px`)
-              const left = Math.min(r.left, window.innerWidth - 190)
-              el.style.setProperty('--tip-x', `${Math.max(4, left)}px`)
-            }
-          }
-        }}>
+          width: '180px', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'var(--text-sub)', lineHeight: 1.45 }}>{text}</div>
         </div>
       )}
