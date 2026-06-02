@@ -58,16 +58,16 @@ const INITIAL_BETS = [
   { id: 21, date: '2025-02-20', sport: 'NFL', book: 'DraftKings', betType: 'Straight', event: 'Chiefs vs Bills',    pick: 'Chiefs -3',   odds: -112, units: 1.5, stake: 15.00, result: 'Open', pnl: 0 },
   { id: 22, date: '2025-02-20', sport: 'NBA', betType: 'SGP',      event: 'Lakers vs Warriors', pick: 'Over 224.5', odds: -108, units: 2.0, stake: 20.00, result: 'Open', pnl: 0 },
   // PHLT™ Ladder bets — shared with Ladder tab
-  { id: 101, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: 150, result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
-  { id: 102, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: 175, result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Pull $150 — risk free from here' },
-  { id: 103, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: 225, result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
-  { id: 104, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: 300, result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull $200 profit' },
-  { id: 105, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: 400, result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
-  { id: 106, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: 600, result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
+  { id: 101, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: 0, result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
+  { id: 102, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: 0, result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
+  { id: 103, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: 0, result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
+  { id: 104, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: 0, result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
+  { id: 105, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: 0, result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
+  { id: 106, date: '2025-02-21', sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: 0, result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
 ]
 
 const DEFAULT_LADDER_IDS = [101, 102, 103, 104, 105, 106]
-const LADDER_STARTING_BR = 150
+const LADDER_STARTING_BR = 0
 
 // Proportional multipliers for each rung (relative to starting bankroll)
 // Based on default template: 150, 175, 225, 300, 400, 600
@@ -414,7 +414,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
-      <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '95vh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', borderRadius: isMobile ? '8px 8px 0 0' : 0 }}>
+      <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '92dvh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px 0 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', borderRadius: isMobile ? '12px 12px 0 0' : 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -535,12 +535,13 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             )}
           </div>
 
-          {/* Actions — sticky at bottom so always visible on mobile */}
+          {/* Actions — always visible at bottom */}
           <div style={{
             display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px',
-            position: 'sticky', bottom: isMobile ? '-20px' : 'auto',
-            background: 'var(--card2)', paddingTop: '10px', paddingBottom: '4px',
+            position: isMobile ? 'sticky' : 'static', bottom: 0,
+            background: 'var(--card2)', paddingTop: '10px', paddingBottom: isMobile ? '16px' : '4px',
             borderTop: `1px solid var(--border)`, zIndex: 10,
+            flexShrink: 0,
           }}>
             <button type="button" onClick={onClose} style={{ ...btnStyle(), flex: isMobile ? 1 : 'none' }}>Cancel</button>
             <button type="submit" style={{
@@ -581,9 +582,9 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     const s = ladderStarting
     const defaults = [
       { id: 101, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
-      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: `Pull ${fmt$(s)} — risk free from here` },
+      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
       { id: 103, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
-      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: `Pull ${fmt$(Math.round(s * 1.33 / 5) * 5)} profit` },
+      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
       { id: 105, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
       { id: 106, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
     ]
@@ -803,11 +804,23 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                     </div>
                   </td>
 
-                  {/* Odds */}
+                  {/* Odds — always clickable select */}
                   <td style={{ padding: '8px 12px' }}>
-                    {isEdit
-                      ? iCell(row.odds, v => setRow(row.id, 'odds', parseInt(v) || 0), 'number', '75px')
-                      : <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)' }}>{row.odds > 0 ? `+${row.odds}` : row.odds}</span>}
+                    <select
+                      value={row.odds}
+                      onChange={e => setRow(row.id, 'odds', parseInt(e.target.value) || -110)}
+                      style={{
+                        background: 'var(--card2)', border: `1px solid var(--border2)`,
+                        borderRadius: '3px', color: row.odds > 0 ? NEON : 'var(--text)',
+                        fontFamily: R, fontSize: '13px', fontWeight: 700,
+                        padding: '4px 6px', cursor: 'pointer', outline: 'none',
+                        minWidth: '72px',
+                      }}
+                    >
+                      {[+200,+175,+150,+130,+120,+110,+105,-105,-110,-115,-120,-125,-130,-140,-150,-165,-175,-200].map(o => (
+                        <option key={o} value={o}>{o > 0 ? `+${o}` : o}</option>
+                      ))}
+                    </select>
                   </td>
 
                   {/* Stake */}
@@ -1862,6 +1875,12 @@ const CHECKLIST = [
   { id: 'emotions',  label: 'I was not betting on emotion or frustration' },
   { id: 'research',  label: 'I had a clear reason / edge for each bet' },
   { id: 'limits',    label: 'I respected my daily stop loss and profit lock' },
+  { id: 'impulse',   label: 'I did not place any impulse or last-minute bets' },
+  { id: 'lines',     label: 'I shopped lines and got the best available odds' },
+  { id: 'sober',     label: 'I was in a clear, focused state of mind' },
+  { id: 'plan',      label: 'I had a pre-session plan before placing any bets' },
+  { id: 'review',    label: 'I reviewed my recent performance before betting' },
+  { id: 'journal',   label: 'I documented my reasoning for each bet today' },
 ]
 
 function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMode }) {
@@ -1873,6 +1892,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
   const [lesson,       setLesson]       = useState('')
   const [trigger,      setTrigger]      = useState('')
   const [style,        setStyle]        = useState('balanced')
+  const [showAllChecks,setShowAllChecks]= useState(false)
   const [checks,       setChecks]       = useState({})
   const [sessionPill,  setSessionPill]  = useState('checklist')
   const [gradeOverride,setGradeOverride]= useState(null)
@@ -1961,7 +1981,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
             <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: allChecked ? NEON : 'var(--muted)' }}>{checksPassed}/{CHECKLIST.length} {allChecked ? '✓' : ''}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            {CHECKLIST.map(({ id, label }) => {
+            {(showAllChecks ? CHECKLIST : CHECKLIST.slice(0, 6)).map(({ id, label }) => {
               const checked = !!checks[id]
               return (
                 <button key={id} onClick={() => toggleCheck(id)} style={{
@@ -1978,6 +1998,9 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
               )
             })}
           </div>
+          <button onClick={() => setShowAllChecks(v => !v)} style={{ marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase' }}>
+            {showAllChecks ? '▲ Show Less' : `▼ Show All ${CHECKLIST.length}`}
+          </button>
           {allChecked && (
             <div style={{ marginTop: '10px', padding: '9px 12px', background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.3)', borderRadius: '2px' }}>
               <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>🛡️ FULL DISCIPLINE — YOU ARE IN CONTROL</span>
@@ -2150,7 +2173,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
             <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: allChecked ? NEON : 'var(--muted)', letterSpacing: '0.08em' }}>{checksPassed}/{CHECKLIST.length} {allChecked ? '✓' : ''}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {CHECKLIST.map(({ id, label }) => {
+            {(showAllChecks ? CHECKLIST : CHECKLIST.slice(0, 6)).map(({ id, label }) => {
               const checked = !!checks[id]
               return (
                 <button key={id} onClick={() => toggleCheck(id)} style={{
@@ -2167,6 +2190,9 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
               )
             })}
           </div>
+          <button onClick={() => setShowAllChecks(v => !v)} style={{ marginTop: '8px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase' }}>
+            {showAllChecks ? '▲ Show Less' : `▼ Show All ${CHECKLIST.length}`}
+          </button>
           {allChecked && (
             <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.3)', borderRadius: '2px' }}>
               <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>🛡️ FULL DISCIPLINE — YOU ARE IN CONTROL</span>
