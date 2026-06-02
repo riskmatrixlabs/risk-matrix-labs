@@ -4209,7 +4209,8 @@ export default function App({ user, session, subStatus }) {
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
               { id: 'rr engine', label: 'RR',       icon: Target     },
-              { id: 'partners',  label: 'Partners', icon: Handshake  },
+              { id: 'analytics', label: 'Overview', icon: TrendingUp },
+              { id: 'session',   label: 'Session',  icon: Sliders    },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
@@ -4234,19 +4235,6 @@ export default function App({ user, session, subStatus }) {
                 </button>
               )
             })}
-            {/* More button */}
-            <button onClick={() => setShowMore(v => !v)} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: '3px', background: 'none', border: 'none', cursor: 'pointer',
-              color: showMore || ['analytics','session'].includes(tab) ? NEON : 'var(--muted)',
-              position: 'relative', minWidth: 0,
-            }}>
-              {(showMore || ['analytics','session'].includes(tab)) && (
-                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '24px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px', boxShadow: `0 0 8px ${NEON}` }} />
-              )}
-              <Sliders size={16} strokeWidth={2} color={showMore || ['analytics','session'].includes(tab) ? NEON : 'var(--muted)'} />
-              <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>More</span>
-            </button>
           </nav>
         </>
       )}
