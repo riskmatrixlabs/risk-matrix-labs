@@ -427,7 +427,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '22px', lineHeight: 1, padding: '4px' }}>×</button>
         </div>
 
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? '4px' : 0 }}>
 
           {/* Row 1: Date / Sport / Book / Bet Type */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: '10px' }}>
@@ -823,11 +823,9 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                     </select>
                   </td>
 
-                  {/* Stake */}
+                  {/* Stake — always inline editable */}
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                    {isEdit
-                      ? iCell(row.stake, v => setRow(row.id, 'stake', parseFloat(v) || 0), 'number', '80px')
-                      : <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{fmt$(row.stake)}</span>}
+                    {iCell(row.stake, v => setRow(row.id, 'stake', parseFloat(v) || 0), 'number', '80px')}
                   </td>
 
                   {/* To Win */}
@@ -900,26 +898,16 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                       </span>}
                   </td>
 
-                  {/* Actions */}
+                  {/* Actions — trash only */}
                   <td style={{ padding: '8px 10px' }}>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <button onClick={() => setEditRow(isEdit ? null : row.id)} style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-                        color: isEdit ? NEON : 'rgba(189,255,0,0.25)',
-                        display: 'flex', alignItems: 'center',
-                      }}
-                        onMouseEnter={e => !isEdit && (e.currentTarget.style.color = NEON)}
-                        onMouseLeave={e => !isEdit && (e.currentTarget.style.color = 'rgba(189,255,0,0.25)')}
-                      ><Pencil size={10} /></button>
-                      <button onClick={() => removeRung(row.id)} style={{
-                        background: 'none', border: 'none', cursor: rows.length > 1 ? 'pointer' : 'default',
-                        padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'var(--border2)',
-                        display: 'flex', alignItems: 'center',
-                      }}
-                        onMouseEnter={e => rows.length > 1 && (e.currentTarget.style.color = RED)}
-                        onMouseLeave={e => rows.length > 1 && (e.currentTarget.style.color = 'rgba(255,59,59,0.28)')}
-                      ><Trash2 size={10} /></button>
-                    </div>
+                    <button onClick={() => removeRung(row.id)} style={{
+                      background: 'none', border: 'none', cursor: rows.length > 1 ? 'pointer' : 'default',
+                      padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'var(--border2)',
+                      display: 'flex', alignItems: 'center',
+                    }}
+                      onMouseEnter={e => rows.length > 1 && (e.currentTarget.style.color = RED)}
+                      onMouseLeave={e => rows.length > 1 && (e.currentTarget.style.color = 'rgba(255,59,59,0.28)')}
+                    ><Trash2 size={12} /></button>
                   </td>
                 </tr>
               )
@@ -4187,9 +4175,8 @@ export default function App({ user, session, subStatus }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-                { id: 'session',   label: 'Session',   icon: Flame },
-                { id: 'partners',  label: 'Partners',  icon: Handshake },
+                { id: 'analytics', label: 'Overview',  icon: TrendingUp },
+                { id: 'session',   label: 'Session',   icon: Sliders },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
                   display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
@@ -4218,8 +4205,7 @@ export default function App({ user, session, subStatus }) {
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
               { id: 'rr engine', label: 'RR',       icon: Target     },
-              { id: 'analytics', label: 'Overview', icon: TrendingUp },
-              { id: 'session',   label: 'Session',  icon: Sliders    },
+              { id: 'partners',  label: 'Partners', icon: Handshake  },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
@@ -4244,6 +4230,19 @@ export default function App({ user, session, subStatus }) {
                 </button>
               )
             })}
+            {/* More button */}
+            <button onClick={() => setShowMore(v => !v)} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: '3px', background: 'none', border: 'none', cursor: 'pointer',
+              color: showMore || ['analytics','session'].includes(tab) ? NEON : 'var(--muted)',
+              position: 'relative', minWidth: 0,
+            }}>
+              {(showMore || ['analytics','session'].includes(tab)) && (
+                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '24px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px', boxShadow: `0 0 8px ${NEON}` }} />
+              )}
+              <Sliders size={16} strokeWidth={2} color={showMore || ['analytics','session'].includes(tab) ? NEON : 'var(--muted)'} />
+              <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>More</span>
+            </button>
           </nav>
         </>
       )}
