@@ -72,59 +72,9 @@ function Pill({ children, color = NEON }) {
 }
 
 // ─── WAITLIST FORM ────────────────────────────────────────────────────────────
-function WaitlistForm({ size = 'lg', label = 'Request Beta Access' }) {
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState(null)
-  const isLg = size === 'lg'
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!email || status === 'loading') return
-    setStatus('loading')
-    try {
-      const fd = new FormData()
-      fd.append('email', email)
-      await fetch(BEEHIIV, { method: 'POST', body: fd, mode: 'no-cors' })
-    } catch {}
-    setStatus('done')
-  }
-
-  if (status === 'done') {
-    return (
-      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-        style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.3)`, borderRadius: '4px', padding: isLg ? '20px 28px' : '14px 20px', textAlign: 'center' }}>
-        <div style={{ fontFamily: R, fontSize: isLg ? '17px' : '14px', fontWeight: 700, letterSpacing: '0.14em', color: NEON, marginBottom: '4px' }}>YOU'RE IN. ✓</div>
-        <div style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>Welcome to the discipline. We'll be in touch.</div>
-      </motion.div>
-    )
-  }
-
+function WaitlistForm() {
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-        placeholder="Enter your email address" required
-        style={{
-          flex: '1 1 220px', padding: isLg ? '14px 18px' : '11px 14px',
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '3px', color: '#fff', fontFamily: I, fontSize: isLg ? '14px' : '13px', outline: 'none',
-          transition: 'border-color 0.2s',
-        }}
-        onFocus={e => e.target.style.borderColor = 'rgba(189,255,0,0.45)'}
-        onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-      />
-      <button type="submit" disabled={status === 'loading'}
-        style={{
-          padding: isLg ? '14px 28px' : '11px 20px',
-          background: NEON, border: 'none', borderRadius: '3px',
-          color: BG, fontFamily: R, fontSize: isLg ? '13px' : '12px', fontWeight: 700,
-          letterSpacing: '0.18em', textTransform: 'uppercase', cursor: 'pointer',
-          whiteSpace: 'nowrap', transition: 'opacity 0.15s, transform 0.15s',
-          opacity: status === 'loading' ? 0.7 : 1,
-        }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-      >{status === 'loading' ? 'Joining...' : label}</button>
-    </form>
+    <div data-beehiiv-form="d6ea407b-4704-4045-be5f-b241d4b3c26b" style={{ width: '100%' }} />
   )
 }
 
