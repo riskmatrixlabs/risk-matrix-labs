@@ -274,11 +274,22 @@ function InfoTip({ text }) {
         <span style={{ fontFamily: 'sans-serif', fontSize: '10px', fontWeight: 700, color: 'var(--muted)', border: '1px solid var(--border2)', borderRadius: '50%', width: '13px', height: '13px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: 0.65 }}>i</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: '6px', zIndex: 300,
+        <div style={{ position: 'fixed', zIndex: 9999,
           background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '4px', padding: '7px 10px',
-          width: '180px', boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+          width: '180px', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          top: 'var(--tip-y, auto)', left: 'var(--tip-x, auto)',
+        }} ref={el => {
+          if (el) {
+            const btn = el.previousSibling
+            if (btn) {
+              const r = btn.getBoundingClientRect()
+              el.style.setProperty('--tip-y', `${r.bottom + 6}px`)
+              const left = Math.min(r.left, window.innerWidth - 190)
+              el.style.setProperty('--tip-x', `${Math.max(4, left)}px`)
+            }
+          }
+        }}>
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'var(--text-sub)', lineHeight: 1.45 }}>{text}</div>
-          <div style={{ position: 'absolute', bottom: '-4px', left: '50%', transform: 'translateX(-50%)', width: '8px', height: '8px', background: 'var(--card2)', border: '1px solid var(--border2)', borderTop: 'none', borderLeft: 'none', transform: 'translateX(-50%) rotate(45deg)' }} />
         </div>
       )}
     </span>
@@ -3150,9 +3161,9 @@ export default function App({ user, session, subStatus }) {
             )}
             {user && (
               <div data-user-menu style={{ position: 'relative' }}>
-                <button onClick={() => setUserMenuOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '5px 10px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer', maxWidth: '180px' }} title={user.email}>
+                <button onClick={() => setUserMenuOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '5px 10px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer', maxWidth: '180px' }} title="Account">
                   <Lock size={10} color={NEON} strokeWidth={2} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>{user.email?.split('@')[0].toUpperCase()}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>OPERATOR</span>
                 </button>
                 {userMenuOpen && (
                   <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '220px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
