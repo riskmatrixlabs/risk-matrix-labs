@@ -425,9 +425,113 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 
   const autoStyle = { ...inputStyle, color: 'var(--muted)', fontStyle: 'italic', cursor: 'default', backgroundColor: 'var(--bg)' }
 
+  if (isMobile) return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'var(--card2)', display: 'flex', flexDirection: 'column' }}>
+      {/* Fixed header */}
+      <div style={{ flexShrink: 0, padding: '16px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `2px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.22em', color: NEON }}>{isEdit ? 'EDIT BET' : 'LOG BET'}</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', marginTop: '2px' }}>
+            1u = {fmt$(unitSize)} · {form.units ? `${form.units}u = ${fmt$(parseFloat(form.units) * unitSize)}` : 'enter units or $'}
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '22px', lineHeight: 1, padding: '4px' }}>×</button>
+      </div>
+
+      {/* Scrollable form content */}
+      <form onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {FL({ label: 'Date', children: <input type="date" value={form.date} onChange={f('date')} style={inputStyle} /> })}
+          {FL({ label: '🏟️ Sport', children:
+            <select value={form.sport} onChange={f('sport')} style={inputStyle}>
+              {ALL_SPORTS.map(s => <option key={s}>{s}</option>)}
+            </select>
+          })}
+          {FL({ label: '📚 Book', hint: 'sportsbook', children:
+            <select value={form.book} onChange={f('book')} style={{ ...inputStyle, color: form.book ? 'var(--text)' : 'var(--muted)' }}>
+              <option value="">— Select —</option>
+              {BOOKS.map(b => <option key={b}>{b}</option>)}
+            </select>
+          })}
+          {FL({ label: 'Bet Type', children:
+            <select value={form.betType} onChange={f('betType')} style={inputStyle}>
+              {['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}
+            </select>
+          })}
+        </div>
+
+        {FL({ label: 'Event / Matchup', children:
+          <input value={form.event} onChange={f('event')} placeholder="Chiefs vs Raiders" style={inputStyle} />
+        })}
+        {FL({ label: 'Pick / Market', children:
+          <input value={form.pick} onChange={f('pick')} placeholder="Chiefs -6.5" style={inputStyle} />
+        })}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {FL({ label: 'Odds (American)', children:
+            <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} />
+          })}
+          {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children:
+            <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="0.25" min="0" style={inputStyle} />
+          })}
+          {FL({ label: 'Stake $', hint: 'or type $ directly', children:
+            <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} />
+          })}
+          {FL({ label: 'Result', children:
+            <select value={form.result} onChange={f('result')} style={inputStyle}>
+              <option value="W">Win</option>
+              <option value="L">Loss</option>
+              <option value="P">Push</option>
+              <option value="Open">Open</option>
+              <option value="VOID">Void</option>
+            </select>
+          })}
+        </div>
+
+        {(form.units || form.stake) && odds !== 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON }}>✓ If Win</span>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</span>
+            </div>
+            <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED }}>✗ If Loss</span>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>Confidence</span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {[1,2,3,4,5].map(n => (
+              <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: '2px', fontSize: '18px', lineHeight: 1,
+                opacity: n <= (form.confidence || 0) ? 1 : 0.2,
+              }}>⭐</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom padding so last field isn't behind the fixed footer */}
+        <div style={{ height: '8px' }} />
+      </form>
+
+      {/* Fixed footer with buttons */}
+      <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)', borderTop: `1px solid var(--border)`, background: 'var(--card2)', display: 'flex', gap: '10px' }}>
+        <button type="button" onClick={onClose} style={{ ...btnStyle(), flex: 1 }}>Cancel</button>
+        <button type="submit" form="log-bet-form-mobile" onClick={submit} style={{
+          ...btnStyle(true), flex: 2, padding: '12px 20px', fontSize: '12px',
+          opacity: (!form.event || !form.pick || !form.odds || (!form.units && !form.stake)) ? 0.4 : 1,
+        }}>{isEdit ? '💾 Save Changes' : '+ Log Bet'}</button>
+      </div>
+    </div>
+  )
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
-      <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '92dvh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px calc(env(safe-area-inset-bottom) + 16px) 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', borderRadius: isMobile ? '12px 12px 0 0' : 0, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ ...cardStyle, width: '520px', padding: '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -548,18 +652,11 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             )}
           </div>
 
-          {/* Actions — always visible at bottom */}
-          <div style={{
-            display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px',
-            background: 'var(--card2)', paddingTop: '10px', paddingBottom: '4px',
-            borderTop: `1px solid var(--border)`,
-            flexShrink: 0,
-          }}>
-            <button type="button" onClick={onClose} style={{ ...btnStyle(), flex: isMobile ? 1 : 'none' }}>Cancel</button>
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px', paddingTop: '10px', paddingBottom: '4px', borderTop: `1px solid var(--border)`, flexShrink: 0 }}>
+            <button type="button" onClick={onClose} style={{ ...btnStyle() }}>Cancel</button>
             <button type="submit" style={{
-              ...btnStyle(true),
-              padding: '10px 20px', fontSize: '12px',
-              flex: isMobile ? 2 : 'none',
+              ...btnStyle(true), padding: '10px 20px', fontSize: '12px',
               opacity: (!form.event || !form.pick || !form.odds || (!form.units && !form.stake)) ? 0.4 : 1,
             }}>
               {isEdit ? '💾 Save Changes' : '+ Log Bet'}
