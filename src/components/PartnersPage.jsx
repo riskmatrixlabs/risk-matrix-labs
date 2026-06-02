@@ -36,7 +36,7 @@ const TOOLS = [
   { id: 'betonline',  name: 'Action Network',   icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and sports betting analytics.',               cta: 'Sign Up',     url: 'https://www.actionnetwork.com' },
 ]
 
-const TABS = ['Signup Bonuses', 'Trusted Cappers', 'Popular Tools']
+const TABS = ['Signup Bonuses', 'Trusted Cappers', 'Popular Tools', 'Promote RML']
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -215,6 +215,71 @@ export default function PartnersPage({ isMobile }) {
       {activeTab === 'Popular Tools' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {TOOLS.map((t, i) => <ToolCard key={t.id} tool={t} delay={i * 0.06} />)}
+        </div>
+      )}
+
+      {/* ── Promote RML ── */}
+      {activeTab === 'Promote RML' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Hero */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: 'linear-gradient(135deg, rgba(189,255,0,0.1), rgba(189,255,0,0.03))', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '10px', padding: '24px 22px' }}>
+            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '6px' }}>AFFILIATE PROGRAM</div>
+            <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: '#fff', marginBottom: '8px', letterSpacing: '0.03em' }}>Earn by Promoting RML</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, marginBottom: '18px' }}>
+              Are you a capper, content creator, or community builder in the sports betting space? Partner with Risk Matrix Labs and earn commission for every subscriber you refer — forever.
+            </div>
+
+            {/* Perks grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+              {[
+                { label: 'Commission', value: 'Up to 30%', sub: 'per paid subscriber' },
+                { label: 'Cookie Duration', value: '90 Days', sub: 'last-click attribution' },
+                { label: 'Payout', value: 'Monthly', sub: 'via PayPal or bank' },
+                { label: 'Tracking', value: 'Real-Time', sub: 'dashboard + link stats' },
+              ].map(p => (
+                <div key={p.label} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(189,255,0,0.12)', borderRadius: '6px', padding: '12px 14px' }}>
+                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '4px' }}>{p.label}</div>
+                  <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 800, color: NEON, letterSpacing: '0.02em' }}>{p.value}</div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{p.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            <a href="mailto:hello@riskmatrixlabs.com?subject=RML Affiliate Program"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '12px 22px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none', transition: 'opacity 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+              Apply Now <ExternalLink size={11} strokeWidth={2.5} />
+            </a>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>
+              Email hello@riskmatrixlabs.com — we'll get back to you within 48 hours with your unique referral link.
+            </div>
+          </motion.div>
+
+          {/* How it works */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '20px 22px' }}>
+            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '16px' }}>HOW IT WORKS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {[
+                { step: '01', title: 'Apply', desc: 'Email us or fill out the form. We review and approve within 48 hours.' },
+                { step: '02', title: 'Get Your Link', desc: 'You get a unique tracking link like riskmatrixlabs.com?via=yourname' },
+                { step: '03', title: 'Share It', desc: 'Post it on social, in your Discord, YouTube, newsletter — anywhere your audience is.' },
+                { step: '04', title: 'Get Paid', desc: 'Every subscriber who signs up through your link earns you commission. Monthly payouts.' },
+              ].map(s => (
+                <div key={s.step} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 800, color: 'rgba(189,255,0,0.3)', minWidth: '28px', letterSpacing: '0.02em' }}>{s.step}</div>
+                  <div>
+                    <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>{s.title}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', lineHeight: 1.5 }}>{s.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
         </div>
       )}
 
