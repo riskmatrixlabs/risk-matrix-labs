@@ -28,12 +28,12 @@ const CAPPERS = [
 
 // ── Popular Tools ──
 const TOOLS = [
-  { id: 'discord',    name: 'RML Discord',      icon: Users,      iconColor: '#5865F2', desc: 'Community for disciplined bettors. No picks. No hype. Strategy only.',                              cta: 'Join Free',   url: 'https://discord.gg/smHv7CHc4p' },
-  { id: 'newsletter', name: 'RML Newsletter',   icon: Newspaper,  iconColor: NEON,      desc: 'Weekly bankroll tips and platform updates straight to your inbox via Beehiiv.',                      cta: 'Subscribe',   url: 'https://riskmatrixlabs.beehiiv.com/subscribe' },
-  { id: 'oddsjam',    name: 'OddsJam',          icon: TrendingUp, iconColor: '#00C896', desc: 'Real-time odds comparison across all major books. Shopping lines is free edge — use it every time.', cta: 'Sign Up',     url: 'https://oddsjam.com' },
-  { id: 'pikkit',     name: 'Pikkit',           icon: Star,       iconColor: '#FF8C00', desc: 'All-in-one sports betting hub with odds, promos, and a community feed. Great companion app.',        cta: 'Sign Up',     url: 'https://pikkit.com' },
-  { id: 'propswap',   name: 'PropSwap',         icon: BookOpen,   iconColor: '#A855F7', desc: 'Buy and sell winning tickets. The only secondary market for sports betting tickets.',                  cta: 'Sign Up',     url: 'https://www.propswap.com' },
-  { id: 'betonline',  name: 'Action Network',   icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and sports betting analytics.',               cta: 'Sign Up',     url: 'https://www.actionnetwork.com' },
+  { id: 'discord',    name: 'RML Discord',      icon: Users,      iconColor: '#5865F2', desc: 'Community for disciplined bettors. No picks. No hype. Strategy only.',                              cta: 'Join Free',   url: 'https://discord.gg/smHv7CHc4p',                  live: true },
+  { id: 'newsletter', name: 'RML Newsletter',   icon: Newspaper,  iconColor: NEON,      desc: 'Weekly bankroll tips and platform updates straight to your inbox via Beehiiv.',                      cta: 'Subscribe',   url: 'https://riskmatrixlabs.beehiiv.com/subscribe',   live: true },
+  { id: 'oddsjam',    name: 'OddsJam',          icon: TrendingUp, iconColor: '#00C896', desc: 'Real-time odds comparison across all major books. Shopping lines is free edge — use it every time.', cta: 'Sign Up',     url: '#', live: false },
+  { id: 'pikkit',     name: 'Pikkit',           icon: Star,       iconColor: '#FF8C00', desc: 'All-in-one sports betting hub with odds, promos, and a community feed. Great companion app.',        cta: 'Sign Up',     url: '#', live: false },
+  { id: 'propswap',   name: 'PropSwap',         icon: BookOpen,   iconColor: '#A855F7', desc: 'Buy and sell winning tickets. The only secondary market for sports betting tickets.',                  cta: 'Sign Up',     url: '#', live: false },
+  { id: 'betonline',  name: 'Action Network',   icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and sports betting analytics.',               cta: 'Sign Up',     url: '#', live: false },
 ]
 
 const TABS = ['Signup Bonuses', 'Trusted Cappers', 'Popular Tools', 'Promote RML']
@@ -64,11 +64,10 @@ function BookCard({ book, delay }) {
       <div style={{ padding: '12px 16px 14px' }}>
         <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '5px' }}>{book.promo}</div>
         <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5, marginBottom: '12px' }}>{book.desc}</div>
-        <a href={book.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', padding: '10px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none', transition: 'opacity 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-          {book.cta} <ExternalLink size={10} strokeWidth={2.5} />
-        </a>
-        <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.18)', marginTop: '7px', textAlign: 'center' }}>Tap to see terms. Must be 21+. Gambling problem? 1-800-GAMBLER.</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', padding: '10px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(189,255,0,0.5)' }}>
+          ⏳ AFFILIATE LINK COMING SOON
+        </div>
+        <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.18)', marginTop: '7px', textAlign: 'center' }}>Must be 21+. Gambling problem? 1-800-GAMBLER.</div>
       </div>
     </motion.div>
   )
@@ -117,10 +116,15 @@ function ToolCard({ tool, delay }) {
         <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: '#fff' }}>{tool.name}</div>
         <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', lineHeight: 1.5 }}>{tool.desc}</div>
       </div>
-      <a href={tool.url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '7px 12px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: NEON, textDecoration: 'none', transition: 'background 0.15s' }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(189,255,0,0.14)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(189,255,0,0.08)'}>
-        {tool.cta} <ExternalLink size={10} strokeWidth={2.5} />
-      </a>
+      {tool.live
+        ? <a href={tool.url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '7px 12px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: NEON, textDecoration: 'none', transition: 'background 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(189,255,0,0.14)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(189,255,0,0.08)'}>
+            {tool.cta} <ExternalLink size={10} strokeWidth={2.5} />
+          </a>
+        : <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', padding: '7px 12px', background: 'rgba(189,255,0,0.04)', border: '1px solid rgba(189,255,0,0.12)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(189,255,0,0.35)' }}>
+            ⏳ Soon
+          </span>
+      }
     </motion.div>
   )
 }
