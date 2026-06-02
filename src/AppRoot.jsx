@@ -78,7 +78,7 @@ export default function AppRoot() {
     return (
       <div style={{ minHeight: '100vh', background: '#0A0A0A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <img src="/brand/logo-dashboard.png" alt="RML" style={{ height: '60px', marginBottom: '16px' }} />
+          <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: '60px', marginBottom: '16px' }} />
           <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 600, letterSpacing: '0.24em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase' }}>
             Loading...
           </div>

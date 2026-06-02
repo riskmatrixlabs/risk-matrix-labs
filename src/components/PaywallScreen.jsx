@@ -95,7 +95,7 @@ export default function PaywallScreen({ user, onSignOut, onRefreshAccess }) {
 
       {/* Logo */}
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <img src="/brand/logo-labs.png" alt="RML" style={{ height: '56px', marginBottom: '12px', display: 'block', margin: '0 auto 12px' }} />
+        <img src="/brand/logos/logo-labs.png" alt="RML" style={{ height: '56px', marginBottom: '12px', display: 'block', margin: '0 auto 12px' }} />
         <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textShadow: '0 0 20px rgba(189,255,0,0.3)' }}>
           RISK MATRIX LABS
         </div>

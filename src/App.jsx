@@ -2738,7 +2738,7 @@ export default function App({ user, session, subStatus }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ ...cardStyle, width: '100%', maxWidth: '460px', padding: '30px 32px', borderTop: `2px solid ${NEON}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <img src="/brand/logo-dashboard.png" alt="RML" style={{ height: '36px' }} />
+              <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: '36px' }} />
               <div>
                 <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, lineHeight: 1 }}>WELCOME TO RISK MATRIX LABS</div>
                 <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.28em', color: 'var(--muted)', marginTop: '3px' }}>OPERATE WITH DISCIPLINE</div>
@@ -3002,7 +3002,7 @@ export default function App({ user, session, subStatus }) {
         {/* Logo row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img src="/brand/logo-dashboard.png" alt="RML" style={{ height: isMobile ? '36px' : '50px' }} />
+            <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: isMobile ? '36px' : '50px' }} />
             <div>
               <div style={{ fontFamily: R, fontWeight: 700, fontSize: isMobile ? '13px' : '17px', letterSpacing: '0.22em', color: 'var(--neon-title)', lineHeight: 1, textShadow: 'var(--neon-glow)' }}>RISK MATRIX DASHBOARD</div>
               <div style={{ fontFamily: R, fontWeight: 500, fontSize: '8px', letterSpacing: '0.32em', color: 'var(--neon-sub)', marginTop: '3px' }}>OPERATE WITH DISCIPLINE</div>

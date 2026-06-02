@@ -62,7 +62,7 @@ export default function ResetPasswordScreen({ onDone }) {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <img src="/brand/logo-labs.png" alt="Risk Matrix Labs" style={{ height: '72px', margin: '0 auto 16px', display: 'block' }} />
+          <img src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" style={{ height: '72px', margin: '0 auto 16px', display: 'block' }} />
           <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textShadow: '0 0 24px rgba(189,255,0,0.35)' }}>
             RISK MATRIX LABS
           </div>

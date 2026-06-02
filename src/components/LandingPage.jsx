@@ -267,7 +267,7 @@ export default function LandingPage({ onLogin }) {
         transition: 'background 0.3s, border-color 0.3s',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
-          <img src="/brand/logo-dashboard.png" alt="Risk Matrix" style={{ height: '34px' }} />
+          <img src="/brand/logos/logo-dashboard.png" alt="Risk Matrix" style={{ height: '34px' }} />
           <div>
             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, lineHeight: 1 }}>RISK MATRIX</div>
             <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(189,255,0,0.45)', lineHeight: 1, marginTop: '2px' }}>DASHBOARD</div>
@@ -366,7 +366,7 @@ export default function LandingPage({ onLogin }) {
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
                   <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX DASHBOARD — OPERATOR VIEW</div>
                 </div>
-                <img src="/brand/dashboard-overview-full.png" alt="Dashboard Preview" style={{ width: '100%', display: 'block' }} />
+                <img src="/brand/screenshots/desktop/dashboard-overview-full.png" alt="Dashboard Preview" style={{ width: '100%', display: 'block' }} />
               </div>
             </motion.div>
           </div>
@@ -440,7 +440,7 @@ export default function LandingPage({ onLogin }) {
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
                   <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>OVERVIEW — OPERATOR SESSION</div>
                 </div>
-                <img src="/brand/dashboard-overview-header.png" alt="Dashboard Stats" style={{ width: '100%', display: 'block' }} />
+                <img src="/brand/screenshots/desktop/dashboard-overview-header.png" alt="Dashboard Stats" style={{ width: '100%', display: 'block' }} />
               </div>
             </motion.div>
           </FadeIn>
@@ -609,7 +609,7 @@ export default function LandingPage({ onLogin }) {
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <img src="/brand/logo-dashboard.png" alt="Risk Matrix" style={{ height: '26px' }} />
+                <img src="/brand/logos/logo-dashboard.png" alt="Risk Matrix" style={{ height: '26px' }} />
                 <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.22em', color: NEON }}>RISK MATRIX LABS</div>
               </div>
               <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.25)', lineHeight: 1.65, maxWidth: '220px' }}>
