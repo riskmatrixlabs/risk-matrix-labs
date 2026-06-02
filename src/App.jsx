@@ -427,7 +427,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
-      <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '92dvh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px 0 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', borderRadius: isMobile ? '12px 12px 0 0' : 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '92dvh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px calc(env(safe-area-inset-bottom) + 16px) 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', borderRadius: isMobile ? '12px 12px 0 0' : 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -440,7 +440,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '22px', lineHeight: 1, padding: '4px' }}>×</button>
         </div>
 
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? '4px' : 0 }}>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
 
           {/* Row 1: Date / Sport / Book / Bet Type */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: '10px' }}>
@@ -551,9 +551,8 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
           {/* Actions — always visible at bottom */}
           <div style={{
             display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px',
-            position: isMobile ? 'sticky' : 'static', bottom: 0,
-            background: 'var(--card2)', paddingTop: '10px', paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 16px)' : '4px',
-            borderTop: `1px solid var(--border)`, zIndex: 10,
+            background: 'var(--card2)', paddingTop: '10px', paddingBottom: '4px',
+            borderTop: `1px solid var(--border)`,
             flexShrink: 0,
           }}>
             <button type="button" onClick={onClose} style={{ ...btnStyle(), flex: isMobile ? 1 : 'none' }}>Cancel</button>
