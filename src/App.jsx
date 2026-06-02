@@ -761,7 +761,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid var(--border)` }}>
-              {['Rung','Odds','Stake $','To Win','Total Return','Profit','Bank After','Pull Checkpoint','Result',''].map((h, i) => (
+              {['Rung','Odds','Book','Stake $','To Win','Total Return','Profit','Bank After','Pull Checkpoint','Result',''].map((h, i) => (
                 <th key={i} style={{
                   fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em',
                   color: 'var(--muted)', textTransform: 'uppercase', padding: '10px 12px',
@@ -804,28 +804,32 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                     </div>
                   </td>
 
-                  {/* Odds — always clickable select */}
+                  {/* Odds — plain type-in input */}
                   <td style={{ padding: '8px 12px' }}>
-                    <select
+                    <input
+                      type="number"
                       value={row.odds}
-                      onChange={e => setRow(row.id, 'odds', parseInt(e.target.value) || -110)}
-                      style={{
-                        background: 'var(--card2)', border: `1px solid var(--border2)`,
-                        borderRadius: '3px', color: row.odds > 0 ? NEON : 'var(--text)',
-                        fontFamily: R, fontSize: '13px', fontWeight: 700,
-                        padding: '4px 6px', cursor: 'pointer', outline: 'none',
-                        minWidth: '72px',
-                      }}
+                      onChange={e => setRow(row.id, 'odds', parseInt(e.target.value) || 0)}
+                      style={{ ...inputStyle, width: '70px', padding: '4px 6px', fontSize: '13px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)', textAlign: 'center' }}
+                    />
+                  </td>
+
+                  {/* Book — dropdown */}
+                  <td style={{ padding: '8px 10px' }}>
+                    <select
+                      value={row.book || 'DraftKings'}
+                      onChange={e => setRow(row.id, 'book', e.target.value)}
+                      style={{ ...inputStyle, padding: '4px 6px', fontSize: '11px', cursor: 'pointer', minWidth: '90px' }}
                     >
-                      {[+200,+175,+150,+130,+120,+110,+105,-105,-110,-115,-120,-125,-130,-140,-150,-165,-175,-200].map(o => (
-                        <option key={o} value={o}>{o > 0 ? `+${o}` : o}</option>
+                      {['DraftKings','FanDuel','BetMGM','Caesars','ESPN BET','Hard Rock','PointsBet','BetRivers','Other'].map(b => (
+                        <option key={b} value={b}>{b}</option>
                       ))}
                     </select>
                   </td>
 
-                  {/* Stake — always inline editable */}
+                  {/* Stake — read only, calculated */}
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                    {iCell(row.stake, v => setRow(row.id, 'stake', parseFloat(v) || 0), 'number', '80px')}
+                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{fmt$(row.stake)}</span>
                   </td>
 
                   {/* To Win */}
