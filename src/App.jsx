@@ -539,7 +539,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
           <div style={{
             display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px',
             position: isMobile ? 'sticky' : 'static', bottom: 0,
-            background: 'var(--card2)', paddingTop: '10px', paddingBottom: isMobile ? '16px' : '4px',
+            background: 'var(--card2)', paddingTop: '10px', paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 16px)' : '4px',
             borderTop: `1px solid var(--border)`, zIndex: 10,
             flexShrink: 0,
           }}>
@@ -1867,6 +1867,7 @@ const CHECKLIST = [
   { id: 'emotions',  label: 'I was not betting on emotion or frustration' },
   { id: 'research',  label: 'I had a clear reason / edge for each bet' },
   { id: 'limits',    label: 'I respected my daily stop loss and profit lock' },
+  { id: 'pullcheck', label: 'I honored all pull profit checkpoints on the ladder' },
   { id: 'impulse',   label: 'I did not place any impulse or last-minute bets' },
   { id: 'lines',     label: 'I shopped lines and got the best available odds' },
   { id: 'sober',     label: 'I was in a clear, focused state of mind' },
@@ -3237,7 +3238,7 @@ export default function App({ user, session, subStatus }) {
       {/* CONTENT */}
       <div {...(isMobile ? swipeHandlers : {})}
         className={isMobile ? 'content-with-bottom-nav' : ''}
-        style={{ padding: isMobile ? '8px 10px 0' : `4px ${pad} 0`, overflowX: 'hidden', width: '100%', boxSizing: 'border-box', animation: 'tabIn 0.18s ease', touchAction: 'pan-y' }}
+        style={{ paddingTop: isMobile ? '8px' : '4px', paddingLeft: isMobile ? '10px' : pad, paddingRight: isMobile ? '10px' : pad, overflowX: 'hidden', width: '100%', boxSizing: 'border-box', animation: 'tabIn 0.18s ease', touchAction: 'pan-y' }}
         key={tab}
       >
 
@@ -4209,8 +4210,9 @@ export default function App({ user, session, subStatus }) {
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
               { id: 'rr engine', label: 'RR',       icon: Target     },
-              { id: 'analytics', label: 'Overview', icon: TrendingUp },
+              { id: 'analytics', label: 'Analytics',icon: TrendingUp },
               { id: 'session',   label: 'Session',  icon: Sliders    },
+              { id: 'partners',  label: 'Partners', icon: Handshake  },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
