@@ -1,255 +1,333 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ExternalLink, Users, Newspaper } from 'lucide-react'
+import { ExternalLink, Users, Newspaper, Star, Zap, TrendingUp, BookOpen } from 'lucide-react'
 
 const NEON = '#BDFF00'
+const RED  = '#FF3B3B'
 const R = 'Rajdhani, sans-serif'
 const I = 'Inter, sans-serif'
 
-// ── Affiliate links — swap in real links when approved ──
-const DRAFTKINGS_URL = 'https://www.draftkings.com'
-const FANDUEL_URL    = 'https://www.fanduel.com'
-
-const PARTNERS = [
+// ── Swap these with real affiliate links when approved ──
+const AFFILIATES = [
   {
     id: 'draftkings',
     name: 'DraftKings',
-    tag: 'SPORTSBOOK',
-    tagColor: '#00C896',
+    logo: 'DK',
+    logoColor: '#00C896',
+    tag: 'FEATURED',
+    tagColor: NEON,
+    bonus: '$200',
+    bonusLabel: 'Bonus Bets',
+    promo: 'Bet $5, Get $200 in Bonus Bets',
     desc: 'One of the top-rated sportsbooks in the US. Competitive lines, same-game parlays, and fast payouts.',
-    cta: 'Bet at DraftKings',
-    url: DRAFTKINGS_URL,
-    badge: 'AFFILIATE PARTNER',
+    cta: 'Claim Offer',
+    url: 'https://www.draftkings.com',
+    featured: true,
   },
   {
     id: 'fanduel',
     name: 'FanDuel',
-    tag: 'SPORTSBOOK',
-    tagColor: '#1493FF',
+    logo: 'FD',
+    logoColor: '#1493FF',
+    tag: 'FEATURED',
+    tagColor: NEON,
+    bonus: '$150',
+    bonusLabel: 'Bonus Bets',
+    promo: 'Bet $5, Get $150 in Bonus Bets',
     desc: 'Industry-leading odds boosts, live betting, and one of the best mobile apps for disciplined bettors.',
-    cta: 'Bet at FanDuel',
-    url: FANDUEL_URL,
-    badge: 'AFFILIATE PARTNER',
+    cta: 'Claim Offer',
+    url: 'https://www.fanduel.com',
+    featured: true,
   },
 ]
 
-const RESOURCES = [
+const TOOLS = [
   {
     id: 'discord',
     name: 'RML Discord',
     icon: Users,
-    desc: 'Join the community. No picks. No hype. Disciplined bettors only.',
-    cta: 'Join Server',
+    iconColor: '#5865F2',
+    desc: 'Community for disciplined bettors. No picks. No hype. Strategy only.',
+    cta: 'Join Free',
     url: 'https://discord.gg/smHv7CHc4p',
   },
   {
     id: 'newsletter',
     name: 'RML Newsletter',
     icon: Newspaper,
-    desc: 'Bankroll tips, platform updates, and operator insights — straight to your inbox.',
-    cta: 'Subscribe Free',
+    iconColor: NEON,
+    desc: 'Weekly bankroll tips and platform updates straight to your inbox.',
+    cta: 'Subscribe',
     url: 'https://riskmatrixlabs.beehiiv.com/subscribe',
+  },
+  {
+    id: 'oddsresearch',
+    name: 'Odds Research',
+    icon: TrendingUp,
+    iconColor: '#FF8C00',
+    desc: 'Find the best lines before you bet. Shopping odds is free edge.',
+    cta: 'Coming Soon',
+    url: '#',
+    disabled: true,
+  },
+  {
+    id: 'bankrollguide',
+    name: 'Bankroll Guide',
+    icon: BookOpen,
+    iconColor: '#A855F7',
+    desc: 'Free PDF: The Operator\'s Guide to Bankroll Management.',
+    cta: 'Coming Soon',
+    url: '#',
+    disabled: true,
   },
 ]
 
-function PartnerCard({ partner, delay }) {
+const TABS = ['Signup Bonuses', 'Popular Tools']
+
+function FeaturedCard({ partner, delay }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
+      transition={{ delay, duration: 0.28 }}
       style={{
         background: 'var(--card)',
         border: '1px solid var(--border)',
-        borderTop: `2px solid ${partner.tagColor}`,
-        borderRadius: '6px',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: '#fff', letterSpacing: '0.06em' }}>
-            {partner.name}
-          </div>
+      {/* Featured banner */}
+      <div style={{
+        background: `linear-gradient(135deg, rgba(189,255,0,0.12), rgba(189,255,0,0.04))`,
+        borderBottom: `1px solid rgba(189,255,0,0.15)`,
+        padding: '14px 18px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        {/* Logo pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            display: 'inline-block', marginTop: '4px',
-            background: `${partner.tagColor}18`,
-            border: `1px solid ${partner.tagColor}44`,
-            borderRadius: '3px', padding: '2px 8px',
-            fontFamily: R, fontSize: '9px', fontWeight: 700,
-            letterSpacing: '0.18em', color: partner.tagColor,
-            textTransform: 'uppercase',
+            width: '42px', height: '42px', borderRadius: '8px',
+            background: `${partner.logoColor}22`,
+            border: `1px solid ${partner.logoColor}44`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: R, fontSize: '14px', fontWeight: 800,
+            color: partner.logoColor, letterSpacing: '0.04em',
           }}>
-            {partner.tag}
+            {partner.logo}
+          </div>
+          <div>
+            <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>
+              {partner.name}
+            </div>
+            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, textTransform: 'uppercase' }}>
+              ★ AFFILIATE PARTNER
+            </div>
           </div>
         </div>
-        <div style={{
-          fontFamily: R, fontSize: '8px', fontWeight: 700,
-          letterSpacing: '0.18em', color: 'rgba(189,255,0,0.5)',
-          textTransform: 'uppercase', border: '1px solid rgba(189,255,0,0.2)',
-          borderRadius: '3px', padding: '3px 8px',
-        }}>
-          {partner.badge}
+
+        {/* Bonus badge */}
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 800, color: NEON, lineHeight: 1, letterSpacing: '-0.01em' }}>
+            {partner.bonus}
+          </div>
+          <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>
+            {partner.bonusLabel}
+          </div>
         </div>
       </div>
 
-      <p style={{ fontFamily: I, fontSize: '13px', color: 'var(--text-dim)', lineHeight: 1.6, margin: 0 }}>
-        {partner.desc}
-      </p>
+      {/* Body */}
+      <div style={{ padding: '14px 18px 16px' }}>
+        <div style={{
+          fontFamily: R, fontSize: '13px', fontWeight: 700,
+          color: '#fff', letterSpacing: '0.04em', marginBottom: '6px',
+        }}>
+          {partner.promo}
+        </div>
+        <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, marginBottom: '14px' }}>
+          {partner.desc}
+        </div>
 
-      <a
-        href={partner.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: '6px',
-          marginTop: '4px', padding: '10px 20px',
-          background: NEON, border: 'none', borderRadius: '3px',
-          fontFamily: R, fontSize: '12px', fontWeight: 700,
-          letterSpacing: '0.18em', textTransform: 'uppercase',
-          color: '#0A0A0A', cursor: 'pointer', textDecoration: 'none',
-          alignSelf: 'flex-start', transition: 'opacity 0.15s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-      >
-        {partner.cta}
-        <ExternalLink size={12} strokeWidth={2.5} />
-      </a>
+        <a
+          href={partner.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            width: '100%', padding: '11px',
+            background: NEON, border: 'none', borderRadius: '5px',
+            fontFamily: R, fontSize: '12px', fontWeight: 700,
+            letterSpacing: '0.18em', textTransform: 'uppercase',
+            color: '#0A0A0A', cursor: 'pointer', textDecoration: 'none',
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          {partner.cta} <ExternalLink size={11} strokeWidth={2.5} />
+        </a>
+
+        <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.2)', marginTop: '8px', textAlign: 'center' }}>
+          Tap to see terms. Must be 21+. Gambling problem? Call 1-800-GAMBLER.
+        </div>
+      </div>
     </motion.div>
   )
 }
 
-function ResourceCard({ resource, delay }) {
-  const Icon = resource.icon
+function ToolCard({ tool, delay }) {
+  const Icon = tool.icon
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
+      transition={{ delay, duration: 0.28 }}
       style={{
         background: 'var(--card)',
         border: '1px solid var(--border)',
-        borderRadius: '6px',
-        padding: '20px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
+        borderRadius: '8px',
+        padding: '16px 18px',
+        display: 'flex', alignItems: 'center', gap: '14px',
+        opacity: tool.disabled ? 0.5 : 1,
       }}
     >
       <div style={{
-        width: '40px', height: '40px', borderRadius: '8px',
-        background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.18)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
+        background: `${tool.iconColor}18`,
+        border: `1px solid ${tool.iconColor}30`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Icon size={18} color={NEON} strokeWidth={2} />
+        <Icon size={20} color={tool.iconColor} strokeWidth={1.8} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: '#fff', letterSpacing: '0.06em' }}>
-          {resource.name}
+        <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>
+          {tool.name}
         </div>
-        <div style={{ fontFamily: I, fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.5 }}>
-          {resource.desc}
+        <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginTop: '2px', lineHeight: 1.5 }}>
+          {tool.desc}
         </div>
       </div>
 
       <a
-        href={resource.url}
-        target="_blank"
+        href={tool.disabled ? undefined : tool.url}
+        target={tool.disabled ? undefined : '_blank'}
         rel="noopener noreferrer"
         style={{
+          flexShrink: 0,
           display: 'inline-flex', alignItems: 'center', gap: '5px',
-          padding: '8px 14px', flexShrink: 0,
-          background: 'rgba(189,255,0,0.08)',
-          border: '1px solid rgba(189,255,0,0.25)',
-          borderRadius: '3px',
-          fontFamily: R, fontSize: '11px', fontWeight: 700,
+          padding: '8px 14px',
+          background: tool.disabled ? 'rgba(255,255,255,0.05)' : 'rgba(189,255,0,0.08)',
+          border: `1px solid ${tool.disabled ? 'rgba(255,255,255,0.08)' : 'rgba(189,255,0,0.25)'}`,
+          borderRadius: '5px',
+          fontFamily: R, fontSize: '10px', fontWeight: 700,
           letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: NEON, cursor: 'pointer', textDecoration: 'none',
+          color: tool.disabled ? 'rgba(255,255,255,0.25)' : NEON,
+          cursor: tool.disabled ? 'default' : 'pointer',
+          textDecoration: 'none',
           transition: 'background 0.15s',
+          pointerEvents: tool.disabled ? 'none' : 'auto',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(189,255,0,0.14)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'rgba(189,255,0,0.08)'}
       >
-        {resource.cta}
-        <ExternalLink size={11} strokeWidth={2.5} />
+        {tool.cta}
+        {!tool.disabled && <ExternalLink size={10} strokeWidth={2.5} />}
       </a>
     </motion.div>
   )
 }
 
-export default function PartnersPage({ darkMode }) {
+export default function PartnersPage({ isMobile }) {
+  const [activeTab, setActiveTab] = useState('Signup Bonuses')
+
+  const totalBonus = AFFILIATES.reduce((sum, a) => {
+    const num = parseInt(a.bonus.replace('$', '').replace('+', ''))
+    return sum + (isNaN(num) ? 0 : num)
+  }, 0)
+
   return (
-    <div style={{
-      padding: '24px 20px',
-      maxWidth: '800px',
-      margin: '0 auto',
-      paddingBottom: '40px',
-    }}>
+    <div style={{ padding: isMobile ? '16px 14px' : '24px 28px', maxWidth: '820px', margin: '0 auto', paddingBottom: '60px' }}>
+
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        style={{ marginBottom: '32px' }}
-      >
-        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '6px' }}>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '20px' }}>
+        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase', marginBottom: '4px' }}>
           RISK MATRIX LABS
         </div>
-        <h1 style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '0.04em' }}>
-          Partners & Tools
+        <h1 style={{ fontFamily: R, fontSize: isMobile ? '22px' : '26px', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '0.04em' }}>
+          Offers & Partners
         </h1>
-        <p style={{ fontFamily: I, fontSize: '13px', color: 'var(--text-dim)', marginTop: '6px' }}>
-          Resources trusted by the RML community. Use the platforms where your edge compounds.
-        </p>
       </motion.div>
 
-      {/* Partner Books */}
-      <div style={{ marginBottom: '32px' }}>
-        <div style={{
-          fontFamily: R, fontSize: '10px', fontWeight: 700,
-          letterSpacing: '0.22em', textTransform: 'uppercase',
-          color: 'var(--muted)', marginBottom: '14px',
-          borderBottom: '1px solid var(--border)', paddingBottom: '8px',
-        }}>
-          Partner Sportsbooks
+      {/* Total promo value banner */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.05 }}
+        style={{
+          background: 'linear-gradient(135deg, rgba(189,255,0,0.15), rgba(189,255,0,0.06))',
+          border: '1px solid rgba(189,255,0,0.3)',
+          borderRadius: '8px', padding: '14px 18px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: '20px',
+        }}
+      >
+        <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: '#fff', letterSpacing: '0.08em' }}>
+          ⚡ Total Promo Value
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-          {PARTNERS.map((p, i) => <PartnerCard key={p.id} partner={p} delay={i * 0.08} />)}
+        <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 800, color: NEON, letterSpacing: '0.04em' }}>
+          ${totalBonus}+
         </div>
+      </motion.div>
+
+      {/* Tabs */}
+      <div style={{
+        display: 'flex', gap: '6px', marginBottom: '20px',
+        borderBottom: '1px solid var(--border)', paddingBottom: '0',
+      }}>
+        {TABS.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '8px 16px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: R, fontSize: '12px', fontWeight: 700,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: activeTab === tab ? NEON : 'rgba(255,255,255,0.35)',
+              borderBottom: activeTab === tab ? `2px solid ${NEON}` : '2px solid transparent',
+              marginBottom: '-1px', transition: 'color 0.15s',
+            }}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
-      {/* Community & Resources */}
-      <div>
-        <div style={{
-          fontFamily: R, fontSize: '10px', fontWeight: 700,
-          letterSpacing: '0.22em', textTransform: 'uppercase',
-          color: 'var(--muted)', marginBottom: '14px',
-          borderBottom: '1px solid var(--border)', paddingBottom: '8px',
-        }}>
-          Community & Resources
+      {/* Signup Bonuses Tab */}
+      {activeTab === 'Signup Bonuses' && (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+          {AFFILIATES.map((p, i) => <FeaturedCard key={p.id} partner={p} delay={i * 0.07} />)}
         </div>
+      )}
+
+      {/* Popular Tools Tab */}
+      {activeTab === 'Popular Tools' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {RESOURCES.map((r, i) => <ResourceCard key={r.id} resource={r} delay={0.16 + i * 0.08} />)}
+          {TOOLS.map((t, i) => <ToolCard key={t.id} tool={t} delay={i * 0.07} />)}
         </div>
-      </div>
+      )}
 
       {/* Disclaimer */}
       <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
         style={{
-          fontFamily: I, fontSize: '11px',
-          color: 'rgba(255,255,255,0.2)',
-          marginTop: '36px', lineHeight: 1.6,
-          borderTop: '1px solid var(--border)', paddingTop: '16px',
+          fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.18)',
+          marginTop: '32px', lineHeight: 1.6,
+          borderTop: '1px solid var(--border)', paddingTop: '14px',
         }}
       >
-        Some links on this page are affiliate links. Risk Matrix Labs may earn a commission when you sign up through these links at no extra cost to you. We only partner with platforms we'd recommend regardless.
+        Some links are affiliate links. Risk Matrix Labs may earn a commission at no extra cost to you. Gambling involves risk. Must be 21+. Please gamble responsibly.
       </motion.p>
     </div>
   )

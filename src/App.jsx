@@ -4140,7 +4140,7 @@ export default function App({ user, session, subStatus }) {
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
-        {tab === 'partners' && <PartnersPage darkMode={darkMode} />}
+        {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
 
       </div>
 
