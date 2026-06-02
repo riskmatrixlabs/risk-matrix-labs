@@ -13,7 +13,8 @@ import {
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
   PieChart, Pie, RadialBarChart, RadialBar, Legend,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake } from 'lucide-react'
+import PartnersPage from './components/PartnersPage'
 
 const LS_KEY   = 'rml_session_v1'
 const TMPL_KEY = 'rml_templates_v1'
@@ -2321,7 +2322,7 @@ export default function App({ user, session, subStatus }) {
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
-  const TAB_ORDER = ['overview', 'bet log', 'ladder', 'rr engine', 'analytics', 'session']
+  const TAB_ORDER = ['overview', 'bet log', 'ladder', 'rr engine', 'analytics', 'session', 'partners']
   const swipeHandlers = {}  // disabled — conflicts with vertical scroll on mobile
   const [pushEnabled,  setPushEnabled]  = useState(false)
   const [pushLoading,  setPushLoading]  = useState(false)
@@ -3195,7 +3196,7 @@ export default function App({ user, session, subStatus }) {
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['overview','Stats'],['bet log','Bet Log'],['ladder','Ladder'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session']].map(([t, label]) => (
+          {[['overview','Stats'],['bet log','Bet Log'],['ladder','Ladder'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -4139,6 +4140,7 @@ export default function App({ user, session, subStatus }) {
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
+        {tab === 'partners' && <PartnersPage darkMode={darkMode} />}
 
       </div>
 
@@ -4161,6 +4163,7 @@ export default function App({ user, session, subStatus }) {
               {[
                 { id: 'analytics', label: 'Analytics', icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Flame },
+                { id: 'partners',  label: 'Partners',  icon: Handshake },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
                   display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
