@@ -107,7 +107,7 @@ function calcStats(bets, bankroll) {
   // Ladder net P&L is in dollars — add directly without unit conversion
   const ladderNetDollars = ladderSettled.reduce((s, b) => s + b.pnl, 0)
   const currentBankroll  = bankroll + netUnits * unitSize + ladderNetDollars
-  const openBets    = bets.filter(b => b.result === 'Open')
+  const openBets    = bets.filter(b => b.result === 'Open' && !b.ladder)
   const openRisk$   = openBets.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const openUnits   = openBets.reduce((s, b) => s + b.units, 0)
   const largestWin  = wins.length   ? Math.max(...wins.map(b => b.pnl))             : 0
@@ -174,7 +174,7 @@ function calcRisk(bets, masterBankroll, startingBankroll, riskSettings) {
   const unitSize = masterBankroll * ((unitPct || 1) / 100)
 
   // Open bets = your true live exposure right now
-  const openBets       = bets.filter(b => b.result === 'Open')
+  const openBets       = bets.filter(b => b.result === 'Open' && !b.ladder)
   const totalOpenRisk  = openBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
   const openCount      = openBets.length
 
@@ -1691,7 +1691,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
 
       {/* Live Open Bets — always at the bottom */}
       {(() => {
-        const openBets = bets.filter(b => b.result === 'Open').slice(0, 6)
+        const openBets = bets.filter(b => b.result === 'Open' && !b.ladder).slice(0, 6)
         if (!openBets.length) return null
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1704,7 +1704,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.pick}</div>
                   <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>
-                    {b.sport} · {b.odds > 0 ? '+' : ''}{b.odds} · {b.stake > 0 ? `$${b.stake.toFixed(0)}` : `${b.units}u`}
+                    {b.sport} · {b.book || '—'} · {b.odds > 0 ? '+' : ''}{b.odds} · {b.stake > 0 ? `$${b.stake.toFixed(0)}` : `${b.units}u`}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
