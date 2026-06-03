@@ -2603,6 +2603,7 @@ export default function App({ user, session, subStatus }) {
   const [showMore,     setShowMore]     = useState(false)
   const [settingsPill, setSettingsPill] = useState(null)
   const [overviewSection, setOverviewSection] = useState('limits')
+  const [analyticsShowUnits, setAnalyticsShowUnits] = useState(true)
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
@@ -3845,16 +3846,25 @@ export default function App({ user, session, subStatus }) {
 
 
               {/* ── Stat cards row 2: Open Risk + Total P/L ── */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2px' }}>
+                <button onClick={() => setAnalyticsShowUnits(v => !v)} style={{
+                  fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em',
+                  padding: '3px 10px', borderRadius: '100px', cursor: 'pointer',
+                  border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)', color: NEON,
+                }}>{analyticsShowUnits ? 'u → $' : '$ → u'}</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
                   <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Risk</div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
                 </div>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netPnl$) ? NEON : RED}` }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total P / L</div>
-                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netPnl$) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netPnl$, true)}</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{fmtU(stats.netPnlU)} net units</div>
+                <div onClick={() => setAnalyticsShowUnits(v => !v)} style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netPnl$) ? NEON : RED}`, cursor: 'pointer' }}>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{analyticsShowUnits ? 'Net Units' : 'Total P / L'}</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netPnl$) ? NEON : RED, lineHeight: 1 }}>
+                    {analyticsShowUnits ? fmtU(stats.netPnlU) : fmt$(stats.netPnl$, true)}
+                  </div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>tap to toggle</div>
                 </div>
               </div>
 
@@ -3880,8 +3890,8 @@ export default function App({ user, session, subStatus }) {
 
               {/* ── 8 small stat chips ── */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px', marginTop: '2px' }}>
-                <SmallCard label="Won"  value={fmt$(stats.allWon$)}       color={NEON} />
-                <SmallCard label="Lost" value={`-${fmt$(stats.allLost$)}`} color={RED} />
+                <SmallCard label="Won"  value={analyticsShowUnits ? `+${(stats.allWon$ / stats.unitSize).toFixed(1)}u`  : fmt$(stats.allWon$)}        color={NEON} />
+                <SmallCard label="Lost" value={analyticsShowUnits ? `-${(stats.allLost$ / stats.unitSize).toFixed(1)}u` : `-${fmt$(stats.allLost$)}`}  color={RED} />
                 <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
                 <SmallCard label="Settled"    value={String(stats.total)} />
                 <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin)  : '—'} color={NEON} />
