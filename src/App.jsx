@@ -2558,35 +2558,42 @@ export default function App({ user, session, subStatus }) {
     if (!userId) return
     ;(async () => {
       setSyncing(true)
+      try {
+        // Load bets from cloud
+        const { data: betRows, error: betErr } = await fetchBets(userId)
+        if (betErr) {
+          console.error('[RML] fetchBets error:', betErr)
+        } else if (betRows?.length > 0) {
+          setBets(betRows.map(rowToBet))
+        } else {
+          // DB empty — welcome new users, then push local bets up on first sync
+          const welcomed = localStorage.getItem('rml_welcomed_v1')
+          if (!welcomed) setShowWelcome(true)
+        }
 
-      // Load bets from cloud
-      const { data: betRows, error: betErr } = await fetchBets(userId)
-      if (!betErr && betRows?.length > 0) {
-        setBets(betRows.map(rowToBet))
-      } else if (!betErr && betRows?.length === 0) {
-        // Brand new user — show welcome modal (once)
-        const welcomed = localStorage.getItem('rml_welcomed_v1')
-        if (!welcomed) setShowWelcome(true)
+        // Load settings from cloud
+        const { data: settings, error: settErr } = await fetchSettings(userId)
+        if (settErr && settErr.code !== 'PGRST116') {
+          console.error('[RML] fetchSettings error:', settErr)
+        } else if (settings) {
+          if (settings.bankroll)        setBankroll(settings.bankroll)
+          if (settings.ladder_starting) setLadderStarting(settings.ladder_starting)
+          if (settings.username)        setUsername(settings.username)
+          if (settings.risk_settings)   setRiskSettings(settings.risk_settings)
+          if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
+        }
+
+        // Load templates from cloud
+        const { data: tmplRows } = await fetchTemplates(userId)
+        if (tmplRows?.length > 0) {
+          setTemplates(tmplRows.map(r => ({ name: r.name, date: r.created_at?.slice(0,10), bankroll: r.bankroll, username: r.username, riskSettings: r.risk_settings })))
+        }
+      } catch (err) {
+        console.error('[RML] cloud load failed:', err)
+      } finally {
+        setSyncing(false)
+        setCloudSynced(true)
       }
-
-      // Load settings from cloud
-      const { data: settings } = await fetchSettings(userId)
-      if (settings) {
-        if (settings.bankroll)       setBankroll(settings.bankroll)
-        if (settings.ladder_starting) setLadderStarting(settings.ladder_starting)
-        if (settings.username)       setUsername(settings.username)
-        if (settings.risk_settings)  setRiskSettings(settings.risk_settings)
-        if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
-      }
-
-      // Load templates from cloud
-      const { data: tmplRows } = await fetchTemplates(userId)
-      if (tmplRows?.length > 0) {
-        setTemplates(tmplRows.map(r => ({ name: r.name, date: r.created_at?.slice(0,10), bankroll: r.bankroll, username: r.username, riskSettings: r.risk_settings })))
-      }
-
-      setSyncing(false)
-      setCloudSynced(true)
     })()
   }, [userId])
 
@@ -2594,7 +2601,9 @@ export default function App({ user, session, subStatus }) {
   useEffect(() => {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
-      syncAllBets(bets, userId)
+      syncAllBets(bets, userId).then(({ error }) => {
+        if (error) console.error('[RML] syncAllBets error:', error)
+      })
     }, 2000)
     return () => clearTimeout(t)
   }, [bets, userId, cloudSynced])
@@ -2606,6 +2615,8 @@ export default function App({ user, session, subStatus }) {
       upsertSettings(userId, {
         bankroll, ladder_starting: ladderStarting, username,
         risk_settings: riskSettings, dark_mode: darkMode,
+      }).then(({ error }) => {
+        if (error) console.error('[RML] upsertSettings error:', error)
       })
     }, 2000)
     return () => clearTimeout(t)
