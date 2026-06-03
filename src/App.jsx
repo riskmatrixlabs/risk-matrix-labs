@@ -3470,7 +3470,7 @@ export default function App({ user, session, subStatus }) {
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['ladder','Ladder'],['analytics','Overview'],['bet log','Bet Log'],['overview','Analytics'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
+          {[['overview','Analytics'],['ladder','Ladder'],['analytics','Overview'],['bet log','Bet Log'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -4550,10 +4550,10 @@ export default function App({ user, session, subStatus }) {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
+              { id: 'overview',  label: 'Analytics', icon: BarChart3  },
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'analytics', label: 'Overview', icon: TrendingUp },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
-              { id: 'overview',  label: 'Analytics', icon: BarChart3  },
               { id: 'rr engine', label: 'RR',       icon: Target     },
               { id: 'session',   label: 'Session',  icon: Sliders    },
               { id: 'partners',  label: 'Earn',     icon: Handshake  },
