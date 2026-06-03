@@ -2582,6 +2582,13 @@ export default function App({ user, session, subStatus }) {
     ;(async () => {
       setSyncing(true)
       try {
+        // Ensure the Supabase client has the current session (fixes 403 on API calls)
+        if (session?.access_token) {
+          await supabase.auth.setSession({
+            access_token:  session.access_token,
+            refresh_token: session.refresh_token,
+          })
+        }
         // Load bets from cloud
         const { data: betRows, error: betErr } = await fetchBets(userId)
         if (betErr) {
