@@ -2545,10 +2545,15 @@ export default function App({ user, session, subStatus }) {
   const masterBankroll = masterBrOverride !== null ? masterBrOverride : _stats.currentBankroll
 
   // Unit size flows from masterBankroll (grows/shrinks with your balance)
-  const stats = useMemo(() => ({
-    ..._stats,
-    unitSize: masterBankroll * (riskSettings.unitPct ?? 2) / 100,
-  }), [_stats, masterBankroll, riskSettings.unitPct])
+  const stats = useMemo(() => {
+    const unitSize = masterBankroll * (riskSettings.unitPct ?? 2) / 100
+    return {
+      ..._stats,
+      unitSize,
+      netPnlU:      unitSize > 0 ? _stats.netPnl$      / unitSize : 0,
+      totalRiskedU: unitSize > 0 ? _stats.totalRisked$ / unitSize : 0,
+    }
+  }, [_stats, masterBankroll, riskSettings.unitPct])
 
   const risk  = useMemo(() => calcRisk(bets, masterBankroll, bankroll, riskSettings), [bets, masterBankroll, bankroll, riskSettings])
   const setRS = (k) => (e) => setRiskSettings(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))
