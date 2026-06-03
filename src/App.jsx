@@ -109,13 +109,20 @@ function calcStats(bets, bankroll) {
 
   // Ladder net P&L is in dollars — add directly without unit conversion
   const ladderNetDollars = ladderSettled.reduce((s, b) => s + b.pnl, 0)
-  const currentBankroll  = bankroll + netUnits * unitSize + ladderNetDollars
+
+  // Dollar P&L for a regular bet: use stake/units ratio (the actual $ per unit logged)
+  // Falls back to bankroll/100 unit size only if stake or units are missing
+  const regularDollar = (b) =>
+    (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * unitSize
+
+  const regularNetDollars = regular.reduce((s, b) => s + regularDollar(b), 0)
+  const currentBankroll   = bankroll + regularNetDollars + ladderNetDollars
 
   // Combined stats (all bets — regular + ladder together)
   const allWins   = settled.filter(b => b.result === 'W')
   const allLosses = settled.filter(b => b.result === 'L')
-  const allWon$   = allWins.reduce((s, b)   => s + (b.ladder ? b.pnl : b.pnl * unitSize), 0)
-  const allLost$  = allLosses.reduce((s, b) => s + (b.ladder ? Math.abs(b.pnl) : Math.abs(b.pnl) * unitSize), 0)
+  const allWon$   = allWins.reduce((s, b)   => s + (b.ladder ? b.pnl          : regularDollar(b)), 0)
+  const allLost$  = allLosses.reduce((s, b) => s + (b.ladder ? Math.abs(b.pnl): Math.abs(regularDollar(b))), 0)
   const avgWin$   = allWins.length   ? allWon$  / allWins.length   : 0
   const avgLoss$  = allLosses.length ? allLost$ / allLosses.length : 0
 
@@ -125,17 +132,17 @@ function calcStats(bets, bankroll) {
     : bets.filter(b => b.result === 'Open' && !b.ladder)
   const openRisk$   = openBets.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const openUnits   = openBets.reduce((s, b) => s + b.units, 0)
-  const largestWin$  = allWins.length   ? Math.max(...allWins.map(b => b.ladder ? b.pnl : b.pnl * unitSize)) : 0
-  const largestLoss$ = allLosses.length ? Math.max(...allLosses.map(b => b.ladder ? Math.abs(b.pnl) : Math.abs(b.pnl) * unitSize)) : 0
+  const largestWin$  = allWins.length   ? Math.max(...allWins.map(b => b.ladder ? b.pnl          : regularDollar(b))) : 0
+  const largestLoss$ = allLosses.length ? Math.max(...allLosses.map(b => b.ladder ? Math.abs(b.pnl) : Math.abs(regularDollar(b)))) : 0
   const avgOdds     = settled.length ? settled.reduce((s, b) => s + b.odds, 0) / settled.length : 0
-  const winRate       = (allWins.length + allLosses.length) > 0 ? allWins.length / (allWins.length + allLosses.length) : 0
-  // Total stake risked across all settled bets (regular + ladder), converted to units
+  const winRate     = (allWins.length + allLosses.length) > 0 ? allWins.length / (allWins.length + allLosses.length) : 0
+  // Total stake risked across all settled bets (b.stake is the actual $ logged)
   const totalRisked$  = settled.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const totalRiskedU  = unitSize > 0 ? totalRisked$ / unitSize : 0
-  // Combined net P/L in dollars (regular units → $ + ladder dollars)
-  const netPnl$       = netUnits * unitSize + ladderNetDollars
-  const netPnlU       = unitSize > 0 ? netPnl$ / unitSize : 0
-  const roi           = totalRisked$ > 0 ? netPnl$ / totalRisked$ : 0
+  // Combined net P/L in dollars
+  const netPnl$  = regularNetDollars + ladderNetDollars
+  const netPnlU  = unitSize > 0 ? netPnl$ / unitSize : 0
+  const roi      = totalRisked$ > 0 ? netPnl$ / totalRisked$ : 0
   return {
     currentBankroll, netUnits, totalUnits, unitsWon, unitsLost,
     wins: allWins.length, losses: allLosses.length, total: allWins.length + allLosses.length,
@@ -4134,7 +4141,7 @@ export default function App({ user, session, subStatus }) {
                         <div style={{ padding: '4px 6px', background: 'var(--card2)', borderRadius: '2px' }}>
                           <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '2px' }}>P&L</div>
                           <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: isOpen ? YELLOW : bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED }}>
-                            {isOpen ? 'pend.' : fmtU(bet.pnl)}
+                            {isOpen ? 'pend.' : (() => { const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize; return (d >= 0 ? '+' : '') + fmt$(d) })()}
                           </div>
                         </div>
                       </div>
@@ -4196,7 +4203,7 @@ export default function App({ user, session, subStatus }) {
                   )}
                   <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>
                     NET: <span style={{ color: filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + b.pnl, 0) >= 0 ? NEON : RED, fontWeight: 700 }}>
-                      {fmtU(filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + b.pnl, 0))}
+                      {(() => { const net = filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + ((b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * stats.unitSize), 0); return (net >= 0 ? '+' : '') + fmt$(net) })()}
                     </span>
                   </span>
                 </div>
@@ -4288,7 +4295,7 @@ export default function App({ user, session, subStatus }) {
                         fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 13px', textAlign: 'right',
                         color: isOpen ? MUTED : bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED,
                       }}>
-                        {isOpen ? <span style={{ fontSize: '9px', color: YELLOW }}>pending</span> : fmtU(bet.pnl)}
+                        {isOpen ? <span style={{ fontSize: '9px', color: YELLOW }}>pending</span> : (() => { const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize; return (d >= 0 ? '+' : '') + fmt$(d) })()}
                       </td>
                       <td style={{ padding: '9px 8px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
