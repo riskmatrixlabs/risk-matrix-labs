@@ -1824,7 +1824,9 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
 
       {/* Live Open Bets — always at the bottom */}
       {(() => {
-        const openBets = bets.filter(b => b.result === 'Open' && !b.ladder).slice(0, 6)
+        const regularOpen = bets.filter(b => b.result === 'Open' && !b.ladder)
+        const ladderOpen  = bets.filter(b => b.result === 'Open' && b.ladder).sort((a, z) => a.ladderId - z.ladderId)
+        const openBets = [...regularOpen, ...ladderOpen].slice(0, 8)
         if (!openBets.length) return null
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1833,9 +1835,12 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
             </div>
             {openBets.map(b => (
               <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
-                background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '2px' }}>
+                background: b.ladder ? 'rgba(189,255,0,0.03)' : 'rgba(245,166,35,0.05)',
+                border: `1px solid ${b.ladder ? 'rgba(189,255,0,0.15)' : 'rgba(245,166,35,0.2)'}`, borderRadius: '2px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.pick}</div>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {b.ladder ? `🪜 Rung ${b.ladderId}` : b.pick}
+                  </div>
                   <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>
                     {b.sport} · {b.book || '—'} · {b.odds > 0 ? '+' : ''}{b.odds} · {b.stake > 0 ? `$${b.stake.toFixed(0)}` : `${b.units}u`}
                   </div>
@@ -2629,7 +2634,7 @@ export default function App({ user, session, subStatus }) {
     if (!window.confirm('Reset everything to zero? All bets and data will be cleared. This cannot be undone.')) return
     localStorage.removeItem(LS_KEY)
     setBets([])
-    setBankroll(0)
+    setBankroll(1000)
     setMasterBrOverride(null)
     setMasterBrInput('')
     setUsername('OPERATOR')
@@ -3430,7 +3435,9 @@ export default function App({ user, session, subStatus }) {
                   </div>
                 </div>
                 <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>
-                  started {fmt$(bankroll)} · {up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time
+                  {bankroll > 0
+                    ? `started ${fmt$(bankroll)} · ${up(masterBankroll - bankroll) ? '+' : ''}${((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time`
+                    : 'set your starting bankroll below ↓'}
                 </div>
               </div>
 
@@ -3669,8 +3676,8 @@ export default function App({ user, session, subStatus }) {
                 <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
                 <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
                 <SmallCard label="Settled"    value={String(stats.total)} />
-                <SmallCard label="Best Win"   value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
-                <SmallCard label="Worst Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
+                <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin  * stats.unitSize) : '—'} color={NEON} />
+                <SmallCard label="Worst Loss" value={stats.losses ? fmt$(stats.largestLoss * stats.unitSize) : '—'} color={RED} />
                 <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
                 <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
               </div>
@@ -3681,13 +3688,22 @@ export default function App({ user, session, subStatus }) {
             <>
           {/* ── ROW 1: 5 primary stat cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '6px', marginBottom: '6px' }}>
-            <div style={{ ...cardStyle, padding: '14px 16px' }}>
+            <div style={{ ...cardStyle, padding: '14px 16px', borderTop: bankroll === 0 ? `2px solid ${RED}` : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>Starting Bankroll</span>
-                <Wallet size={11} color='var(--muted)' strokeWidth={2} />
+                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: bankroll === 0 ? RED : 'var(--muted)', textTransform: 'uppercase' }}>Starting Bankroll</span>
+                <Wallet size={11} color={bankroll === 0 ? RED : 'var(--muted)'} strokeWidth={2} />
               </div>
-              <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{fmt$(bankroll)}</div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>1u = {fmt$(stats.unitSize)}</div>
+              <input
+                type="number"
+                defaultValue={bankroll || ''}
+                placeholder="1000"
+                onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setBankroll(v) }}
+                onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
+                style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: bankroll === 0 ? RED : 'var(--text)', lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text' }}
+              />
+              <div style={{ fontFamily: R, fontSize: '9px', color: bankroll === 0 ? RED : 'var(--text-dim)', marginTop: '4px' }}>
+                {bankroll === 0 ? '⚠ tap to set your starting bankroll' : `1u = ${fmt$(stats.unitSize)}`}
+              </div>
             </div>
             <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(masterBankroll - bankroll) ? 'rgba(189,255,0,0.5)' : 'rgba(255,59,59,0.5)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
@@ -3707,7 +3723,7 @@ export default function App({ user, session, subStatus }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
                 <div>
                   <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON : RED }}>{up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)}</span>
-                  <span style={{ fontFamily: R, fontSize: '11px', color: up(masterBankroll - bankroll) ? NEON : RED, marginLeft: '5px', opacity: 0.7 }}>({up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}%)</span>
+                  {bankroll > 0 && <span style={{ fontFamily: R, fontSize: '11px', color: up(masterBankroll - bankroll) ? NEON : RED, marginLeft: '5px', opacity: 0.7 }}>({up(masterBankroll - bankroll) ? '+' : ''}{((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}%)</span>}
                 </div>
                 {masterBrOverride !== null && (
                   <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }}
