@@ -2459,7 +2459,7 @@ export default function App({ user, session, subStatus }) {
   const [tiltDismissed,  setTiltDismissed]  = useState(false)
   const [ladderStarting, setLadderStarting] = useState(saved.current?.ladderStarting ?? LADDER_STARTING_BR)
   const [bets,           setBets]           = useState(saved.current?.bets            ?? [])
-  const [bankroll,       setBankroll]       = useState(saved.current?.bankroll        ?? 1000)
+  const [bankroll,       setBankroll]       = useState(saved.current?.bankroll        || 1000)
   const [username,       setUsername]       = useState(saved.current?.username        ?? 'OPERATOR')
   const [sportFilter,  setSportFilter]  = useState('ALL')
   const [resultFilter, setResultFilter] = useState('ALL')
@@ -2532,8 +2532,19 @@ export default function App({ user, session, subStatus }) {
   const applyMasterBr = () => {
     setMasterBrFocused(false)
     const v = parseFloat(masterBrInput)
-    if (!isNaN(v) && v > 0) setMasterBrOverride(v)
-    else setMasterBrOverride(null)
+    if (!isNaN(v) && v > 0) {
+      const hasSettled = bets.some(b => b.result === 'W' || b.result === 'L' || b.result === 'P')
+      if (!hasSettled) {
+        // Initial setup: master bankroll becomes the starting bankroll, then auto-follows
+        setBankroll(v)
+        setMasterBrOverride(null)
+      } else {
+        // Has bet history: treat as manual balance correction
+        setMasterBrOverride(v)
+      }
+    } else {
+      setMasterBrOverride(null)
+    }
   }
 
   // ── Auto-save to localStorage whenever key state changes ──
@@ -3693,16 +3704,9 @@ export default function App({ user, session, subStatus }) {
                 <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: bankroll === 0 ? RED : 'var(--muted)', textTransform: 'uppercase' }}>Starting Bankroll</span>
                 <Wallet size={11} color={bankroll === 0 ? RED : 'var(--muted)'} strokeWidth={2} />
               </div>
-              <input
-                type="number"
-                defaultValue={bankroll || ''}
-                placeholder="1000"
-                onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setBankroll(v) }}
-                onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
-                style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: bankroll === 0 ? RED : 'var(--text)', lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text' }}
-              />
-              <div style={{ fontFamily: R, fontSize: '9px', color: bankroll === 0 ? RED : 'var(--text-dim)', marginTop: '4px' }}>
-                {bankroll === 0 ? '⚠ tap to set your starting bankroll' : `1u = ${fmt$(stats.unitSize)}`}
+              <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: bankroll === 0 ? RED : 'var(--text)', lineHeight: 1 }}>{bankroll === 0 ? '—' : fmt$(bankroll)}</div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: bankroll === 0 ? 'rgba(255,59,59,0.7)' : 'var(--text-dim)', marginTop: '4px' }}>
+                {bankroll === 0 ? '⚠ set via Current Bankroll ↑' : `1u = ${fmt$(stats.unitSize)}`}
               </div>
             </div>
             <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(masterBankroll - bankroll) ? 'rgba(189,255,0,0.5)' : 'rgba(255,59,59,0.5)'}` }}>
