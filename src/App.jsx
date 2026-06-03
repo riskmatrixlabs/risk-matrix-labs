@@ -107,9 +107,12 @@ function calcStats(bets, bankroll) {
   // Ladder net P&L is in dollars — add directly without unit conversion
   const ladderNetDollars = ladderSettled.reduce((s, b) => s + b.pnl, 0)
   const currentBankroll  = bankroll + netUnits * unitSize + ladderNetDollars
-  const openBets    = bets.filter(b => b.result === 'Open' && !b.ladder)
-  const openRisk$   = openBets.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
-  const openUnits   = openBets.reduce((s, b) => s + b.units, 0)
+  const ladderRows   = bets.filter(b => b.ladder).sort((a, z) => a.ladderId - z.ladderId)
+  const activeLadder = ladderRows.find(b => b.result === 'Open') ?? null
+  const openRegular  = bets.filter(b => b.result === 'Open' && !b.ladder)
+  const openBets     = activeLadder ? [...openRegular, activeLadder] : openRegular
+  const openRisk$    = openBets.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
+  const openUnits    = openBets.reduce((s, b) => s + b.units, 0)
   const largestWin  = wins.length   ? Math.max(...wins.map(b => b.pnl))             : 0
   const largestLoss = losses.length ? Math.max(...losses.map(b => Math.abs(b.pnl))) : 0
   const avgOdds     = regular.length ? regular.reduce((s, b) => s + b.odds, 0) / regular.length : 0
@@ -120,7 +123,7 @@ function calcStats(bets, bankroll) {
     wins: wins.length, losses: losses.length, total: wins.length + losses.length,
     largestWin, largestLoss, avgOdds, winRate, roi, unitSize,
     openBets: openBets.length, openRisk$, openUnits,
-    ladderNetDollars,
+    ladderNetDollars, activeLadderRung: activeLadder,
   }
 }
 
@@ -174,7 +177,11 @@ function calcRisk(bets, masterBankroll, startingBankroll, riskSettings) {
   const unitSize = masterBankroll * ((unitPct || 1) / 100)
 
   // Open bets = your true live exposure right now
-  const openBets       = bets.filter(b => b.result === 'Open' && !b.ladder)
+  const _ladderRows    = bets.filter(b => b.ladder).sort((a, z) => a.ladderId - z.ladderId)
+  const _activeLadder  = _ladderRows.find(b => b.result === 'Open') ?? null
+  const openBets       = _activeLadder
+    ? [...bets.filter(b => b.result === 'Open' && !b.ladder), _activeLadder]
+    : bets.filter(b => b.result === 'Open' && !b.ladder)
   const totalOpenRisk  = openBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
   const openCount      = openBets.length
 
@@ -408,7 +415,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
       units: +finalUnits.toFixed(2),
       stake: +stake$.toFixed(2),
       pnl:   +calcPnl().toFixed(2),
-      id:    Date.now(),
+      id:    isEdit ? form.id : Date.now(),
     })
     onClose()
   }
@@ -426,7 +433,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
   const autoStyle = { ...inputStyle, color: 'var(--muted)', fontStyle: 'italic', cursor: 'default', backgroundColor: 'var(--bg)' }
 
   if (isMobile) return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'var(--card2)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 200, backgroundColor: 'var(--card2)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Fixed header */}
       <div style={{ flexShrink: 0, padding: '16px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `2px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -1787,7 +1794,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
 
       {/* Live Open Bets — always at the bottom */}
       {(() => {
-        const openBets = bets.filter(b => b.result === 'Open' && !b.ladder).slice(0, 6)
+        const openBets = [...bets.filter(b => b.result === 'Open' && !b.ladder), ...(stats.activeLadderRung ? [stats.activeLadderRung] : [])].slice(0, 6)
         if (!openBets.length) return null
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -3404,7 +3411,7 @@ export default function App({ user, session, subStatus }) {
                     ● {stats.openBets} Open {stats.openBets === 1 ? 'Bet' : 'Bets'} · {fmt$(stats.openRisk$)} at risk
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {bets.filter(b => b.result === 'Open' && !b.ladder).map(b => (
+                    {[...bets.filter(b => b.result === 'Open' && !b.ladder), ...(stats.activeLadderRung ? [stats.activeLadderRung] : [])].map(b => (
                       <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: '2px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.pick}</div>
