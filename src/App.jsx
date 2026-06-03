@@ -862,38 +862,39 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
 
             return (
               <div key={row.id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', borderTop: `2px solid ${accentColor}` }}>
-                {/* Tap header row */}
-                <div onClick={() => setEditRow(isEdit ? null : row.id)} style={{ padding: '10px 14px', cursor: 'pointer' }}>
-                  {/* Row 1: rung# + status + book + odds + chevron */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '7px' }}>
-                    <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: accentColor, minWidth: '18px' }}>{i + 1}</span>
-                    {isCurrent && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 5px', borderRadius: '2px' }}>ACTIVE</span>}
-                    {!isOpen && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: isWin ? NEON : RED, background: isWin ? 'rgba(189,255,0,0.08)' : 'rgba(255,59,59,0.08)', border: `1px solid ${isWin ? 'rgba(189,255,0,0.25)' : 'rgba(255,59,59,0.25)'}`, padding: '2px 5px', borderRadius: '2px' }}>{isWin ? 'WIN' : 'LOSS'}</span>}
-                    <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', flex: 1 }}>{row.book || '—'}</span>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)' }}>{fmtOdds(row.odds)}</span>
-                    {row.pull && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.08em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 4px', borderRadius: '2px' }}>PULL</span>}
-                    <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginLeft: '2px' }}>{isEdit ? '▲' : '▼'}</span>
-                  </div>
-                  {/* Row 2: Stake | To Win | Profit | Bank After */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '4px' }}>
-                    <div style={{ background: 'var(--card2)', borderRadius: '3px', padding: '4px 6px' }}>
-                      <div style={{ fontFamily: R, fontSize: '6px', letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Stake</div>
-                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)' }}>{fmt$(row.stake)}</div>
-                    </div>
-                    <div style={{ background: 'var(--card2)', borderRadius: '3px', padding: '4px 6px' }}>
-                      <div style={{ fontFamily: R, fontSize: '6px', letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>To Win</div>
-                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON }}>+{fmt$(row.toWin)}</div>
-                    </div>
-                    <div style={{ background: 'var(--card2)', borderRadius: '3px', padding: '4px 6px' }}>
-                      <div style={{ fontFamily: R, fontSize: '6px', letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Profit</div>
-                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' }}>
-                        {isOpen ? '—' : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`}
+                {/* Card header — always visible */}
+                <div onClick={() => setEditRow(isEdit ? null : row.id)} style={{ padding: '12px 14px', cursor: 'pointer' }}>
+                  {/* Top row: rung# | badges | book | odds | chevron */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                    <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: accentColor, lineHeight: 1, minWidth: '22px' }}>{i + 1}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                        {isCurrent && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.12em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 6px', borderRadius: '2px' }}>ACTIVE</span>}
+                        {isWin  && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.12em', color: NEON, background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.25)', padding: '2px 6px', borderRadius: '2px' }}>WIN ✓</span>}
+                        {isLoss && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.12em', color: RED, background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.25)', padding: '2px 6px', borderRadius: '2px' }}>LOSS ✗</span>}
+                        {row.pull && <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#F5A623', background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.25)', padding: '2px 6px', borderRadius: '2px' }}>⚡ PULL</span>}
                       </div>
+                      <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>{row.book || 'No Book Set'}</span>
                     </div>
-                    <div style={{ background: 'var(--card2)', borderRadius: '3px', padding: '4px 6px' }}>
-                      <div style={{ fontFamily: R, fontSize: '6px', letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Bank After</div>
-                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)' }}>{isOpen ? '—' : fmt$(row.bankOut)}</div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)', lineHeight: 1 }}>{fmtOdds(row.odds)}</div>
+                      <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>odds</div>
                     </div>
+                    <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--border2)', marginLeft: '4px' }}>{isEdit ? '▲' : '▼'}</span>
+                  </div>
+                  {/* Stats row: Stake | To Win | Profit | Bank After */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                    {[
+                      { label: 'STAKE',      val: fmt$(row.stake),                                                       color: 'var(--text)' },
+                      { label: 'TO WIN',     val: row.stake > 0 ? `+${fmt$(row.toWin)}` : '—',                          color: NEON },
+                      { label: 'PROFIT',     val: isOpen ? '—' : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`, color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' },
+                      { label: 'BANK AFTER', val: isOpen ? '—' : fmt$(row.bankOut),                                      color: 'var(--text)' },
+                    ].map(({ label, val, color }) => (
+                      <div key={label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '4px', padding: '5px 6px' }}>
+                        <div style={{ fontFamily: R, fontSize: '6px', fontWeight: 700, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
+                        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -3509,11 +3510,14 @@ export default function App({ user, session, subStatus }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
-                    onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
-                    onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
-                    onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
-                    style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON : RED }} />
+                  <div style={{ display: 'flex', alignItems: 'baseline', flex: 1, minWidth: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, color: up(masterBankroll - bankroll) ? NEON : RED }}>$</span>
+                    <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
+                      onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
+                      onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
+                      onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
+                      style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON : RED }} />
+                  </div>
                   <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON : RED, whiteSpace: 'nowrap' }}>
                     {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
                   </div>
@@ -3756,8 +3760,8 @@ export default function App({ user, session, subStatus }) {
 
               {/* ── 8 small stat chips ── */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px', marginTop: '2px' }}>
-                <SmallCard label="Won"  value={fmt$(stats.allWon$)}        color={NEON} />
-                <SmallCard label="Lost" value={`-${fmt$(stats.allLost$)}`}  color={RED} />
+                <SmallCard label="Units +" value={fmtU(stats.unitSize > 0 ? stats.allWon$  / stats.unitSize : 0)} color={NEON} />
+                <SmallCard label="Units –" value={fmtU(stats.unitSize > 0 ? stats.allLost$ / stats.unitSize : 0)} color={RED} />
                 <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
                 <SmallCard label="Settled"    value={String(stats.total)} />
                 <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin)  : '—'} color={NEON} />
@@ -4406,7 +4410,7 @@ export default function App({ user, session, subStatus }) {
           {/* More sheet */}
           {showMore && (
             <div style={{
-              position: 'fixed', bottom: '56px', left: '10px', right: '10px', zIndex: 200,
+              position: 'fixed', bottom: 'calc(52px + env(safe-area-inset-bottom))', left: '10px', right: '10px', zIndex: 200,
               background: 'var(--card2)', borderRadius: 'var(--radius)', border: `1px solid var(--border2)`,
               borderTop: `2px solid ${NEON}`, padding: '8px', boxShadow: 'var(--float-shadow)',
               animation: 'slideUp 0.18s ease',
@@ -4433,38 +4437,39 @@ export default function App({ user, session, subStatus }) {
           <nav style={{
             position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
             background: 'var(--card2)', borderTop: `1px solid var(--border2)`,
-            display: 'flex', alignItems: 'stretch', height: '56px',
+            display: 'flex', alignItems: 'stretch',
+            height: 'calc(52px + env(safe-area-inset-bottom))',
             paddingBottom: 'env(safe-area-inset-bottom)',
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
-              { id: 'analytics', label: 'Overview',  icon: TrendingUp },
-              { id: 'ladder',    label: 'Ladder',    icon: Zap        },
-              { id: 'bet log',   label: 'Bets',      icon: BookMarked },
-              { id: 'overview',  label: 'Analytics', icon: BarChart3  },
-              { id: 'rr engine', label: 'RR',        icon: Target     },
-              { id: 'session',   label: 'Session',   icon: Sliders    },
-              { id: 'partners',  label: 'Partners',  icon: Handshake  },
+              { id: 'ladder',    label: 'Ladder',   icon: Zap        },
+              { id: 'analytics', label: 'Overview', icon: TrendingUp },
+              { id: 'bet log',   label: 'Bets',     icon: BookMarked },
+              { id: 'overview',  label: 'Stats',    icon: BarChart3  },
+              { id: 'rr engine', label: 'RR',       icon: Target     },
+              { id: 'session',   label: 'Session',  icon: Sliders    },
+              { id: 'partners',  label: 'Earn',     icon: Handshake  },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: '3px', background: 'none', border: 'none', cursor: 'pointer',
+                  gap: '2px', background: 'none', border: 'none', cursor: 'pointer',
                   color: active ? NEON : 'var(--muted)', transition: 'color 0.12s',
-                  position: 'relative', minWidth: 0,
+                  position: 'relative', minWidth: 0, overflow: 'hidden', padding: '0 2px',
                 }}>
                   {active && (
                     <div style={{
                       position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                      width: '24px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
+                      width: '20px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
                       boxShadow: `0 0 8px ${NEON}`,
                     }} />
                   )}
-                  <Icon size={16} strokeWidth={active ? 2.5 : 2} color={active ? NEON : 'var(--muted)'} />
-                  <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+                  <Icon size={15} strokeWidth={active ? 2.5 : 2} color={active ? NEON : 'var(--muted)'} />
+                  <span style={{ fontFamily: R, fontSize: '6px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{label}</span>
                   {id === 'bet log' && stats.openBets > 0 && (
-                    <div style={{ position: 'absolute', top: '8px', right: 'calc(50% - 14px)', width: '5px', height: '5px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
+                    <div style={{ position: 'absolute', top: '7px', right: 'calc(50% - 12px)', width: '5px', height: '5px', borderRadius: '50%', background: YELLOW, animation: 'pulseDot 1.4s ease infinite' }} />
                   )}
                 </button>
               )

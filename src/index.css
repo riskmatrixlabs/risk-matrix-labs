@@ -132,12 +132,11 @@ input, select, button { outline: none; }
 
 /* ── Bottom nav safe area ──────────────────────────────────── */
 .content-with-bottom-nav {
-  min-height: calc(100dvh - 56px - 56px);
   padding-bottom: 80px;
 }
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .content-with-bottom-nav {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom) + 20px);
+    padding-bottom: calc(52px + env(safe-area-inset-bottom) + 24px);
   }
 }
 
