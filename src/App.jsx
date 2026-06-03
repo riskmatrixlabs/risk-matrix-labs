@@ -3706,8 +3706,9 @@ export default function App({ user, session, subStatus }) {
                     {[
                       { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
                       { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
-                      { label: '⚡ Ladder',   value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
-                      { label: 'Remaining',   value: fmt$(risk.remainingRisk$), sub: 'capacity left',                                 color: risk.remainingRisk$ <= 0 ? RED : NEON },
+                      { label: '⚡ Ladder',      value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
+                      { label: 'Open Bet Risk', value: fmt$(stats.openRisk$), sub: stats.openBets > 0 ? `${stats.openBets} bet${stats.openBets > 1 ? 's' : ''} pending` : 'none open', color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
+                      { label: 'Remaining',      value: fmt$(risk.remainingRisk$), sub: 'capacity left',                                 color: risk.remainingRisk$ <= 0 ? RED : NEON },
                     ].map(({ label, value, sub, color }) => (
                       <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
                         <div style={{ fontFamily: R, fontSize: '7px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
@@ -3786,7 +3787,7 @@ export default function App({ user, session, subStatus }) {
               {/* ── Stat cards row 2: Open Risk + Total P/L ── */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Open Bet Risk</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Risk</div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
                 </div>
