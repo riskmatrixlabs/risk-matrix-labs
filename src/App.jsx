@@ -2642,7 +2642,7 @@ export default function App({ user, session, subStatus }) {
       })
     }, 2000)
     return () => clearTimeout(t)
-  }, [bets, userId, cloudSynced])
+  }, [bets, userId, cloudSynced, token])
 
   // ── Auto-sync settings to Supabase (debounced 2s) ──
   useEffect(() => {
@@ -2659,7 +2659,7 @@ export default function App({ user, session, subStatus }) {
       })
     }, 2000)
     return () => clearTimeout(t)
-  }, [bankroll, ladderStarting, username, riskSettings, darkMode, userId, cloudSynced])
+  }, [bankroll, ladderStarting, username, riskSettings, darkMode, userId, cloudSynced, token])
 
   // ── Close user menu on outside click ──
   useEffect(() => {
