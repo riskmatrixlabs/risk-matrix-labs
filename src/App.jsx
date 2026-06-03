@@ -644,12 +644,12 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     // so stakes scale proportionally to whatever starting $ the user set
     const s = ladderStarting
     const defaults = [
-      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
-      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
-      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
-      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
-      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
-      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
+      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
+      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
+      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
+      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
+      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
+      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
     ]
     setBets(p => [...p.filter(b => !b.ladder), ...defaults])
     setEditRow(null)
@@ -693,7 +693,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     const newId    = Date.now()
     setBets(p => [...p, {
       id: newId, date: new Date().toISOString().slice(0, 10),
-      sport: 'NFL', book: last?.book || '', betType: 'Straight', event: `PHLT Ladder Rung ${rows.length + 1}`,
+      sport: last?.sport || 'MLB', book: last?.book || 'Hard Rock', betType: 'Straight', event: `PHLT Ladder Rung ${rows.length + 1}`,
       pick: 'TBD', odds: -110, units: 0, stake: newStake,
       result: 'Open', pnl: 0, ladder: true,
       ladderId: (last?.ladderId || 0) + 1, pull: false, pullNote: '',
@@ -818,8 +818,90 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         </div>
       )}
 
-      {/* Main ladder table */}
-      {rows.length > 0 && <div style={{ ...cardStyle, overflow: 'hidden' }}>
+      {/* Mobile ladder cards */}
+      {rows.length > 0 && isMobile && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {computed.map((row, i) => {
+            const isWin     = row.result === 'W'
+            const isLoss    = row.result === 'L'
+            const isOpen    = row.result === 'Open'
+            const isCurrent = isOpen && i === runActive
+            const isEdit    = editRow === row.id
+            const accentColor = isWin ? NEON : isLoss ? RED : isCurrent ? YELLOW : 'var(--border2)'
+
+            return (
+              <div key={row.id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', borderTop: `2px solid ${accentColor}` }}>
+                {/* Tap header row */}
+                <div
+                  onClick={() => setEditRow(isEdit ? null : row.id)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: accentColor, minWidth: '20px' }}>{i + 1}</span>
+                    {isCurrent && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 6px', borderRadius: '2px' }}>ACTIVE</span>}
+                    {!isOpen && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: isWin ? NEON : RED, background: isWin ? 'rgba(189,255,0,0.08)' : 'rgba(255,59,59,0.08)', border: `1px solid ${isWin ? 'rgba(189,255,0,0.25)' : 'rgba(255,59,59,0.25)'}`, padding: '2px 6px', borderRadius: '2px' }}>{isWin ? 'WIN' : 'LOSS'}</span>}
+                    <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>{row.book || '— no book —'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{fmt$(row.stake)}</div>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: NEON }}>+{fmt$(row.toWin)}</div>
+                    </div>
+                    <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)' }}>{isEdit ? '▲' : '▼'}</span>
+                  </div>
+                </div>
+
+                {/* Expanded edit panel */}
+                {isEdit && (
+                  <div style={{ borderTop: `1px solid var(--border)`, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Book + Odds row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', marginBottom: '4px' }}>BOOK</div>
+                        <select value={row.book || ''} onChange={e => setRow(row.id, 'book', e.target.value)} style={{ ...inputStyle, width: '100%', fontSize: '12px', color: row.book ? 'var(--text)' : 'var(--muted)' }}>
+                          <option value="">— Book —</option>
+                          {['DraftKings','FanDuel','BetMGM','Caesars','ESPN BET','Hard Rock','PointsBet','BetRivers','Other'].map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', marginBottom: '4px' }}>ODDS</div>
+                        <input type="number" value={row.odds} onChange={e => setRow(row.id, 'odds', parseInt(e.target.value) || 0)} style={{ ...inputStyle, width: '100%', fontSize: '14px', fontWeight: 700, textAlign: 'center', color: row.odds > 0 ? NEON : 'var(--text)' }} />
+                      </div>
+                    </div>
+                    {/* Settle buttons */}
+                    {isOpen && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {['W','L','P'].map(r => (
+                          <button key={r} onClick={() => { settleRow(row.id, r); setEditRow(null) }} style={{
+                            flex: 1, fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em',
+                            padding: '10px', borderRadius: '2px', cursor: 'pointer',
+                            border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : 'var(--border2)'}`,
+                            background: r === 'W' ? 'rgba(189,255,0,0.1)' : r === 'L' ? 'rgba(255,59,59,0.1)' : 'var(--card2)',
+                            color: r === 'W' ? NEON : r === 'L' ? RED : 'var(--muted)',
+                          }}>{r === 'W' ? '✓ WIN' : r === 'L' ? '✗ LOSS' : 'PUSH'}</button>
+                        ))}
+                      </div>
+                    )}
+                    {!isOpen && (
+                      <button onClick={() => { settleRow(row.id, 'Open'); setEditRow(null) }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '8px', borderRadius: '2px', cursor: 'pointer', border: '1px solid var(--border2)', background: 'var(--card2)', color: 'var(--muted)' }}>↩ Re-open</button>
+                    )}
+                    {rows.length > 1 && (
+                      <button onClick={() => { removeRung(row.id); setEditRow(null) }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '6px', borderRadius: '2px', cursor: 'pointer', border: '1px solid rgba(255,59,59,0.25)', background: 'transparent', color: 'rgba(255,59,59,0.5)' }}>Remove Rung</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          {/* Mobile footer */}
+          <button onClick={addRung} style={{ ...btnStyle(false), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '10px' }}>
+            <Plus size={12} /> Add Rung
+          </button>
+        </div>
+      )}
+
+      {/* Main ladder table — desktop only */}
+      {rows.length > 0 && !isMobile && <div style={{ ...cardStyle, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
           <thead>
