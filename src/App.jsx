@@ -861,24 +861,31 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
             const accentColor = isWin ? NEON : isLoss ? RED : isCurrent ? YELLOW : 'var(--border2)'
 
             return (
-              <div key={row.id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', borderTop: `2px solid ${accentColor}` }}>
+              <div key={row.id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', borderLeft: `3px solid ${accentColor}` }}>
                 {/* Card header — always visible */}
                 <div onClick={() => setEditRow(isEdit ? null : row.id)} style={{ cursor: 'pointer' }}>
-                  {/* Main row: rung# + stake label left, profit right (matches bet card style) */}
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px 5px', gap: '8px' }}>
+                  {/* Event label — top */}
+                  {row.event && (
+                    <div style={{ padding: '7px 10px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
+                      {row.event}
+                    </div>
+                  )}
+                  {/* Main row: rung# + pick left, to-win right */}
+                  <div style={{ display: 'flex', alignItems: 'center', padding: row.event ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: accentColor, lineHeight: 1.1 }}>RUNG {i + 1}</div>
+                      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: accentColor, lineHeight: 1.1 }}>
+                        RUNG {i + 1}{row.pick ? <span style={{ color: 'var(--text)', fontWeight: 600 }}> · {row.pick}</span> : ''}
+                      </div>
                       <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>
-                        {row.book || '—'} · stake {fmt$(row.stake)}
+                        {row.book || 'no book'}{row.book ? '' : ''}
                       </div>
                     </div>
-                    {/* Profit — right side big */}
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: isWin ? NEON : isLoss ? RED : isCurrent ? YELLOW : 'var(--text-dim)' }}>
-                        {isOpen ? (isCurrent ? fmt$(row.toWin) : '—') : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`}
+                        {isOpen ? (isCurrent ? `+${fmt$(row.toWin)}` : '—') : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`}
                       </div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>
-                        {isOpen ? (isCurrent ? 'to win' : 'pending') : 'profit'}
+                        {isOpen ? (isCurrent ? 'to win' : 'pending') : isWin ? 'profit' : 'loss'}
                       </div>
                     </div>
                   </div>
@@ -892,15 +899,14 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                     <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(row.odds)}</span>
                     <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{isEdit ? '▲' : '▼'}</span>
                   </div>
-                  {/* Stats bar — STAKE | TO WIN | PROFIT | BANK (same flush style as bet card) */}
+                  {/* Stats bar — STAKE | TO WIN | BANK */}
                   <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
                     {[
-                      { label: 'STAKE',  val: fmt$(row.stake),                                                        color: 'var(--text)' },
-                      { label: 'TO WIN', val: row.stake > 0 ? `+${fmt$(row.toWin)}` : '—',                           color: NEON },
-                      { label: 'PROFIT', val: isOpen ? '—' : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`,  color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' },
-                      { label: 'BANK',   val: isOpen ? '—' : fmt$(row.bankOut),                                       color: 'var(--text)' },
+                      { label: 'STAKE',  val: row.stake > 0 ? fmt$(row.stake) : '—',          color: 'var(--text)' },
+                      { label: 'TO WIN', val: row.stake > 0 ? `+${fmt$(row.toWin)}` : '—',    color: NEON },
+                      { label: 'BANK',   val: isOpen ? '—' : fmt$(row.bankOut),                color: isWin ? NEON : isLoss ? RED : 'var(--text)' },
                     ].map(({ label, val, color }, idx) => (
-                      <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 3 ? '1px solid var(--border)' : 'none' }}>
+                      <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
                         <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
                         <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
                       </div>
@@ -911,6 +917,16 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                 {/* Expanded edit panel */}
                 {isEdit && (
                   <div style={{ borderTop: `1px solid var(--border)`, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Event */}
+                    <div>
+                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', marginBottom: '4px' }}>EVENT</div>
+                      <input type="text" value={row.event || ''} onChange={e => setRow(row.id, 'event', e.target.value)} placeholder="e.g. Chiefs vs Raiders" style={{ ...inputStyle, width: '100%', fontSize: '12px' }} />
+                    </div>
+                    {/* Pick */}
+                    <div>
+                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--muted)', marginBottom: '4px' }}>PICK</div>
+                      <input type="text" value={row.pick || ''} onChange={e => setRow(row.id, 'pick', e.target.value)} placeholder="e.g. Chiefs -6.5" style={{ ...inputStyle, width: '100%', fontSize: '12px' }} />
+                    </div>
                     {/* Book + Odds row */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div>
@@ -4193,17 +4209,18 @@ export default function App({ user, session, subStatus }) {
                           ...cardStyle, marginBottom: '5px', padding: 0, overflow: 'hidden',
                           borderLeft: isOpen ? `3px solid ${YELLOW}` : bet.result === 'W' ? `3px solid ${NEON}` : bet.result === 'L' ? `3px solid ${RED}` : `3px solid var(--border)`,
                         }}>
-                          {/* Main row: pick + P&L side by side */}
-                          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px 5px', gap: '8px' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              {/* Pick */}
-                              <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.pick || '—'}</div>
-                              {/* Event + date */}
-                              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {bet.event ? `${bet.event} · ` : ''}{bet.date}
-                              </div>
+                          {/* Top: event label */}
+                          {bet.event && (
+                            <div style={{ padding: '7px 10px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
+                              {bet.event}
                             </div>
-                            {/* P&L — right side, big */}
+                          )}
+                          {/* Main row: pick + P&L */}
+                          <div style={{ display: 'flex', alignItems: 'center', padding: bet.event ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.pick || '—'}</div>
+                              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{bet.date}</div>
+                            </div>
                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
                               <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: isOpen ? YELLOW : pnlColor }}>
                                 {isOpen ? '—' : (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}
@@ -4212,9 +4229,8 @@ export default function App({ user, session, subStatus }) {
                             </div>
                           </div>
 
-                          {/* Meta + stats row */}
-                          <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '6px' }}>
-                            {/* Result badge */}
+                          {/* Meta row: badges + odds + units */}
+                          <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '5px', flexWrap: 'nowrap', overflow: 'hidden' }}>
                             {isOpen ? (
                               <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 5px', borderRadius: '2px', flexShrink: 0 }}>OPEN</span>
                             ) : (
@@ -4228,6 +4244,22 @@ export default function App({ user, session, subStatus }) {
                             <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', flexShrink: 0 }}>{bet.units}u{bet.stake > 0 ? ` · ${fmt$(bet.stake)}` : ''}</span>
                             {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
                           </div>
+
+                          {/* Stats bar: ODDS | WAGERED | P&L — settled only */}
+                          {!isOpen && (
+                            <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+                              {[
+                                { label: 'ODDS',    val: fmtOdds(bet.odds),                                           color: bet.odds > 0 ? NEON : 'var(--text)' },
+                                { label: 'WAGERED', val: bet.stake > 0 ? fmt$(bet.stake) : `${bet.units}u`,           color: 'var(--text)' },
+                                { label: 'P&L',     val: (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar),              color: pnlColor },
+                              ].map(({ label, val, color }, idx) => (
+                                <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
+                                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+                                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
                           {/* Settle buttons for open bets */}
                           {isOpen && (
