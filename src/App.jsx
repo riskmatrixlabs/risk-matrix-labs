@@ -3140,12 +3140,6 @@ export default function App({ user, session, subStatus }) {
             <div style={{ marginBottom: '20px' }}>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Session Actions</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <button onClick={() => { saveSession(); setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: saveStatus === 'saved' ? 'rgba(189,255,0,0.12)' : 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '2px', cursor: 'pointer', color: NEON, textAlign: 'left' }}>
-                  <Save size={12} strokeWidth={2} /> {saveStatus === 'saved' ? 'Saved!' : 'Save Session'}
-                </button>
-                <button onClick={() => { const s = loadSession(); if (s) { setBets(s.bets||[]); setBankroll(s.bankroll||0); setUsername(s.username||'OPERATOR'); setLadderStarting(s.ladderStarting||150); setRiskSettings(s.riskSettings||{}); setSaveStatus('saved'); setTimeout(()=>setSaveStatus(null),1500) } setShowHelp(false) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
-                  <FolderOpen size={12} strokeWidth={2} /> Resume Last Session
-                </button>
                 <button onClick={() => { setShowHelp(false); setShowTemplates(true) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '9px 14px', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', cursor: 'pointer', color: 'var(--text-sub)', textAlign: 'left' }}>
                   <BookMarked size={12} strokeWidth={2} /> Templates
                 </button>
