@@ -2475,6 +2475,7 @@ export default function App({ user, session, subStatus }) {
   const saved          = useRef(loadSession())
   const [syncing,      setSyncing]      = useState(false)
   const [cloudSynced,  setCloudSynced]  = useState(false)
+  const [syncError,    setSyncError]    = useState(null)
   const userId = user?.id
 
   const [darkMode,       setDarkMode]       = useState(saved.current?.darkMode       ?? true)
@@ -2624,7 +2625,12 @@ export default function App({ user, session, subStatus }) {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
       syncAllBets(bets, userId).then(({ error }) => {
-        if (error) console.error('[RML] syncAllBets error:', error)
+        if (error) {
+          console.error('[RML] syncAllBets error:', error)
+          setSyncError(`Bets sync failed: ${error.message || error.code || 'unknown'}`)
+        } else {
+          setSyncError(null)
+        }
       })
     }, 2000)
     return () => clearTimeout(t)
@@ -2638,7 +2644,10 @@ export default function App({ user, session, subStatus }) {
         bankroll, ladder_starting: ladderStarting, username,
         risk_settings: riskSettings, dark_mode: darkMode,
       }).then(({ error }) => {
-        if (error) console.error('[RML] upsertSettings error:', error)
+        if (error) {
+          console.error('[RML] upsertSettings error:', error)
+          setSyncError(prev => prev || `Settings sync failed: ${error.message || error.code || 'unknown'}`)
+        }
       })
     }, 2000)
     return () => clearTimeout(t)
@@ -3334,6 +3343,16 @@ export default function App({ user, session, subStatus }) {
             {syncing && (
               <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <RefreshCcw size={10} style={{ animation: 'spin 1s linear infinite' }} /> Syncing
+              </span>
+            )}
+            {!syncing && syncError && (
+              <span title={syncError} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: RED, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'help' }}>
+                ⚠ Sync Error
+              </span>
+            )}
+            {!syncing && !syncError && cloudSynced && (
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(189,255,0,0.4)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                ✓ Synced
               </span>
             )}
             {user && (
