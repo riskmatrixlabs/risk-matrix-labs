@@ -36,7 +36,7 @@ const TOOLS = [
   { id: 'betonline',  name: 'Action Network',   icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and sports betting analytics.',               cta: 'Sign Up',     url: 'https://www.actionnetwork.com' },
 ]
 
-const TABS = ['Signup Bonuses', 'Trusted Cappers', 'Popular Tools', 'Promote RML']
+const TABS = ['Promote RML', 'Signup Bonuses', 'Trusted Cappers', 'Popular Tools']
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ function ToolCard({ tool, delay }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PartnersPage({ isMobile }) {
-  const [activeTab, setActiveTab] = useState('Signup Bonuses')
+  const [activeTab, setActiveTab] = useState('Promote RML')
   const [selectedState, setSelectedState] = useState('All States')
 
   const filteredBooks = selectedState === 'All States'
