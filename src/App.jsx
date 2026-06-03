@@ -1898,8 +1898,8 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
       {/* Live Open Bets — always at the bottom */}
       {(() => {
         const regularOpen = bets.filter(b => b.result === 'Open' && !b.ladder)
-        const ladderOpen  = bets.filter(b => b.result === 'Open' && b.ladder).sort((a, z) => a.ladderId - z.ladderId)
-        const openBets = [...regularOpen, ...ladderOpen].slice(0, 8)
+        const activeRung  = bets.filter(b => b.result === 'Open' && b.ladder).sort((a, z) => a.ladderId - z.ladderId).slice(0, 1)
+        const openBets = [...regularOpen, ...activeRung].slice(0, 8)
         if (!openBets.length) return null
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
