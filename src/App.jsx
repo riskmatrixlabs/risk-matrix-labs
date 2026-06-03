@@ -2547,7 +2547,7 @@ export default function App({ user, session, subStatus }) {
   const [showHelp,     setShowHelp]     = useState(false)
   const [showMore,     setShowMore]     = useState(false)
   const [settingsPill, setSettingsPill] = useState(null)
-  const [overviewSection, setOverviewSection] = useState('bytype')
+  const [overviewSection, setOverviewSection] = useState('limits')
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
@@ -3454,7 +3454,7 @@ export default function App({ user, session, subStatus }) {
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['overview','Stats'],['ladder','Ladder'],['bet log','Bet Log'],['rr engine','RR Engine'],['analytics','Overview'],['session','Session'],['partners','Partners']].map(([t, label]) => (
+          {[['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['rr engine','RR Engine'],['analytics','Overview'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -3541,12 +3541,12 @@ export default function App({ user, session, subStatus }) {
 
               {(() => {
                 const pills = [
-                  { id: 'bytype',      label: 'By Type' },
                   { id: 'limits',      label: 'BR Limits' },
-                  { id: 'curve',       label: 'BR Curve' },
-                  { id: 'performance', label: 'Performance' },
                   { id: 'exposure',    label: 'Risk Exposure', dot: risk.health !== 'GOOD' ? (risk.health === 'CAUTION' ? YELLOW : RED) : null },
                   { id: 'riskset',     label: 'Risk Settings' },
+                  { id: 'bytype',      label: 'By Type' },
+                  { id: 'curve',       label: 'BR Curve' },
+                  { id: 'performance', label: 'Performance' },
                 ]
                 return (
                   <div className="analytics-pills" style={{ marginBottom: '8px' }}>
@@ -4485,7 +4485,7 @@ export default function App({ user, session, subStatus }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'analytics', label: 'Analytics',  icon: TrendingUp },
+                { id: 'analytics', label: 'Overview',  icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Sliders },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
@@ -4515,7 +4515,7 @@ export default function App({ user, session, subStatus }) {
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'analytics', label: 'Analytics', icon: TrendingUp },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
-              { id: 'overview',  label: 'Stats',    icon: BarChart3  },
+              { id: 'overview',  label: 'Analytics',    icon: BarChart3  },
               { id: 'rr engine', label: 'RR',       icon: Target     },
               { id: 'session',   label: 'Session',  icon: Sliders    },
               { id: 'partners',  label: 'Earn',     icon: Handshake  },
