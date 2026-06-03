@@ -644,12 +644,12 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     // so stakes scale proportionally to whatever starting $ the user set
     const s = ladderStarting
     const defaults = [
-      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
-      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
-      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
-      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
-      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
-      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'NFL', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
+      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
+      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: 0, stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
+      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: 0, stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
+      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: 0, stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
+      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: 0, stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
+      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'NFL', book: '', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: 0, stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
     ]
     setBets(p => [...p.filter(b => !b.ladder), ...defaults])
     setEditRow(null)
@@ -693,7 +693,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     const newId    = Date.now()
     setBets(p => [...p, {
       id: newId, date: new Date().toISOString().slice(0, 10),
-      sport: 'NFL', betType: 'Straight', event: `PHLT Ladder Rung ${rows.length + 1}`,
+      sport: 'NFL', book: last?.book || '', betType: 'Straight', event: `PHLT Ladder Rung ${rows.length + 1}`,
       pick: 'TBD', odds: -110, units: 0, stake: newStake,
       result: 'Open', pnl: 0, ladder: true,
       ladderId: (last?.ladderId || 0) + 1, pull: false, pullNote: '',
@@ -880,10 +880,11 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                   {/* Book — dropdown */}
                   <td style={{ padding: '8px 10px' }}>
                     <select
-                      value={row.book || 'DraftKings'}
+                      value={row.book || ''}
                       onChange={e => setRow(row.id, 'book', e.target.value)}
-                      style={{ ...inputStyle, padding: '4px 6px', fontSize: '11px', cursor: 'pointer', minWidth: '90px' }}
+                      style={{ ...inputStyle, padding: '4px 6px', fontSize: '11px', cursor: 'pointer', minWidth: '90px', color: row.book ? 'var(--text)' : 'var(--muted)' }}
                     >
+                      <option value="">— Book —</option>
                       {['DraftKings','FanDuel','BetMGM','Caesars','ESPN BET','Hard Rock','PointsBet','BetRivers','Other'].map(b => (
                         <option key={b} value={b}>{b}</option>
                       ))}
@@ -1507,11 +1508,10 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   })
   const byType = Object.values(typeMap).sort((a, z) => z.bets - a.bets)
 
-  // Book — skip bets with no book selected
+  // Book — group by book, "No Book" if none selected
   const bookMap = {}
   settled.forEach(b => {
-    const bk = b.book
-    if (!bk) return
+    const bk = b.book || 'No Book'
     if (!bookMap[bk]) bookMap[bk] = { book: bk, pnl: 0, bets: 0, wins: 0 }
     bookMap[bk].pnl += b.pnl; bookMap[bk].bets++
     if (b.result === 'W') bookMap[bk].wins++
