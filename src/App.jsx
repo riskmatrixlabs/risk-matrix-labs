@@ -129,10 +129,13 @@ function calcStats(bets, bankroll) {
   const largestLoss$ = allLosses.length ? Math.max(...allLosses.map(b => b.ladder ? Math.abs(b.pnl) : Math.abs(b.pnl) * unitSize)) : 0
   const avgOdds     = settled.length ? settled.reduce((s, b) => s + b.odds, 0) / settled.length : 0
   const winRate       = (allWins.length + allLosses.length) > 0 ? allWins.length / (allWins.length + allLosses.length) : 0
-  const roi           = totalUnits > 0 ? netUnits / totalUnits : 0
   // Total stake risked across all settled bets (regular + ladder), converted to units
   const totalRisked$  = settled.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const totalRiskedU  = unitSize > 0 ? totalRisked$ / unitSize : 0
+  // Combined net P/L in dollars (regular units → $ + ladder dollars)
+  const netPnl$       = netUnits * unitSize + ladderNetDollars
+  const netPnlU       = unitSize > 0 ? netPnl$ / unitSize : 0
+  const roi           = totalRisked$ > 0 ? netPnl$ / totalRisked$ : 0
   return {
     currentBankroll, netUnits, totalUnits, unitsWon, unitsLost,
     wins: allWins.length, losses: allLosses.length, total: allWins.length + allLosses.length,
@@ -141,6 +144,7 @@ function calcStats(bets, bankroll) {
     avgOdds, winRate, roi, unitSize,
     openBets: openBets.length, openRisk$, openUnits,
     totalRisked$, totalRiskedU,
+    netPnl$, netPnlU,
     ladderNetDollars, activeLadderRung,
   }
 }
@@ -1743,9 +1747,9 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {/* Always visible: Net Units + ROI */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-        <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.netUnits >= 0 ? NEON : RED}` }}>
+        <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.netPnlU >= 0 ? NEON : RED}` }}>
           <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Net Units</div>
-          <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.netUnits >= 0 ? NEON : RED, lineHeight: 1 }}>{fmtU(stats.netUnits)}</div>
+          <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.netPnlU >= 0 ? NEON : RED, lineHeight: 1 }}>{fmtU(stats.netPnlU)}</div>
           <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} settled</div>
         </div>
         <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.roi >= 0 ? NEON : RED}` }}>
@@ -1953,7 +1957,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
           {[
             ['Total Settled', stats.total],
             ['Win Rate',      `${(stats.winRate * 100).toFixed(1)}%`],
-            ['Net Units',     fmtU(stats.netUnits)],
+            ['Net Units',     fmtU(stats.netPnlU)],
             ['Avg Win',       stats.wins   ? fmt$(stats.avgWin$)          : '—'],
             ['Avg Loss',      stats.losses ? `-${fmt$(stats.avgLoss$)}`   : '—'],
             ['Profit Factor', profitFactor],
@@ -2438,7 +2442,7 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
             { label: 'Discipline Score', value: `${score}/100`, color: scoreColor },
             { label: 'Session Grade', value: displayGrade, color: gradeColorMap[displayGrade] },
             { label: 'Record', value: `${stats.wins}W – ${stats.losses}L`, color: 'var(--text)' },
-            { label: 'Net P/L', value: fmt$(stats.netUnits * (masterBankroll / 100), true), color: stats.netUnits >= 0 ? NEON : RED },
+            { label: 'Net P/L', value: fmt$(stats.netPnl$, true), color: stats.netPnl$ >= 0 ? NEON : RED },
             { label: 'Checklist', value: `${checksPassed}/${CHECKLIST.length}`, color: allChecked ? NEON : 'var(--muted)' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ padding: '10px 14px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px', textAlign: 'center' }}>
@@ -2882,7 +2886,7 @@ export default function App({ user, session, subStatus }) {
           ``,
           `💰 Starting Bankroll: ${fmt$(bankroll)}`,
           `📈 Current Bankroll:  ${fmt$(masterBankroll)}  (${masterBankroll >= bankroll ? '+' : ''}${fmt$(masterBankroll - bankroll)})`,
-          `📊 Total P/L:         ${fmt$(stats.netUnits * stats.unitSize, true)}`,
+          `📊 Total P/L:         ${fmt$(stats.netPnl$, true)}`,
           `🎯 ROI:               ${(stats.roi * 100).toFixed(2)}%`,
           ``,
           `🏆 Record: ${stats.wins}W — ${stats.losses}L (${(stats.winRate * 100).toFixed(1)}% WR)`,
@@ -3683,10 +3687,10 @@ export default function App({ user, session, subStatus }) {
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
                 </div>
-                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netUnits) ? NEON : RED}` }}>
+                <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netPnl$) ? NEON : RED}` }}>
                   <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total P / L</div>
-                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netUnits) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netUnits * stats.unitSize, true)}</div>
-                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{fmtU(stats.netUnits)} net units</div>
+                  <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netPnl$) ? NEON : RED, lineHeight: 1 }}>{fmt$(stats.netPnl$, true)}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{fmtU(stats.netPnlU)} net units</div>
                 </div>
               </div>
 
@@ -3772,14 +3776,14 @@ export default function App({ user, session, subStatus }) {
               <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
               <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>{stats.openBets > 0 ? `${stats.openBets} bet${stats.openBets > 1 ? 's' : ''} pending` : 'no open bets'}</div>
             </div>
-            <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(stats.netUnits) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}` }}>
+            <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(stats.netPnl$) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>Total P / L</span>
-                {up(stats.netUnits) ? <TrendingUp size={13} color={NEON} /> : <TrendingDown size={13} color={RED} />}
+                {up(stats.netPnl$) ? <TrendingUp size={13} color={NEON} /> : <TrendingDown size={13} color={RED} />}
               </div>
-              <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, lineHeight: 1, color: up(stats.netUnits) ? NEON : RED,
-                textShadow: darkMode && up(stats.netUnits) ? '0 0 16px rgba(189,255,0,0.28)' : 'none' }}>{fmt$(stats.netUnits * stats.unitSize, true)}</div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>{fmtU(stats.netUnits)} net units</div>
+              <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, lineHeight: 1, color: up(stats.netPnl$) ? NEON : RED,
+                textShadow: darkMode && up(stats.netPnl$) ? '0 0 16px rgba(189,255,0,0.28)' : 'none' }}>{fmt$(stats.netPnl$, true)}</div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>{fmtU(stats.netPnlU)} net units</div>
             </div>
             <div style={{ ...cardStyle, padding: '14px 16px', borderTop: `1px solid ${up(roi) ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
