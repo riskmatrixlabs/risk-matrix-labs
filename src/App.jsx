@@ -4162,7 +4162,6 @@ export default function App({ user, session, subStatus }) {
                           <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: isOpen ? YELLOW : bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED }}>
                             {isOpen ? 'pending' : (() => { const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize; return (d >= 0 ? '+' : '') + fmt$(d) })()}
                           </div>
-                          {!isOpen && bet.units > 0 && <div style={{ fontFamily: R, fontSize: '8px', color: MUTED }}>{(() => { const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize; const u = d / stats.unitSize; return (u >= 0 ? '+' : '') + u.toFixed(2) + 'u' })()}</div>}
                         </div>
                       </div>
                       {/* Row 5: settle actions + edit/delete */}
