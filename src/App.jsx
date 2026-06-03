@@ -1619,6 +1619,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
   const [analyticspill,  setAnalyticsPill]  = useState('curve')
+  const [showUnits,      setShowUnits]      = useState(true)
 
   const settled = bets.filter(b => b.result === 'W' || b.result === 'L')
 
@@ -1797,11 +1798,20 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   if (isMobile) return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {/* Always visible: Net Units + ROI */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2px' }}>
+        <button onClick={() => setShowUnits(v => !v)} style={{
+          fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em',
+          padding: '3px 10px', borderRadius: '100px', cursor: 'pointer',
+          border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)', color: NEON,
+        }}>{showUnits ? 'u → $' : '$ → u'}</button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-        <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.netPnlU >= 0 ? NEON : RED}` }}>
-          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Net Units</div>
-          <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.netPnlU >= 0 ? NEON : RED, lineHeight: 1 }}>{fmtU(stats.netPnlU)}</div>
-          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} settled</div>
+        <div onClick={() => setShowUnits(v => !v)} style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.netPnlU >= 0 ? NEON : RED}`, cursor: 'pointer' }}>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{showUnits ? 'Net Units' : 'Net P&L'}</div>
+          <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.netPnlU >= 0 ? NEON : RED, lineHeight: 1 }}>
+            {showUnits ? fmtU(stats.netPnlU) : fmt$(stats.netPnl$, true)}
+          </div>
+          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} settled · tap to toggle</div>
         </div>
         <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.roi >= 0 ? NEON : RED}` }}>
           <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
@@ -1886,8 +1896,8 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
             { label: 'Win Streak', value: maxW ? `${maxW}W` : '—', color: NEON },
             { label: 'Loss Streak', value: maxL ? `${maxL}L` : '—', color: RED },
             { label: 'Profit Factor', value: profitFactor, color: parseFloat(profitFactor) >= 1 ? NEON : RED },
-            { label: 'Avg Win', value: stats.wins ? fmt$(stats.avgWin$) : '—', color: NEON },
-            { label: 'Avg Loss', value: stats.losses ? `-${fmt$(stats.avgLoss$)}` : '—', color: RED },
+            { label: 'Avg Win',  value: stats.wins   ? (showUnits ? `+${(stats.avgWin$ / stats.unitSize).toFixed(2)}u`   : fmt$(stats.avgWin$))            : '—', color: NEON },
+            { label: 'Avg Loss', value: stats.losses ? (showUnits ? `-${(stats.avgLoss$ / stats.unitSize).toFixed(2)}u`  : `-${fmt$(stats.avgLoss$)}`)       : '—', color: RED  },
             { label: 'Avg Odds', value: fmtOdds(Math.round(stats.avgOdds)), color: 'var(--text)' },
           ].map(({ label, value, color }) => (
             <SmallCard key={label} label={label} value={value} color={color} />
