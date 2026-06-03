@@ -3342,17 +3342,7 @@ export default function App({ user, session, subStatus }) {
 
           {/* Desktop: sync + user menu + version */}
           {!isMobile && <>
-            {syncing && (
-              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <RefreshCcw size={10} style={{ animation: 'spin 1s linear infinite' }} /> Syncing
-              </span>
-            )}
-            {!syncing && syncError && (
-              <span title={syncError} style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: RED, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'help' }}>
-                ⚠ Sync Error
-              </span>
-            )}
-            {!syncing && !syncError && cloudSynced && (
+            {cloudSynced && (
               <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(189,255,0,0.4)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 ✓ Synced
               </span>
