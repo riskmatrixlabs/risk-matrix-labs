@@ -97,31 +97,45 @@ function calcStats(bets, bankroll) {
   const settled        = bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P')
   const regular        = settled.filter(b => !b.ladder)   // unit-based bets
   const ladderSettled  = settled.filter(b => b.ladder)    // dollar-based pnl
+  const unitSize       = bankroll / 100
+
+  // Unit-based stats (regular bets only — used for bankroll math)
   const wins    = regular.filter(b => b.result === 'W')
   const losses  = regular.filter(b => b.result === 'L')
   const netUnits    = regular.reduce((s, b) => s + b.pnl, 0)
   const totalUnits  = regular.reduce((s, b) => s + b.units, 0)
   const unitsWon    = wins.reduce((s, b) => s + b.pnl, 0)
   const unitsLost   = losses.reduce((s, b) => s + Math.abs(b.pnl), 0)
-  const unitSize    = bankroll / 100
+
   // Ladder net P&L is in dollars — add directly without unit conversion
   const ladderNetDollars = ladderSettled.reduce((s, b) => s + b.pnl, 0)
   const currentBankroll  = bankroll + netUnits * unitSize + ladderNetDollars
+
+  // Combined stats (all bets — regular + ladder together)
+  const allWins   = settled.filter(b => b.result === 'W')
+  const allLosses = settled.filter(b => b.result === 'L')
+  const allWon$   = allWins.reduce((s, b)   => s + (b.ladder ? b.pnl : b.pnl * unitSize), 0)
+  const allLost$  = allLosses.reduce((s, b) => s + (b.ladder ? Math.abs(b.pnl) : Math.abs(b.pnl) * unitSize), 0)
+  const avgWin$   = allWins.length   ? allWon$  / allWins.length   : 0
+  const avgLoss$  = allLosses.length ? allLost$ / allLosses.length : 0
+
   const activeLadderRung = bets.filter(b => b.ladder && b.result === 'Open').sort((a,z) => a.ladderId - z.ladderId)[0] ?? null
   const openBets    = activeLadderRung
     ? [...bets.filter(b => b.result === 'Open' && !b.ladder), activeLadderRung]
     : bets.filter(b => b.result === 'Open' && !b.ladder)
   const openRisk$   = openBets.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const openUnits   = openBets.reduce((s, b) => s + b.units, 0)
-  const largestWin  = wins.length   ? Math.max(...wins.map(b => b.pnl))             : 0
-  const largestLoss = losses.length ? Math.max(...losses.map(b => Math.abs(b.pnl))) : 0
-  const avgOdds     = regular.length ? regular.reduce((s, b) => s + b.odds, 0) / regular.length : 0
-  const winRate     = (wins.length + losses.length) > 0 ? wins.length / (wins.length + losses.length) : 0
+  const largestWin$  = allWins.length   ? Math.max(...allWins.map(b => b.ladder ? b.pnl : b.pnl * unitSize)) : 0
+  const largestLoss$ = allLosses.length ? Math.max(...allLosses.map(b => b.ladder ? Math.abs(b.pnl) : Math.abs(b.pnl) * unitSize)) : 0
+  const avgOdds     = settled.length ? settled.reduce((s, b) => s + b.odds, 0) / settled.length : 0
+  const winRate     = (allWins.length + allLosses.length) > 0 ? allWins.length / (allWins.length + allLosses.length) : 0
   const roi         = totalUnits > 0 ? netUnits / totalUnits : 0
   return {
     currentBankroll, netUnits, totalUnits, unitsWon, unitsLost,
-    wins: wins.length, losses: losses.length, total: wins.length + losses.length,
-    largestWin, largestLoss, avgOdds, winRate, roi, unitSize,
+    wins: allWins.length, losses: allLosses.length, total: allWins.length + allLosses.length,
+    largestWin: largestWin$, largestLoss: largestLoss$,
+    avgWin$, avgLoss$, allWon$, allLost$,
+    avgOdds, winRate, roi, unitSize,
     openBets: openBets.length, openRisk$, openUnits,
     ladderNetDollars, activeLadderRung,
   }
@@ -1610,7 +1624,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   const maxW = Math.max(0, ...streaks.filter(s => s.result === 'W').map(s => s.count))
   const maxL = Math.max(0, ...streaks.filter(s => s.result === 'L').map(s => s.count))
   const curStreak = streaks.length ? streaks[streaks.length - 1] : null
-  const profitFactor = stats.unitsLost > 0 ? (stats.unitsWon / stats.unitsLost).toFixed(2) : '∞'
+  const profitFactor = stats.allLost$ > 0 ? (stats.allWon$ / stats.allLost$).toFixed(2) : '∞'
 
   const chartViews = [
     { id: 'cumulative', label: '📈 Cumulative P&L' },
@@ -1936,8 +1950,8 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
             ['Total Settled', stats.total],
             ['Win Rate',      `${(stats.winRate * 100).toFixed(1)}%`],
             ['Net Units',     fmtU(stats.netUnits)],
-            ['Avg Win',       stats.wins   ? fmtU(stats.unitsWon  / stats.wins)   : '—'],
-            ['Avg Loss',      stats.losses ? fmtU(-stats.unitsLost / stats.losses) : '—'],
+            ['Avg Win',       stats.wins   ? fmt$(stats.avgWin$)          : '—'],
+            ['Avg Loss',      stats.losses ? `-${fmt$(stats.avgLoss$)}`   : '—'],
             ['Profit Factor', profitFactor],
             ['Avg Odds',      fmtOdds(Math.round(stats.avgOdds))],
           ].map(([label, value]) => (
@@ -3698,8 +3712,8 @@ export default function App({ user, session, subStatus }) {
                 <SmallCard label="Units –"    value={fmtU(-stats.unitsLost)} color={RED} />
                 <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
                 <SmallCard label="Settled"    value={String(stats.total)} />
-                <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin  * stats.unitSize) : '—'} color={NEON} />
-                <SmallCard label="Worst Loss" value={stats.losses ? fmt$(stats.largestLoss * stats.unitSize) : '—'} color={RED} />
+                <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin)  : '—'} color={NEON} />
+                <SmallCard label="Worst Loss" value={stats.losses ? fmt$(stats.largestLoss) : '—'} color={RED} />
                 <SmallCard label="Risked"     value={`${stats.totalUnits.toFixed(0)}u`} />
                 <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
               </div>
@@ -3780,8 +3794,8 @@ export default function App({ user, session, subStatus }) {
             <SmallCard label="Units Won"    value={fmtU(stats.unitsWon)}   color={NEON} />
             <SmallCard label="Units Lost"   value={fmtU(-stats.unitsLost)} color={RED} />
             <SmallCard label="Avg Odds"     value={fmtOdds(Math.round(stats.avgOdds))} />
-            <SmallCard label="Largest Win"  value={fmt$(stats.largestWin * stats.unitSize)}  color={NEON} />
-            <SmallCard label="Largest Loss" value={fmt$(stats.largestLoss * stats.unitSize)} color={RED} />
+            <SmallCard label="Largest Win"  value={fmt$(stats.largestWin)}  color={NEON} />
+            <SmallCard label="Largest Loss" value={fmt$(stats.largestLoss)} color={RED} />
             <SmallCard label="Units Risked" value={`${stats.totalUnits.toFixed(1)}u`} />
           </div>
             </>
