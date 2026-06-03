@@ -865,29 +865,27 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                 {/* Card header — always visible */}
                 <div onClick={() => setEditRow(isEdit ? null : row.id)} style={{ cursor: 'pointer' }}>
                   {/* Top row: rung# + badges + book + odds + chevron */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px' }}>
-                    <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: accentColor, lineHeight: 1, minWidth: '22px' }}>{i + 1}</span>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                      {isCurrent && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 6px', borderRadius: '2px' }}>ACTIVE</span>}
-                      {isWin  && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: NEON, background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.25)', padding: '2px 6px', borderRadius: '2px' }}>✓ WIN</span>}
-                      {isLoss && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: RED, background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.25)', padding: '2px 6px', borderRadius: '2px' }}>✗ LOSS</span>}
-                      {row.pull && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 6px', borderRadius: '2px' }}>⚡ PULL</span>}
-                      <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-sub)' }}>{row.book || '—'}</span>
-                    </div>
-                    <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)' }}>{fmtOdds(row.odds)}</span>
-                    <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)' }}>{isEdit ? '▲' : '▼'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 10px' }}>
+                    <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: accentColor, lineHeight: 1, minWidth: '18px' }}>{i + 1}</span>
+                    {isCurrent && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 5px', borderRadius: '2px' }}>ACTIVE</span>}
+                    {isWin  && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: NEON, background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.25)', padding: '1px 5px', borderRadius: '2px' }}>WIN</span>}
+                    {isLoss && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: RED, background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.25)', padding: '1px 5px', borderRadius: '2px' }}>LOSS</span>}
+                    {row.pull && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 5px', borderRadius: '2px' }}>PULL</span>}
+                    <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', flex: 1 }}>{row.book || '—'}</span>
+                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)' }}>{fmtOdds(row.odds)}</span>
+                    <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{isEdit ? '▲' : '▼'}</span>
                   </div>
-                  {/* Stats bar — full width flush */}
+                  {/* Stats bar */}
                   <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
                     {[
-                      { label: 'STAKE',      val: fmt$(row.stake),                                                       color: 'var(--text)' },
-                      { label: 'TO WIN',     val: row.stake > 0 ? `+${fmt$(row.toWin)}` : '—',                          color: NEON },
-                      { label: 'PROFIT',     val: isOpen ? '—' : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`, color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' },
-                      { label: 'BANK AFTER', val: isOpen ? '—' : fmt$(row.bankOut),                                      color: 'var(--text)' },
+                      { label: 'STAKE',  val: fmt$(row.stake),                                                       color: 'var(--text)' },
+                      { label: 'TO WIN', val: row.stake > 0 ? `+${fmt$(row.toWin)}` : '—',                          color: NEON },
+                      { label: 'PROFIT', val: isOpen ? '—' : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`, color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' },
+                      { label: 'BANK',   val: isOpen ? '—' : fmt$(row.bankOut),                                      color: 'var(--text)' },
                     ].map(({ label, val, color }, idx) => (
-                      <div key={label} style={{ flex: 1, padding: '8px 10px', borderRight: idx < 3 ? '1px solid var(--border)' : 'none' }}>
-                        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
-                        <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+                      <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 3 ? '1px solid var(--border)' : 'none' }}>
+                        <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+                        <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
                       </div>
                     ))}
                   </div>
@@ -4125,74 +4123,73 @@ export default function App({ user, session, subStatus }) {
                       const pnlColor  = bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED
                       return (
                         <div key={bet.id} style={{
-                          ...cardStyle, marginBottom: '8px', padding: 0, overflow: 'hidden',
+                          ...cardStyle, marginBottom: '5px', padding: 0, overflow: 'hidden',
                           borderLeft: isOpen ? `3px solid ${YELLOW}` : bet.result === 'W' ? `3px solid ${NEON}` : bet.result === 'L' ? `3px solid ${RED}` : `3px solid var(--border)`,
                         }}>
-                          {/* Top section */}
-                          <div style={{ padding: '10px 12px 8px' }}>
-                            {/* Result badge row */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                              {isOpen ? (
-                                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.35)', padding: '3px 8px', borderRadius: '2px' }}>● OPEN</span>
-                              ) : (
-                                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: resultColor, background: bet.result === 'W' ? 'rgba(189,255,0,0.08)' : bet.result === 'L' ? 'rgba(255,59,59,0.08)' : 'var(--card2)', border: `1px solid ${bet.result === 'W' ? 'rgba(189,255,0,0.25)' : bet.result === 'L' ? 'rgba(255,59,59,0.25)' : 'var(--border)'}`, padding: '3px 8px', borderRadius: '2px' }}>
-                                  {bet.result === 'W' ? '✓ WIN' : bet.result === 'L' ? '✗ LOSS' : 'PUSH'}
-                                </span>
-                              )}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {bet.confidence > 0 && <span style={{ fontSize: '10px', letterSpacing: '-1px' }}>{'⭐'.repeat(bet.confidence)}</span>}
-                                <span style={{ fontFamily: R, fontSize: '9px', color: isOpen ? YELLOW : 'var(--text-dim)' }}>{bet.date}</span>
+                          {/* Main row: pick + P&L side by side */}
+                          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px 5px', gap: '8px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {/* Pick */}
+                              <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.pick || '—'}</div>
+                              {/* Event + date */}
+                              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {bet.event ? `${bet.event} · ` : ''}{bet.date}
                               </div>
                             </div>
-                            {/* Pick — big */}
-                            <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.15, marginBottom: '3px' }}>{bet.pick || '—'}</div>
-                            {/* Event */}
-                            {bet.event && <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '6px' }}>{bet.event}</div>}
-                            {/* Tags */}
-                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--muted)', background: 'var(--card)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '2px' }}>{bet.sport}</span>
-                              {bet.book && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: NEON, background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.2)', padding: '2px 6px', borderRadius: '2px' }}>{bet.book}</span>}
-                              {bet.betType && <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', background: 'var(--card2)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '2px' }}>{bet.betType}</span>}
+                            {/* P&L — right side, big */}
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: isOpen ? YELLOW : pnlColor }}>
+                                {isOpen ? '—' : (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}
+                              </div>
+                              <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>P&amp;L</div>
                             </div>
                           </div>
 
-                          {/* Stats bar — full width, no gaps */}
-                          <div style={{ display: 'flex', borderTop: '1px solid var(--border)', borderBottom: isOpen ? '1px solid var(--border)' : 'none' }}>
-                            {[
-                              { label: 'ODDS',    val: fmtOdds(bet.odds),                                     color: bet.odds > 0 ? NEON : 'var(--text)', sub: null },
-                              { label: 'WAGERED', val: `${bet.units}u`,                                        color: 'var(--text)',                         sub: bet.stake > 0 ? fmt$(bet.stake) : null },
-                              { label: 'P&L',     val: isOpen ? '—' : (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar), color: isOpen ? MUTED : pnlColor,    sub: null },
-                            ].map(({ label, val, color, sub }, idx) => (
-                              <div key={label} style={{ flex: 1, padding: '8px 10px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none', textAlign: idx === 2 ? 'right' : 'left' }}>
-                                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', marginBottom: '3px' }}>{label}</div>
-                                <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
-                                {sub && <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{sub}</div>}
-                              </div>
-                            ))}
+                          {/* Meta + stats row */}
+                          <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '6px' }}>
+                            {/* Result badge */}
+                            {isOpen ? (
+                              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 5px', borderRadius: '2px', flexShrink: 0 }}>OPEN</span>
+                            ) : (
+                              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: resultColor, background: bet.result === 'W' ? 'rgba(189,255,0,0.08)' : 'rgba(255,59,59,0.08)', border: `1px solid ${bet.result === 'W' ? 'rgba(189,255,0,0.25)' : 'rgba(255,59,59,0.25)'}`, padding: '1px 5px', borderRadius: '2px', flexShrink: 0 }}>
+                                {bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : 'PUSH'}
+                              </span>
+                            )}
+                            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: 'var(--muted)', background: 'var(--card)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: '2px', flexShrink: 0 }}>{bet.sport}</span>
+                            {bet.book && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: NEON, background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.2)', padding: '1px 5px', borderRadius: '2px', flexShrink: 0 }}>{bet.book}</span>}
+                            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto', flexShrink: 0 }}>{fmtOdds(bet.odds)}</span>
+                            <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', flexShrink: 0 }}>{bet.units}u{bet.stake > 0 ? ` · ${fmt$(bet.stake)}` : ''}</span>
+                            {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
                           </div>
 
-                          {/* Actions */}
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '8px 12px' }}>
-                            {isOpen && ['W','L','P'].map(r => (
-                              <button key={r} onClick={() => settleBet(bet.id, r)} style={{
-                                fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
-                                padding: '6px 0', borderRadius: '2px', cursor: 'pointer', flex: 1,
-                                border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : BORDER2}`,
-                                background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
-                                color: r === 'W' ? NEON : r === 'L' ? RED : MUTED,
-                              }}>{r === 'W' ? 'WIN ✓' : r === 'L' ? 'LOSS ✗' : 'PUSH'}</button>
-                            ))}
-                            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-                              <button onClick={() => setEditingBet(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}
-                                onTouchStart={e => e.currentTarget.style.color = NEON} onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}>
-                                <Pencil size={14} />
+                          {/* Settle buttons for open bets */}
+                          {isOpen && (
+                            <div style={{ display: 'flex', gap: '1px', borderTop: '1px solid var(--border)' }}>
+                              {['W','L','P'].map(r => (
+                                <button key={r} onClick={() => settleBet(bet.id, r)} style={{
+                                  fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
+                                  padding: '7px 0', flex: 1, border: 'none', cursor: 'pointer',
+                                  background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
+                                  color: r === 'W' ? NEON : r === 'L' ? RED : MUTED,
+                                  borderRight: r !== 'P' ? '1px solid var(--border)' : 'none',
+                                }}>{r === 'W' ? 'WIN ✓' : r === 'L' ? 'LOSS ✗' : 'PUSH'}</button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Edit/delete — settled bets only */}
+                          {!isOpen && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderTop: '1px solid var(--border)' }}>
+                              <button onClick={() => setEditingBet(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}
+                                onTouchStart={e => e.currentTarget.style.color = NEON} onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}>
+                                <Pencil size={12} />
                               </button>
-                              <button onClick={() => setBets(b => b.filter(x => x.id !== bet.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.3)', padding: '4px', display: 'flex', alignItems: 'center' }}
-                                onTouchStart={e => e.currentTarget.style.color = RED} onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.3)'}>
-                                <Trash2 size={14} />
+                              <button onClick={() => setBets(b => b.filter(x => x.id !== bet.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}
+                                onTouchStart={e => e.currentTarget.style.color = RED} onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.25)'}>
+                                <Trash2 size={12} />
                               </button>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )
                     })()
