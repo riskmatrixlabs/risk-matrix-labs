@@ -3719,12 +3719,18 @@ export default function App({ user, session, subStatus }) {
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    {[
-                      { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
-                      { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
-                      { label: '⚡ Ladder',      value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
-                      { label: 'Open Bet Risk', value: fmt$(stats.openRisk$), sub: stats.openBets > 0 ? `${stats.openBets} bet${stats.openBets > 1 ? 's' : ''} pending` : 'none open', color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
-                    ].map(({ label, value, sub, color }) => (
+                    {(() => {
+                      const openOnlyRisk = bets.filter(b => b.result === 'Open' && !b.ladder).reduce((s, b) => s + (b.stake || b.units * stats.unitSize), 0)
+                      const ladderStake  = stats.activeLadderRung ? stats.activeLadderRung.stake : 0
+                      const totalRisk    = openOnlyRisk + ladderStake
+                      return [
+                        { label: 'Max Per Bet',   value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
+                        { label: 'Daily Cap',     value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
+                        { label: '⚡ Ladder',     value: fmt$(ladderStake),          sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
+                        { label: 'Open Bet Risk', value: fmt$(openOnlyRisk),         sub: openOnlyRisk > 0 ? `${bets.filter(b=>b.result==='Open'&&!b.ladder).length} bets pending` : 'none open', color: openOnlyRisk > 0 ? YELLOW : 'var(--text)' },
+                        { label: 'Total Risk',    value: fmt$(totalRisk),            sub: 'open bets + ladder',                            color: totalRisk > 0 ? YELLOW : 'var(--text)' },
+                      ]
+                    })().map(({ label, value, sub, color }) => (
                       <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
                         <div style={{ fontFamily: R, fontSize: '7px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
                         <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color }}>{value}</div>
