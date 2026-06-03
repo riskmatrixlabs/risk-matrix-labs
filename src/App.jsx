@@ -2920,7 +2920,8 @@ export default function App({ user, session, subStatus }) {
   }, [bets, bankroll, username, stats])
 
   const filtered = useMemo(() => {
-    let b = [...bets]
+    const activeRungId = bets.filter(x => x.ladder && x.result === 'Open').sort((a,z) => a.ladderId - z.ladderId)[0]?.id
+    let b = bets.filter(x => !x.ladder || x.result !== 'Open' || x.id === activeRungId)
     if (sportFilter  !== 'ALL')   b = b.filter(x => x.sport  === sportFilter)
     if (resultFilter === 'OPEN')  b = b.filter(x => x.result === 'Open')
     else if (resultFilter !== 'ALL') b = b.filter(x => x.result === resultFilter)
