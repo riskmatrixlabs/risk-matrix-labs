@@ -3724,7 +3724,6 @@ export default function App({ user, session, subStatus }) {
                       { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
                       { label: '⚡ Ladder',      value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                       { label: 'Open Bet Risk', value: fmt$(stats.openRisk$), sub: stats.openBets > 0 ? `${stats.openBets} bet${stats.openBets > 1 ? 's' : ''} pending` : 'none open', color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
-                      { label: 'Remaining',      value: fmt$(risk.remainingRisk$), sub: 'capacity left',                                 color: risk.remainingRisk$ <= 0 ? RED : NEON },
                     ].map(({ label, value, sub, color }) => (
                       <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
                         <div style={{ fontFamily: R, fontSize: '7px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '3px' }}>{label}</div>
