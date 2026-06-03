@@ -2476,7 +2476,8 @@ export default function App({ user, session, subStatus }) {
   const [syncing,      setSyncing]      = useState(false)
   const [cloudSynced,  setCloudSynced]  = useState(false)
   const [syncError,    setSyncError]    = useState(null)
-  const userId = user?.id
+  const userId  = user?.id
+  const token   = session?.access_token
 
   const [darkMode,       setDarkMode]       = useState(saved.current?.darkMode       ?? true)
   const [tiltDismissed,  setTiltDismissed]  = useState(false)
@@ -2590,7 +2591,7 @@ export default function App({ user, session, subStatus }) {
           })
         }
         // Load bets from cloud
-        const { data: betRows, error: betErr } = await fetchBets(userId)
+        const { data: betRows, error: betErr } = await fetchBets(userId, token)
         if (betErr) {
           console.error('[RML] fetchBets error:', betErr)
         } else if (betRows?.length > 0) {
@@ -2602,7 +2603,7 @@ export default function App({ user, session, subStatus }) {
         }
 
         // Load settings from cloud
-        const { data: settings, error: settErr } = await fetchSettings(userId)
+        const { data: settings, error: settErr } = await fetchSettings(userId, token)
         if (settErr && settErr.code !== 'PGRST116') {
           console.error('[RML] fetchSettings error:', settErr)
         } else if (settings) {
@@ -2614,7 +2615,7 @@ export default function App({ user, session, subStatus }) {
         }
 
         // Load templates from cloud
-        const { data: tmplRows } = await fetchTemplates(userId)
+        const { data: tmplRows } = await fetchTemplates(userId, token)
         if (tmplRows?.length > 0) {
           setTemplates(tmplRows.map(r => ({ name: r.name, date: r.created_at?.slice(0,10), bankroll: r.bankroll, username: r.username, riskSettings: r.risk_settings })))
         }
@@ -2631,7 +2632,7 @@ export default function App({ user, session, subStatus }) {
   useEffect(() => {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
-      syncAllBets(bets, userId).then(({ error }) => {
+      syncAllBets(bets, userId, token).then(({ error }) => {
         if (error) {
           console.error('[RML] syncAllBets error:', error)
           setSyncError(`Bets sync failed: ${error.message || error.code || 'unknown'}`)
@@ -2650,7 +2651,7 @@ export default function App({ user, session, subStatus }) {
       upsertSettings(userId, {
         bankroll, ladder_starting: ladderStarting, username,
         risk_settings: riskSettings, dark_mode: darkMode,
-      }).then(({ error }) => {
+      }, token).then(({ error }) => {
         if (error) {
           console.error('[RML] upsertSettings error:', error)
           setSyncError(prev => prev || `Settings sync failed: ${error.message || error.code || 'unknown'}`)
@@ -2700,7 +2701,7 @@ export default function App({ user, session, subStatus }) {
     setUsername('OPERATOR')
     setLadderStarting(LADDER_STARTING_BR)
     setRiskSettings({ maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20, unitPct: 2 })
-    if (userId) deleteAllBets(userId)
+    if (userId) deleteAllBets(userId, token)
   }, [userId])
 
   // ── Save template ──

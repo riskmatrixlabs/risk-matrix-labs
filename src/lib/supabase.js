@@ -11,6 +11,15 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 })
 
+// Returns a Supabase client that explicitly sends the user's JWT on every request.
+// This bypasses the singleton's session state race conditions.
+export function authedClient(accessToken) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth:   { persistSession: false, autoRefreshToken: false },
+  })
+}
+
 // ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
 export const signUpEmail = (email, password) =>
   supabase.auth.signUp({
@@ -41,42 +50,44 @@ export const updatePassword = (newPassword) =>
 export const getSession = () => supabase.auth.getSession()
 
 // ─── DATA HELPERS ─────────────────────────────────────────────────────────────
+// All data helpers accept a token and use authedClient to guarantee the JWT
+// is sent with every request, bypassing session state race conditions.
 
 // Bets
-export const fetchBets = (userId) =>
-  supabase.from('bets').select('*').eq('user_id', userId).order('date', { ascending: true })
+export const fetchBets = (userId, token) =>
+  authedClient(token).from('bets').select('*').eq('user_id', userId).order('date', { ascending: true })
 
-export const upsertBet = (bet, userId) =>
-  supabase.from('bets').upsert({ ...betToRow(bet, userId) }, { onConflict: 'client_id,user_id' })
+export const upsertBet = (bet, userId, token) =>
+  authedClient(token).from('bets').upsert({ ...betToRow(bet, userId) }, { onConflict: 'client_id,user_id' })
 
-export const deleteBet = (clientId, userId) =>
-  supabase.from('bets').delete().eq('client_id', String(clientId)).eq('user_id', userId)
+export const deleteBet = (clientId, userId, token) =>
+  authedClient(token).from('bets').delete().eq('client_id', String(clientId)).eq('user_id', userId)
 
-export const deleteAllBets = (userId) =>
-  supabase.from('bets').delete().eq('user_id', userId)
+export const deleteAllBets = (userId, token) =>
+  authedClient(token).from('bets').delete().eq('user_id', userId)
 
-export const syncAllBets = (bets, userId) =>
-  supabase.from('bets').upsert(
+export const syncAllBets = (bets, userId, token) =>
+  authedClient(token).from('bets').upsert(
     bets.map(b => betToRow(b, userId)),
     { onConflict: 'client_id,user_id' }
   )
 
 // Settings / session state
-export const fetchSettings = (userId) =>
-  supabase.from('user_settings').select('*').eq('user_id', userId).single()
+export const fetchSettings = (userId, token) =>
+  authedClient(token).from('user_settings').select('*').eq('user_id', userId).single()
 
-export const upsertSettings = (userId, data) =>
-  supabase.from('user_settings').upsert({ user_id: userId, ...data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+export const upsertSettings = (userId, data, token) =>
+  authedClient(token).from('user_settings').upsert({ user_id: userId, ...data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
 
 // Templates
-export const fetchTemplates = (userId) =>
-  supabase.from('templates').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+export const fetchTemplates = (userId, token) =>
+  authedClient(token).from('templates').select('*').eq('user_id', userId).order('created_at', { ascending: false })
 
-export const upsertTemplate = (template, userId) =>
-  supabase.from('templates').upsert({ ...template, user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'name,user_id' })
+export const upsertTemplate = (template, userId, token) =>
+  authedClient(token).from('templates').upsert({ ...template, user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'name,user_id' })
 
-export const deleteTemplate = (name, userId) =>
-  supabase.from('templates').delete().eq('name', name).eq('user_id', userId)
+export const deleteTemplate = (name, userId, token) =>
+  authedClient(token).from('templates').delete().eq('name', name).eq('user_id', userId)
 
 // ─── ROW TRANSFORMERS ─────────────────────────────────────────────────────────
 export function betToRow(bet, userId) {
