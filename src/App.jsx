@@ -389,27 +389,32 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
   const payout  = stake$ + toWin
   const units   = parseFloat(form.units) || 0
 
+  // Stake $ is primary: derive units from stake if both entered, so stored stake = exact $ typed
+  const effectiveUnits = stake$ > 0 ? stake$ / unitSize : units
+  const effectiveStake = stake$ > 0 ? stake$ : units * unitSize
+
   // Always calculate both scenarios regardless of result selection
-  const potentialWin  = odds !== 0 ? (odds > 0 ? units * odds / 100 : units * 100 / Math.abs(odds)) : 0
-  const potentialLoss = units
+  const potentialWin  = odds !== 0 ? (odds > 0 ? effectiveUnits * odds / 100 : effectiveUnits * 100 / Math.abs(odds)) : 0
+  const potentialLoss = effectiveUnits
 
   const calcPnl = () => {
-    if (form.result === 'W')    return potentialWin
-    if (form.result === 'L')    return -potentialLoss
-    if (form.result === 'P')    return 0
-    // Open / TBD — use potential win as the optimistic display
-    return potentialWin
+    const u = effectiveUnits
+    const win  = odds > 0 ? u * odds / 100 : u * 100 / Math.abs(odds)
+    const loss = u
+    if (form.result === 'W') return win
+    if (form.result === 'L') return -loss
+    if (form.result === 'P') return 0
+    return win
   }
 
   const submit = (e) => {
     e.preventDefault()
     if (!form.date || !form.event || !form.pick || !form.odds || (!form.units && !form.stake)) return
-    const finalUnits = units || (stake$ / unitSize)
     onAdd({
       ...form,
       odds,
-      units: +finalUnits.toFixed(2),
-      stake: +stake$.toFixed(2),
+      units: +effectiveUnits.toFixed(2),
+      stake: +effectiveStake.toFixed(2),
       pnl:   +calcPnl().toFixed(2),
       id:    isEdit ? form.id : Date.now(),
     })
@@ -450,8 +455,8 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
         {FL({ label: 'Pick / Market', children: <input value={form.pick} onChange={f('pick')} placeholder="Chiefs -6.5" style={inputStyle} /> })}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {FL({ label: 'Odds (American)', children: <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} /> })}
+          {FL({ label: 'Stake $', hint: 'primary', children: <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} /> })}
           {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children: <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="0.25" min="0" style={inputStyle} /> })}
-          {FL({ label: 'Stake $', children: <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} /> })}
           {FL({ label: 'Result', children: <select value={form.result} onChange={f('result')} style={inputStyle}><option value="W">Win</option><option value="L">Loss</option><option value="P">Push</option><option value="Open">Open</option><option value="VOID">Void</option></select> })}
         </div>
         {(form.units || form.stake) && odds !== 0 && (
@@ -529,16 +534,16 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             <input value={form.pick} onChange={f('pick')} placeholder="Chiefs -6.5" style={inputStyle} />
           })}
 
-          {/* Row 4: Odds / Units / Stake$ */}
+          {/* Row 4: Odds / Stake$ / Units */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px' }}>
             {FL({ label: 'Odds (American)', children:
               <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} />
             })}
+            {FL({ label: 'Stake $', hint: 'primary — enter $ amount', children:
+              <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} />
+            })}
             {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children:
               <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="0.25" min="0" style={inputStyle} />
-            })}
-            {FL({ label: 'Stake $', hint: 'or type $ directly', children:
-              <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} />
             })}
           </div>
 
@@ -1502,10 +1507,11 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   })
   const byType = Object.values(typeMap).sort((a, z) => z.bets - a.bets)
 
-  // Book
+  // Book — skip bets with no book selected
   const bookMap = {}
   settled.forEach(b => {
-    const bk = b.book || 'Unknown'
+    const bk = b.book
+    if (!bk) return
     if (!bookMap[bk]) bookMap[bk] = { book: bk, pnl: 0, bets: 0, wins: 0 }
     bookMap[bk].pnl += b.pnl; bookMap[bk].bets++
     if (b.result === 'W') bookMap[bk].wins++
