@@ -470,7 +470,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {FL({ label: 'Odds (American)', children: <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} /> })}
           {FL({ label: 'Stake $', hint: 'primary', children: <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} /> })}
-          {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children: <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="0.25" min="0" style={inputStyle} /> })}
+          {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children: <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={inputStyle} /> })}
           {FL({ label: 'Result', children: <select value={form.result} onChange={f('result')} style={inputStyle}><option value="W">Win</option><option value="L">Loss</option><option value="P">Push</option><option value="Open">Open</option><option value="VOID">Void</option></select> })}
         </div>
         {(form.units || form.stake) && odds !== 0 && (
@@ -557,7 +557,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
               <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} />
             })}
             {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children:
-              <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="0.25" min="0" style={inputStyle} />
+              <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={inputStyle} />
             })}
           </div>
 
