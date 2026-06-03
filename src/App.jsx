@@ -2920,7 +2920,7 @@ export default function App({ user, session, subStatus }) {
   }, [bets, bankroll, username, stats])
 
   const filtered = useMemo(() => {
-    let b = bets.filter(x => !x.ladder)   // ladder bets live in the Ladder tab
+    let b = [...bets]
     if (sportFilter  !== 'ALL')   b = b.filter(x => x.sport  === sportFilter)
     if (resultFilter === 'OPEN')  b = b.filter(x => x.result === 'Open')
     else if (resultFilter !== 'ALL') b = b.filter(x => x.result === resultFilter)
@@ -4328,7 +4328,7 @@ export default function App({ user, session, subStatus }) {
                 })}
                 {filtered.length === 0 && (
                   <div style={{ ...cardStyle, padding: '40px 20px', textAlign: 'center' }}>
-                    {bets.filter(b => !b.ladder).length === 0 ? (
+                    {bets.length === 0 ? (
                       <div>
                         <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--text)', marginBottom: '8px' }}>NO BETS LOGGED YET</div>
                         <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.08em', marginBottom: '16px' }}>Track your first bet to start building your edge.</div>
@@ -4473,7 +4473,7 @@ export default function App({ user, session, subStatus }) {
                   )})}
                   {filtered.length === 0 && (
                     <tr><td colSpan={11} style={{ padding: '44px 20px', textAlign: 'center' }}>
-                      {bets.filter(b => !b.ladder).length === 0 ? (
+                      {bets.length === 0 ? (
                         <div>
                           <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--text)', marginBottom: '8px' }}>NO BETS LOGGED YET</div>
                           <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.08em', marginBottom: '16px' }}>Track your first bet to start building your edge.</div>
