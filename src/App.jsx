@@ -892,6 +892,20 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                     <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(row.odds)}</span>
                     <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{isEdit ? '▲' : '▼'}</span>
                   </div>
+                  {/* Stats bar — STAKE | TO WIN | PROFIT | BANK (same flush style as bet card) */}
+                  <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+                    {[
+                      { label: 'STAKE',  val: fmt$(row.stake),                                                        color: 'var(--text)' },
+                      { label: 'TO WIN', val: row.stake > 0 ? `+${fmt$(row.toWin)}` : '—',                           color: NEON },
+                      { label: 'PROFIT', val: isOpen ? '—' : isWin ? `+${fmt$(row.profit)}` : `-${fmt$(row.stake)}`,  color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' },
+                      { label: 'BANK',   val: isOpen ? '—' : fmt$(row.bankOut),                                       color: 'var(--text)' },
+                    ].map(({ label, val, color }, idx) => (
+                      <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 3 ? '1px solid var(--border)' : 'none' }}>
+                        <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+                        <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Expanded edit panel */}
