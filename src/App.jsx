@@ -4159,9 +4159,19 @@ export default function App({ user, session, subStatus }) {
                         </div>
                         <div style={{ padding: '5px 7px', background: 'var(--card2)', borderRadius: '3px' }}>
                           <div style={{ fontFamily: R, fontSize: '7px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '2px' }}>P&amp;L</div>
-                          <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: isOpen ? YELLOW : bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED }}>
-                            {isOpen ? 'pending' : (() => { const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize; return (d >= 0 ? '+' : '') + fmt$(d) })()}
-                          </div>
+                          {isOpen ? (
+                            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: YELLOW }}>pending</div>
+                          ) : (() => {
+                            const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize
+                            const u = stats.unitSize > 0 ? d / stats.unitSize : bet.pnl
+                            const c = bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED
+                            return (
+                              <>
+                                <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: c }}>{(u >= 0 ? '+' : '') + u.toFixed(2)}u</div>
+                                <div style={{ fontFamily: R, fontSize: '8px', color: c, opacity: 0.7 }}>{(d >= 0 ? '+' : '') + fmt$(d)}</div>
+                              </>
+                            )
+                          })()}
                         </div>
                       </div>
                       {/* Row 5: settle actions + edit/delete */}
