@@ -2547,7 +2547,7 @@ export default function App({ user, session, subStatus }) {
   const [showHelp,     setShowHelp]     = useState(false)
   const [showMore,     setShowMore]     = useState(false)
   const [settingsPill, setSettingsPill] = useState(null)
-  const [overviewSection, setOverviewSection] = useState('limits')
+  const [overviewSection, setOverviewSection] = useState('bytype')
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
@@ -3541,6 +3541,7 @@ export default function App({ user, session, subStatus }) {
 
               {(() => {
                 const pills = [
+                  { id: 'bytype',      label: 'By Type' },
                   { id: 'limits',      label: 'BR Limits' },
                   { id: 'curve',       label: 'BR Curve' },
                   { id: 'performance', label: 'Performance' },
@@ -3571,6 +3572,54 @@ export default function App({ user, session, subStatus }) {
               })()}
 
               {/* ── Active sub-panel ── */}
+
+              {overviewSection === 'bytype' && (() => {
+                const settledNonLadder = bets.filter(b => !b.ladder && (b.result === 'W' || b.result === 'L'))
+                const tMap = {}; const bMap = {}; const sMap = {}
+                settledNonLadder.forEach(b => {
+                  const t = b.betType || 'Other'; const bk = b.book || 'No Book'; const sp = b.sport || 'Other'
+                  if (!tMap[t]) tMap[t] = { label: t, pnl: 0, bets: 0, wins: 0 }
+                  if (!bMap[bk]) bMap[bk] = { label: bk, pnl: 0, bets: 0, wins: 0 }
+                  if (!sMap[sp]) sMap[sp] = { label: sp, pnl: 0, bets: 0, wins: 0 }
+                  tMap[t].pnl += b.pnl; tMap[t].bets++; if (b.result === 'W') tMap[t].wins++
+                  bMap[bk].pnl += b.pnl; bMap[bk].bets++; if (b.result === 'W') bMap[bk].wins++
+                  sMap[sp].pnl += b.pnl; sMap[sp].bets++; if (b.result === 'W') sMap[sp].wins++
+                })
+                const rows = (map) => Object.values(map).sort((a,z) => z.bets - a.bets)
+                const pnlDollar = (b) => (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * stats.unitSize
+                const tRows = Object.values(tMap).sort((a,z) => z.bets - a.bets)
+                const bRows = Object.values(bMap).sort((a,z) => z.bets - a.bets)
+                const sRows = Object.values(sMap).sort((a,z) => z.bets - a.bets)
+                const Section = ({ title, items }) => items.length === 0 ? null : (
+                  <div style={{ ...cardStyle, padding: '10px 12px', marginBottom: '6px' }}>
+                    <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{title}</div>
+                    {items.map(row => {
+                      const wr = row.bets > 0 ? (row.wins / row.bets * 100).toFixed(0) : 0
+                      const dollarPnl = row.pnl * stats.unitSize
+                      return (
+                        <div key={row.label} style={{ display: 'flex', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.label}</div>
+                            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{row.bets} bets · {wr}% WR</div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: dollarPnl >= 0 ? NEON : RED }}>{dollarPnl >= 0 ? '+' : ''}{fmt$(dollarPnl)}</div>
+                            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{row.wins}W – {row.bets - row.wins}L</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+                return (
+                  <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                    <Section title="By Bet Type" items={tRows} />
+                    <Section title="By Book" items={bRows} />
+                    <Section title="By Sport" items={sRows} />
+                    {settledNonLadder.length === 0 && <div style={{ ...cardStyle, padding: '20px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>No settled bets yet</div>}
+                  </div>
+                )
+              })()}
 
               {overviewSection === 'curve' && (
                 <div style={{ ...cardStyle, padding: '14px 14px 10px', maxHeight: '60vh', overflowY: 'auto' }}>
@@ -3657,7 +3706,7 @@ export default function App({ user, session, subStatus }) {
                     {[
                       { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
                       { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
-                      { label: 'Open Now',    value: fmt$(risk.totalOpenRisk),  sub: `${stats.openBets} active`,                      color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
+                      { label: '⚡ Ladder',   value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                       { label: 'Remaining',   value: fmt$(risk.remainingRisk$), sub: 'capacity left',                                 color: risk.remainingRisk$ <= 0 ? RED : NEON },
                     ].map(({ label, value, sub, color }) => (
                       <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
@@ -3737,7 +3786,7 @@ export default function App({ user, session, subStatus }) {
               {/* ── Stat cards row 2: Open Risk + Total P/L ── */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Open Risk</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Risk</div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
                 </div>
@@ -3824,7 +3873,7 @@ export default function App({ user, session, subStatus }) {
             </div>
             <div style={{ ...cardStyle, padding: '14px 16px', borderTop: stats.openBets > 0 ? `1px solid rgba(245,166,35,0.5)` : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>Open Risk</span>
+                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>Total Risk</span>
                 <Clock size={11} color={stats.openBets > 0 ? YELLOW : 'var(--muted)'} strokeWidth={2} />
               </div>
               <div style={{ fontFamily: R, fontSize: '26px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
@@ -3967,7 +4016,7 @@ export default function App({ user, session, subStatus }) {
                 {[
                   { label: 'Max Per Bet',   value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
                   { label: 'Daily Cap',     value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,           color: 'var(--text)' },
-                  { label: 'Open Now',      value: fmt$(risk.totalOpenRisk),  sub: `${stats.openBets} active bets`,                  color: stats.openBets > 0 ? YELLOW : 'var(--text)' },
+                  { label: '⚡ Ladder',     value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                   { label: 'Remaining',     value: fmt$(risk.remainingRisk$), sub: 'capacity left',                                  color: risk.remainingRisk$ <= 0 ? RED : NEON },
                 ].map(({ label, value, sub, color }) => (
                   <div key={label} style={{ padding: '9px 11px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
@@ -4436,7 +4485,7 @@ export default function App({ user, session, subStatus }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'analytics', label: 'Overview',  icon: TrendingUp },
+                { id: 'analytics', label: 'Analytics',  icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Sliders },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
@@ -4464,7 +4513,7 @@ export default function App({ user, session, subStatus }) {
           }}>
             {[
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
-              { id: 'analytics', label: 'Overview', icon: TrendingUp },
+              { id: 'analytics', label: 'Analytics', icon: TrendingUp },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
               { id: 'overview',  label: 'Stats',    icon: BarChart3  },
               { id: 'rr engine', label: 'RR',       icon: Target     },
