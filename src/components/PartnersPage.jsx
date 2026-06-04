@@ -165,62 +165,73 @@ function CapperCard({ capper }) {
   )
 }
 
+const TABS = ['Bonuses', 'Tools', 'Promote', 'Cappers']
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PartnersPage({ isMobile }) {
+  const [tab, setTab]               = useState('Bonuses')
   const [selectedState, setSelectedState] = useState('All States')
 
   const filteredBooks = selectedState === 'All States' ? BOOKS : BOOKS.filter(b => b.states.includes(selectedState))
   const totalBonus = filteredBooks.reduce((s, b) => s + (parseInt(b.bonus.replace(/[$,]/g, '')) || 0), 0)
 
   return (
-    <div style={{ padding: isMobile ? '16px 14px' : '24px 28px', maxWidth: '640px', margin: '0 auto', paddingBottom: '80px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+    <div style={{ padding: isMobile ? '12px 14px' : '20px 28px', maxWidth: '640px', margin: '0 auto', paddingBottom: '80px' }}>
 
-      {/* ── 1. Sports Bonuses ── */}
-      <section>
-        <SectionHeader
-          label="Sports Bonuses"
-          right={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {totalBonus > 0 && (
-                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON }}>
-                  ${totalBonus.toLocaleString()}+ available
-                </span>
-              )}
-              <div style={{ position: 'relative' }}>
-                <select value={selectedState} onChange={e => setSelectedState(e.target.value)} style={{ appearance: 'none', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '5px', color: '#fff', fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '5px 24px 5px 9px', cursor: 'pointer', outline: 'none', letterSpacing: '0.08em' }}>
-                  {STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <ChevronDown size={11} color="rgba(255,255,255,0.4)" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-              </div>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '2px' }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer',
+            fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: tab === t ? NEON : 'rgba(255,255,255,0.3)',
+            borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
+            marginBottom: '-1px', whiteSpace: 'nowrap',
+          }}>{t}</button>
+        ))}
+      </div>
+
+      {/* ── Bonuses ── */}
+      {tab === 'Bonuses' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            {totalBonus > 0
+              ? <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON }}>${totalBonus.toLocaleString()}+ available</span>
+              : <span />}
+            <div style={{ position: 'relative' }}>
+              <select value={selectedState} onChange={e => setSelectedState(e.target.value)} style={{ appearance: 'none', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '5px', color: '#fff', fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '5px 24px 5px 9px', cursor: 'pointer', outline: 'none', letterSpacing: '0.08em' }}>
+                {STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown size={11} color="rgba(255,255,255,0.4)" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             </div>
-          }
-        />
-        <BookSlider books={filteredBooks} />
-      </section>
+          </div>
+          <BookSlider books={filteredBooks} />
+          <p style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.12)', marginTop: '16px', lineHeight: 1.6 }}>
+            Affiliate links — RML may earn a commission. Must be 21+. Problem gambling? 1-800-GAMBLER.
+          </p>
+        </div>
+      )}
 
-      {/* ── 2. Popular Tools ── */}
-      <section>
-        <SectionHeader label="Popular Tools" />
+      {/* ── Tools ── */}
+      {tab === 'Tools' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {TOOLS.map(t => <ToolRow key={t.id} tool={t} />)}
         </div>
-      </section>
+      )}
 
-      {/* ── 3. Promote RML ── */}
-      <section>
-        <SectionHeader label="Promote RML" />
+      {/* ── Promote ── */}
+      {tab === 'Promote' && (
         <div style={{ background: 'linear-gradient(135deg, rgba(189,255,0,0.1), rgba(189,255,0,0.03))', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '10px', padding: '20px 18px' }}>
           <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '6px', letterSpacing: '0.03em' }}>Earn by Promoting RML</div>
           <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: '16px' }}>
             Partner with Risk Matrix Labs and earn commission for every subscriber you refer — forever.
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
             {[
-              { label: 'Commission', value: '30%',      sub: 'per paid subscriber' },
-              { label: 'Cookie',     value: '90 Days',  sub: 'last-click attribution' },
-              { label: 'Payout',     value: 'Monthly',  sub: 'PayPal or bank' },
-              { label: 'Tracking',   value: 'Live',     sub: 'dashboard + stats' },
+              { label: 'Commission', value: '30%',     sub: 'per paid subscriber' },
+              { label: 'Cookie',     value: '90 Days', sub: 'last-click attribution' },
+              { label: 'Payout',     value: 'Monthly', sub: 'PayPal or bank' },
+              { label: 'Tracking',   value: 'Live',    sub: 'dashboard + stats' },
             ].map(p => (
               <div key={p.label} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(189,255,0,0.12)', borderRadius: '6px', padding: '10px 12px' }}>
                 <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: '3px' }}>{p.label}</div>
@@ -229,7 +240,6 @@ export default function PartnersPage({ isMobile }) {
               </div>
             ))}
           </div>
-
           <a href="mailto:hello@riskmatrixlabs.com?subject=RML Affiliate Program"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '11px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none' }}>
             Apply Now <ExternalLink size={11} strokeWidth={2.5} />
@@ -238,23 +248,19 @@ export default function PartnersPage({ isMobile }) {
             hello@riskmatrixlabs.com — response within 48 hours
           </div>
         </div>
-      </section>
+      )}
 
-      {/* ── 4. Trusted Cappers ── */}
-      <section>
-        <SectionHeader label="Trusted Cappers" />
-        <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginBottom: '10px', lineHeight: 1.6 }}>
-          RML only partners with cappers who track their record publicly. No gurus. Just verifiable results.
+      {/* ── Cappers ── */}
+      {tab === 'Cappers' && (
+        <div>
+          <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginBottom: '10px', lineHeight: 1.6 }}>
+            RML only partners with cappers who track their record publicly. No gurus. Just verifiable results.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {CAPPERS.map(c => <CapperCard key={c.id} capper={c} />)}
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {CAPPERS.map(c => <CapperCard key={c.id} capper={c} />)}
-        </div>
-      </section>
-
-      {/* Disclaimer */}
-      <p style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.12)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: '12px', margin: 0 }}>
-        Some links are affiliate links. Risk Matrix Labs may earn a commission at no extra cost to you. Always gamble responsibly. Must be 21+ in a legal betting state. Problem gambling? 1-800-GAMBLER.
-      </p>
+      )}
     </div>
   )
 }
