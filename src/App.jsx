@@ -898,7 +898,63 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
         </div>
       )}
 
-      {/* Main row: pick + value */}
+      {/* ── OPEN layout: matches ladder card ── */}
+      {isOpen ? (<>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 0', gap: '8px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: YELLOW, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {bet.pick || '—'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, lineHeight: 1, color: YELLOW }}>
+              {toWin > 0 ? `+${fmt$(toWin)}` : '—'}
+            </div>
+            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '1px', letterSpacing: '0.08em' }}>to win</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 10px 6px', gap: '6px' }}>
+          {badgePill('OPEN', YELLOW, 'rgba(245,166,35,0.12)', 'rgba(245,166,35,0.4)')}
+          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{bet.book || '—'}</span>
+          {bet.sport && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{bet.sport}</span>}
+          {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{'⭐'.repeat(bet.confidence)}</span>}
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(bet.odds)}</span>
+        </div>
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+          {[
+            { label: 'STAKE', val: bet.stake > 0 ? fmt$(bet.stake) : '—',     color: 'var(--text)' },
+            { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—',      color: NEON },
+            { label: 'UNITS',  val: bet.units > 0 ? `${bet.units}u` : '—',    color: 'var(--text)' },
+          ].map(({ label, val, color }, idx) => (
+            <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+          {[
+            { r: 'W', label: 'WIN ✓',  color: NEON,  bg: 'rgba(189,255,0,0.07)' },
+            { r: 'L', label: 'LOSS ✗', color: RED,   bg: 'rgba(255,59,59,0.07)' },
+            { r: 'P', label: 'PUSH',   color: MUTED, bg: 'transparent' },
+          ].map(({ r, label, color, bg }) => (
+            <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{
+              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
+              padding: '8px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)',
+              cursor: 'pointer', background: bg, color,
+            }}
+            onTouchStart={e => e.currentTarget.style.opacity = '0.7'}
+            onTouchEnd={e => e.currentTarget.style.opacity = '1'}
+            >{label}</button>
+          ))}
+          <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onTouchStart={e => e.currentTarget.style.color = NEON}
+            onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
+          ><Pencil size={11} /></button>
+        </div>
+      </>) : (<>
+
+      {/* ── SETTLED: event + pick + meta row ── */}
       <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -907,22 +963,16 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
           <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{bet.date}</div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: isOpen ? YELLOW : pnlColor }}>
-            {isOpen ? (toWin > 0 ? `+${fmt$(toWin)}` : '—') : (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}
+          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: pnlColor }}>
+            {(pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}
           </div>
-          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>
-            {isOpen ? 'to win' : 'P&L'}
-          </div>
+          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>P&L</div>
         </div>
       </div>
-
-      {/* Meta row: badges + odds + size */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '5px', flexWrap: 'nowrap', overflow: 'hidden' }}>
-        {isOpen
-          ? badgePill(isLadder ? `RNG ${bet.ladderId}` : 'OPEN', YELLOW, 'rgba(245,166,35,0.12)', 'rgba(245,166,35,0.3)')
-          : badgePill(bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : 'PUSH', resultColor,
-              bet.result === 'W' ? 'rgba(189,255,0,0.08)' : bet.result === 'L' ? 'rgba(255,59,59,0.08)' : 'var(--card)',
-              bet.result === 'W' ? 'rgba(189,255,0,0.25)' : bet.result === 'L' ? 'rgba(255,59,59,0.25)' : 'var(--border)')}
+        {badgePill(bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : 'PUSH', resultColor,
+          bet.result === 'W' ? 'rgba(189,255,0,0.08)' : bet.result === 'L' ? 'rgba(255,59,59,0.08)' : 'var(--card)',
+          bet.result === 'W' ? 'rgba(189,255,0,0.25)' : bet.result === 'L' ? 'rgba(255,59,59,0.25)' : 'var(--border)')}
         {bet.sport && badgePill(bet.sport, 'var(--muted)', 'var(--card)', 'var(--border)')}
         {bet.book  && badgePill(bet.book,  NEON, 'rgba(189,255,0,0.07)', 'rgba(189,255,0,0.2)')}
         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto', flexShrink: 0 }}>{fmtOdds(bet.odds)}</span>
@@ -951,34 +1001,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
           {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = RED}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.25)'}><Trash2 size={12} /></button>}
         </div>
       </>)}
-
-      {/* ── OPEN FOOTER: WIN | LOSS | PUSH | EDIT ── */}
-      {isOpen && (
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[
-            { r: 'W', label: 'WIN',  color: NEON, bg: 'rgba(189,255,0,0.07)' },
-            { r: 'L', label: 'LOSS', color: RED,  bg: 'rgba(255,59,59,0.07)' },
-            { r: 'P', label: 'PUSH', color: MUTED, bg: 'transparent' },
-          ].map(({ r, label, color, bg }) => (
-            <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{
-              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
-              padding: '8px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)',
-              cursor: 'pointer', background: bg, color, transition: 'opacity 0.1s',
-            }}
-            onTouchStart={e => e.currentTarget.style.opacity = '0.7'}
-            onTouchEnd={e => e.currentTarget.style.opacity = '1'}
-            >{label}</button>
-          ))}
-          <button onClick={() => onEdit?.(bet)} style={{
-            background: 'none', border: 'none', borderLeft: '1px solid var(--border)',
-            cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 12px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.1s',
-          }}
-          onTouchStart={e => e.currentTarget.style.color = NEON}
-          onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
-          ><Pencil size={11} /></button>
-        </div>
-      )}
+      </>)}
     </div>
     {isLadder && bet.result === 'W' && bet.pull && bet.pullNote && (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', marginBottom: '5px', padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: '1px solid rgba(189,255,0,0.2)', borderLeft: '3px solid rgba(189,255,0,0.6)', borderRadius: '4px' }}>
