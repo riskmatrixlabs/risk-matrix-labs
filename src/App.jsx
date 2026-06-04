@@ -887,8 +887,8 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
     )
   }
 
-  return (
-    <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: '5px', borderLeft: `3px solid ${accentColor}` }}>
+  return (<>
+    <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: isLadder && bet.result === 'W' && bet.pull && bet.pullNote ? '0' : '5px', borderLeft: `3px solid ${accentColor}` }}>
 
       {/* Event row */}
       {eventLabel && (
@@ -979,6 +979,13 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
         </div>
       )}
     </div>
+    {isLadder && bet.result === 'W' && bet.pull && bet.pullNote && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', marginBottom: '5px', padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: '1px solid rgba(189,255,0,0.2)', borderLeft: '3px solid rgba(189,255,0,0.6)', borderRadius: '4px' }}>
+        <span style={{ fontSize: '13px', flexShrink: 0 }}>💰</span>
+        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON, letterSpacing: '0.06em' }}>{bet.pullNote}</span>
+      </div>
+    )}
+  </>
   )
 }
 
