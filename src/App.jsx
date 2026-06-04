@@ -557,14 +557,30 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
           <div style={card}>
             <span style={lbl}>Odds · Stake · Units</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              {/* Odds with +/- toggle */}
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '10px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED }}>ODDS</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', justifyContent: 'center' }}>
+                  <button type="button"
+                    onClick={() => { const v = parseInt(form.odds) || 0; set('odds', v > 0 ? String(-v) : String(Math.abs(v) || 110)) }}
+                    style={{ background: 'var(--card2)', border: `1px solid ${parseInt(form.odds) > 0 ? NEON : 'var(--border2)'}`, borderRadius: '6px', color: parseInt(form.odds) > 0 ? NEON : 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '2px 5px', cursor: 'pointer', flexShrink: 0 }}>
+                    {parseInt(form.odds) > 0 ? '+' : '−'}
+                  </button>
+                  <input value={form.odds.replace(/^[+-]/, '')} onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g,'')
+                    const sign = parseInt(form.odds) >= 0 ? '' : '-'
+                    set('odds', sign + raw)
+                  }} placeholder="110" inputMode="numeric"
+                    style={{ background: 'transparent', border: 'none', color: parseInt(form.odds) > 0 ? NEON : 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, textAlign: 'center', width: '60px', outline: 'none', padding: 0 }} />
+                </div>
+              </div>
               {[
-                { label: 'ODDS', val: form.odds, onChange: f('odds'), placeholder: '-110', color: parseInt(form.odds) > 0 ? NEON : 'var(--text)', mode: 'decimal' },
-                { label: 'STAKE $', val: form.stake, onChange: onStakeChange, placeholder: fmt$(unitSize), color: 'var(--text)', mode: 'decimal' },
-                { label: 'UNITS', val: form.units, onChange: onUnitsChange, placeholder: '1.0', color: 'var(--text)', mode: 'decimal' },
-              ].map(({ label, val, onChange, placeholder, color, mode }) => (
+                { label: 'STAKE $', val: form.stake, onChange: onStakeChange, placeholder: fmt$(unitSize), color: 'var(--text)' },
+                { label: 'UNITS', val: form.units, onChange: onUnitsChange, placeholder: '1.0', color: 'var(--text)' },
+              ].map(({ label, val, onChange, placeholder, color }) => (
                 <div key={label} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '10px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                   <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED }}>{label}</span>
-                  <input value={val} onChange={onChange} placeholder={placeholder} type="number" inputMode={mode} step="any"
+                  <input value={val} onChange={onChange} placeholder={placeholder} inputMode="decimal" type="number" step="any"
                     style={{ background: 'transparent', border: 'none', color, fontFamily: R, fontSize: '15px', fontWeight: 700, textAlign: 'center', width: '100%', outline: 'none', padding: 0 }} />
                 </div>
               ))}
@@ -811,7 +827,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   // Build rolling bankroll and computed values
   const computed = rows.reduce((acc, row) => {
     const prev    = acc.length ? acc[acc.length - 1] : null
-    const bankIn  = prev ? (prev.result === 'W' ? prev.bankOut : prev.bankIn) : ladderStarting
+    const bankIn  = prev ? prev.bankOut : ladderStarting
     const profit  = profitFromLadderOdds(row.stake, row.odds)
     const toWin   = profit
     const payout  = row.stake + profit
