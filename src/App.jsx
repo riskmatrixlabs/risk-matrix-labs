@@ -3861,17 +3861,18 @@ export default function App({ user, session, subStatus }) {
               {overviewSection === 'bytype' && (() => {
                 const settledNonLadder = bets.filter(b => !b.ladder && (b.result === 'W' || b.result === 'L'))
                 const tMap = {}; const bMap = {}; const sMap = {}
+                const pnlDollar = (b) => (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * stats.unitSize
                 settledNonLadder.forEach(b => {
                   const t = b.betType || 'Other'; const bk = b.book || 'No Book'; const sp = b.sport || 'Other'
+                  const d = pnlDollar(b)
                   if (!tMap[t]) tMap[t] = { label: t, pnl: 0, bets: 0, wins: 0 }
                   if (!bMap[bk]) bMap[bk] = { label: bk, pnl: 0, bets: 0, wins: 0 }
                   if (!sMap[sp]) sMap[sp] = { label: sp, pnl: 0, bets: 0, wins: 0 }
-                  tMap[t].pnl += b.pnl; tMap[t].bets++; if (b.result === 'W') tMap[t].wins++
-                  bMap[bk].pnl += b.pnl; bMap[bk].bets++; if (b.result === 'W') bMap[bk].wins++
-                  sMap[sp].pnl += b.pnl; sMap[sp].bets++; if (b.result === 'W') sMap[sp].wins++
+                  tMap[t].pnl += d; tMap[t].bets++; if (b.result === 'W') tMap[t].wins++
+                  bMap[bk].pnl += d; bMap[bk].bets++; if (b.result === 'W') bMap[bk].wins++
+                  sMap[sp].pnl += d; sMap[sp].bets++; if (b.result === 'W') sMap[sp].wins++
                 })
                 const rows = (map) => Object.values(map).sort((a,z) => z.bets - a.bets)
-                const pnlDollar = (b) => (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * stats.unitSize
                 const tRows = Object.values(tMap).sort((a,z) => z.bets - a.bets)
                 const bRows = Object.values(bMap).sort((a,z) => z.bets - a.bets)
                 const sRows = Object.values(sMap).sort((a,z) => z.bets - a.bets)
@@ -3880,7 +3881,6 @@ export default function App({ user, session, subStatus }) {
                     <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{title}</div>
                     {items.map(row => {
                       const wr = row.bets > 0 ? (row.wins / row.bets * 100).toFixed(0) : 0
-                      const dollarPnl = row.pnl * stats.unitSize
                       return (
                         <div key={row.label} style={{ display: 'flex', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -3888,7 +3888,7 @@ export default function App({ user, session, subStatus }) {
                             <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{row.bets} bets · {wr}% WR</div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: dollarPnl >= 0 ? NEON : RED }}>{dollarPnl >= 0 ? '+' : ''}{fmt$(dollarPnl)}</div>
+                            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: row.pnl >= 0 ? NEON : RED }}>{row.pnl >= 0 ? '+' : ''}{fmt$(row.pnl)}</div>
                             <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{row.wins}W – {row.bets - row.wins}L</div>
                           </div>
                         </div>
