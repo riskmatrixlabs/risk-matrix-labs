@@ -2989,7 +2989,7 @@ export default function App({ user, session, subStatus }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: isMobile ? '36px' : '50px' }} />
             <div>
-              <div style={{ fontFamily: R, fontWeight: 700, fontSize: isMobile ? '13px' : '17px', letterSpacing: '0.22em', color: 'var(--neon-title)', lineHeight: 1, textShadow: 'var(--neon-glow)' }}>RISK MATRIX DASHBOARD</div>
+              <div style={{ fontFamily: R, fontWeight: 700, fontSize: isMobile ? '13px' : '17px', letterSpacing: '0.22em', color: 'var(--neon-title)', lineHeight: 1, textShadow: 'var(--neon-glow)' }}>RISK MATRIX LABS</div>
               <div style={{ fontFamily: R, fontWeight: 500, fontSize: '8px', letterSpacing: '0.32em', color: 'var(--neon-sub)', marginTop: '3px' }}>OPERATE WITH DISCIPLINE</div>
             </div>
           </div>

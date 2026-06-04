@@ -220,7 +220,7 @@ export default function LandingPage({ onLogin }) {
           <img src="/brand/logos/logo-dashboard.png" alt="Risk Matrix" style={{ height: '34px' }} />
           <div>
             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, lineHeight: 1 }}>RISK MATRIX</div>
-            <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(189,255,0,0.45)', lineHeight: 1, marginTop: '2px' }}>DASHBOARD</div>
+            <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.3em', color: 'rgba(189,255,0,0.45)', lineHeight: 1, marginTop: '2px' }}>LABS</div>
           </div>
         </div>
 
@@ -282,7 +282,7 @@ export default function LandingPage({ onLogin }) {
 
               <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.18 }}
                 style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.75, marginBottom: '32px', maxWidth: '440px' }}>
-                The platform built for bettors who operate with a system. Bankroll management, risk controls, and session analytics — built for discipline, not luck.
+                The platform built for operators who run a system. Bankroll management, risk simulation, and behavioral analytics — built for discipline, not luck.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
@@ -314,7 +314,7 @@ export default function LandingPage({ onLogin }) {
               <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(189,255,0,0.16)', boxShadow: '0 32px 80px rgba(0,0,0,0.65)' }}>
                 <div style={{ background: '#111', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
-                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX DASHBOARD — OPERATOR VIEW</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX LABS — OPERATOR VIEW</div>
                 </div>
                 <img src="/brand/screenshots/desktop/dashboard-overview-full.png" alt="Dashboard Preview" style={{ width: '100%', display: 'block' }} />
               </div>
@@ -335,11 +335,11 @@ export default function LandingPage({ onLogin }) {
       {/* ══ THREE COLUMNS ══ */}
       <section id="what" style={{ position: 'relative', padding: '120px 40px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <SectionHeader pill="What Is It" title="Built For Operators.<br/><span style='color:#BDFF00'>Not Gamblers.</span>" sub="Risk Matrix Labs is a professional-grade bankroll management platform. Every bet tracked, every dollar protected, every session graded." />
+          <SectionHeader pill="What Is It" title="Built for operators.<br/><span style='color:#BDFF00'>Not gamblers.</span>" sub="Risk Matrix Labs is a bankroll operating system and betting simulator. Every bet tracked, every dollar protected, every session graded — with the discipline tools of a real operator." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="lp-3col">
-            <FeatureCard delay={0}   icon="📊" title="Track Like A Trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
-            <FeatureCard delay={0.1} icon="🛡️" title="Manage Your Risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
-            <FeatureCard delay={0.2} icon="🧠" title="Stay In The System"         desc="Tilt detection flags when you're off track. Pre-session checklists enforce your process. Your Discipline Score™ doesn't lie." />
+            <FeatureCard delay={0}   icon="📊" title="Track like a trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
+            <FeatureCard delay={0.1} icon="🛡️" title="Manage your risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
+            <FeatureCard delay={0.2} icon="🧠" title="Stay in the system"         desc="Tilt detection flags when you're off track. Pre-session checklists enforce your process. Your Discipline Score™ doesn't lie." />
           </div>
         </div>
       </section>
@@ -349,14 +349,14 @@ export default function LandingPage({ onLogin }) {
         <HexGrid opacity={0.022} />
         <GlowOrb size={600} x="84%" y="55%" opacity={0.036} />
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <SectionHeader pill="Features" title="Every Tool An Operator Needs" />
+          <SectionHeader pill="Features" title="Every tool an operator needs" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
             <FeatureCard delay={0}    icon="🪜" title="PHLT™ Ladder Tracker"    desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
-            <FeatureCard delay={0.06} icon="🎯" title="Unit Calculator"          desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
+            <FeatureCard delay={0.06} icon="🎯" title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
             <FeatureCard delay={0.12} icon="⚙️" title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
-            <FeatureCard delay={0.18} icon="🧘" title="Pre-Session Checklist"    desc="Answer 5 discipline questions before your session starts. Are you chasing? Tilted? If the checklist fails — you don't bet." />
-            <FeatureCard delay={0.24} icon="📝" title="Session Grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
-            <FeatureCard delay={0.30} icon="📈" title="Performance Analytics"    desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
+            <FeatureCard delay={0.18} icon="🧪" title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
+            <FeatureCard delay={0.24} icon="📝" title="Session grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
+            <FeatureCard delay={0.30} icon="📈" title="Behavioral analytics"     desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
           </div>
         </div>
       </section>
@@ -374,7 +374,7 @@ export default function LandingPage({ onLogin }) {
               Every data point you need. Nothing you don't. A terminal-style command center that treats your bankroll like a trading account.
             </p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {['Real-time bankroll curve', 'Risk exposure at a glance', 'Discipline Score™ per session', 'Tilt detection + alerts', 'Cloud sync across devices'].map(item => (
+              {['Real-time bankroll curve', 'Risk exposure at a glance', 'Bankroll simulation mode', 'Discipline Score™ per session', 'Tilt detection + alerts'].map(item => (
                 <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.55)' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, flexShrink: 0 }} />{item}
                 </li>
@@ -388,7 +388,7 @@ export default function LandingPage({ onLogin }) {
               <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(189,255,0,0.14)', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
                 <div style={{ background: '#111', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
-                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>OVERVIEW — OPERATOR SESSION</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX LABS — SESSION VIEW</div>
                 </div>
                 <img src="/brand/screenshots/desktop/dashboard-overview-header.png" alt="Dashboard Stats" style={{ width: '100%', display: 'block' }} />
               </div>
@@ -419,7 +419,7 @@ export default function LandingPage({ onLogin }) {
                     <span style={{ fontFamily: R, fontSize: '56px', fontWeight: 700, color: NEON, lineHeight: 1, textShadow: '0 0 30px rgba(189,255,0,0.25)' }}>$17</span>
                     <span style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.4)' }}>/month</span>
                   </div>
-                  <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>Locked in for life — as long as you stay subscribed</div>
+                  <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>Locked in for as long as you stay subscribed</div>
                 </div>
                 <div style={{ paddingBottom: '8px' }}>
                   <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Regular Price</div>
@@ -431,10 +431,10 @@ export default function LandingPage({ onLogin }) {
               {/* Features list */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: '36px' }} className="lp-pricing-grid">
                 {[
-                  'PHLT™ Ladder Tracker', 'Unit Calculator',
+                  'PHLT™ Ladder Tracker', 'Unit Sizing Engine',
                   'Round Robin Engine', 'Pre-Session Checklist',
                   'Session Grading (A–F)', 'Discipline Score™',
-                  'Performance Analytics', 'Tilt Detection',
+                  'Bankroll Simulator', 'Behavioral Analytics',
                   'Cloud Sync + Backup', 'All future features',
                 ].map(feature => (
                   <div key={feature} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
@@ -463,9 +463,9 @@ export default function LandingPage({ onLogin }) {
           <SectionHeader pill="How It Works" title="Three Steps.<br/><span style='color:#BDFF00'>One System.</span>" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0' }} className="lp-3col">
             {[
-              { num: '01', title: 'Set Your Bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and lock in your risk limits. The system calculates everything else automatically.' },
-              { num: '02', title: 'Operate Every Session', desc: 'Log every bet. Run the pre-session checklist. Use the unit calculator and round robin engine. No guessing — just execution.' },
-              { num: '03', title: 'Grade Your Process', desc: 'Settle bets, review your Discipline Score™, and grade the session A–F. Your record is built on process — not results.' },
+              { num: '01', title: 'Set your bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and lock in your risk limits. The system calculates everything else automatically.' },
+              { num: '02', title: 'Operate every session', desc: 'Log every bet. Run the pre-session checklist. Use the unit sizing engine and round robin engine. No guessing — just execution.' },
+              { num: '03', title: 'Grade your process', desc: 'Settle bets, review your Discipline Score™, and grade the session A–F. Your record is built on process — not results.' },
             ].map((step, i) => (
               <FadeIn key={step.num} delay={i * 0.12}>
                 <div style={{ padding: '40px 32px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', position: 'relative' }}>
@@ -486,10 +486,10 @@ export default function LandingPage({ onLogin }) {
           <FadeIn style={{ textAlign: 'center' }}>
             <Pill>About</Pill>
             <h2 style={{ fontFamily: R, fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, letterSpacing: '0.02em', color: '#fff', margin: '20px 0 20px', lineHeight: 1.1 }}>
-              Built By A Bettor.<br /><span style={{ color: NEON }}>For Bettors.</span>
+              Built by an operator.<br /><span style={{ color: NEON }}>For operators.</span>
             </h2>
             <p style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.85 }}>
-              Risk Matrix Labs was built because no tool existed that treated sports betting like what it actually is — a risk management discipline. We built the system we wished existed. Now we're sharing it.
+              Risk Matrix Labs was built because no tool existed that treated sports betting like what it actually is — a risk management discipline and a bankroll simulation problem. We built the operating system we wished existed. Now we're sharing it.
             </p>
             <div style={{ marginTop: '32px', padding: '24px 28px', background: 'rgba(189,255,0,0.05)', border: '1px solid rgba(189,255,0,0.2)', borderRadius: '4px' }}>
               <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, textTransform: 'uppercase' }}>
@@ -504,11 +504,11 @@ export default function LandingPage({ onLogin }) {
       <section style={{ padding: '120px 40px' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto' }}>
           <SectionHeader pill="FAQ" title="Common Questions" />
-          <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A professional bankroll management platform built for disciplined sports bettors. Track every bet, manage your risk, and grade every session — with the tools of a real operator." />
+          <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A bankroll operating system and betting simulator built for disciplined operators. Track every bet, simulate bankroll growth, manage your risk, and grade every session — with the process tools of a real operator." />
           <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your bankroll with discipline. Risk Matrix Labs is about process — not predictions." />
           <FAQItem delay={0.1}  q="When does it launch?" a="We are live now in beta. Start your 7-day free trial today — no credit card charge until day 8. Beta subscribers lock in their rate for as long as they stay subscribed." />
           <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $197/year during beta (save $127). Regular pricing will be $27/month. Lock in the beta rate now — it won't be available once we exit beta." />
-          <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Labs is fully responsive and works on desktop, tablet, and mobile. Your data syncs automatically across every device." />
+          <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Labs is built mobile-first. Log bets, run the ladder, and grade sessions from your phone — your data syncs across every device automatically." />
           <FAQItem delay={0.25} q="Is my data safe?" a="All data is encrypted, stored securely, and backed up automatically. You own your data and can export it at any time." />
         </div>
       </section>
@@ -563,7 +563,7 @@ export default function LandingPage({ onLogin }) {
                 <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.22em', color: NEON }}>RISK MATRIX LABS</div>
               </div>
               <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.25)', lineHeight: 1.65, maxWidth: '220px' }}>
-                Professional bankroll management for disciplined sports bettors.
+                The bankroll operating system for disciplined operators.
               </div>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(189,255,0,0.3)', textTransform: 'uppercase', marginTop: '12px' }}>
                 Operate With Discipline.
