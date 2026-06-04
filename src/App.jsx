@@ -3285,11 +3285,11 @@ export default function App({ user, session, subStatus }) {
         />
       )}
 
-      {/* SHARE BET CARD MODAL */}
       {shareCardBet && shareCardBet !== 'session' && (
         <ShareCardModal
           mode="bet"
           bet={shareCardBet}
+          username={username}
           unitSize={stats.unitSize}
           onClose={() => setShareCardBet(null)}
         />
