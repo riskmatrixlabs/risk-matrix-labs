@@ -507,6 +507,13 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
         {/* Scrollable form */}
         <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
+          {/* ── DATE (top) ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 4px' }}>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>Date</span>
+            <input type="date" value={form.date} onChange={f('date')}
+              style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '20px', color: 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '7px 14px', outline: 'none' }} />
+          </div>
+
           {/* ── MATCHUP CARD ── */}
           <div style={card}>
             <span style={lbl}>Matchup</span>
@@ -605,13 +612,6 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
                   style={{ flex: 1, background: n <= (form.confidence||0) ? 'rgba(189,255,0,0.12)' : 'var(--bg)', border: `1px solid ${n <= (form.confidence||0) ? 'rgba(189,255,0,0.4)' : 'var(--border2)'}`, borderRadius: '10px', cursor: 'pointer', padding: '10px 0', fontSize: '18px', transition: 'all 0.12s' }}>⭐</button>
               ))}
             </div>
-          </div>
-
-          {/* ── DATE (collapsed, shows today) ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 4px' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>Date</span>
-            <input type="date" value={form.date} onChange={f('date')}
-              style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '20px', color: 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '7px 14px', outline: 'none' }} />
           </div>
 
           <div style={{ height: '8px' }} />
@@ -811,7 +811,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   // Build rolling bankroll and computed values
   const computed = rows.reduce((acc, row) => {
     const prev    = acc.length ? acc[acc.length - 1] : null
-    const bankIn  = prev ? (prev.result === 'W' ? prev.bankOut : prev.bankIn) : masterBankroll
+    const bankIn  = prev ? (prev.result === 'W' ? prev.bankOut : prev.bankIn) : ladderStarting
     const profit  = profitFromLadderOdds(row.stake, row.odds)
     const toWin   = profit
     const payout  = row.stake + profit
@@ -827,7 +827,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   const totalLost     = computed.filter(r => r.result === 'L').reduce((s, r) => s + r.stake, 0)
   const winsCount     = computed.filter(r => r.result === 'W').length
   const lossCount     = computed.filter(r => r.result === 'L').length
-  const finalBankroll = computed.length ? computed[computed.length - 1].bankOut : masterBankroll
+  const finalBankroll = computed.length ? computed[computed.length - 1].bankOut : ladderStarting
 
   const settleRow = (id, result) => {
     setBets(p => p.map(b => {
@@ -917,7 +917,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
             {[
               { label: 'W / L',         value: `${winsCount} — ${lossCount}`,  color: 'var(--text)' },
               { label: 'Profit',        value: `+${fmt$(totalProfit)}`,         color: NEON },
-              { label: 'Final BR',      value: fmt$(finalBankroll),             color: finalBankroll > masterBankroll ? NEON : RED },
+              { label: 'Final BR',      value: fmt$(finalBankroll),             color: finalBankroll > ladderStarting ? NEON : RED },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                 <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', textTransform: 'uppercase' }}>{label}</div>
