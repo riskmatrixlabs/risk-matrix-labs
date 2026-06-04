@@ -282,7 +282,7 @@ export default function LandingPage({ onLogin }) {
 
               <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.18 }}
                 style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.75, marginBottom: '32px', maxWidth: '440px' }}>
-                The Dashboard Built For Disciplined Bettors. Track bankroll, manage risk, and grade every session — like a professional operator.
+                The platform built for bettors who operate with a system. Bankroll management, risk controls, and session analytics — built for discipline, not luck.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
@@ -296,7 +296,7 @@ export default function LandingPage({ onLogin }) {
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.44 }}
                 style={{ display: 'flex', gap: '32px', marginTop: '44px', paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                {[['6', 'Modules'], ['100pt', 'Discipline Score'], ['PHLT™', 'Ladder System']].map(([val, label]) => (
+                {[['6', 'Core Modules'], ['100pt', 'Discipline Score™'], ['PHLT™', 'Ladder System']].map(([val, label]) => (
                   <div key={label}>
                     <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON }}>{val}</div>
                     <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '0.06em' }}>{label}</div>
@@ -335,11 +335,11 @@ export default function LandingPage({ onLogin }) {
       {/* ══ THREE COLUMNS ══ */}
       <section id="what" style={{ position: 'relative', padding: '120px 40px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <SectionHeader pill="What Is It" title="Built For Operators.<br/><span style='color:#BDFF00'>Not Gamblers.</span>" sub="Risk Matrix Dashboard is a professional-grade bankroll management terminal. Every bet tracked, every dollar protected, every session graded." />
+          <SectionHeader pill="What Is It" title="Built For Operators.<br/><span style='color:#BDFF00'>Not Gamblers.</span>" sub="Risk Matrix Labs is a professional-grade bankroll management platform. Every bet tracked, every dollar protected, every session graded." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="lp-3col">
-            <FeatureCard delay={0}   icon="📊" title="Track Like A Trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every single bet you place." />
-            <FeatureCard delay={0.1} icon="🛡️" title="Manage Your Risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Get alerted before you blow your edge." />
-            <FeatureCard delay={0.2} icon="🧠" title="Control Your Emotions"      desc="Tilt detection, emotional checklists, session grading, and a Discipline Score™ that holds you accountable." />
+            <FeatureCard delay={0}   icon="📊" title="Track Like A Trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
+            <FeatureCard delay={0.1} icon="🛡️" title="Manage Your Risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
+            <FeatureCard delay={0.2} icon="🧠" title="Stay In The System"         desc="Tilt detection flags when you're off track. Pre-session checklists enforce your process. Your Discipline Score™ doesn't lie." />
           </div>
         </div>
       </section>
@@ -352,11 +352,11 @@ export default function LandingPage({ onLogin }) {
           <SectionHeader pill="Features" title="Every Tool An Operator Needs" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
             <FeatureCard delay={0}    icon="🪜" title="PHLT™ Ladder Tracker"    desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
-            <FeatureCard delay={0.06} icon="🎯" title="Unit Calculator"          desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. No mental math." />
-            <FeatureCard delay={0.12} icon="⚙️" title="Round Robin Engine"       desc="Build 2s, 3s, 4s, and 5s round robins. See every combo, total risk, max payout, and break-even hit rate." />
-            <FeatureCard delay={0.18} icon="🧘" title="Emotional Checklist"      desc="Complete a pre-session discipline checklist before placing a single bet. Am I chasing? Did I follow the system?" />
-            <FeatureCard delay={0.24} icon="📝" title="Session Grading"          desc="Every session earns an A–F grade based on your process, not your results. Build consistency over time." />
-            <FeatureCard delay={0.30} icon="📈" title="Performance Analytics"    desc="Deep breakdowns by sport, book, bet type, and time period. Know exactly where your edge lives." />
+            <FeatureCard delay={0.06} icon="🎯" title="Unit Calculator"          desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
+            <FeatureCard delay={0.12} icon="⚙️" title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
+            <FeatureCard delay={0.18} icon="🧘" title="Pre-Session Checklist"    desc="Answer 5 discipline questions before your session starts. Are you chasing? Tilted? If the checklist fails — you don't bet." />
+            <FeatureCard delay={0.24} icon="📝" title="Session Grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
+            <FeatureCard delay={0.30} icon="📈" title="Performance Analytics"    desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
           </div>
         </div>
       </section>
@@ -414,12 +414,12 @@ export default function LandingPage({ onLogin }) {
               {/* Price display */}
               <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '32px' }}>
                 <div>
-                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Beta Price — Locked Forever</div>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Beta Price — Lock It In Now</div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                     <span style={{ fontFamily: R, fontSize: '56px', fontWeight: 700, color: NEON, lineHeight: 1, textShadow: '0 0 30px rgba(189,255,0,0.25)' }}>$17</span>
                     <span style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.4)' }}>/month</span>
                   </div>
-                  <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>Locked in forever for beta users</div>
+                  <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>Locked in for life — as long as you stay subscribed</div>
                 </div>
                 <div style={{ paddingBottom: '8px' }}>
                   <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Regular Price</div>
@@ -463,9 +463,9 @@ export default function LandingPage({ onLogin }) {
           <SectionHeader pill="How It Works" title="Three Steps.<br/><span style='color:#BDFF00'>One System.</span>" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0' }} className="lp-3col">
             {[
-              { num: '01', title: 'Set Your Bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and set your risk limits. The system calculates everything else.' },
-              { num: '02', title: 'Follow The System', desc: 'Log every bet. Use the unit calculator and round robin engine. Complete the emotional checklist before each session.' },
-              { num: '03', title: 'Track Every Result', desc: 'Settle bets, review your discipline score, and grade your session. Build a track record based on process, not luck.' },
+              { num: '01', title: 'Set Your Bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and lock in your risk limits. The system calculates everything else automatically.' },
+              { num: '02', title: 'Operate Every Session', desc: 'Log every bet. Run the pre-session checklist. Use the unit calculator and round robin engine. No guessing — just execution.' },
+              { num: '03', title: 'Grade Your Process', desc: 'Settle bets, review your Discipline Score™, and grade the session A–F. Your record is built on process — not results.' },
             ].map((step, i) => (
               <FadeIn key={step.num} delay={i * 0.12}>
                 <div style={{ padding: '40px 32px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', position: 'relative' }}>
@@ -504,12 +504,12 @@ export default function LandingPage({ onLogin }) {
       <section style={{ padding: '120px 40px' }}>
         <div style={{ maxWidth: '760px', margin: '0 auto' }}>
           <SectionHeader pill="FAQ" title="Common Questions" />
-          <FAQItem delay={0}    q="What is Risk Matrix Dashboard?" a="A professional bankroll management and analytics platform built for disciplined sports bettors. Track every bet, manage your risk, and grade every session — like a professional operator." />
-          <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your own bankroll better. Risk Matrix Dashboard is about discipline and process — not predictions." />
-          <FAQItem delay={0.1}  q="When does it launch?" a="We are live now in beta. Start your 7-day free trial today — no credit card charge until day 8. Lock in beta pricing forever." />
-          <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $147/year during beta (save 28%). Regular pricing will be $27/month. Beta subscribers lock in their rate forever as long as they stay subscribed." />
-          <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Dashboard is fully responsive and works on desktop, tablet, and mobile. Your data syncs across all devices via Supabase cloud." />
-          <FAQItem delay={0.25} q="Is my data safe?" a="All data is stored securely in Supabase with row-level security. You own your data and can export it at any time." />
+          <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A professional bankroll management platform built for disciplined sports bettors. Track every bet, manage your risk, and grade every session — with the tools of a real operator." />
+          <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your bankroll with discipline. Risk Matrix Labs is about process — not predictions." />
+          <FAQItem delay={0.1}  q="When does it launch?" a="We are live now in beta. Start your 7-day free trial today — no credit card charge until day 8. Beta subscribers lock in their rate for as long as they stay subscribed." />
+          <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $147/year during beta (save 28%). Regular pricing will be $27/month. Lock in the beta rate now — it won't be available once we exit beta." />
+          <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Labs is fully responsive and works on desktop, tablet, and mobile. Your data syncs automatically across every device." />
+          <FAQItem delay={0.25} q="Is my data safe?" a="All data is encrypted, stored securely, and backed up automatically. You own your data and can export it at any time." />
         </div>
       </section>
 
@@ -525,7 +525,7 @@ export default function LandingPage({ onLogin }) {
             </h2>
             <p style={{ fontFamily: I, fontSize: '15px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.75, marginBottom: '36px' }}>
               Start your 7-day free trial today. No charge until day 8.<br />
-              <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Beta users lock in $17/month forever.</strong>
+              <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Beta users lock in $17/month — for as long as they stay subscribed.</strong>
             </p>
           </FadeIn>
           <FadeIn delay={0.12}>

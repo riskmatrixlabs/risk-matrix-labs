@@ -18,9 +18,9 @@ const BOOKS = [
 ]
 
 const CAPPERS = [
-  { id: 'c1', name: 'Coming Soon', handle: '@rml_verified', platform: 'Pending Review', record: '—', roi: '—', desc: 'We are vetting our first verified capper. No picks service. Only disciplined, data-backed operators.', tag: 'COMING SOON', tagColor: 'rgba(189,255,0,0.4)', url: '#', disabled: true },
-  { id: 'c2', name: 'Coming Soon', handle: '@rml_verified', platform: 'Pending Review', record: '—', roi: '—', desc: 'RML only partners with cappers who track their record publicly and operate with full transparency.', tag: 'COMING SOON', tagColor: 'rgba(189,255,0,0.4)', url: '#', disabled: true },
-  { id: 'c3', name: 'Apply to Join', handle: '@rml_verified', platform: 'Open', record: '—', roi: '—', desc: 'Interested in being a verified RML capper? Reach out at hello@riskmatrixlabs.com', tag: 'APPLY', tagColor: 'rgba(100,200,255,0.5)', url: 'mailto:hello@riskmatrixlabs.com', disabled: false },
+  { id: 'c1', name: 'Coming Soon', handle: '@rml_verified', platform: 'Pending Review', record: '—', roi: '—', desc: 'Vetting in progress. RML verified cappers must track their record publicly, operate transparently, and use the system — no exceptions.', tag: 'COMING SOON', tagColor: 'rgba(189,255,0,0.4)', url: '#', disabled: true },
+  { id: 'c2', name: 'Coming Soon', handle: '@rml_verified', platform: 'Pending Review', record: '—', roi: '—', desc: 'No gurus. No gut-feel picks. Every capper on this page has a verifiable record and operates with documented discipline.', tag: 'COMING SOON', tagColor: 'rgba(189,255,0,0.4)', url: '#', disabled: true },
+  { id: 'c3', name: 'Apply to Join', handle: '@rml_verified', platform: 'Open', record: '—', roi: '—', desc: 'Track your record publicly, operate with a system, and apply to be RML verified. Email hello@riskmatrixlabs.com', tag: 'APPLY', tagColor: 'rgba(100,200,255,0.5)', url: 'mailto:hello@riskmatrixlabs.com', disabled: false },
 ]
 
 const TOOLS = [
@@ -231,9 +231,9 @@ export default function PartnersPage({ isMobile }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ background: 'linear-gradient(135deg, rgba(189,255,0,0.1), rgba(189,255,0,0.03))', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '10px', padding: '20px 18px' }}>
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '5px' }}>AFFILIATE PROGRAM</div>
-          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '6px', letterSpacing: '0.03em' }}>Earn by Promoting RML</div>
+          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '6px', letterSpacing: '0.03em' }}>You Build The Audience. We Built The System.</div>
           <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: '16px' }}>
-            Are you a capper, content creator, or community builder in the sports betting space? Partner with Risk Matrix Labs and earn commission for every subscriber you refer — forever.
+            Refer operators to RML and earn 30% recurring commission — every month they stay subscribed. Built for cappers, Discord mods, content creators, and anyone in the betting space with an audience that deserves better tools.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
             {[
@@ -263,10 +263,10 @@ export default function PartnersPage({ isMobile }) {
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: '14px' }}>HOW IT WORKS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
-              { step: '01', title: 'Apply',         desc: 'Email us or fill out the form. We review and approve within 48 hours.' },
-              { step: '02', title: 'Get Your Link', desc: 'You get a unique tracking link like riskmatrixlabs.com?via=yourname' },
-              { step: '03', title: 'Share It',      desc: 'Post it on social, Discord, YouTube, newsletter — anywhere your audience is.' },
-              { step: '04', title: 'Get Paid',      desc: 'Every subscriber who signs up through your link earns you commission. Monthly payouts.' },
+              { step: '01', title: 'Apply',           desc: 'Email us at hello@riskmatrixlabs.com. We review every application and respond within 48 hours.' },
+              { step: '02', title: 'Get Your Link',   desc: 'You get a unique tracking link. Share it anywhere — social, Discord, YouTube, newsletter.' },
+              { step: '03', title: 'Your Audience Subscribes', desc: 'When someone signs up through your link, they get the platform. You get 30% of their subscription — recurring.' },
+              { step: '04', title: 'Get Paid',         desc: 'Monthly payouts via PayPal or bank transfer. Real-time stats in your affiliate dashboard.' },
             ].map(s => (
               <div key={s.step} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                 <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 800, color: 'rgba(189,255,0,0.3)', minWidth: '26px', letterSpacing: '0.02em', lineHeight: 1 }}>{s.step}</div>
