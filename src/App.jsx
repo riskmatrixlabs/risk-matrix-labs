@@ -2724,10 +2724,14 @@ export default function App({ user, session, subStatus }) {
     })()
   }, [userId])
 
+  // Guard: timestamp until which we ignore realtime events (our own saves)
+  const realtimeIgnoreUntil = useRef(0)
+
   // ── Auto-sync bets to Supabase (debounced 2s) ──
   useEffect(() => {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
+      realtimeIgnoreUntil.current = Date.now() + 5000 // ignore own save's realtime echo
       syncAllBets(bets, userId, token).then(({ error }) => {
         if (error) {
           console.error('[RML] syncAllBets error:', error)
@@ -2739,6 +2743,30 @@ export default function App({ user, session, subStatus }) {
     }, 2000)
     return () => clearTimeout(t)
   }, [bets, userId, cloudSynced, token])
+
+  // ── Realtime subscription — sync from other devices ──
+  useEffect(() => {
+    if (!userId || !cloudSynced || !token) return
+    supabase.auth.setSession({ access_token: token, refresh_token: session?.refresh_token || '' })
+    const channel = supabase
+      .channel(`bets:${userId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bets',
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        if (Date.now() < realtimeIgnoreUntil.current) return // own save, skip
+        fetchBets(userId, token).then(({ data, error }) => {
+          if (!error && data?.length > 0) {
+            realtimeIgnoreUntil.current = Date.now() + 5000
+            setBets(data.map(rowToBet))
+          }
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, cloudSynced, token])
 
   // ── Auto-sync settings to Supabase (debounced 2s) ──
   useEffect(() => {
@@ -3334,6 +3362,12 @@ export default function App({ user, session, subStatus }) {
           {/* Mobile: theme + user in logo row */}
           {isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {cloudSynced && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>
+                  <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: NEON, display: 'inline-block', boxShadow: '0 0 5px rgba(189,255,0,0.8)', animation: 'pulseDot 2s infinite' }} />
+                  Live
+                </span>
+              )}
               <button onClick={() => setDarkMode(d => !d)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer' }}>
                 {darkMode ? <Sun size={14} color={NEON} strokeWidth={2} /> : <Moon size={14} color='var(--text-sub)' strokeWidth={2} />}
               </button>
@@ -3440,8 +3474,9 @@ export default function App({ user, session, subStatus }) {
           {/* Desktop: sync + user menu + version */}
           {!isMobile && <>
             {cloudSynced && (
-              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(189,255,0,0.4)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                ✓ Synced
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, display: 'inline-block', boxShadow: '0 0 6px rgba(189,255,0,0.8)', animation: 'pulseDot 2s infinite' }} />
+                Live
               </span>
             )}
             {user && (
