@@ -97,7 +97,7 @@ function calcStats(bets, bankroll) {
   const settled        = bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P')
   const regular        = settled.filter(b => !b.ladder)   // unit-based bets
   const ladderSettled  = settled.filter(b => b.ladder)    // dollar-based pnl
-  const unitSize       = bankroll / 100
+  const unitSize       = bankroll > 0 ? bankroll / 100 : 1
 
   // Unit-based stats (regular bets only — used for bankroll math)
   const wins    = regular.filter(b => b.result === 'W')
@@ -2764,7 +2764,7 @@ export default function App({ user, session, subStatus }) {
   const [tiltDismissed,  setTiltDismissed]  = useState(false)
   const [ladderStarting, setLadderStarting] = useState(saved.current?.ladderStarting ?? LADDER_STARTING_BR)
   const [bets,           setBets]           = useState(saved.current?.bets            ?? [])
-  const [bankroll,       setBankroll]       = useState(saved.current?.bankroll        || 1000)
+  const [bankroll,       setBankroll]       = useState(saved.current?.bankroll        ?? 0)
   const [username,       setUsername]       = useState(saved.current?.username        ?? 'OPERATOR')
   const [sportFilter,  setSportFilter]  = useState('ALL')
   const [resultFilter, setResultFilter] = useState('ALL')
@@ -2828,7 +2828,7 @@ export default function App({ user, session, subStatus }) {
 
   // Unit size flows from masterBankroll (grows/shrinks with your balance)
   const stats = useMemo(() => {
-    const unitSize = masterBankroll * (riskSettings.unitPct ?? 2) / 100
+    const unitSize = masterBankroll > 0 ? masterBankroll * (riskSettings.unitPct ?? 2) / 100 : 1
     return {
       ..._stats,
       unitSize,
