@@ -4248,6 +4248,100 @@ export default function App({ user, session, subStatus }) {
 
           {/* ── ROW 3: Bankroll Curve + Performance — desktop only ── */}
           {!isMobile && <>
+
+          {/* ── LIVE OPEN BETS BANNER (desktop) ── */}
+          {stats.openBets > 0 && (
+            <div style={{ marginBottom: '8px' }}>
+              {/* Banner */}
+              <div
+                onClick={() => setTab('bet log')}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)',
+                  borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: YELLOW, display: 'inline-block', flexShrink: 0, boxShadow: '0 0 8px rgba(245,166,35,0.7)', animation: 'pulseDot 1.5s infinite' }} />
+                  <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, textTransform: 'uppercase' }}>
+                    {stats.openBets} Open {stats.openBets === 1 ? 'Bet' : 'Bets'} · {fmt$(bets.filter(b => b.result === 'Open').reduce((s, b) => s + (b.stake || 0), 0))} At Risk
+                  </span>
+                </div>
+                <span style={{ fontFamily: R, fontSize: '9px', color: YELLOW, letterSpacing: '0.1em', opacity: 0.7 }}>VIEW ALL →</span>
+              </div>
+
+              {/* Live bet cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '6px' }}>
+                {bets.filter(b => b.result === 'Open').map(b => {
+                  const toWin = b.stake > 0 && b.odds
+                    ? (b.odds > 0 ? b.stake * b.odds / 100 : b.stake * 100 / Math.abs(b.odds)) : 0
+                  const isLadder = !!b.ladder
+                  return (
+                    <div key={b.id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', borderLeft: `3px solid ${YELLOW}` }}>
+                      {(b.event || isLadder) && (
+                        <div style={{ padding: '7px 12px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {isLadder ? `PHLT™ LADDER · RUNG ${b.ladderId}` : b.event}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', gap: '8px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: YELLOW, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {isLadder ? `RUNG ${b.ladderId} · ${b.pick || 'TBD'}` : (b.pick || '—')}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: YELLOW }}>
+                            {toWin > 0 ? `+${fmt$(toWin)}` : '—'}
+                          </div>
+                          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', letterSpacing: '0.08em' }}>to win</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 6px', gap: '6px' }}>
+                        <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.4)', padding: '1px 6px', borderRadius: '4px' }}>
+                          {isLadder ? 'ACTIVE' : 'OPEN'}
+                        </span>
+                        {b.book  && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.book}</span>}
+                        {b.sport && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.sport}</span>}
+                        {b.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{'⭐'.repeat(b.confidence)}</span>}
+                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: b.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(b.odds)}</span>
+                      </div>
+                      <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+                        {[
+                          { label: 'STAKE',  val: b.stake > 0 ? fmt$(b.stake) : '—',    color: 'var(--text)' },
+                          { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—',  color: NEON },
+                          { label: 'UNITS',  val: b.units > 0 ? `${b.units}u` : '—',    color: 'var(--text)' },
+                        ].map(({ label, val, color }, idx) => (
+                          <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
+                            <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+                            <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', padding: '4px 8px' }}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {['W','L','P'].map(r => (
+                            <button key={r} onClick={() => settleBet(b.id, r)} style={{
+                              fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em',
+                              padding: '3px 10px', borderRadius: '2px', cursor: 'pointer',
+                              border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : 'var(--border2)'}`,
+                              background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'transparent',
+                              color: r === 'W' ? NEON : r === 'L' ? RED : 'var(--muted)',
+                            }}>{r === 'W' ? 'WIN ✓' : r === 'L' ? 'LOSS ✗' : 'PUSH'}</button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                          <button onClick={() => setShareCardBet(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '2px 4px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={11} /></button>
+                          <button onClick={() => setEditingBet(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '2px 4px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={11} /></button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: g('2fr 1fr', '1fr', '1fr'), gap: '6px' }}>
             <div style={{ ...cardStyle, padding: '16px 18px 10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -4655,6 +4749,12 @@ export default function App({ user, session, subStatus }) {
                       </td>
                       <td style={{ padding: '9px 8px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <button onClick={() => setShareCardBet(bet)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center', padding: '2px' }}
+                            onMouseEnter={e => e.currentTarget.style.color = NEON}
+                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}>
+                            <Share2 size={10} />
+                          </button>
                           <button onClick={() => setEditingBet(bet)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center', padding: '2px' }}
                             onMouseEnter={e => e.currentTarget.style.color = NEON}
