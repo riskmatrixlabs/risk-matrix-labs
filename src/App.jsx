@@ -3118,11 +3118,19 @@ export default function App({ user, session, subStatus }) {
   const settleBet = (id, result) => {
     setBets(prev => prev.map(b => {
       if (b.id !== id) return b
-      const unitSize = stats.unitSize
-      const pnl = result === 'W'
-        ? (b.odds > 0 ? b.units * b.odds / 100 : b.units * 100 / Math.abs(b.odds))
-        : result === 'L' ? -b.units : 0
-      return { ...b, result, pnl: +pnl.toFixed(2) }
+      let pnl
+      if (b.ladder) {
+        // Ladder bets: pnl stored in DOLLARS (stake-based)
+        const profit = b.odds > 0 ? b.stake * (b.odds / 100) : b.stake * (100 / Math.abs(b.odds))
+        pnl = result === 'W' ? +profit.toFixed(2) : result === 'L' ? -b.stake : 0
+      } else {
+        // Regular bets: pnl stored in UNITS
+        pnl = result === 'W'
+          ? (b.odds > 0 ? b.units * b.odds / 100 : b.units * 100 / Math.abs(b.odds))
+          : result === 'L' ? -b.units : 0
+        pnl = +pnl.toFixed(2)
+      }
+      return { ...b, result, pnl }
     }))
   }
 
