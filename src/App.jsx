@@ -474,112 +474,161 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
   const bigInput = { ...inputStyle, fontSize: '16px', fontWeight: 700, padding: '12px 14px', height: '48px' }
   const mdInput  = { ...inputStyle, fontSize: '13px', padding: '10px 12px', height: '44px' }
 
-  if (isMobile) return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 200, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+  if (isMobile) {
+    // pill style helpers
+    const pill = (active, color = NEON) => ({
+      borderRadius: '20px', cursor: 'pointer', fontFamily: R, fontWeight: 700, fontSize: '11px',
+      letterSpacing: '0.06em', padding: '9px 14px', whiteSpace: 'nowrap', transition: 'all 0.12s',
+      border: `1px solid ${active ? color : 'var(--border2)'}`,
+      background: active ? `${color}22` : 'var(--card2)',
+      color: active ? color : 'var(--muted)',
+      boxShadow: active ? `0 0 10px ${color}44` : 'none',
+    })
+    const card = { background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '14px', padding: '14px 16px' }
+    const lbl = { fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase', marginBottom: '10px', display: 'block' }
+    const scrollRow = { display: 'flex', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px', scrollbarWidth: 'none' }
 
-      {/* Header */}
-      <div style={{ flexShrink: 0, padding: '14px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `3px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)' }}>
-        <div>
-          <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, letterSpacing: '0.2em', color: NEON }}>{isEdit ? '✎ EDIT BET' : '+ LOG BET'}</div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', marginTop: '2px' }}>1u = {fmt$(unitSize)} · Operate With Discipline</div>
-        </div>
-        <button onClick={onClose} style={{ background: 'none', border: `1px solid var(--border2)`, color: MUTED, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '6px 10px', borderRadius: '2px' }}>×</button>
-      </div>
+    const TOP_SPORTS = ['NFL','NBA','MLB','NHL','CFB','Soccer','Other']
+    const TOP_BOOKS  = ['DraftKings','FanDuel','BetMGM','Caesars','Hard Rock','Other']
+    const BET_TYPES  = ['Straight','Parlay','SGP','RR 2s','RR 3s','Live Bet','Hedge']
 
-      {/* Scrollable form */}
-      <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 200, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Event + Pick */}
-        <input value={form.event} onChange={f('event')} placeholder="Event · e.g. Chiefs vs Raiders"
-          style={{ background: 'var(--card2)', border: `1px solid var(--border2)`, borderRadius: '24px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '15px', padding: '13px 18px', width: '100%', outline: 'none' }} />
-        <input value={form.pick} onChange={f('pick')} placeholder="Pick · e.g. Chiefs -6.5"
-          style={{ background: 'var(--card2)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '24px', color: form.pick ? NEON : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '15px', fontWeight: form.pick ? 700 : 400, padding: '13px 18px', width: '100%', outline: 'none' }} />
-
-        {/* Sport / Book / Bet Type / Date — pill selects */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          {[
-            <select key="sport" value={form.sport} onChange={f('sport')} style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '24px', color: 'var(--text)', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', padding: '11px 16px', outline: 'none', width: '100%' }}>{ALL_SPORTS.map(s => <option key={s}>{s}</option>)}</select>,
-            <select key="book" value={form.book} onChange={f('book')} style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '24px', color: form.book ? 'var(--text)' : 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', padding: '11px 16px', outline: 'none', width: '100%' }}><option value="">— Book —</option>{BOOKS.map(b => <option key={b}>{b}</option>)}</select>,
-            <select key="btype" value={form.betType} onChange={f('betType')} style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '24px', color: 'var(--text)', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', padding: '11px 16px', outline: 'none', width: '100%' }}>{['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}</select>,
-            <input key="date" type="date" value={form.date} onChange={f('date')} style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '24px', color: 'var(--text)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '11px 16px', outline: 'none', width: '100%' }} />,
-          ]}
-        </div>
-
-        {/* Odds / Stake$ / Units — pill inputs */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-          {[
-            { label: 'Odds', node: <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={{ background: 'transparent', border: 'none', color: form.odds > 0 ? NEON : 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, textAlign: 'center', width: '100%', outline: 'none' }} /> },
-            { label: `Stake $`, node: <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontFamily: R, fontSize: '13px', fontWeight: 700, textAlign: 'center', width: '100%', outline: 'none' }} /> },
-            { label: 'Units', node: <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontFamily: R, fontSize: '13px', fontWeight: 700, textAlign: 'center', width: '100%', outline: 'none' }} /> },
-          ].map(({ label, node }) => (
-            <div key={label} style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '16px', padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>
-              {node}
-            </div>
-          ))}
+        {/* Header */}
+        <div style={{ flexShrink: 0, padding: '14px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `3px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)' }}>
+          <div>
+            <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, letterSpacing: '0.2em', color: NEON }}>{isEdit ? '✎ EDIT BET' : '+ LOG BET'}</div>
+            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.08em', marginTop: '2px' }}>1u = {fmt$(unitSize)}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: `1px solid var(--border2)`, color: MUTED, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '6px 10px', borderRadius: '8px' }}>×</button>
         </div>
 
-        {/* P&L preview */}
-        {(form.units || form.stake) && odds !== 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <div style={{ padding: '10px 14px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON }}>✓ WIN</span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</div>
-                <div style={{ fontFamily: R, fontSize: '10px', color: NEON, opacity: 0.75 }}>+{fmt$(potentialWin * unitSize)}</div>
-              </div>
-            </div>
-            <div style={{ padding: '10px 14px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED }}>✗ LOSS</span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</div>
-                <div style={{ fontFamily: R, fontSize: '10px', color: RED, opacity: 0.75 }}>-{fmt$(stake$ || potentialLoss * unitSize)}</div>
-              </div>
+        {/* Scrollable form */}
+        <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+          {/* ── MATCHUP CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Matchup</span>
+            <input value={form.event} onChange={f('event')} placeholder="Event  ·  e.g. Chiefs vs Raiders"
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', padding: '11px 14px', outline: 'none', marginBottom: '8px' }} />
+            <input value={form.pick} onChange={f('pick')} placeholder="Pick  ·  e.g. Chiefs -6.5"
+              style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '10px', color: form.pick ? NEON : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', fontWeight: form.pick ? 700 : 400, padding: '11px 14px', outline: 'none' }} />
+          </div>
+
+          {/* ── SPORT CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Sport</span>
+            <div style={scrollRow}>
+              {TOP_SPORTS.map(s => (
+                <button key={s} type="button" onClick={() => set('sport', s)} style={pill(form.sport === s)}>{s}</button>
+              ))}
             </div>
           </div>
-        )}
 
-        {/* Result — pill buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
-          {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
-            <button key={val} type="button" onClick={() => set('result', val)} style={{
-              fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em',
-              padding: '12px 4px', borderRadius: '24px', cursor: 'pointer',
-              border: `1px solid ${form.result === val ? color : 'var(--border2)'}`,
-              background: form.result === val ? `${color}22` : 'var(--card2)',
-              color: form.result === val ? color : MUTED,
-              boxShadow: form.result === val ? `0 0 10px ${color}44` : 'none',
-              transition: 'all 0.15s',
-            }}>{label}</button>
-          ))}
-        </div>
-
-        {/* Confidence — pill star buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Conf.</span>
-          <div style={{ display: 'flex', gap: '6px', flex: 1 }}>
-            {[1,2,3,4,5].map(n => (
-              <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)}
-                style={{ flex: 1, background: n <= (form.confidence||0) ? 'rgba(189,255,0,0.1)' : 'var(--card2)', border: `1px solid ${n <= (form.confidence||0) ? 'rgba(189,255,0,0.35)' : 'var(--border2)'}`, borderRadius: '20px', cursor: 'pointer', padding: '8px 0', fontSize: '16px', transition: 'all 0.15s' }}>⭐</button>
-            ))}
+          {/* ── BOOK CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Sportsbook</span>
+            <div style={scrollRow}>
+              {TOP_BOOKS.map(b => (
+                <button key={b} type="button" onClick={() => set('book', b)} style={pill(form.book === b)}>{b}</button>
+              ))}
+            </div>
           </div>
-          {form.confidence > 0 && <span style={{ fontFamily: R, fontSize: '9px', color: NEON, whiteSpace: 'nowrap' }}>{['','Low','Mid','Avg','High','Lock'][form.confidence]}</span>}
+
+          {/* ── BET TYPE CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Bet Type</span>
+            <div style={scrollRow}>
+              {BET_TYPES.map(t => (
+                <button key={t} type="button" onClick={() => set('betType', t)} style={pill(form.betType === t)}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── SIZE CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Odds · Stake · Units</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              {[
+                { label: 'ODDS', val: form.odds, onChange: f('odds'), placeholder: '-110', color: parseInt(form.odds) > 0 ? NEON : 'var(--text)', mode: 'decimal' },
+                { label: 'STAKE $', val: form.stake, onChange: onStakeChange, placeholder: fmt$(unitSize), color: 'var(--text)', mode: 'decimal' },
+                { label: 'UNITS', val: form.units, onChange: onUnitsChange, placeholder: '1.0', color: 'var(--text)', mode: 'decimal' },
+              ].map(({ label, val, onChange, placeholder, color, mode }) => (
+                <div key={label} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '10px 8px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED }}>{label}</span>
+                  <input value={val} onChange={onChange} placeholder={placeholder} type="number" inputMode={mode} step="any"
+                    style={{ background: 'transparent', border: 'none', color, fontFamily: R, fontSize: '15px', fontWeight: 700, textAlign: 'center', width: '100%', outline: 'none', padding: 0 }} />
+                </div>
+              ))}
+            </div>
+
+            {/* P&L preview inline */}
+            {(form.units || form.stake) && odds !== 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
+                <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.2)`, borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON }}>WIN</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</div>
+                    <div style={{ fontFamily: R, fontSize: '9px', color: NEON, opacity: 0.7 }}>+{fmt$(potentialWin * unitSize)}</div>
+                  </div>
+                </div>
+                <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.18)`, borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED }}>LOSS</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</div>
+                    <div style={{ fontFamily: R, fontSize: '9px', color: RED, opacity: 0.7 }}>-{fmt$(stake$ || potentialLoss * unitSize)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── RESULT CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Result</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
+              {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
+                <button key={val} type="button" onClick={() => set('result', val)} style={{
+                  ...pill(form.result === val, color), padding: '13px 4px', textAlign: 'center',
+                }}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── CONFIDENCE CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Confidence</span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)}
+                  style={{ flex: 1, background: n <= (form.confidence||0) ? 'rgba(189,255,0,0.12)' : 'var(--bg)', border: `1px solid ${n <= (form.confidence||0) ? 'rgba(189,255,0,0.4)' : 'var(--border2)'}`, borderRadius: '10px', cursor: 'pointer', padding: '10px 0', fontSize: '18px', transition: 'all 0.12s' }}>⭐</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── DATE (collapsed, shows today) ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 4px' }}>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>Date</span>
+            <input type="date" value={form.date} onChange={f('date')}
+              style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '20px', color: 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '7px 14px', outline: 'none' }} />
+          </div>
+
+          <div style={{ height: '8px' }} />
+        </form>
+
+        {/* Footer CTA */}
+        <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: `calc(env(safe-area-inset-bottom) + 12px)`, borderTop: `1px solid var(--border)`, background: 'var(--card2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button form="mbet" type="submit" style={{
+            ...btnStyle(true), width: '100%', padding: '15px', fontSize: '13px', letterSpacing: '0.18em', borderRadius: '12px',
+            opacity: isDisabled ? 0.4 : 1,
+            boxShadow: isDisabled ? 'none' : '0 0 24px rgba(189,255,0,0.3)',
+          }}>{isEdit ? '✓ SAVE CHANGES' : '+ LOG BET'}</button>
+          <button type="button" onClick={onClose} style={{ ...btnStyle(), width: '100%', padding: '11px', fontSize: '11px', borderRadius: '12px' }}>Cancel</button>
         </div>
-
-        <div style={{ height: '4px' }} />
-      </form>
-
-      {/* Footer CTA */}
-      <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)', borderTop: `1px solid var(--border)`, background: 'var(--card2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <button form="mbet" type="submit" style={{
-          ...btnStyle(true), width: '100%', padding: '14px', fontSize: '13px', letterSpacing: '0.18em',
-          opacity: isDisabled ? 0.4 : 1,
-          boxShadow: isDisabled ? 'none' : '0 0 20px rgba(189,255,0,0.25)',
-        }}>{isEdit ? '✓ SAVE CHANGES' : '+ LOG BET'}</button>
-        <button type="button" onClick={onClose} style={{ ...btnStyle(), width: '100%', padding: '10px', fontSize: '11px' }}>Cancel</button>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
