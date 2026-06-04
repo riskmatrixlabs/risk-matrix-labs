@@ -1820,7 +1820,7 @@ function BreakRow({ label, wins, total, pnl, darkMode }) {
           <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, minWidth: '52px', textAlign: 'right',
             color: pnl >= 0 ? NEON : RED,
             textShadow: pnl >= 0 && darkMode ? '0 0 8px rgba(189,255,0,0.2)' : 'none' }}>
-            {fmtU(pnl)}
+            {(pnl >= 0 ? '+' : '') + fmt$(pnl)}
           </span>
         </div>
       </div>
@@ -1888,11 +1888,12 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   monthly.forEach(m => { cum += m.pnl; m.cumPnl = +cum.toFixed(2); m.wr = m.bets > 0 ? +(m.wins / m.bets * 100).toFixed(1) : 0 })
 
   // Bet type
+  const _pnl$ = (b) => b.ladder ? b.pnl : (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * (stats?.unitSize || 20)
   const typeMap = {}
   settled.forEach(b => {
     const t = b.betType || 'Straight'
     if (!typeMap[t]) typeMap[t] = { type: t, pnl: 0, bets: 0, wins: 0 }
-    typeMap[t].pnl += b.pnl; typeMap[t].bets++
+    typeMap[t].pnl += _pnl$(b); typeMap[t].bets++
     if (b.result === 'W') typeMap[t].wins++
   })
   const byType = Object.values(typeMap).sort((a, z) => z.bets - a.bets)
@@ -1902,7 +1903,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   settled.forEach(b => {
     const bk = b.book || 'No Book'
     if (!bookMap[bk]) bookMap[bk] = { book: bk, pnl: 0, bets: 0, wins: 0 }
-    bookMap[bk].pnl += b.pnl; bookMap[bk].bets++
+    bookMap[bk].pnl += _pnl$(b); bookMap[bk].bets++
     if (b.result === 'W') bookMap[bk].wins++
   })
   const byBook = Object.values(bookMap).sort((a, z) => z.bets - a.bets)
@@ -3901,7 +3902,7 @@ export default function App({ user, session, subStatus }) {
                     <Section title="By Bet Type" items={tRows} />
                     <Section title="By Book" items={bRows} />
                     <Section title="By Sport" items={sRows} />
-                    {settledNonLadder.length === 0 && <div style={{ ...cardStyle, padding: '20px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>No settled bets yet</div>}
+                    {settledAll.length === 0 && <div style={{ ...cardStyle, padding: '20px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>No settled bets yet</div>}
                   </div>
                 )
               })()}
