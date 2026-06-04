@@ -464,61 +464,133 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 
   const isDisabled = !form.event || !form.pick || !form.odds || (!form.units && !form.stake)
 
+  const SectionLabel = ({ children }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.22em', color: 'var(--muted)', textTransform: 'uppercase' }}>{children}</span>
+      <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+    </div>
+  )
+
+  const bigInput = { ...inputStyle, fontSize: '16px', fontWeight: 700, padding: '12px 14px', height: '48px' }
+  const mdInput  = { ...inputStyle, fontSize: '13px', padding: '10px 12px', height: '44px' }
+
   if (isMobile) return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 200, backgroundColor: 'var(--card2)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flexShrink: 0, padding: '12px 16px 10px', borderBottom: `1px solid var(--border)`, borderTop: `2px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.22em', color: NEON }}>{isEdit ? 'EDIT BET' : 'LOG BET'}</div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', marginTop: '1px' }}>1u = {fmt$(unitSize)}</div>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 200, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+
+      {/* Header */}
+      <div style={{ flexShrink: 0, padding: '14px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `3px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)' }}>
+        <div>
+          <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, letterSpacing: '0.2em', color: NEON }}>{isEdit ? '✎ EDIT BET' : '+ LOG BET'}</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', marginTop: '2px' }}>1u = {fmt$(unitSize)} · Operate With Discipline</div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-          <button form="mbet" type="submit" style={{ ...btnStyle(true), padding: '8px 18px', fontSize: '11px', letterSpacing: '0.1em', opacity: isDisabled ? 0.4 : 1 }}>
-            {isEdit ? 'SAVE' : 'LOG BET'}
-          </button>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '22px', lineHeight: 1, padding: '4px' }}>×</button>
-        </div>
+        <button onClick={onClose} style={{ background: 'none', border: `1px solid var(--border2)`, color: MUTED, cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '6px 10px', borderRadius: '2px' }}>×</button>
       </div>
-      <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          {FL({ label: 'Date', children: <input type="date" value={form.date} onChange={f('date')} style={inputStyle} /> })}
-          {FL({ label: '🏟️ Sport', children: <select value={form.sport} onChange={f('sport')} style={inputStyle}>{ALL_SPORTS.map(s => <option key={s}>{s}</option>)}</select> })}
-          {FL({ label: '📚 Book', children: <select value={form.book} onChange={f('book')} style={{ ...inputStyle, color: form.book ? 'var(--text)' : 'var(--muted)' }}><option value="">— Select —</option>{BOOKS.map(b => <option key={b}>{b}</option>)}</select> })}
-          {FL({ label: 'Bet Type', children: <select value={form.betType} onChange={f('betType')} style={inputStyle}>{['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}</select> })}
+
+      {/* Scrollable form */}
+      <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+        {/* ── MATCHUP ── */}
+        <div>
+          <SectionLabel>Matchup</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input value={form.event} onChange={f('event')} placeholder="Event · e.g. Chiefs vs Raiders" style={{ ...bigInput, width: '100%' }} />
+            <input value={form.pick} onChange={f('pick')} placeholder="Pick · e.g. Chiefs -6.5" style={{ ...bigInput, width: '100%', color: form.pick ? NEON : undefined }} />
+          </div>
         </div>
-        {FL({ label: 'Event / Matchup', children: <input value={form.event} onChange={f('event')} placeholder="Chiefs vs Raiders" style={inputStyle} /> })}
-        {FL({ label: 'Pick / Market', children: <input value={form.pick} onChange={f('pick')} placeholder="Chiefs -6.5" style={inputStyle} /> })}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          {FL({ label: 'Odds (American)', children: <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} /> })}
-          {FL({ label: 'Stake $', hint: 'primary', children: <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} /> })}
-          {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children: <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={inputStyle} /> })}
-          {FL({ label: 'Result', children: <select value={form.result} onChange={f('result')} style={inputStyle}><option value="W">Win</option><option value="L">Loss</option><option value="P">Push</option><option value="Open">Open</option><option value="VOID">Void</option></select> })}
+
+        {/* ── DETAILS ── */}
+        <div>
+          <SectionLabel>Details</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <select value={form.sport} onChange={f('sport')} style={mdInput}>{ALL_SPORTS.map(s => <option key={s}>{s}</option>)}</select>
+            <select value={form.book} onChange={f('book')} style={{ ...mdInput, color: form.book ? 'var(--text)' : 'var(--muted)' }}><option value="">— Book —</option>{BOOKS.map(b => <option key={b}>{b}</option>)}</select>
+            <select value={form.betType} onChange={f('betType')} style={mdInput}>{['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}</select>
+            <input type="date" value={form.date} onChange={f('date')} style={mdInput} />
+          </div>
         </div>
-        {(form.units || form.stake) && odds !== 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-            <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '2px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON }}>✓ Win</span>
-                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</span>
-              </div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: 'rgba(189,255,0,0.6)', textAlign: 'right', marginTop: '2px' }}>+{fmt$(potentialWin * unitSize)}</div>
+
+        {/* ── SIZE & ODDS ── */}
+        <div>
+          <SectionLabel>Size &amp; Odds</SectionLabel>
+          {/* Odds — big and prominent */}
+          <div style={{ marginBottom: '8px', padding: '14px 16px', background: 'var(--card2)', border: `1px solid var(--border2)`, borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>Odds</span>
+            <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number"
+              style={{ ...inputStyle, fontSize: '22px', fontWeight: 700, textAlign: 'right', border: 'none', background: 'none', padding: 0, width: '120px',
+                color: form.odds > 0 ? NEON : form.odds < 0 ? 'var(--text)' : MUTED }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ position: 'relative' }}>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', marginBottom: '4px' }}>Units</div>
+              <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={{ ...mdInput, width: '100%' }} />
+              {form.units && <div style={{ fontFamily: R, fontSize: '8px', color: NEON, marginTop: '3px' }}>{fmt$(parseFloat(form.units) * unitSize)}</div>}
             </div>
-            <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '2px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED }}>✗ Loss</span>
-                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</span>
+            <div>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', marginBottom: '4px' }}>Stake $</div>
+              <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={{ ...mdInput, width: '100%' }} />
+              {form.stake && <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{(parseFloat(form.stake) / unitSize).toFixed(2)}u</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* ── P&L PREVIEW ── */}
+        {(form.units || form.stake) && odds !== 0 && (
+          <div>
+            <SectionLabel>P&amp;L Preview</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={{ padding: '14px', background: 'rgba(189,255,0,0.05)', border: `1px solid rgba(189,255,0,0.3)`, borderRadius: '2px', borderTop: `2px solid ${NEON}` }}>
+                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON, letterSpacing: '0.14em', marginBottom: '6px' }}>✓ IF WIN</div>
+                <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON, lineHeight: 1 }}>+{fmtU(potentialWin)}</div>
+                <div style={{ fontFamily: R, fontSize: '11px', color: 'rgba(189,255,0,0.7)', marginTop: '3px' }}>+{fmt$(potentialWin * unitSize)}</div>
               </div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: 'rgba(255,59,59,0.6)', textAlign: 'right', marginTop: '2px' }}>-{fmt$(potentialLoss * unitSize)}</div>
+              <div style={{ padding: '14px', background: 'rgba(255,59,59,0.04)', border: `1px solid rgba(255,59,59,0.25)`, borderRadius: '2px', borderTop: `2px solid ${RED}` }}>
+                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED, letterSpacing: '0.14em', marginBottom: '6px' }}>✗ IF LOSS</div>
+                <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED, lineHeight: 1 }}>-{fmtU(potentialLoss)}</div>
+                <div style={{ fontFamily: R, fontSize: '11px', color: 'rgba(255,59,59,0.7)', marginTop: '3px' }}>-{fmt$(potentialLoss * unitSize)}</div>
+              </div>
             </div>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>Confidence</span>
-          {[1,2,3,4,5].map(n => <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', fontSize: '20px', opacity: n <= (form.confidence||0) ? 1 : 0.2 }}>⭐</button>)}
+
+        {/* ── RESULT ── */}
+        <div>
+          <SectionLabel>Result</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '6px' }}>
+            {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
+              <button key={val} type="button" onClick={() => set('result', val)} style={{
+                fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em',
+                padding: '11px 4px', borderRadius: '2px', cursor: 'pointer',
+                border: `1px solid ${form.result === val ? color : 'var(--border2)'}`,
+                background: form.result === val ? `${color}18` : 'var(--card2)',
+                color: form.result === val ? color : MUTED,
+                boxShadow: form.result === val ? `0 0 8px ${color}33` : 'none',
+              }}>{label}</button>
+            ))}
+          </div>
         </div>
-        <div style={{ height: '4px' }} />
+
+        {/* ── CONFIDENCE ── */}
+        <div>
+          <SectionLabel>Confidence</SectionLabel>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[1,2,3,4,5].map(n => (
+              <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)}
+                style={{ flex: 1, background: n <= (form.confidence||0) ? 'rgba(189,255,0,0.08)' : 'var(--card2)', border: `1px solid ${n <= (form.confidence||0) ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`, borderRadius: '2px', cursor: 'pointer', padding: '10px 0', fontSize: '18px' }}>⭐</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: '8px' }} />
       </form>
-      <div style={{ flexShrink: 0, padding: '8px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)', borderTop: `1px solid var(--border)`, background: 'var(--card2)' }}>
-        <button type="button" onClick={onClose} style={{ ...btnStyle(), width: '100%' }}>Cancel</button>
+
+      {/* Footer CTA */}
+      <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)', borderTop: `1px solid var(--border)`, background: 'var(--card2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <button form="mbet" type="submit" style={{
+          ...btnStyle(true), width: '100%', padding: '14px', fontSize: '13px', letterSpacing: '0.18em',
+          opacity: isDisabled ? 0.4 : 1,
+          boxShadow: isDisabled ? 'none' : '0 0 20px rgba(189,255,0,0.25)',
+        }}>{isEdit ? '✓ SAVE CHANGES' : '+ LOG BET'}</button>
+        <button type="button" onClick={onClose} style={{ ...btnStyle(), width: '100%', padding: '10px', fontSize: '11px' }}>Cancel</button>
       </div>
     </div>
   )
