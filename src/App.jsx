@@ -487,100 +487,80 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
       </div>
 
       {/* Scrollable form */}
-      <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-        {/* ── MATCHUP ── */}
-        <div>
-          <SectionLabel>Matchup</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <input value={form.event} onChange={f('event')} placeholder="Event · e.g. Chiefs vs Raiders" style={{ ...bigInput, width: '100%' }} />
-            <input value={form.pick} onChange={f('pick')} placeholder="Pick · e.g. Chiefs -6.5" style={{ ...bigInput, width: '100%', color: form.pick ? NEON : undefined }} />
-          </div>
+        {/* Event + Pick */}
+        <input value={form.event} onChange={f('event')} placeholder="Event · e.g. Chiefs vs Raiders" style={{ ...bigInput, width: '100%' }} />
+        <input value={form.pick} onChange={f('pick')} placeholder="Pick · e.g. Chiefs -6.5" style={{ ...bigInput, width: '100%', color: form.pick ? NEON : undefined }} />
+
+        {/* Sport / Book / Bet Type / Date */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <select value={form.sport} onChange={f('sport')} style={inputStyle}>{ALL_SPORTS.map(s => <option key={s}>{s}</option>)}</select>
+          <select value={form.book} onChange={f('book')} style={{ ...inputStyle, color: form.book ? 'var(--text)' : 'var(--muted)' }}><option value="">— Book —</option>{BOOKS.map(b => <option key={b}>{b}</option>)}</select>
+          <select value={form.betType} onChange={f('betType')} style={inputStyle}>{['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}</select>
+          <input type="date" value={form.date} onChange={f('date')} style={inputStyle} />
         </div>
 
-        {/* ── DETAILS ── */}
-        <div>
-          <SectionLabel>Details</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <select value={form.sport} onChange={f('sport')} style={mdInput}>{ALL_SPORTS.map(s => <option key={s}>{s}</option>)}</select>
-            <select value={form.book} onChange={f('book')} style={{ ...mdInput, color: form.book ? 'var(--text)' : 'var(--muted)' }}><option value="">— Book —</option>{BOOKS.map(b => <option key={b}>{b}</option>)}</select>
-            <select value={form.betType} onChange={f('betType')} style={mdInput}>{['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}</select>
-            <input type="date" value={form.date} onChange={f('date')} style={mdInput} />
-          </div>
+        {/* Odds / Stake$ / Units */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+          {FL({ label: 'Odds', children: <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} /> })}
+          {FL({ label: `Stake $ (1u=${fmt$(unitSize)})`, children: <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} /> })}
+          {FL({ label: 'Units', children: <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={inputStyle} /> })}
         </div>
 
-        {/* ── SIZE & ODDS ── */}
-        <div>
-          <SectionLabel>Size &amp; Odds</SectionLabel>
-          {/* Odds — big and prominent */}
-          <div style={{ marginBottom: '8px', padding: '14px 16px', background: 'var(--card2)', border: `1px solid var(--border2)`, borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>Odds</span>
-            <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number"
-              style={{ ...inputStyle, fontSize: '22px', fontWeight: 700, textAlign: 'right', border: 'none', background: 'none', padding: 0, width: '120px',
-                color: form.odds > 0 ? NEON : form.odds < 0 ? 'var(--text)' : MUTED }} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <div style={{ position: 'relative' }}>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', marginBottom: '4px' }}>Units</div>
-              <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={{ ...mdInput, width: '100%' }} />
-              {form.units && <div style={{ fontFamily: R, fontSize: '8px', color: NEON, marginTop: '3px' }}>{fmt$(parseFloat(form.units) * unitSize)}</div>}
-            </div>
-            <div>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', marginBottom: '4px' }}>Stake $</div>
-              <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={{ ...mdInput, width: '100%' }} />
-              {form.stake && <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{(parseFloat(form.stake) / unitSize).toFixed(2)}u</div>}
-            </div>
-          </div>
-        </div>
-
-        {/* ── P&L PREVIEW ── */}
+        {/* P&L preview */}
         {(form.units || form.stake) && odds !== 0 && (
-          <div>
-            <SectionLabel>P&amp;L Preview</SectionLabel>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div style={{ padding: '14px', background: 'rgba(189,255,0,0.05)', border: `1px solid rgba(189,255,0,0.3)`, borderRadius: '2px', borderTop: `2px solid ${NEON}` }}>
-                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON, letterSpacing: '0.14em', marginBottom: '6px' }}>✓ IF WIN</div>
-                <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON, lineHeight: 1 }}>+{fmtU(potentialWin)}</div>
-                <div style={{ fontFamily: R, fontSize: '11px', color: 'rgba(189,255,0,0.7)', marginTop: '3px' }}>+{fmt$(potentialWin * unitSize)}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: NEON }}>✓ WIN</span>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</div>
+                <div style={{ fontFamily: R, fontSize: '10px', color: NEON, opacity: 0.75 }}>+{fmt$(potentialWin * unitSize)}</div>
               </div>
-              <div style={{ padding: '14px', background: 'rgba(255,59,59,0.04)', border: `1px solid rgba(255,59,59,0.25)`, borderRadius: '2px', borderTop: `2px solid ${RED}` }}>
-                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED, letterSpacing: '0.14em', marginBottom: '6px' }}>✗ IF LOSS</div>
-                <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED, lineHeight: 1 }}>-{fmtU(potentialLoss)}</div>
-                <div style={{ fontFamily: R, fontSize: '11px', color: 'rgba(255,59,59,0.7)', marginTop: '3px' }}>-{fmt$(potentialLoss * unitSize)}</div>
+            </div>
+            <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: RED }}>✗ LOSS</span>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</div>
+                <div style={{ fontFamily: R, fontSize: '10px', color: RED, opacity: 0.75 }}>-{fmt$(stake$ || potentialLoss * unitSize)}</div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── RESULT ── */}
-        <div>
-          <SectionLabel>Result</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '6px' }}>
-            {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
-              <button key={val} type="button" onClick={() => set('result', val)} style={{
-                fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em',
-                padding: '11px 4px', borderRadius: '2px', cursor: 'pointer',
-                border: `1px solid ${form.result === val ? color : 'var(--border2)'}`,
-                background: form.result === val ? `${color}18` : 'var(--card2)',
-                color: form.result === val ? color : MUTED,
-                boxShadow: form.result === val ? `0 0 8px ${color}33` : 'none',
-              }}>{label}</button>
-            ))}
-          </div>
+        {/* Result */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '6px' }}>
+          {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
+            <button key={val} type="button" onClick={() => set('result', val)} style={{
+              fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em',
+              padding: '11px 4px', borderRadius: '2px', cursor: 'pointer',
+              border: `1px solid ${form.result === val ? color : 'var(--border2)'}`,
+              background: form.result === val ? `${color}18` : 'var(--card2)',
+              color: form.result === val ? color : MUTED,
+              boxShadow: form.result === val ? `0 0 8px ${color}33` : 'none',
+            }}>{label}</button>
+          ))}
         </div>
 
-        {/* ── CONFIDENCE ── */}
-        <div>
-          <SectionLabel>Confidence</SectionLabel>
-          <div style={{ display: 'flex', gap: '6px' }}>
+        {/* Confidence */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Confidence</span>
+          <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
             {[1,2,3,4,5].map(n => (
               <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)}
-                style={{ flex: 1, background: n <= (form.confidence||0) ? 'rgba(189,255,0,0.08)' : 'var(--card2)', border: `1px solid ${n <= (form.confidence||0) ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`, borderRadius: '2px', cursor: 'pointer', padding: '10px 0', fontSize: '18px' }}>⭐</button>
+                style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', fontSize: '18px', lineHeight: 1, opacity: n <= (form.confidence||0) ? 1 : 0.2 }}>⭐</button>
             ))}
           </div>
+          {form.confidence > 0 && <span style={{ fontFamily: R, fontSize: '9px', color: NEON }}>{['','Low','Moderate','Average','High','Lock 🔒'][form.confidence]}</span>}
         </div>
 
-        <div style={{ height: '8px' }} />
+        {/* Notes */}
+        {FL({ label: 'Notes', children:
+          <textarea value={form.notes || ''} onChange={f('notes')} placeholder="Optional notes..." rows={2}
+            style={{ ...inputStyle, height: 'auto', resize: 'none', fontFamily: 'Inter, sans-serif', fontSize: '13px', paddingTop: '10px' }} />
+        })}
+
+        <div style={{ height: '4px' }} />
       </form>
 
       {/* Footer CTA */}
@@ -1697,7 +1677,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
   const [analyticspill,  setAnalyticsPill]  = useState('curve')
-  const [showUnits,      setShowUnits]      = useState(true)
+  const [showUnits,      setShowUnits]      = useState(false)
 
   const settled = bets.filter(b => b.result === 'W' || b.result === 'L')
 
@@ -2681,7 +2661,7 @@ export default function App({ user, session, subStatus }) {
   const [showMore,     setShowMore]     = useState(false)
   const [settingsPill, setSettingsPill] = useState(null)
   const [overviewSection, setOverviewSection] = useState('limits')
-  const [analyticsShowUnits, setAnalyticsShowUnits] = useState(true)
+  const [analyticsShowUnits, setAnalyticsShowUnits] = useState(false)
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
   // Tab order for swipe navigation
