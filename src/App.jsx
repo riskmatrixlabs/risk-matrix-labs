@@ -730,7 +730,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   const [editRow,    setEditRow]    = useState(null)
 
   // Auto-init ladderStarting from masterBankroll if not set (15% of master = session stake)
-  React.useEffect(() => {
+  useEffect(() => {
     if ((ladderStarting === 0 || ladderStarting === LADDER_STARTING_BR) && masterBankroll > 0) {
       const sessionStake = Math.max(5, Math.round(masterBankroll * 0.15 / 5) * 5)
       setLadderStarting(sessionStake)
