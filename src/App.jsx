@@ -2087,7 +2087,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
     </div>
   )
 
-  if (isMobile) return (
+  return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {/* Always visible: Net Units + ROI */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '2px' }}>
@@ -2233,88 +2233,6 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
           </div>
         )
       })()}
-    </div>
-  )
-
-  // Desktop layout (unchanged)
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: g('repeat(6,1fr)', 'repeat(3,1fr)', 'repeat(2,1fr)'), gap: '6px' }}>
-        {[
-          { label: 'Current Streak',  value: curStreak ? `${curStreak.count} ${curStreak.result === 'W' ? 'W' : 'L'}` : '—', color: curStreak?.result === 'W' ? NEON : curStreak?.result === 'L' ? RED : 'var(--text)', sub: 'in a row' },
-          { label: 'Best Win Run',    value: maxW ? `${maxW}W` : '—',  color: NEON, sub: 'consecutive wins' },
-          { label: 'Worst Loss Run',  value: maxL ? `${maxL}L` : '—',  color: RED,  sub: 'consecutive losses' },
-          { label: 'Avg Win',         value: stats.wins   ? fmt$(stats.avgWin$)          : '—', color: NEON, sub: 'per winning bet' },
-          { label: 'Avg Loss',        value: stats.losses ? `-${fmt$(stats.avgLoss$)}`   : '—', color: RED,  sub: 'per losing bet' },
-          { label: 'Profit Factor',   value: profitFactor, color: parseFloat(profitFactor) >= 1 ? NEON : RED, sub: 'won ÷ lost' },
-        ].map(({ label, value, color, sub }) => (
-          <div key={label} style={{ ...cardStyle, padding: '14px 16px' }}>
-            <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{label}</div>
-            <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color, lineHeight: 1,
-              textShadow: color === NEON && darkMode ? '0 0 12px rgba(189,255,0,0.25)' : 'none' }}>{value}</div>
-            <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>{sub}</div>
-          </div>
-        ))}
-      </div>
-      {chartPanel}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-        <div style={{ ...cardStyle, padding: '16px 18px' }}>
-          <SectionLabel>🎯 Bet Type Performance</SectionLabel>
-          {byType.length === 0
-            ? <div style={{ fontFamily: R, fontSize: '12px', color: 'var(--muted)', padding: '16px 0' }}>No settled bets yet</div>
-            : byType.map(t => <BreakRow key={t.type} label={t.type} wins={t.wins} total={t.bets} pnl={t.pnl} darkMode={darkMode} />)}
-        </div>
-        <div style={{ ...cardStyle, padding: '16px 18px' }}>
-          <SectionLabel>📚 Book Performance</SectionLabel>
-          {byBook.length === 0
-            ? <div style={{ fontFamily: R, fontSize: '12px', color: 'var(--muted)', padding: '16px 0' }}>No book data</div>
-            : byBook.map(b => <BreakRow key={b.book} label={b.book} wins={b.wins} total={b.bets} pnl={b.pnl} darkMode={darkMode} />)}
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '6px' }}>
-        <div style={{ ...cardStyle, padding: '16px 18px' }}>
-          <SectionLabel>🎯 Kelly Criterion at -110</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-            {[0.52, 0.54, 0.56, 0.58, 0.60].map(wr => {
-              const b = 100 / 110
-              const k = (b * wr - (1 - wr)) / b
-              const isYours = Math.abs(wr - stats.winRate) < 0.015
-              return (
-                <div key={wr} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px',
-                  background: isYours ? 'rgba(189,255,0,0.05)' : 'var(--card2)',
-                  border: `1px solid ${isYours ? 'rgba(189,255,0,0.3)' : 'var(--border)'}`, borderRadius: '2px' }}>
-                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text-sub)', flex: 1 }}>
-                    {(wr * 100).toFixed(0)}% WR {isYours ? '← your rate' : ''}
-                  </span>
-                  <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: NEON, minWidth: '48px', textAlign: 'right' }}>{(k * 100).toFixed(1)}%</span>
-                  <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)', minWidth: '52px', textAlign: 'right' }}>{fmt$(masterBankroll * k)}</span>
-                  <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '12px', minWidth: '90px', textAlign: 'right' }}>
-                    <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text-sub)' }}>{(k / 2 * 100).toFixed(1)}%</div>
-                    <div style={{ fontFamily: R, fontSize: '9px', color: NEON }}>½ Kelly = {fmt$(masterBankroll * k / 2)} ✓</div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-        <div style={{ ...cardStyle, padding: '16px 18px' }}>
-          <SectionLabel>📊 Quick Stats</SectionLabel>
-          {[
-            ['Total Settled', stats.total],
-            ['Win Rate',      `${(stats.winRate * 100).toFixed(1)}%`],
-            ['Net Units',     fmtU(stats.netPnlU)],
-            ['Avg Win',       stats.wins   ? fmt$(stats.avgWin$)          : '—'],
-            ['Avg Loss',      stats.losses ? `-${fmt$(stats.avgLoss$)}`   : '—'],
-            ['Profit Factor', profitFactor],
-            ['Avg Odds',      fmtOdds(Math.round(stats.avgOdds))],
-          ].map(([label, value]) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>{label}</span>
-              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text-sub)' }}>{value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
@@ -4182,7 +4100,7 @@ export default function App({ user, session, subStatus }) {
           {/* ── Live Open Bets Banner ── */}
           {stats.openBets > 0 && (
             <div style={{ marginBottom: '8px' }}>
-              <div onClick={() => setTab('bet log')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: '8px', cursor: 'pointer' }}>
+              <div onClick={() => setTab('bet log')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 'var(--radius)', padding: '10px 16px', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: YELLOW, display: 'inline-block', flexShrink: 0, boxShadow: '0 0 8px rgba(245,166,35,0.7)', animation: 'pulseDot 1.5s infinite' }} />
                   <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, textTransform: 'uppercase' }}>
@@ -4190,62 +4108,6 @@ export default function App({ user, session, subStatus }) {
                   </span>
                 </div>
                 <span style={{ fontFamily: R, fontSize: '9px', color: YELLOW, letterSpacing: '0.1em', opacity: 0.7 }}>VIEW ALL →</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '6px' }}>
-                {bets.filter(b => b.result === 'Open').map(b => {
-                  const toWin = b.stake > 0 && b.odds ? (b.odds > 0 ? b.stake * b.odds / 100 : b.stake * 100 / Math.abs(b.odds)) : 0
-                  const isLadder = !!b.ladder
-                  return (
-                    <div key={b.id} style={{ ...cardStyle, padding: 0, overflow: 'hidden', borderLeft: `3px solid ${YELLOW}` }}>
-                      {(b.event || isLadder) && (
-                        <div style={{ padding: '7px 12px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {isLadder ? `PHLT™ LADDER · RUNG ${b.ladderId}` : b.event}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', gap: '8px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: YELLOW, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {isLadder ? `RUNG ${b.ladderId} · ${b.pick || 'TBD'}` : (b.pick || '—')}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: YELLOW }}>{toWin > 0 ? `+${fmt$(toWin)}` : '—'}</div>
-                          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', letterSpacing: '0.08em' }}>to win</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 6px', gap: '6px' }}>
-                        <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.4)', padding: '1px 6px', borderRadius: '4px' }}>{isLadder ? 'ACTIVE' : 'OPEN'}</span>
-                        {b.book  && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.book}</span>}
-                        {b.sport && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{b.sport}</span>}
-                        {b.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{'⭐'.repeat(b.confidence)}</span>}
-                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: b.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(b.odds)}</span>
-                      </div>
-                      <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-                        {[
-                          { label: 'STAKE',  val: b.stake > 0 ? fmt$(b.stake) : '—', color: 'var(--text)' },
-                          { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—', color: NEON },
-                          { label: 'UNITS',  val: b.units > 0 ? `${b.units}u` : '—', color: 'var(--text)' },
-                        ].map(({ label, val, color }, idx) => (
-                          <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
-                            <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
-                            <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', padding: '4px 8px' }}>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          {['W','L','P'].map(r => (
-                            <button key={r} onClick={() => settleBet(b.id, r)} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', padding: '3px 10px', borderRadius: '2px', cursor: 'pointer', border: `1px solid ${r==='W' ? 'rgba(189,255,0,0.4)' : r==='L' ? 'rgba(255,59,59,0.4)' : 'var(--border2)'}`, background: r==='W' ? 'rgba(189,255,0,0.07)' : r==='L' ? 'rgba(255,59,59,0.07)' : 'transparent', color: r==='W' ? NEON : r==='L' ? RED : 'var(--muted)' }}>{r==='W' ? 'WIN ✓' : r==='L' ? 'LOSS ✗' : 'PUSH'}</button>
-                          ))}
-                        </div>
-                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                          <button onClick={() => setShareCardBet(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '2px 4px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={11} /></button>
-                          <button onClick={() => setEditingBet(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '2px 4px', display: 'flex', alignItems: 'center' }} onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={11} /></button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
               </div>
             </div>
           )}
@@ -4542,7 +4404,7 @@ export default function App({ user, session, subStatus }) {
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
             <button onClick={() => setAnalyticsShowUnits(v => !v)} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', padding: '3px 12px', borderRadius: '100px', cursor: 'pointer', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)', color: NEON }}>{analyticsShowUnits ? 'u → $' : '$ → u'}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '6px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
             <div style={{ ...cardStyle, padding: '12px 14px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
               <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Risk</div>
               <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
@@ -4553,27 +4415,38 @@ export default function App({ user, session, subStatus }) {
               <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: up(stats.netPnl$) ? NEON : RED, lineHeight: 1 }}>{analyticsShowUnits ? fmtU(stats.netPnlU) : fmt$(stats.netPnl$, true)}</div>
               <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>tap to toggle</div>
             </div>
-            <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
+          </div>
+
+          {/* ── ROI + W/L + Win Rate ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+            <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(roi) ? NEON : RED}` }}>
               <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>ROI<InfoTip text="Return on units risked across all settled bets." /></div>
-              <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
+              <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: up(roi) ? NEON : RED, lineHeight: 1 }}>{roi >= 0 ? '+' : ''}{(roi * 100).toFixed(1)}%</div>
+              <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
             </div>
-            <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${stats.winRate >= 0.525 ? NEON : 'transparent'}` }}>
+            <div style={{ ...cardStyle, padding: '10px 12px' }}>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>W / L</div>
+              <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{stats.wins} — {stats.losses}</div>
+              <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
+            </div>
+            <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.winRate >= 0.525 ? NEON : 'transparent'}` }}>
               <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Win Rate<InfoTip text="52.5% is breakeven at -110 odds." /></div>
-              <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.winRate >= 0.525 ? NEON : 'var(--text)', lineHeight: 1 }}>{(stats.winRate * 100).toFixed(1)}%</div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>{stats.wins}W – {stats.losses}L</div>
+              <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: stats.winRate >= 0.525 ? NEON : 'var(--text)', lineHeight: 1 }}>{(stats.winRate * 100).toFixed(1)}%</div>
+              <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>target 52.5%</div>
             </div>
           </div>
 
-          {/* ── 8 small chips ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px' }}>
-            <SmallCard label="W / L"        value={`${stats.wins} — ${stats.losses}`} />
-            <SmallCard label="Win Rate"     value={`${(stats.winRate * 100).toFixed(1)}%`} color={stats.winRate >= 0.525 ? NEON : undefined} />
+          {/* ── 8 small chips in 4+4 rows (matches mobile) ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '6px' }}>
             <SmallCard label="Won"          value={analyticsShowUnits ? `+${(stats.allWon$ / stats.unitSize).toFixed(1)}u` : fmt$(stats.allWon$)} color={NEON} />
             <SmallCard label="Lost"         value={analyticsShowUnits ? `-${(stats.allLost$ / stats.unitSize).toFixed(1)}u` : `-${fmt$(stats.allLost$)}`} color={RED} />
             <SmallCard label="Avg Odds"     value={fmtOdds(Math.round(stats.avgOdds))} />
+            <SmallCard label="Settled"      value={String(stats.total)} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
             <SmallCard label="Best Win"     value={stats.wins ? fmt$(stats.largestWin) : '—'} color={NEON} />
             <SmallCard label="Worst Loss"   value={stats.losses ? fmt$(stats.largestLoss) : '—'} color={RED} />
+            <SmallCard label="Risked"       value={`${stats.totalRiskedU.toFixed(1)}u`} />
             <SmallCard label="Unit $"       value={fmt$(stats.unitSize)} />
           </div>
             </>
@@ -4619,8 +4492,8 @@ export default function App({ user, session, subStatus }) {
               </button>
             </div>
 
-            {/* ── Mobile card view ── */}
-            {isMobile && (
+            {/* ── Bet card view (mobile + desktop) ── */}
+            {(isMobile || !isMobile) && (
               <div>
                 {(betLogShowAll ? filtered : filtered.slice(0, 10)).map((bet) => (
                   <BetCard
@@ -4671,165 +4544,6 @@ export default function App({ user, session, subStatus }) {
                   </span>
                 </div>
               </div>
-            )}
-            {!isMobile && (
-            <div style={{ ...cardStyle, overflow: 'hidden' }}>
-              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                    <TH col="date"       label="Date" />
-                    <TH col="sport"      label="Sport" />
-                    <TH col="book"       label="📚 Book" />
-                    <TH col="event"      label="Event" />
-                    <TH col="pick"       label="Pick" />
-                    <TH col="odds"       label="Odds" right />
-                    <TH col="units"      label="Units" right />
-                    <TH col="confidence" label="⭐" />
-                    <TH col="result"     label="Result" />
-                    <TH col="pnl"        label="P&L" right />
-                    <th style={{ width: '32px', background: CARD }} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {(betLogShowAll ? filtered : filtered.slice(0, 10)).map((bet, i) => {
-                    const isOpen = bet.result === 'Open'
-                    return (
-                    <tr key={bet.id} style={{
-                      borderBottom: `1px solid ${BORDER}`,
-                      backgroundColor: isOpen ? 'rgba(245,166,35,0.04)' : i % 2 ? 'var(--card2)' : 'transparent',
-                      borderLeft: isOpen ? `3px solid rgba(245,166,35,0.5)` : '3px solid transparent',
-                    }}>
-                      <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 600, color: isOpen ? YELLOW : MUTED, padding: '9px 13px', letterSpacing: '0.05em' }}>{bet.date}</td>
-                      <td style={{ padding: '9px 13px' }}>
-                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--muted)', background: 'var(--card)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '2px' }}>{bet.sport}</span>
-                      </td>
-                      <td style={{ padding: '9px 13px' }}>
-                        {bet.book
-                          ? <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: NEON, background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.2)', padding: '2px 6px', borderRadius: '2px' }}>{bet.book}</span>
-                          : <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--border2)' }}>—</span>}
-                      </td>
-                      <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 600, color: 'var(--text-sub)', padding: '9px 13px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.event}</td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', padding: '9px 13px' }}>{bet.pick}</td>
-                      <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text)', padding: '9px 13px', textAlign: 'right' }}>{fmtOdds(bet.odds)}</td>
-                      <td style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', padding: '9px 13px', textAlign: 'right' }}>
-                        {bet.units}u
-                        {bet.stake > 0 && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, fontWeight: 600 }}>{fmt$(bet.stake)}</div>}
-                      </td>
-
-                      {/* Confidence stars */}
-                      <td style={{ padding: '9px 10px', whiteSpace: 'nowrap' }}>
-                        {bet.confidence > 0
-                          ? <span style={{ fontSize: '11px', letterSpacing: '-1px', opacity: 0.85 }}>{'⭐'.repeat(bet.confidence)}</span>
-                          : <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--border2)' }}>—</span>}
-                      </td>
-
-                      {/* Result cell — inline settle for Open bets */}
-                      <td style={{ padding: '7px 10px' }}>
-                        {isOpen ? (
-                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: YELLOW, background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.3)', padding: '2px 6px', borderRadius: '2px', marginRight: '4px' }}>OPEN</span>
-                            {['W','L','P'].map(r => (
-                              <button key={r} onClick={() => settleBet(bet.id, r)} style={{
-                                fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em',
-                                padding: '2px 7px', borderRadius: '2px', cursor: 'pointer',
-                                border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : r === 'L' ? 'rgba(255,59,59,0.4)' : BORDER2}`,
-                                background: r === 'W' ? 'rgba(189,255,0,0.07)' : r === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card)',
-                                color: r === 'W' ? NEON : r === 'L' ? RED : MUTED,
-                              }}>{r}</button>
-                            ))}
-                          </div>
-                        ) : (
-                          <span
-                            className={bet.result === 'W' ? 'badge-win' : bet.result === 'L' ? 'badge-loss' : ''}
-                            style={{
-                              fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em',
-                              color: bet.result === 'W' ? NEON : bet.result === 'L' ? RED : 'var(--muted)',
-                              background: bet.result === 'W' ? 'rgba(189,255,0,0.07)' : bet.result === 'L' ? 'rgba(255,59,59,0.07)' : 'var(--card2)',
-                              border: `1px solid ${bet.result === 'W' ? 'rgba(189,255,0,0.2)' : bet.result === 'L' ? 'rgba(255,59,59,0.2)' : 'var(--border)'}`,
-                              padding: '2px 7px', borderRadius: '2px',
-                            }}>
-                            {bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : bet.result === 'P' ? 'PUSH' : bet.result}
-                          </span>
-                        )}
-                      </td>
-
-                      <td style={{
-                        fontFamily: R, fontSize: '12px', fontWeight: 700, padding: '9px 13px', textAlign: 'right',
-                        color: isOpen ? MUTED : bet.pnl > 0 ? NEON : bet.pnl < 0 ? RED : MUTED,
-                      }}>
-                        {isOpen ? <span style={{ fontSize: '9px', color: YELLOW }}>pending</span> : (() => { const d = (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * stats.unitSize; return (d >= 0 ? '+' : '') + fmt$(d) })()}
-                      </td>
-                      <td style={{ padding: '9px 8px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <button onClick={() => setShareCardBet(bet)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center', padding: '2px' }}
-                            onMouseEnter={e => e.currentTarget.style.color = NEON}
-                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}>
-                            <Share2 size={10} />
-                          </button>
-                          <button onClick={() => setEditingBet(bet)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center', padding: '2px' }}
-                            onMouseEnter={e => e.currentTarget.style.color = NEON}
-                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}>
-                            <Pencil size={10} />
-                          </button>
-                          <button onClick={() => setBets(b => b.filter(x => x.id !== bet.id))}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.28)', display: 'flex', alignItems: 'center', padding: '2px' }}
-                            onMouseEnter={e => e.currentTarget.style.color = RED}
-                            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,59,59,0.28)'}>
-                            <Trash2 size={10} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )})}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={11} style={{ padding: '44px 20px', textAlign: 'center' }}>
-                      {bets.length === 0 ? (
-                        <div>
-                          <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--text)', marginBottom: '8px' }}>NO BETS LOGGED YET</div>
-                          <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.08em', marginBottom: '16px' }}>Track your first bet to start building your edge.</div>
-                          <button onClick={() => setShowAdd(true)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '9px 20px', border: `1px solid ${NEON}`, borderRadius: '2px', background: 'rgba(189,255,0,0.1)', color: NEON, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <Plus size={11} /> Log Your First Bet
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.12em' }}>NO BETS MATCH FILTERS</span>
-                      )}
-                    </td></tr>
-                  )}
-                </tbody>
-              </table>
-              </div>
-              {/* Show more / less toggle */}
-              {filtered.length > 10 && (
-                <div style={{ borderTop: `1px solid ${BORDER}`, padding: '8px 13px', textAlign: 'center' }}>
-                  <button onClick={() => setBetLogShowAll(v => !v)} style={{
-                    fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                    background: 'none', border: `1px solid var(--border2)`, borderRadius: '2px',
-                    color: 'var(--muted)', cursor: 'pointer', padding: '5px 16px',
-                  }}>
-                    {betLogShowAll ? '▲ Show Less' : `▼ Show ${filtered.length - 10} More`}
-                  </button>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 13px', borderTop: `1px solid ${BORDER}` }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                  <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>{filtered.length} BETS</span>
-                  {filtered.filter(b => b.result === 'Open').length > 0 && (
-                    <span style={{ fontFamily: R, fontSize: '9px', color: YELLOW, letterSpacing: '0.1em', fontWeight: 700 }}>
-                      {filtered.filter(b => b.result === 'Open').length} OPEN · {fmt$(filtered.filter(b => b.result === 'Open').reduce((s, b) => s + (b.stake || 0), 0))} AT RISK
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>
-                  NET: <span style={{ color: filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + b.pnl, 0) >= 0 ? NEON : RED, fontWeight: 700 }}>
-                    {fmtU(filtered.filter(b => b.result !== 'Open').reduce((s, b) => s + b.pnl, 0))}
-                  </span>
-                </span>
-              </div>
-            </div>
             )}
           </div>
         )}
