@@ -1854,7 +1854,7 @@ const ATip = ({ active, payload, label: tLabel, fmt: fmtFn }) => {
 }
 
 // ─── ANALYTICS PANEL ─────────────────────────────────────────────────────────
-function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdit }) {
+function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
@@ -2149,7 +2149,18 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
       {/* Live Open Bets — always at the bottom */}
       {(() => {
         const regularOpen = bets.filter(b => b.result === 'Open' && !b.ladder)
-        const activeRung  = bets.filter(b => b.result === 'Open' && b.ladder).sort((a, z) => a.ladderId - z.ladderId).slice(0, 1)
+        const ladderRows  = bets.filter(b => b.ladder).sort((a, z) => a.ladderId - z.ladderId)
+        const ladderBankIn = ladderRows.reduce((acc, row) => {
+          const prev   = acc[acc.length - 1]
+          const bIn    = prev ? prev.bankOut : (ladderStarting || masterBankroll * 0.15)
+          const profit = row.odds > 0 ? row.stake * row.odds / 100 : row.stake * 100 / Math.abs(row.odds || 1)
+          const bankOut = row.result === 'W' ? bIn - row.stake + row.stake + profit
+                        : row.result === 'L' ? bIn - row.stake : bIn
+          acc.push({ id: row.id, bankIn: bIn, bankOut })
+          return acc
+        }, [])
+        const bankInMap = Object.fromEntries(ladderBankIn.map(r => [r.id, r.bankIn]))
+        const activeRung = ladderRows.filter(b => b.result === 'Open').slice(0, 1)
         const openBets = [...regularOpen, ...activeRung].slice(0, 8)
         if (!openBets.length) return null
         return (
@@ -2164,6 +2175,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, darkMode, onSettle, onEdi
                 onSettle={onSettle}
                 onEdit={onEdit}
                 unitSize={stats.unitSize}
+                bankIn={bankInMap[b.id]}
               />
             ))}
           </div>
@@ -4697,7 +4709,7 @@ export default function App({ user, session, subStatus }) {
         {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} />}
 
         {/* ── ANALYTICS ── */}
-        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} />}
+        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} />}
 
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} />}
