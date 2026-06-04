@@ -133,9 +133,9 @@ function SectionHeader({ pill, title, sub, center = true }) {
 
 // ─── MARQUEE ──────────────────────────────────────────────────────────────────
 const MARQUEE_ITEMS = [
-  'Bankroll Management', 'Risk Control', 'Ladder Systems',
+  'Bankroll Management', 'Risk Control', 'PHLT™ Ladder System',
   'Round Robin Engine', 'Session Grading', 'Discipline Systems',
-  'Unit Calculator', 'Tilt Detection', 'Performance Analytics',
+  'Unit Sizing Engine', 'Tilt Detection', 'Behavioral Analytics',
 ]
 
 function Marquee() {
@@ -236,7 +236,7 @@ export default function LandingPage({ onLogin }) {
           <button onClick={onLogin} style={{ background: NEON, border: 'none', borderRadius: '3px', padding: '7px 16px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', color: BG, textTransform: 'uppercase', transition: 'opacity 0.15s, transform 0.15s' }}
             onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'translateY(-1px)' }}
             onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-          >Request Beta</button>
+          >Start Free Trial</button>
           {/* Mobile hamburger */}
           <button onClick={() => setMobileMenu(o => !o)} className="lp-hamburger" style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', flexDirection: 'column', gap: '4px', padding: '4px' }}>
             {[0,1,2].map(i => <div key={i} style={{ width: '22px', height: '2px', background: 'rgba(255,255,255,0.7)', borderRadius: '1px' }} />)}
@@ -368,7 +368,7 @@ export default function LandingPage({ onLogin }) {
           <FadeIn>
             <Pill>Dashboard Preview</Pill>
             <h2 style={{ fontFamily: R, fontSize: 'clamp(28px, 3.5vw, 46px)', fontWeight: 700, letterSpacing: '0.02em', color: '#fff', margin: '20px 0 16px', lineHeight: 1.08 }}>
-              Built For Operators.<br /><span style={{ color: NEON }}>Not Gamblers.</span>
+              A Terminal For<br /><span style={{ color: NEON }}>Your Bankroll.</span>
             </h2>
             <p style={{ fontFamily: I, fontSize: '15px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.75, marginBottom: '32px' }}>
               Every data point you need. Nothing you don't. A terminal-style command center that treats your bankroll like a trading account.
@@ -432,7 +432,7 @@ export default function LandingPage({ onLogin }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: '36px' }} className="lp-pricing-grid">
                 {[
                   'PHLT™ Ladder Tracker', 'Unit Calculator',
-                  'Round Robin Engine', 'Emotional Checklist',
+                  'Round Robin Engine', 'Pre-Session Checklist',
                   'Session Grading (A–F)', 'Discipline Score™',
                   'Performance Analytics', 'Tilt Detection',
                   'Cloud Sync + Backup', 'All future features',
@@ -507,7 +507,7 @@ export default function LandingPage({ onLogin }) {
           <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A professional bankroll management platform built for disciplined sports bettors. Track every bet, manage your risk, and grade every session — with the tools of a real operator." />
           <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your bankroll with discipline. Risk Matrix Labs is about process — not predictions." />
           <FAQItem delay={0.1}  q="When does it launch?" a="We are live now in beta. Start your 7-day free trial today — no credit card charge until day 8. Beta subscribers lock in their rate for as long as they stay subscribed." />
-          <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $147/year during beta (save 28%). Regular pricing will be $27/month. Lock in the beta rate now — it won't be available once we exit beta." />
+          <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $197/year during beta (save $127). Regular pricing will be $27/month. Lock in the beta rate now — it won't be available once we exit beta." />
           <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Labs is fully responsive and works on desktop, tablet, and mobile. Your data syncs automatically across every device." />
           <FAQItem delay={0.25} q="Is my data safe?" a="All data is encrypted, stored securely, and backed up automatically. You own your data and can export it at any time." />
         </div>

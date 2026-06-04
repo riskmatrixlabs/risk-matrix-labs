@@ -475,7 +475,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
   const bigInput = { ...inputStyle, fontSize: '16px', fontWeight: 700, padding: '12px 14px', height: '48px' }
   const mdInput  = { ...inputStyle, fontSize: '13px', padding: '10px 12px', height: '44px' }
 
-  if (isMobile) {
+  {
     // pill style helpers
     const pill = (active, color = NEON) => ({
       borderRadius: '20px', cursor: 'pointer', fontFamily: R, fontWeight: 700, fontSize: '11px',
@@ -646,142 +646,6 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
       </div>
     )
   }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ ...cardStyle, width: '520px', padding: '26px 28px', borderTop: `2px solid ${NEON}`, backgroundColor: 'var(--card2)', display: 'flex', flexDirection: 'column' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div>
-            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.22em', color: NEON }}>{isEdit ? 'EDIT BET' : 'LOG BET'}</div>
-            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', marginTop: '2px' }}>
-              1u = {fmt$(unitSize)} · {form.units ? `${form.units}u = ${fmt$(parseFloat(form.units) * unitSize)}` : 'enter units or $'}
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '22px', lineHeight: 1, padding: '4px' }}>×</button>
-        </div>
-
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? '4px' : 0 }}>
-
-          {/* Row 1: Date / Sport / Book / Bet Type */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: '10px' }}>
-            {FL({ label: 'Date', children: <input type="date" value={form.date} onChange={f('date')} style={inputStyle} /> })}
-            {FL({ label: '🏟️ Sport', children:
-              <select value={form.sport} onChange={f('sport')} style={inputStyle}>
-                {ALL_SPORTS.map(s => <option key={s}>{s}</option>)}
-              </select>
-            })}
-            {FL({ label: '📚 Book', hint: 'sportsbook', children:
-              <select value={form.book} onChange={f('book')} style={{ ...inputStyle, color: form.book ? 'var(--text)' : 'var(--muted)' }}>
-                <option value="">— Select —</option>
-                {BOOKS.map(b => <option key={b}>{b}</option>)}
-              </select>
-            })}
-            {FL({ label: 'Bet Type', children:
-              <select value={form.betType} onChange={f('betType')} style={inputStyle}>
-                {['Straight','Parlay','RR 2s','RR 3s','RR 4s','RR 5s','SGP','Live Bet','Hedge'].map(s => <option key={s}>{s}</option>)}
-              </select>
-            })}
-          </div>
-
-          {/* Row 2: Event */}
-          {FL({ label: 'Event / Matchup', children:
-            <input value={form.event} onChange={f('event')} placeholder="Chiefs vs Raiders" style={inputStyle} />
-          })}
-
-          {/* Row 3: Pick */}
-          {FL({ label: 'Pick / Market', children:
-            <input value={form.pick} onChange={f('pick')} placeholder="Chiefs -6.5" style={inputStyle} />
-          })}
-
-          {/* Row 4: Odds / Stake$ / Units */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px' }}>
-            {FL({ label: 'Odds (American)', children:
-              <input value={form.odds} onChange={f('odds')} placeholder="-110" type="number" style={inputStyle} />
-            })}
-            {FL({ label: 'Stake $', hint: 'primary — enter $ amount', children:
-              <input value={form.stake} onChange={onStakeChange} placeholder={fmt$(unitSize)} type="number" step="0.01" min="0" style={inputStyle} />
-            })}
-            {FL({ label: 'Units', hint: `1u = ${fmt$(unitSize)}`, children:
-              <input value={form.units} onChange={onUnitsChange} placeholder="1.0" type="number" step="any" min="0" style={inputStyle} />
-            })}
-          </div>
-
-          {/* Row 5: To Win / Total Payout / Result — live preview */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '10px' }}>
-            {FL({ label: 'To Win', hint: 'auto', children:
-              <input readOnly value={stake$ && odds ? fmt$(toWin) : ''} placeholder="auto" style={autoStyle} />
-            })}
-            {FL({ label: 'Total Payout', hint: 'auto', children:
-              <input readOnly value={stake$ && odds ? fmt$(payout) : ''} placeholder="auto" style={autoStyle} />
-            })}
-            {FL({ label: 'Result', children:
-              <select value={form.result} onChange={f('result')} style={inputStyle}>
-                <option value="W">Win</option>
-                <option value="L">Loss</option>
-                <option value="P">Push</option>
-                <option value="Open">Open</option>
-                <option value="VOID">Void</option>
-              </select>
-            })}
-          </div>
-
-          {/* P&L preview — always shows win/loss scenarios as soon as odds + size entered */}
-          {(form.units || form.stake) && odds !== 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-              {/* Win scenario */}
-              <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: NEON, textTransform: 'uppercase' }}>✓ If Win</span>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</div>
-                  <div style={{ fontFamily: R, fontSize: '10px', color: NEON, opacity: 0.75 }}>+{fmt$(potentialWin * unitSize)}</div>
-                </div>
-              </div>
-              {/* Loss scenario */}
-              <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: RED, textTransform: 'uppercase' }}>✗ If Loss</span>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</div>
-                  <div style={{ fontFamily: R, fontSize: '10px', color: RED, opacity: 0.75 }}>-{fmt$(stake$ || potentialLoss * unitSize)}</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Confidence stars */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>Confidence</span>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {[1,2,3,4,5].map(n => (
-                <button key={n} type="button" onClick={() => set('confidence', form.confidence === n ? 0 : n)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-                  fontSize: '18px', lineHeight: 1,
-                  opacity: n <= (form.confidence || 0) ? 1 : 0.2,
-                  filter: n <= (form.confidence || 0) ? 'drop-shadow(0 0 4px rgba(189,255,0,0.6))' : 'none',
-                  transition: 'all 0.1s',
-                }}>⭐</button>
-              ))}
-            </div>
-            {form.confidence > 0 && (
-              <span style={{ fontFamily: R, fontSize: '9px', color: NEON, letterSpacing: '0.08em' }}>
-                {['','Low','Moderate','Average','High','Lock 🔒'][form.confidence]}
-              </span>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px', paddingTop: '10px', paddingBottom: '4px', borderTop: `1px solid var(--border)` }}>
-            <button type="button" onClick={onClose} style={{ ...btnStyle() }}>Cancel</button>
-            <button type="submit" style={{ ...btnStyle(true), padding: '10px 20px', fontSize: '12px', opacity: isDisabled ? 0.4 : 1 }}>
-              {isEdit ? '💾 Save Changes' : '+ Log Bet'}
-            </button>
-          </div>
-
-        </form>
-      </div>
-    </div>
-  )
 }
 
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
@@ -1149,7 +1013,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? '10px' : '16px' }}>
           {/* Starting Bankroll input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase' }}>Ladder Starting</span>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: 'var(--muted)', textTransform: 'uppercase' }}>Session Stake</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>$</span>
               <input
@@ -1231,8 +1095,8 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         </div>
       )}
 
-      {/* Mobile ladder cards */}
-      {rows.length > 0 && isMobile && (
+      {/* Ladder cards — all screen sizes */}
+      {rows.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {computed.map((row) => (
             <BetCard
@@ -1253,200 +1117,6 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         </div>
       )}
 
-      {/* Main ladder table — desktop only */}
-      {rows.length > 0 && !isMobile && <div style={{ ...cardStyle, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid var(--border)` }}>
-              {['Rung','Pick / Event','Odds','Book','Stake $','To Win','Profit','Bank After','Pull','Result',''].map((h, i) => (
-                <th key={i} style={{
-                  fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em',
-                  color: 'var(--muted)', textTransform: 'uppercase', padding: '10px 12px',
-                  textAlign: i > 1 ? 'right' : 'left', background: 'var(--card)', whiteSpace: 'nowrap',
-                }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {computed.map((row, i) => {
-              const isWin     = row.result === 'W'
-              const isLoss    = row.result === 'L'
-              const isOpen    = row.result === 'Open'
-              const isCurrent = isOpen && i === runActive
-              const isPull    = row.pull
-              const isEdit    = editRow === row.id
-
-              const rowBg = isWin  ? 'rgba(189,255,0,0.04)'
-                          : isLoss ? 'rgba(255,59,59,0.05)'
-                          : isCurrent ? 'rgba(245,166,35,0.03)'
-                          : 'transparent'
-
-              const leftBorder = isWin  ? `3px solid rgba(189,255,0,0.5)`
-                               : isLoss ? `3px solid rgba(255,59,59,0.5)`
-                               : isCurrent ? `3px solid rgba(245,166,35,0.4)`
-                               : '3px solid transparent'
-
-              return (
-                <tr key={row.id} style={{ borderBottom: `1px solid var(--border)`, backgroundColor: rowBg, borderLeft: leftBorder }}>
-
-                  {/* Rung # */}
-                  <td style={{ padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                      <span style={{
-                        fontFamily: R, fontSize: '13px', fontWeight: 700,
-                        color: isWin ? NEON : isLoss ? RED : isCurrent ? YELLOW : 'var(--text-dim)',
-                        minWidth: '18px',
-                      }}>{i + 1}</span>
-                      {isCurrent && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', padding: '1px 5px', borderRadius: '2px' }}>ACTIVE</span>}
-                    </div>
-                  </td>
-
-                  {/* Pick / Event */}
-                  <td style={{ padding: '6px 10px', maxWidth: '180px' }}>
-                    <input
-                      value={row.pick || ''}
-                      onChange={e => setRow(row.id, 'pick', e.target.value)}
-                      placeholder="Pick..."
-                      style={{ ...inputStyle, width: '100%', padding: '4px 6px', fontSize: '12px', fontWeight: 700, color: isCurrent ? YELLOW : 'var(--text)', marginBottom: '3px' }}
-                    />
-                    <input
-                      value={row.event || ''}
-                      onChange={e => setRow(row.id, 'event', e.target.value)}
-                      placeholder="Event..."
-                      style={{ ...inputStyle, width: '100%', padding: '3px 6px', fontSize: '9px', color: 'var(--muted)' }}
-                    />
-                  </td>
-
-                  {/* Odds — plain type-in input */}
-                  <td style={{ padding: '8px 12px' }}>
-                    <input
-                      type="number"
-                      value={row.odds}
-                      onChange={e => setRow(row.id, 'odds', parseInt(e.target.value) || 0)}
-                      style={{ ...inputStyle, width: '70px', padding: '4px 6px', fontSize: '13px', fontWeight: 700, color: row.odds > 0 ? NEON : 'var(--text)', textAlign: 'center' }}
-                    />
-                  </td>
-
-                  {/* Book — dropdown */}
-                  <td style={{ padding: '8px 10px' }}>
-                    <select
-                      value={row.book || ''}
-                      onChange={e => setRow(row.id, 'book', e.target.value)}
-                      style={{ ...inputStyle, padding: '4px 6px', fontSize: '11px', cursor: 'pointer', minWidth: '90px', color: row.book ? 'var(--text)' : 'var(--muted)' }}
-                    >
-                      <option value="">— Book —</option>
-                      {['DraftKings','FanDuel','BetMGM','Caesars','ESPN BET','Hard Rock','PointsBet','BetRivers','Other'].map(b => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                    </select>
-                  </td>
-
-                  {/* Stake — read only, calculated */}
-                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
-                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{fmt$(row.stake)}</span>
-                  </td>
-
-                  {/* To Win */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, color: NEON,
-                      textShadow: darkMode ? '0 0 10px rgba(189,255,0,0.2)' : 'none' }}>+{fmt$(row.toWin)}</span>
-                  </td>
-
-                  {/* Profit */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700,
-                      color: isWin ? NEON : isLoss ? RED : 'var(--muted)' }}>
-                      {isWin ? `+${fmt$(row.profit)}` : isLoss ? `-${fmt$(row.stake)}` : `+${fmt$(row.profit)}`}
-                    </span>
-                  </td>
-
-                  {/* Bankroll After */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700,
-                      color: isWin ? NEON : isLoss ? RED : 'var(--text-dim)' }}>
-                      {isOpen ? <span style={{ color: 'var(--muted)', fontSize: '11px' }}>—</span> : fmt$(row.bankOut)}
-                    </span>
-                  </td>
-
-                  {/* Pull Checkpoint */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                    {isPull
-                      ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px' }}>
-                          <CheckSquare size={11} color={isWin ? NEON : YELLOW} strokeWidth={2} />
-                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, color: isWin ? NEON : YELLOW, letterSpacing: '0.06em', maxWidth: '160px', textAlign: 'right', lineHeight: 1.3 }}>{row.pullNote}</span>
-                        </div>
-                      : <span style={{ color: 'var(--muted)', fontSize: '9px', fontFamily: R }}>—</span>}
-                  </td>
-
-                  {/* Result — inline settle */}
-                  <td style={{ padding: '8px 12px' }}>
-                    {isOpen
-                      ? <div style={{ display: 'flex', gap: '4px' }}>
-                          {['W', 'L'].map(r => (
-                            <button key={r} onClick={() => settleRow(row.id, r)} style={{
-                              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
-                              padding: '3px 9px', borderRadius: '2px', cursor: 'pointer',
-                              border: `1px solid ${r === 'W' ? 'rgba(189,255,0,0.4)' : 'rgba(255,59,59,0.4)'}`,
-                              background: r === 'W' ? 'rgba(189,255,0,0.08)' : 'rgba(255,59,59,0.08)',
-                              color: r === 'W' ? NEON : RED,
-                            }}>{r}</button>
-                          ))}
-                          <button onClick={() => settleRow(row.id, 'P')} style={{
-                            fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '2px', cursor: 'pointer',
-                            border: `1px solid var(--border2)`, background: 'var(--card2)', color: 'var(--muted)',
-                          }}>P</button>
-                        </div>
-                      : <span style={{
-                          fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
-                          padding: '2px 8px', borderRadius: '2px',
-                          color: isWin ? NEON : isLoss ? RED : 'var(--muted)',
-                          background: isWin ? 'rgba(189,255,0,0.08)' : isLoss ? 'rgba(255,59,59,0.08)' : 'var(--card2)',
-                          border: `1px solid ${isWin ? 'rgba(189,255,0,0.22)' : isLoss ? 'rgba(255,59,59,0.22)' : 'var(--border)'}`,
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => settleRow(row.id, 'Open')}
-                        title="Click to re-open"
-                      >
-                        {isWin ? 'WIN' : isLoss ? 'LOSS' : 'PUSH'}
-                      </span>}
-                  </td>
-
-                  {/* Actions — share + edit + trash */}
-                  <td style={{ padding: '8px 10px' }}>
-                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                      <button onClick={() => onShare?.({ ...row, pnl: row.result === 'W' ? row.profit : row.result === 'L' ? -row.stake : 0 })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center' }}
-                        onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={11} /></button>
-                      <button onClick={() => onEdit?.({ ...row, pnl: row.result === 'W' ? row.profit : row.result === 'L' ? -row.stake : 0 })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center' }}
-                        onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={11} /></button>
-                      <button onClick={() => removeRung(row.id)} style={{ background: 'none', border: 'none', cursor: rows.length > 1 ? 'pointer' : 'default', padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'var(--border2)', display: 'flex', alignItems: 'center' }}
-                        onMouseEnter={e => rows.length > 1 && (e.currentTarget.style.color = RED)} onMouseLeave={e => rows.length > 1 && (e.currentTarget.style.color = 'rgba(255,59,59,0.28)')}><Trash2 size={11} /></button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        </div>
-
-        {/* Table footer */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: `1px solid var(--border)` }}>
-          <button onClick={addRung} style={{ ...btnStyle(false), display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px' }}>
-            <Plus size={11} /> Add Rung
-          </button>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.1em' }}>
-              TOTAL STAKED: <span style={{ color: 'var(--text)', fontWeight: 700 }}>{fmt$(computed.reduce((s, r) => s + (r.result !== 'Open' ? r.stake : 0), 0))}</span>
-            </span>
-            <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.1em' }}>
-              NET P/L: <span style={{ color: totalProfit - totalLost >= 0 ? NEON : RED, fontWeight: 700 }}>
-                {totalProfit - totalLost >= 0 ? '+' : ''}{fmt$(totalProfit - totalLost)}
-              </span>
-            </span>
-          </div>
-        </div>
-      </div>}
 
     </div>
   )
@@ -3181,7 +2851,7 @@ export default function App({ user, session, subStatus }) {
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Quick Start</div>
               {[
                 'Set your starting bankroll in the header',
-                'Log your first bet → Bet Log tab → LOG BET',
+                'Log your first bet → Bet Log → LOG BET',
                 'Run the PHLT™ Ladder → Ladder tab',
                 'Check your discipline → Session tab after each session',
                 'Analyze your edge → Analytics tab weekly',
@@ -3197,11 +2867,11 @@ export default function App({ user, session, subStatus }) {
             <div style={{ marginBottom: '20px' }}>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Tab Guide</div>
               {[
-                ['Overview', 'Bankroll curve, stats, tilt meter & risk panel'],
+                ['Home', 'Bankroll command center — stats, risk panel, BR limits'],
                 ['Bet Log', 'Log, edit, settle, and filter all your bets'],
                 ['Ladder', 'PHLT™ Ladder — step-by-step session roadmap'],
-                ['Analytics', 'Charts, ROI, Kelly Criterion, book breakdown'],
                 ['RR Engine', 'Round Robin calculator & Missed By One tool'],
+                ['Analytics', 'P&L curve, ROI, Kelly Criterion, book breakdown'],
                 ['Session', 'Discipline score, grade, mood journal & recap'],
               ].map(([tab, desc]) => (
                 <div key={tab} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '7px' }}>
@@ -3510,7 +3180,7 @@ export default function App({ user, session, subStatus }) {
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['overview','Analytics'],['ladder','Ladder'],['analytics','Overview'],['bet log','Bet Log'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
+          {[['overview','Home'],['bet log','Bet Log'],['ladder','Ladder'],['rr engine','RR Engine'],['analytics','Analytics'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -3539,8 +3209,8 @@ export default function App({ user, session, subStatus }) {
         key={tab}
       >
 
-      {/* OPEN BETS LIVE BANNER — mobile only, overview only */}
-      {isMobile && tab === 'overview' && stats.openBets > 0 && (
+      {/* OPEN BETS LIVE BANNER — overview tab */}
+      {tab === 'overview' && stats.openBets > 0 && (
         <div onClick={() => setTab('bet log')} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.25)',
@@ -4274,8 +3944,8 @@ export default function App({ user, session, subStatus }) {
         {/* ── BET LOG ── */}
         {tab === 'bet log' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+              <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
                 <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase', marginRight: '3px' }}>🏟️ Sport</span>
                 <select
                   value={sportFilter}
@@ -4310,9 +3980,8 @@ export default function App({ user, session, subStatus }) {
               </button>
             </div>
 
-            {/* ── Bet card view (mobile + desktop) ── */}
-            {(isMobile || !isMobile) && (
-              <div>
+            {/* ── Bet card view ── */}
+            <div>
                 {(betLogShowAll ? filtered : filtered.slice(0, 10)).map((bet) => (
                   <BetCard
                     key={bet.id}
@@ -4361,8 +4030,7 @@ export default function App({ user, session, subStatus }) {
                     </span>
                   </span>
                 </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -4396,7 +4064,7 @@ export default function App({ user, session, subStatus }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'analytics', label: 'Overview',  icon: TrendingUp },
+                { id: 'analytics', label: 'Analytics', icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Sliders },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
@@ -4423,11 +4091,11 @@ export default function App({ user, session, subStatus }) {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
-              { id: 'overview',  label: 'Analytics', icon: BarChart3  },
-              { id: 'ladder',    label: 'Ladder',   icon: Zap        },
-              { id: 'analytics', label: 'Overview', icon: TrendingUp },
+              { id: 'overview',  label: 'Home',     icon: BarChart3  },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
+              { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'rr engine', label: 'RR',       icon: Target     },
+              { id: 'analytics', label: 'Analytics',icon: TrendingUp },
               { id: 'session',   label: 'Session',  icon: Sliders    },
               { id: 'partners',  label: 'Earn',     icon: Handshake  },
             ].map(({ id, label, icon: Icon }) => {
@@ -4509,7 +4177,7 @@ export default function App({ user, session, subStatus }) {
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: darkMode ? '0 0 6px rgba(189,255,0,0.5)' : 'none' }} />
             <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Auto-saving</span>
           </div>
-          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs © 2025</span>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs © 2026</span>
           <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-sub)', textTransform: 'uppercase' }}>Operate With Discipline</span>
         </footer>
       )}
