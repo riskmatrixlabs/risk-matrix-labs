@@ -784,7 +784,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 }
 
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
-function BetCard({ bet, onSettle, onEdit, onDelete, unitSize }) {
+function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
 
@@ -810,6 +810,80 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize }) {
   const badgePill = (txt, color, bg, border) => (
     <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color, background: bg, border: `1px solid ${border}`, padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>{txt}</span>
   )
+
+  // ── Open Ladder Card (special layout) ──────────────────────────────────────
+  if (isOpen && isLadder) {
+    const rungLabel = `RUNG ${bet.ladderId} · ${bet.pick || 'TBD'}`
+    const eventDisplay = bet.event || `PHLT Ladder Rung ${bet.ladderId}`
+    return (
+      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: '5px', borderLeft: `3px solid ${YELLOW}` }}>
+
+        {/* Event label */}
+        <div style={{ padding: '7px 10px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {eventDisplay}
+        </div>
+
+        {/* Main row: rung·pick + to-win */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', padding: '4px 10px 0', gap: '8px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: YELLOW, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {rungLabel}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: YELLOW }}>
+              {toWin > 0 ? `+${fmt$(toWin)}` : '—'}
+            </div>
+            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>to win</div>
+          </div>
+        </div>
+
+        {/* Book + odds row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 10px 0' }}>
+          <span style={{ fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>{bet.book || '—'}</span>
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text-sub)' }}>{fmtOdds(bet.odds)}</span>
+        </div>
+
+        {/* ACTIVE badge */}
+        <div style={{ padding: '5px 10px 7px' }}>
+          {badgePill('ACTIVE', YELLOW, 'rgba(245,166,35,0.12)', 'rgba(245,166,35,0.4)')}
+        </div>
+
+        {/* Stats bar: STAKE | TO WIN | BANK */}
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+          {[
+            { label: 'STAKE',  val: fmt$(bet.stake),              color: 'var(--text)' },
+            { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—', color: NEON },
+            { label: 'BANK',   val: bankIn != null ? fmt$(bankIn) : '—', color: 'var(--text)' },
+          ].map(({ label, val, color }, idx) => (
+            <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
+              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer: WIN | LOSS | PUSH */}
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+          {[
+            { r: 'W', label: 'WIN ✓',  color: NEON, bg: 'rgba(189,255,0,0.07)' },
+            { r: 'L', label: 'LOSS ✗', color: RED,  bg: 'rgba(255,59,59,0.07)' },
+            { r: 'P', label: 'PUSH',   color: MUTED, bg: 'transparent' },
+          ].map(({ r, label, color, bg }, idx) => (
+            <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{
+              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
+              padding: '10px 0', flex: 1, border: 'none',
+              borderRight: idx < 2 ? '1px solid var(--border)' : 'none',
+              cursor: 'pointer', background: bg, color, transition: 'opacity 0.1s',
+            }}
+            onTouchStart={e => e.currentTarget.style.opacity = '0.7'}
+            onTouchEnd={e => e.currentTarget.style.opacity = '1'}
+            >{label}</button>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: '5px', borderLeft: `3px solid ${accentColor}` }}>
@@ -1120,6 +1194,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
               onEdit={onEdit}
               onDelete={rows.length > 1 ? removeRung : undefined}
               unitSize={unitSize}
+              bankIn={row.bankIn}
             />
           ))}
           {/* Mobile footer */}
