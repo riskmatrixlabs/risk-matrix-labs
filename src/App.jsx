@@ -495,13 +495,19 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
         </div>
         {(form.units || form.stake) && odds !== 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-            <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON }}>✓ Win</span>
-              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</span>
+            <div style={{ padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '2px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON }}>✓ Win</span>
+                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON }}>+{fmtU(potentialWin)}</span>
+              </div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: 'rgba(189,255,0,0.6)', textAlign: 'right', marginTop: '2px' }}>+{fmt$(potentialWin * unitSize)}</div>
             </div>
-            <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED }}>✗ Loss</span>
-              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</span>
+            <div style={{ padding: '8px 12px', background: 'rgba(255,59,59,0.05)', border: `1px solid rgba(255,59,59,0.2)`, borderRadius: '2px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: RED }}>✗ Loss</span>
+                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: RED }}>-{fmtU(potentialLoss)}</span>
+              </div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: 'rgba(255,59,59,0.6)', textAlign: 'right', marginTop: '2px' }}>-{fmt$(potentialLoss * unitSize)}</div>
             </div>
           </div>
         )}
