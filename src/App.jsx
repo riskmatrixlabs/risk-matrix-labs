@@ -1036,6 +1036,7 @@ function profitFromLadderOdds(stake, odds) {
 function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare }) {
   const { isMobile } = useMobile()
   const [startInput, setStartInput] = useState(String(ladderStarting))
+  const [editRow,    setEditRow]    = useState(null)
 
   // Auto-init ladderStarting from masterBankroll if not set (15% of master = session stake)
   useEffect(() => {
@@ -1258,7 +1259,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
         <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid var(--border)` }}>
-              {['Rung','Odds','Book','Stake $','To Win','Total Return','Profit','Bank After','Pull Checkpoint','Result',''].map((h, i) => (
+              {['Rung','Pick / Event','Odds','Book','Stake $','To Win','Profit','Bank After','Pull','Result',''].map((h, i) => (
                 <th key={i} style={{
                   fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em',
                   color: 'var(--muted)', textTransform: 'uppercase', padding: '10px 12px',
@@ -1301,6 +1302,22 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                     </div>
                   </td>
 
+                  {/* Pick / Event */}
+                  <td style={{ padding: '6px 10px', maxWidth: '180px' }}>
+                    <input
+                      value={row.pick || ''}
+                      onChange={e => setRow(row.id, 'pick', e.target.value)}
+                      placeholder="Pick..."
+                      style={{ ...inputStyle, width: '100%', padding: '4px 6px', fontSize: '12px', fontWeight: 700, color: isCurrent ? YELLOW : 'var(--text)', marginBottom: '3px' }}
+                    />
+                    <input
+                      value={row.event || ''}
+                      onChange={e => setRow(row.id, 'event', e.target.value)}
+                      placeholder="Event..."
+                      style={{ ...inputStyle, width: '100%', padding: '3px 6px', fontSize: '9px', color: 'var(--muted)' }}
+                    />
+                  </td>
+
                   {/* Odds — plain type-in input */}
                   <td style={{ padding: '8px 12px' }}>
                     <input
@@ -1334,11 +1351,6 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, color: NEON,
                       textShadow: darkMode ? '0 0 10px rgba(189,255,0,0.2)' : 'none' }}>+{fmt$(row.toWin)}</span>
-                  </td>
-
-                  {/* Total Return */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text-sub)' }}>{fmt$(row.payout)}</span>
                   </td>
 
                   {/* Profit */}
@@ -1400,16 +1412,16 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
                       </span>}
                   </td>
 
-                  {/* Actions — trash only */}
+                  {/* Actions — share + edit + trash */}
                   <td style={{ padding: '8px 10px' }}>
-                    <button onClick={() => removeRung(row.id)} style={{
-                      background: 'none', border: 'none', cursor: rows.length > 1 ? 'pointer' : 'default',
-                      padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'var(--border2)',
-                      display: 'flex', alignItems: 'center',
-                    }}
-                      onMouseEnter={e => rows.length > 1 && (e.currentTarget.style.color = RED)}
-                      onMouseLeave={e => rows.length > 1 && (e.currentTarget.style.color = 'rgba(255,59,59,0.28)')}
-                    ><Trash2 size={12} /></button>
+                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                      <button onClick={() => onShare?.({ ...row, pnl: row.result === 'W' ? row.profit : row.result === 'L' ? -row.stake : 0 })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center' }}
+                        onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={11} /></button>
+                      <button onClick={() => onEdit?.({ ...row, pnl: row.result === 'W' ? row.profit : row.result === 'L' ? -row.stake : 0 })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'rgba(189,255,0,0.25)', display: 'flex', alignItems: 'center' }}
+                        onMouseEnter={e => e.currentTarget.style.color = NEON} onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={11} /></button>
+                      <button onClick={() => removeRung(row.id)} style={{ background: 'none', border: 'none', cursor: rows.length > 1 ? 'pointer' : 'default', padding: '2px', color: rows.length > 1 ? 'rgba(255,59,59,0.28)' : 'var(--border2)', display: 'flex', alignItems: 'center' }}
+                        onMouseEnter={e => rows.length > 1 && (e.currentTarget.style.color = RED)} onMouseLeave={e => rows.length > 1 && (e.currentTarget.style.color = 'rgba(255,59,59,0.28)')}><Trash2 size={11} /></button>
+                    </div>
                   </td>
                 </tr>
               )
