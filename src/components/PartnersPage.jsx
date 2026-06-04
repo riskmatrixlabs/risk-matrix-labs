@@ -160,8 +160,8 @@ export default function PartnersPage({ isMobile }) {
       )}
 
       {/* Tabs + State filter */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: '18px', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', gap: '2px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', marginBottom: '18px', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ display: 'flex', gap: '2px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', flexShrink: 0, maxWidth: '100%' }}>
           {TABS.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer',
