@@ -3859,10 +3859,10 @@ export default function App({ user, session, subStatus }) {
               {/* ── Active sub-panel ── */}
 
               {overviewSection === 'bytype' && (() => {
-                const settledNonLadder = bets.filter(b => !b.ladder && (b.result === 'W' || b.result === 'L'))
+                const settledAll = bets.filter(b => b.result === 'W' || b.result === 'L')
                 const tMap = {}; const bMap = {}; const sMap = {}
-                const pnlDollar = (b) => (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * stats.unitSize
-                settledNonLadder.forEach(b => {
+                const pnlDollar = (b) => b.ladder ? b.pnl : (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * stats.unitSize
+                settledAll.forEach(b => {
                   const t = b.betType || 'Other'; const bk = b.book || 'No Book'; const sp = b.sport || 'Other'
                   const d = pnlDollar(b)
                   if (!tMap[t]) tMap[t] = { label: t, pnl: 0, bets: 0, wins: 0 }
