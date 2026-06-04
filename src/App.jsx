@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake } from 'lucide-react'
 import PartnersPage from './components/PartnersPage'
+import ShareCardModal from './components/ShareCardModal'
 
 const LS_KEY   = 'rml_session_v1'
 const TMPL_KEY = 'rml_templates_v1'
@@ -784,7 +785,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 }
 
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
-function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
+function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn }) {
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
 
@@ -878,11 +879,19 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
           ))}
           <button onClick={() => onEdit?.(bet)} style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)',
-            padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
           onTouchStart={e => e.currentTarget.style.color = NEON}
           onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
           ><Pencil size={11} /></button>
+          <button onClick={() => onShare?.(bet)} style={{
+            background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)',
+            padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderLeft: '1px solid var(--border)',
+          }}
+          onTouchStart={e => e.currentTarget.style.color = NEON}
+          onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
+          ><Share2 size={11} /></button>
         </div>
       </div>
     )
@@ -947,10 +956,14 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
             onTouchEnd={e => e.currentTarget.style.opacity = '1'}
             >{label}</button>
           ))}
-          <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onTouchStart={e => e.currentTarget.style.color = NEON}
             onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
           ><Pencil size={11} /></button>
+          <button onClick={() => onShare?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid var(--border)' }}
+            onTouchStart={e => e.currentTarget.style.color = NEON}
+            onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
+          ><Share2 size={11} /></button>
         </div>
       </>) : (<>
 
@@ -997,6 +1010,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderTop: '1px solid var(--border)' }}>
+          {onShare  && <button onClick={() => onShare(bet)}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={12} /></button>}
           {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={12} /></button>}
           {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = RED}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.25)'}><Trash2 size={12} /></button>}
         </div>
@@ -1019,7 +1033,7 @@ function profitFromLadderOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkMode, unitSize = 20, masterBankroll = 1000, onEdit }) {
+function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare }) {
   const { isMobile } = useMobile()
   const [startInput, setStartInput] = useState(String(ladderStarting))
 
@@ -1226,6 +1240,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
               onSettle={(id, r) => settleRow(id, r)}
               onEdit={onEdit}
               onDelete={rows.length > 1 ? removeRung : undefined}
+              onShare={onShare}
               unitSize={unitSize}
               bankIn={row.bankIn}
             />
@@ -1878,7 +1893,7 @@ const ATip = ({ active, payload, label: tLabel, fmt: fmtFn }) => {
 }
 
 // ─── ANALYTICS PANEL ─────────────────────────────────────────────────────────
-function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit }) {
+function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit, onShare }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
@@ -2198,6 +2213,7 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
                 bet={b}
                 onSettle={onSettle}
                 onEdit={onEdit}
+                onShare={onShare}
                 unitSize={stats.unitSize}
                 bankIn={bankInMap[b.id]}
               />
@@ -2809,6 +2825,7 @@ export default function App({ user, session, subStatus }) {
   const [showAdd,      setShowAdd]      = useState(false)
   const [showShare,    setShowShare]    = useState(false)
   const [shareCopied,  setShareCopied]  = useState(false)
+  const [shareCardBet, setShareCardBet] = useState(null)   // null = closed, 'session' = session card, bet obj = bet card
   const [editingBet,   setEditingBet]   = useState(null)
   const [tab,          setTab]          = useState('overview')
   const [riskSettings, setRiskSettings] = useState(saved.current?.riskSettings ?? {
@@ -3255,64 +3272,28 @@ export default function App({ user, session, subStatus }) {
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: '100vw' }}>
       {showAdd && <AddBetModal onAdd={b => setBets(p => [...p, b])} onClose={() => setShowAdd(false)} unitSize={stats.unitSize} />}
 
-      {/* SHARE MODAL */}
-      {showShare && (() => {
-        const lines = [
-          `🎯 RISK MATRIX DASHBOARD — SESSION STATS`,
-          `👤 Operator: ${username}`,
-          ``,
-          `💰 Starting Bankroll: ${fmt$(bankroll)}`,
-          `📈 Current Bankroll:  ${fmt$(masterBankroll)}  (${masterBankroll >= bankroll ? '+' : ''}${fmt$(masterBankroll - bankroll)})`,
-          `📊 Total P/L:         ${fmt$(stats.netPnl$, true)}`,
-          `🎯 ROI:               ${(stats.roi * 100).toFixed(2)}%`,
-          ``,
-          `🏆 Record: ${stats.wins}W — ${stats.losses}L (${(stats.winRate * 100).toFixed(1)}% WR)`,
-          `⚡ Units Won: ${fmtU(stats.unitsWon)}  |  Units Lost: ${fmtU(-stats.unitsLost)}`,
-          `📅 Total Bets: ${stats.total}`,
-          ``,
-          `🪜 PHLT™ LADDER`,
-          ...bets.filter(b => b.ladder).sort((a,z) => a.ladderId - z.ladderId).map(b =>
-            `  Rung ${b.ladderId}: ${fmtOdds(b.odds)} odds  $${b.stake}  →  ${b.result === 'Open' ? '⏳ Pending' : b.result === 'W' ? '✅ WIN' : b.result === 'L' ? '❌ LOSS' : '➡️ PUSH'}`
-          ),
-          ``,
-          `Operate With Discipline 🛡️`,
-          `riskmatrixlabs.com`,
-        ].join('\n')
+      {/* SHARE SESSION CARD MODAL */}
+      {showShare && (
+        <ShareCardModal
+          mode="session"
+          stats={stats}
+          username={username}
+          bankroll={bankroll}
+          masterBankroll={masterBankroll}
+          bets={bets}
+          onClose={() => setShowShare(false)}
+        />
+      )}
 
-        const copy = () => {
-          navigator.clipboard.writeText(lines).then(() => {
-            setShareCopied(true)
-            setTimeout(() => setShareCopied(false), 2500)
-          })
-        }
-
-        return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 300, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
-            <div style={{ ...cardStyle, width: isMobile ? '100%' : '520px', maxHeight: isMobile ? '90vh' : 'none', overflowY: isMobile ? 'auto' : 'visible', padding: isMobile ? '20px 16px' : '26px 28px', borderTop: `2px solid ${NEON}`, borderRadius: isMobile ? '8px 8px 0 0' : 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Share2 size={14} color={NEON} strokeWidth={2} />
-                  <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.2em', color: NEON }}>SHARE SESSION</span>
-                </div>
-                <button onClick={() => setShowShare(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: '20px' }}>×</button>
-              </div>
-
-              {/* Preview */}
-              <pre style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-sub)', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px',
-                padding: '14px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '320px', overflowY: 'auto', lineHeight: 1.6 }}>
-                {lines}
-              </pre>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '14px', justifyContent: 'flex-end' }}>
-                <button onClick={() => setShowShare(false)} style={btnStyle()}>Close</button>
-                <button onClick={copy} style={{ ...btnStyle(true), display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {shareCopied ? <><CheckCheck size={12} /> Copied!</> : <><Copy size={12} /> Copy to Clipboard</>}
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {/* SHARE BET CARD MODAL */}
+      {shareCardBet && shareCardBet !== 'session' && (
+        <ShareCardModal
+          mode="bet"
+          bet={shareCardBet}
+          unitSize={stats.unitSize}
+          onClose={() => setShareCardBet(null)}
+        />
+      )}
       {editingBet && (
         <AddBetModal
           initial={editingBet}
@@ -4541,6 +4522,7 @@ export default function App({ user, session, subStatus }) {
                     onSettle={settleBet}
                     onEdit={setEditingBet}
                     onDelete={id => setBets(b => b.filter(x => x.id !== id))}
+                    onShare={setShareCardBet}
                     unitSize={stats.unitSize}
                   />
                 ))}
@@ -4740,10 +4722,10 @@ export default function App({ user, session, subStatus }) {
         )}
 
         {/* ── LADDER ── */}
-        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} />}
+        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ── ANALYTICS ── */}
-        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} />}
+        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} />}
