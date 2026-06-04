@@ -842,6 +842,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
         <div style={{ display: 'flex', alignItems: 'center', padding: '3px 10px 6px', gap: '6px' }}>
           {badgePill('ACTIVE', YELLOW, 'rgba(245,166,35,0.12)', 'rgba(245,166,35,0.4)')}
           <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{bet.book || '—'}</span>
+          {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{'⭐'.repeat(bet.confidence)}</span>}
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(bet.odds)}</span>
         </div>
 
@@ -928,7 +929,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, unitSize, bankIn }) {
         <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', flexShrink: 0 }}>
           {isLadder ? fmt$(bet.stake) : `${bet.units}u${bet.stake > 0 ? ` · ${fmt$(bet.stake)}` : ''}`}
         </span>
-        {!isLadder && bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
+        {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
       </div>
 
       {/* ── SETTLED FOOTER: stats bar + edit/delete ── */}
@@ -1018,12 +1019,12 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     // so stakes scale proportionally to whatever starting $ the user set
     const s = ladderStarting
     const defaults = [
-      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[0]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '' },
-      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: +(scaleStake(s, LADDER_RATIOS[1]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
-      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[2]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '' },
-      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: +(scaleStake(s, LADDER_RATIOS[3]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
-      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: +(scaleStake(s, LADDER_RATIOS[4]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '' },
-      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: +(scaleStake(s, LADDER_RATIOS[5]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
+      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[0]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '', confidence: 0 },
+      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: +(scaleStake(s, LADDER_RATIOS[1]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake', confidence: 0 },
+      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[2]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '', confidence: 0 },
+      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: +(scaleStake(s, LADDER_RATIOS[3]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money', confidence: 0 },
+      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: +(scaleStake(s, LADDER_RATIOS[4]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '', confidence: 0 },
+      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: +(scaleStake(s, LADDER_RATIOS[5]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete', confidence: 0 },
     ]
     setBets(p => [...p.filter(b => !b.ladder), ...defaults])
     setEditRow(null)
@@ -1070,7 +1071,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
       sport: last?.sport || 'MLB', book: last?.book || 'Hard Rock', betType: 'Straight', event: `PHLT Ladder Rung ${rows.length + 1}`,
       pick: 'TBD', odds: -110, units: +(newStake / unitSize).toFixed(2), stake: newStake,
       result: 'Open', pnl: 0, ladder: true,
-      ladderId: (last?.ladderId || 0) + 1, pull: false, pullNote: '',
+      ladderId: (last?.ladderId || 0) + 1, pull: false, pullNote: '', confidence: 0,
     }])
   }
 
@@ -3896,6 +3897,15 @@ export default function App({ user, session, subStatus }) {
                 const tRows = Object.values(tMap).sort((a,z) => z.bets - a.bets)
                 const bRows = Object.values(bMap).sort((a,z) => z.bets - a.bets)
                 const sRows = Object.values(sMap).sort((a,z) => z.bets - a.bets)
+                // By Confidence
+                const cMap = {}
+                settledAll.filter(b => b.confidence > 0).forEach(b => {
+                  const key = '⭐'.repeat(b.confidence)
+                  const d = pnlDollar(b)
+                  if (!cMap[key]) cMap[key] = { label: key, pnl: 0, bets: 0, wins: 0, _n: b.confidence }
+                  cMap[key].pnl += d; cMap[key].bets++; if (b.result === 'W') cMap[key].wins++
+                })
+                const cRows = Object.values(cMap).sort((a,z) => a._n - z._n)
                 const Section = ({ title, items }) => items.length === 0 ? null : (
                   <div style={{ ...cardStyle, padding: '10px 12px', marginBottom: '6px' }}>
                     <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>{title}</div>
@@ -3921,6 +3931,7 @@ export default function App({ user, session, subStatus }) {
                     <Section title="By Bet Type" items={tRows} />
                     <Section title="By Book" items={bRows} />
                     <Section title="By Sport" items={sRows} />
+                    <Section title="By Confidence" items={cRows} />
                     {settledAll.length === 0 && <div style={{ ...cardStyle, padding: '20px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: 'var(--muted)' }}>No settled bets yet</div>}
                   </div>
                 )
