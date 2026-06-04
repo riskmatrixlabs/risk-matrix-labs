@@ -178,6 +178,13 @@ export default function PartnersPage({ isMobile }) {
   return (
     <div style={{ padding: isMobile ? '12px 14px' : '20px 28px', maxWidth: '640px', margin: '0 auto', paddingBottom: '80px' }}>
 
+      {/* Page header */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase', marginBottom: '3px' }}>RISK MATRIX LABS</div>
+        <div style={{ fontFamily: R, fontSize: isMobile ? '20px' : '24px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em', lineHeight: 1.1 }}>Offers & Partners</div>
+        <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>Tools and partners trusted by the RML community.</div>
+      </div>
+
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '16px', gap: '2px' }}>
         {TABS.map(t => (
@@ -221,10 +228,12 @@ export default function PartnersPage({ isMobile }) {
 
       {/* ── Promote ── */}
       {tab === 'Promote' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ background: 'linear-gradient(135deg, rgba(189,255,0,0.1), rgba(189,255,0,0.03))', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '10px', padding: '20px 18px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '5px' }}>AFFILIATE PROGRAM</div>
           <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '6px', letterSpacing: '0.03em' }}>Earn by Promoting RML</div>
           <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: '16px' }}>
-            Partner with Risk Matrix Labs and earn commission for every subscriber you refer — forever.
+            Are you a capper, content creator, or community builder in the sports betting space? Partner with Risk Matrix Labs and earn commission for every subscriber you refer — forever.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
             {[
@@ -247,6 +256,28 @@ export default function PartnersPage({ isMobile }) {
           <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.18)', marginTop: '8px', textAlign: 'center' }}>
             hello@riskmatrixlabs.com — response within 48 hours
           </div>
+        </div>
+
+        {/* How it works */}
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '18px 18px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: '14px' }}>HOW IT WORKS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              { step: '01', title: 'Apply',         desc: 'Email us or fill out the form. We review and approve within 48 hours.' },
+              { step: '02', title: 'Get Your Link', desc: 'You get a unique tracking link like riskmatrixlabs.com?via=yourname' },
+              { step: '03', title: 'Share It',      desc: 'Post it on social, Discord, YouTube, newsletter — anywhere your audience is.' },
+              { step: '04', title: 'Get Paid',      desc: 'Every subscriber who signs up through your link earns you commission. Monthly payouts.' },
+            ].map(s => (
+              <div key={s.step} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 800, color: 'rgba(189,255,0,0.3)', minWidth: '26px', letterSpacing: '0.02em', lineHeight: 1 }}>{s.step}</div>
+                <div>
+                  <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>{s.title}</div>
+                  <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginTop: '2px', lineHeight: 1.5 }}>{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         </div>
       )}
 
