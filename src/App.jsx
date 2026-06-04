@@ -3638,8 +3638,10 @@ export default function App({ user, session, subStatus }) {
         </div>
       )}
 
-      {/* TILT BANNER — always visible when triggered */}
-      <div style={{ padding: `6px ${pad} 0` }}>
+      {/* TILT BANNER — sticky on mobile so it doesn't scroll away */}
+      <div style={isMobile && tilt.level !== 'GREEN' && !tiltDismissed ? {
+        position: 'sticky', top: 0, zIndex: 99, padding: `0 ${pad}`,
+      } : { padding: `6px ${pad} 0` }}>
         <TiltBanner tilt={tilt} dismissed={tiltDismissed} onDismiss={() => setTiltDismissed(true)} />
       </div>
 
