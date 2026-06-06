@@ -2237,7 +2237,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [tiltDismissed,  setTiltDismissed]  = useState(isDemo)
   const [ladderStarting, setLadderStarting] = useState(isDemo ? 20 : (saved.current?.ladderStarting ?? LADDER_STARTING_BR))
   const [bets,           setBets]           = useState(isDemo ? INITIAL_BETS : (saved.current?.bets ?? []))
-  const [bankroll,       setBankroll]       = useState(isDemo ? 1000 : 0)
+  const [bankroll,       setBankroll]       = useState(isDemo ? 1000 : (saved.current?.bankroll ?? 0))
   const [username,       setUsername]       = useState(isDemo ? 'OPERATOR' : (saved.current?.username ?? 'OPERATOR'))
   const [sportFilter,  setSportFilter]  = useState('ALL')
   const [resultFilter, setResultFilter] = useState('ALL')
@@ -2335,7 +2335,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Auto-save to localStorage whenever key state changes ──
   useEffect(() => {
     if (isDemo) return // never overwrite real user data with demo data
-    const payload = { bets, username, ladderStarting, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, bankroll, riskSettings, darkMode }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
   }, [bets, bankroll, username, ladderStarting, riskSettings, darkMode])
 
@@ -2370,6 +2370,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           console.error('[RML] fetchSettings error:', settErr)
         } else if (settings) {
           if (settings.ladder_starting) setLadderStarting(settings.ladder_starting)
+          if (settings.bankroll)        setBankroll(settings.bankroll)
           if (settings.username)        setUsername(settings.username)
           if (settings.risk_settings)   setRiskSettings(settings.risk_settings)
           if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
@@ -2473,7 +2474,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Manual save ──
   const saveSession = useCallback(() => {
     setSaveStatus('saving')
-    const payload = { bets, username, ladderStarting, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, bankroll, riskSettings, darkMode }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
     setTimeout(() => setSaveStatus('saved'), 400)
     setTimeout(() => setSaveStatus(null), 2400)
