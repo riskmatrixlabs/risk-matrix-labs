@@ -62,23 +62,26 @@ export default function AffiliatePage({ onBack }) {
         <div style={{ textAlign: 'center', padding: '80px 0 60px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', background: 'rgba(189,255,0,0.07)', border: '1px solid rgba(189,255,0,0.18)', borderRadius: '20px', padding: '5px 14px', marginBottom: '28px' }}>
             <DollarSign size={12} color={NEON} />
-            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase' }}>Affiliate Program</span>
+            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase' }}>For Creators & Cappers</span>
           </div>
           <h1 style={{ fontFamily: R, fontSize: 'clamp(36px, 6vw, 56px)', fontWeight: 700, lineHeight: 1.05, color: '#fff', margin: '0 0 20px' }}>
-            Get paid every month<br />
-            <span style={{ color: NEON }}>your referrals stay subscribed.</span>
+            Your audience already bets.<br />
+            <span style={{ color: NEON }}>Start getting paid for it.</span>
           </h1>
-          <p style={{ fontFamily: I, fontSize: '17px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: '520px', margin: '0 auto 40px' }}>
-            Share Risk Matrix Labs with your audience. Earn 30% recurring commission for every operator you bring in — month after month, for as long as they stay subscribed.
+          <p style={{ fontFamily: I, fontSize: '17px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: '520px', margin: '0 auto 16px' }}>
+            Every follower who tails your picks needs bankroll management to do it right. Point them to Risk Matrix Labs — earn 30% recurring every month they stay subscribed.
+          </p>
+          <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.28)', lineHeight: 1.7, maxWidth: '480px', margin: '0 auto 40px' }}>
+            One link. No gatekeeping. Pays out automatically — month after month, for as long as they're active.
           </p>
           <a href={SIGNUP_URL} target="_blank" rel="noopener noreferrer"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: NEON, color: '#000', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', textDecoration: 'none', padding: '15px 32px', borderRadius: '6px', transition: 'opacity 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            <Link size={14} /> Get Your Affiliate Link
+            <Link size={14} /> Get Your Link — It's Free
           </a>
-          <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '14px' }}>Free to join. No approval wait. Instant access.</div>
+          <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '14px' }}>No approval. No minimum. Instant access.</div>
         </div>
 
         {/* ── STATS ── */}
@@ -151,6 +154,60 @@ export default function AffiliatePage({ onBack }) {
               </div>
             ))}
             <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.2)', marginTop: '14px', lineHeight: 1.5 }}>Based on $29/mo pricing. Recurring — earned every month subscribers stay active. Annual plans earn 30% of $149.</div>
+          </div>
+        </div>
+
+        {/* ── YEARLY EARNINGS COMPARISON ── */}
+        <div style={{ marginBottom: '72px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase', marginBottom: '12px' }}>Yearly breakdown</div>
+          <h2 style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>What a year of referrals looks like</h2>
+          <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.35)', marginBottom: '32px', lineHeight: 1.6 }}>
+            Monthly subscribers earn you more over 12 months. Annual subscribers pay out instantly. Either way, it compounds.
+          </p>
+
+          <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              {[
+                ['Referrals', ''],
+                ['Monthly subs', '$29/mo × 30% × 12'],
+                ['Annual subs', '$149/yr × 30%'],
+                ['Mixed 50/50', 'half each'],
+              ].map(([label, sub], i) => (
+                <div key={label} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: i === 0 ? 'rgba(255,255,255,0.3)' : '#fff', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</div>
+                  {sub && <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '3px' }}>{sub}</div>}
+                </div>
+              ))}
+            </div>
+
+            {/* Data rows: 10, 25, 50, 100 referrals */}
+            {[10, 25, 50, 100].map((n, i) => {
+              const monthly = n * 29 * 0.30 * 12   // $104.40/ref/yr
+              const annual  = n * 149 * 0.30         // $44.70/ref/yr
+              const mixed   = (monthly + annual) / 2
+              const isLast  = n === 100
+              const bg = i % 2 === 0 ? '#0d0d0d' : '#111'
+              const fmt = (v) => '$' + Math.round(v).toLocaleString()
+              return (
+                <div key={n} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', background: bg, borderTop: isLast ? `1px solid rgba(189,255,0,0.2)` : 'none' }}>
+                  <div style={{ padding: '14px 18px' }}>
+                    <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: isLast ? NEON : '#fff', lineHeight: 1 }}>{n}</div>
+                    <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '3px' }}>referrals</div>
+                  </div>
+                  {[monthly, annual, mixed].map((val, j) => (
+                    <div key={j} style={{ padding: '14px 18px', borderLeft: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: isLast ? NEON : '#fff', lineHeight: 1 }}>{fmt(val)}</div>
+                      <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.28)', marginTop: '3px' }}>per year</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+
+          <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.18)', marginTop: '12px', lineHeight: 1.5 }}>
+            Monthly: $29/mo × 30% × 12 months = $104.40/referral/yr. Annual: $149 × 30% = $44.70/referral upfront. Assumes subscribers stay active for the full year.
           </div>
         </div>
 

@@ -2291,7 +2291,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   const [masterBrInput,    setMasterBrInput]    = useState('')
   const [masterBrFocused,  setMasterBrFocused]  = useState(false)
-  const [masterBrOverride, setMasterBrOverride] = useState(null) // null = auto-follow bets
+  const [masterBrOverride, setMasterBrOverride] = useState(isDemo ? null : (saved.current?.masterBrOverride ?? null))
 
   const _stats = useMemo(() => calcStats(bets, bankroll), [bets, bankroll])
   const curve  = useMemo(() => buildCurve(bets, bankroll), [bets, bankroll])
@@ -2335,9 +2335,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Auto-save to localStorage whenever key state changes ──
   useEffect(() => {
     if (isDemo) return // never overwrite real user data with demo data
-    const payload = { bets, username, ladderStarting, bankroll, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, bankroll, masterBrOverride, riskSettings, darkMode }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
-  }, [bets, bankroll, username, ladderStarting, riskSettings, darkMode])
+  }, [bets, bankroll, masterBrOverride, username, ladderStarting, riskSettings, darkMode])
 
   // ── On first load: pull data from Supabase if user is logged in ──
   useEffect(() => {
@@ -2369,10 +2369,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         if (settErr && settErr.code !== 'PGRST116') {
           console.error('[RML] fetchSettings error:', settErr)
         } else if (settings) {
-          if (settings.ladder_starting) setLadderStarting(settings.ladder_starting)
-          if (settings.bankroll)        setBankroll(settings.bankroll)
-          if (settings.username)        setUsername(settings.username)
-          if (settings.risk_settings)   setRiskSettings(settings.risk_settings)
+          if (settings.ladder_starting)    setLadderStarting(settings.ladder_starting)
+          if (settings.bankroll)           setBankroll(settings.bankroll)
+          if (settings.master_br_override != null) setMasterBrOverride(settings.master_br_override)
+          if (settings.username)           setUsername(settings.username)
+          if (settings.risk_settings)      setRiskSettings(settings.risk_settings)
           if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
         }
 
@@ -2439,7 +2440,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
       upsertSettings(userId, {
-        bankroll, ladder_starting: ladderStarting, username,
+        bankroll, master_br_override: masterBrOverride, ladder_starting: ladderStarting, username,
         risk_settings: riskSettings, dark_mode: darkMode,
       }, token).then(({ error }) => {
         if (error) {
@@ -2474,11 +2475,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Manual save ──
   const saveSession = useCallback(() => {
     setSaveStatus('saving')
-    const payload = { bets, username, ladderStarting, bankroll, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, bankroll, masterBrOverride, riskSettings, darkMode }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
     setTimeout(() => setSaveStatus('saved'), 400)
     setTimeout(() => setSaveStatus(null), 2400)
-  }, [bets, bankroll, username, ladderStarting, riskSettings, darkMode])
+  }, [bets, bankroll, masterBrOverride, username, ladderStarting, riskSettings, darkMode])
 
   // ── Reset session ──
   const resetSession = useCallback(() => {

@@ -107,7 +107,7 @@ export default function AppRoot() {
   if (path === '/privacy')    return <PrivacyPolicy onBack={() => window.history.back()} />
   if (path === '/terms')      return <TermsOfService onBack={() => window.history.back()} />
   if (path === '/affiliates') return <AffiliatePage onBack={() => window.location.href = '/'} />
-  if (path === '/pricing')    return <PricingPage onBack={() => window.location.href = '/'} onSignup={() => { window.location.href = '/?signup=true' }} />
+  if (path === '/pricing')    return <PricingPage onBack={() => window.location.href = '/'} onSignup={(plan) => { sessionStorage.setItem('rml_plan', plan || 'yearly'); window.location.href = '/?signup=true' }} />
 
   // ── Demo mode (?demo=true) — bypasses auth + paywall, loads sample data ─────
   const params = new URLSearchParams(window.location.search)
@@ -133,8 +133,34 @@ export default function AppRoot() {
   ]
   const isTeamMember = TEAM_EMAILS.includes(session.user.email?.toLowerCase())
 
-  // ── Logged in but not subscribed → paywall ──────────────────────────────────
+  // ── Logged in but not subscribed → auto-checkout if plan pre-selected, else paywall ──
   if (!subStatus?.active && !isTeamMember) {
+    const savedPlan = sessionStorage.getItem('rml_plan')
+    if (savedPlan) {
+      // They came from /pricing — auto-launch Stripe, skip the paywall screen
+      sessionStorage.removeItem('rml_plan')
+      const PRICE_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_MONTHLY || 'price_1Tf56QJEv6JkAZy9zxplxbSI'
+      const PRICE_YEARLY  = import.meta.env.VITE_STRIPE_PRICE_YEARLY  || 'price_1Tf58cJEv6JkAZy9kzUbPCDV'
+      const priceId = savedPlan === 'monthly' ? PRICE_MONTHLY : PRICE_YEARLY
+      fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId,
+          userId: session.user.id,
+          email: session.user.email,
+          successUrl: `${window.location.origin}/?checkout=success`,
+          cancelUrl: `${window.location.origin}/pricing`,
+          rewardfulReferral: window.Rewardful?.referral || null,
+        }),
+      }).then(r => r.json()).then(({ url }) => { if (url) window.location.href = url })
+      return (
+        <div style={{ minHeight: '100vh', background: '#0A0A0A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+          <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: '52px' }} />
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: '10px', fontWeight: 700, letterSpacing: '0.28em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>Setting up your trial...</div>
+        </div>
+      )
+    }
     return (
       <PaywallScreen
         user={session.user}

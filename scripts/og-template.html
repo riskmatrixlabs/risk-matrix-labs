@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1200px;
+    height: 630px;
+    background: #0A0A0A;
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Hex grid background */
+  .hex-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='48'%3E%3Cpolygon points='28,2 54,16 54,40 28,54 2,40 2,16' fill='none' stroke='%23BDFF00' stroke-width='0.8'/%3E%3C/svg%3E");
+    background-size: 56px 48px;
+  }
+
+  /* Glow orbs */
+  .glow-left {
+    position: absolute;
+    width: 500px; height: 500px;
+    left: -100px; top: 50%;
+    transform: translateY(-50%);
+    background: radial-gradient(circle, rgba(189,255,0,0.08) 0%, transparent 70%);
+    filter: blur(40px);
+    pointer-events: none;
+  }
+  .glow-right {
+    position: absolute;
+    width: 600px; height: 600px;
+    right: -80px; top: 50%;
+    transform: translateY(-50%);
+    background: radial-gradient(circle, rgba(189,255,0,0.05) 0%, transparent 70%);
+    filter: blur(50px);
+    pointer-events: none;
+  }
+
+  /* Left panel */
+  .left {
+    position: absolute;
+    left: 0; top: 0;
+    width: 560px; height: 630px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 64px 56px;
+    z-index: 2;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 36px;
+  }
+  .logo-row img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+  }
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+  }
+  .logo-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.18em;
+    color: #fff;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .logo-sub {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    color: #BDFF00;
+    text-transform: uppercase;
+    margin-top: 3px;
+    opacity: 0.85;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(189,255,0,0.08);
+    border: 1px solid rgba(189,255,0,0.25);
+    border-radius: 3px;
+    padding: 5px 14px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: #BDFF00;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+  .pill-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #BDFF00;
+  }
+
+  .headline {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 54px;
+    line-height: 1.0;
+    color: #fff;
+    letter-spacing: 0.01em;
+    margin-bottom: 18px;
+  }
+  .headline span {
+    color: #BDFF00;
+  }
+
+  .sub {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.65;
+    color: rgba(255,255,255,0.42);
+    margin-bottom: 36px;
+    max-width: 380px;
+  }
+
+  .badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    padding: 5px 13px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+  }
+
+  /* Right panel — dashboard screenshot */
+  .right {
+    position: absolute;
+    right: -2px; top: 0;
+    width: 680px; height: 630px;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  /* Fade mask on left edge of screenshot */
+  .right::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0;
+    width: 120px; height: 100%;
+    background: linear-gradient(to right, #0A0A0A, transparent);
+    z-index: 3;
+  }
+  /* Fade mask on bottom */
+  .right::after {
+    content: '';
+    position: absolute;
+    left: 0; bottom: 0;
+    width: 100%; height: 80px;
+    background: linear-gradient(to top, #0A0A0A, transparent);
+    z-index: 3;
+  }
+
+  .screenshot-frame {
+    position: absolute;
+    left: 40px; top: 40px;
+    right: -20px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(189,255,0,0.14);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  }
+
+  .frame-bar {
+    background: #111;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .frame-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.18);
+    margin-left: 6px;
+    text-transform: uppercase;
+  }
+
+  .screenshot-frame img {
+    width: 100%;
+    display: block;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(189,255,0,0.3) 40%, rgba(189,255,0,0.3) 60%, transparent);
+    z-index: 4;
+  }
+</style>
+</head>
+<body>
+  <div class="hex-bg"></div>
+  <div class="glow-left"></div>
+  <div class="glow-right"></div>
+
+  <div class="left">
+    <div class="logo-row">
+      <img src="../public/brand/logos/logo-labs.png" alt="RML" />
+      <div class="logo-text">
+        <div class="logo-name">Risk Matrix Labs</div>
+        <div class="logo-sub">Operate With Discipline</div>
+      </div>
+    </div>
+
+    <div class="pill">
+      <div class="pill-dot"></div>
+      The Bankroll Simulator
+    </div>
+
+    <div class="headline">
+      Simulate.<br/>Execute.<br/><span>Operate With<br/>Discipline.</span>
+    </div>
+
+    <div class="sub">
+      The bankroll simulator built for sports bettors who run a system — not a hobby.
+    </div>
+
+    <div class="badges">
+      <div class="badge">Unit Sizing Engine</div>
+      <div class="badge">PHLT™ Ladder</div>
+      <div class="badge">Tilt Detection</div>
+      <div class="badge">Discipline Score™</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="screenshot-frame">
+      <div class="frame-bar">
+        <div class="dot" style="background:#FF5F57"></div>
+        <div class="dot" style="background:#FFBD2E"></div>
+        <div class="dot" style="background:#28CA41"></div>
+        <div class="frame-label">Risk Matrix Labs — Analytics View</div>
+      </div>
+      <img src="../public/brand/screenshots/desktop-analytics.png" alt="Dashboard" />
+    </div>
+  </div>
+
+  <div class="bottom-bar"></div>
+</body>
+</html>

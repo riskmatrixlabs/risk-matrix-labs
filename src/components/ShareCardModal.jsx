@@ -26,49 +26,30 @@ const fmtU = (v) => {
   return `${n > 0 ? '+' : n < 0 ? '-' : ''}${Math.abs(n).toFixed(2)}u`
 }
 
-// ── RML Logo wordmark ────────────────────────────────────────────────────────
-function RMLLogo({ size = 'sm' }) {
-  const boxSize = size === 'sm' ? 20 : 24
-  const fontSize = size === 'sm' ? 9 : 11
-  const textSize = size === 'sm' ? 11 : 13
+// ── RML Logo — centered, prominent ──────────────────────────────────────────
+function RMLLogoCenter() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <div style={{
-        width: boxSize, height: boxSize,
-        background: NEON, borderRadius: '3px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <span style={{ fontFamily: R, fontSize, fontWeight: 900, color: BG, letterSpacing: '-0.5px' }}>RM</span>
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+      <img src="/brand/logos/logo-labs.png" alt="RML" style={{ width: 44, height: 44, objectFit: 'contain' }} />
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-        <span style={{ fontFamily: R, fontSize: textSize, fontWeight: 700, color: '#fff', letterSpacing: '0.12em' }}>RISK MATRIX</span>
-        <span style={{ fontFamily: R, fontSize: 7, fontWeight: 600, color: NEON, letterSpacing: '0.2em', marginTop: '1px' }}>LABS</span>
+        <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '0.14em' }}>RISK MATRIX LABS</span>
+        <span style={{ fontFamily: R, fontSize: 7, fontWeight: 600, color: NEON, letterSpacing: '0.22em', marginTop: 3 }}>OPERATE WITH DISCIPLINE</span>
       </div>
     </div>
   )
 }
 
-// ── User avatar pill (like Pikkit) ───────────────────────────────────────────
+// ── User badge ───────────────────────────────────────────────────────────────
 function UserBadge({ username, theme }) {
-  const text = theme === 'dark' ? '#fff' : '#0A0A0A'
-  const sub  = theme === 'dark' ? '#888' : '#666'
-  const initials = (username || 'OP').slice(0, 2).toUpperCase()
+  const isDark = theme === 'dark'
+  const text   = isDark ? '#fff' : '#0A0A0A'
+  const sub    = isDark ? '#666' : '#888'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      {/* Avatar circle */}
-      <div style={{
-        width: 32, height: 32, borderRadius: '50%',
-        background: `linear-gradient(135deg, ${NEON}33, ${NEON}11)`,
-        border: `1.5px solid ${NEON}55`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <span style={{ fontFamily: R, fontSize: 12, fontWeight: 700, color: NEON }}>{initials}</span>
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <img src="/brand/logos/logo-labs.png" alt="RML" style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }} />
       <div style={{ lineHeight: 1 }}>
-        <div style={{ fontFamily: R, fontSize: 12, fontWeight: 700, color: text }}>{username || 'Operator'}</div>
-        <div style={{ fontFamily: R, fontSize: 9, color: sub, marginTop: '2px', letterSpacing: '0.06em' }}>riskmatrixlabs.com</div>
+        <div style={{ fontFamily: R, fontSize: 11, fontWeight: 700, color: text }}>{username || 'Operator'}</div>
+        <div style={{ fontFamily: R, fontSize: 8, color: sub, marginTop: 2, letterSpacing: '0.04em' }}>riskmatrixlabs.com</div>
       </div>
     </div>
   )
@@ -77,11 +58,11 @@ function UserBadge({ username, theme }) {
 // ── BET SHARE CARD ───────────────────────────────────────────────────────────
 function BetShareCardInner({ bet, username, unitSize, bankIn, theme }) {
   const isDark = theme === 'dark'
-  const bg     = isDark ? BG     : '#F0F0F0'
-  const cardBg = isDark ? CARD   : '#FFFFFF'
-  const text   = isDark ? '#FFF' : '#0A0A0A'
-  const sub    = isDark ? '#888' : '#666'
-  const border = isDark ? '#222' : '#DDD'
+  const bg     = isDark ? '#0D0D0D' : '#F2F2F2'
+  const cardBg = isDark ? '#141414' : '#FFFFFF'
+  const text   = isDark ? '#FFF'    : '#0A0A0A'
+  const sub    = isDark ? '#555'    : '#888'
+  const border = isDark ? '#1E1E1E' : '#E0E0E0'
 
   const isOpen   = bet?.result === 'Open'
   const isLadder = !!bet?.ladder
@@ -98,98 +79,82 @@ function BetShareCardInner({ bet, username, unitSize, bankIn, theme }) {
   })()
 
   const pnlColor    = pnlDollar > 0 ? NEON : pnlDollar < 0 ? RED : sub
-  const accentColor = bet?.result === 'W' ? NEON : bet?.result === 'L' ? RED : isOpen ? YELLOW : '#444'
-  const statusLabel = isOpen ? 'PENDING' : bet?.result === 'W' ? 'WIN' : bet?.result === 'L' ? 'LOSS' : 'PUSH'
+  const accentColor = bet?.result === 'W' ? NEON : bet?.result === 'L' ? RED : isOpen ? YELLOW : '#333'
+  const statusLabel = isOpen ? 'PENDING' : bet?.result === 'W' ? 'WIN ✓' : bet?.result === 'L' ? 'LOSS ✗' : 'PUSH'
   const statusColor = isOpen ? YELLOW : bet?.result === 'W' ? NEON : bet?.result === 'L' ? RED : sub
-  const statusBg    = isOpen ? 'rgba(245,166,35,0.12)' : bet?.result === 'W' ? 'rgba(189,255,0,0.08)' : bet?.result === 'L' ? 'rgba(255,59,59,0.08)' : 'transparent'
-  const statusBorder= isOpen ? 'rgba(245,166,35,0.4)'  : bet?.result === 'W' ? 'rgba(189,255,0,0.25)'  : bet?.result === 'L' ? 'rgba(255,59,59,0.25)'  : border
 
   return (
-    <div style={{ width: 360, background: bg, fontFamily: R, padding: 16, boxSizing: 'border-box' }}>
+    <div style={{ width: 300, background: bg, fontFamily: R, boxSizing: 'border-box', overflow: 'hidden' }}>
 
-      {/* Pikkit-style header: user left, RML logo right */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <UserBadge username={username} theme={theme} />
-        <RMLLogo size="sm" />
+      {/* Top accent bar */}
+      <div style={{ height: 3, background: accentColor }} />
+
+      {/* Logo header */}
+      <div style={{ padding: '12px 14px 10px', borderBottom: `1px solid ${border}` }}>
+        <RMLLogoCenter />
       </div>
 
-      {/* Card */}
-      <div style={{ background: cardBg, border: `1px solid ${border}`, borderLeft: `3px solid ${accentColor}`, borderRadius: 4, overflow: 'hidden' }}>
+      {/* Main content */}
+      <div style={{ padding: '12px 14px' }}>
 
-        {/* Event label */}
+        {/* Event */}
         {(bet?.event || isLadder) && (
-          <div style={{ padding: '8px 12px 0', fontSize: 9, color: sub, letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {isLadder ? `PHLT™ LADDER · RUNG ${bet?.ladderId}` : bet?.event}
+          <div style={{ fontSize: 8, color: sub, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {isLadder ? `PHLT™ Ladder · Rung ${bet?.ladderId}` : bet?.event}
           </div>
         )}
 
-        {/* Pick + value */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 4px', gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: isOpen ? YELLOW : text, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {isLadder && isOpen ? `RUNG ${bet?.ladderId} · ${bet?.pick || 'TBD'}` : (bet?.pick || '—')}
-            </div>
-            {bet?.date && !isOpen && (
-              <div style={{ fontSize: 9, color: sub, marginTop: 2 }}>{bet.date}</div>
-            )}
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            {isOpen ? (
-              <>
-                <div style={{ fontSize: 20, fontWeight: 700, color: YELLOW, lineHeight: 1 }}>
-                  {toWin > 0 ? `+${fmt$(toWin)}` : '—'}
-                </div>
-                <div style={{ fontSize: 8, color: sub, marginTop: 1, letterSpacing: '0.08em' }}>to win</div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 20, fontWeight: 700, color: pnlColor, lineHeight: 1 }}>
-                  {(pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}
-                </div>
-                <div style={{ fontSize: 8, color: sub, marginTop: 1, letterSpacing: '0.08em' }}>P&amp;L</div>
-              </>
-            )}
-          </div>
+        {/* Pick */}
+        <div style={{ fontSize: 18, fontWeight: 700, color: isOpen ? YELLOW : text, lineHeight: 1.1, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {isLadder && isOpen ? `Rung ${bet?.ladderId} · ${bet?.pick || 'TBD'}` : (bet?.pick || '—')}
         </div>
 
-        {/* Status + meta */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px 8px', gap: 6, overflow: 'hidden' }}>
-          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: statusColor, background: statusBg, border: `1px solid ${statusBorder}`, padding: '2px 6px', borderRadius: 4, flexShrink: 0 }}>
+        {/* Meta row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+          <span style={{ fontFamily: R, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: statusColor, padding: '2px 6px', border: `1px solid ${statusColor}44`, borderRadius: 3 }}>
             {statusLabel}
           </span>
-          {bet?.book  && <span style={{ fontSize: 9, color: NEON, flexShrink: 0 }}>{bet.book}</span>}
-          {bet?.sport && <span style={{ fontSize: 9, color: sub,  flexShrink: 0 }}>{bet.sport}</span>}
-          {bet?.confidence > 0 && <span style={{ fontSize: 9, letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
-          <span style={{ fontFamily: R, fontSize: 9, fontWeight: 700, color: (bet?.odds || 0) > 0 ? NEON : text, marginLeft: 'auto', flexShrink: 0 }}>
-            {fmtOdds(bet?.odds)}
-          </span>
+          <span style={{ fontFamily: R, fontSize: 9, fontWeight: 700, color: (bet?.odds || 0) > 0 ? NEON : text }}>{fmtOdds(bet?.odds)}</span>
+          {bet?.sport && <span style={{ fontFamily: R, fontSize: 8, color: sub }}>{bet.sport}</span>}
+          {bet?.book  && <span style={{ fontFamily: R, fontSize: 8, color: sub }}>{bet.book}</span>}
+        </div>
+
+        {/* Big P&L / to-win */}
+        <div style={{ textAlign: 'center', padding: '10px 0 12px', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, marginBottom: 12 }}>
+          <div style={{ fontSize: 8, color: sub, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>
+            {isOpen ? 'To Win' : 'P&L'}
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1, color: isOpen ? YELLOW : pnlColor }}>
+            {isOpen
+              ? (toWin > 0 ? `+${fmt$(toWin)}` : '—')
+              : ((pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar))
+            }
+          </div>
         </div>
 
         {/* Stats bar */}
-        <div style={{ display: 'flex', borderTop: `1px solid ${border}` }}>
+        <div style={{ display: 'flex', gap: 0 }}>
           {(isOpen ? [
-            { label: 'STAKE',  val: bet?.stake > 0 ? fmt$(bet.stake) : '—', color: text },
-            { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—',    color: NEON },
-            { label: isLadder ? 'BANK' : 'UNITS',
-              val: isLadder ? (bankIn != null ? fmt$(bankIn) : '—') : (bet?.units > 0 ? `${bet.units}u` : '—'),
-              color: text },
+            { label: 'Stake',   val: bet?.stake > 0 ? fmt$(bet.stake) : '—' },
+            { label: 'To Win',  val: toWin > 0 ? `+${fmt$(toWin)}` : '—' },
+            { label: isLadder ? 'Bank' : 'Units', val: isLadder ? (bankIn != null ? fmt$(bankIn) : '—') : (bet?.units > 0 ? `${bet.units}u` : '—') },
           ] : [
-            { label: 'ODDS',    val: fmtOdds(bet?.odds),                                          color: (bet?.odds || 0) > 0 ? NEON : text },
-            { label: 'WAGERED', val: bet?.stake > 0 ? fmt$(bet.stake) : `${bet?.units || 0}u`,   color: text },
-            { label: 'P&L',     val: (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar),              color: pnlColor },
-          ]).map(({ label, val, color }, idx, arr) => (
-            <div key={label} style={{ flex: 1, padding: '6px 10px', borderRight: idx < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
-              <div style={{ fontSize: 7, fontWeight: 600, letterSpacing: '0.1em', color: sub, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+            { label: 'Odds',    val: fmtOdds(bet?.odds) },
+            { label: 'Wagered', val: bet?.stake > 0 ? fmt$(bet.stake) : `${bet?.units || 0}u` },
+            { label: 'P&L',     val: (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar) },
+          ]).map(({ label, val }, idx, arr) => (
+            <div key={label} style={{ flex: 1, textAlign: 'center', paddingRight: idx < arr.length - 1 ? 1 : 0, borderRight: idx < arr.length - 1 ? `1px solid ${border}` : 'none' }}>
+              <div style={{ fontSize: 7, color: sub, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: text }}>{val}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 8, color: sub, letterSpacing: '0.06em' }}>Operate With Discipline 🛡️</span>
-        <span style={{ fontSize: 8, fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>riskmatrixlabs.com</span>
+      <div style={{ padding: '8px 14px 10px', borderTop: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <UserBadge username={username} theme={theme} />
+        {bet?.date && <span style={{ fontSize: 8, color: sub }}>{bet.date}</span>}
       </div>
     </div>
   )
@@ -198,11 +163,11 @@ function BetShareCardInner({ bet, username, unitSize, bankIn, theme }) {
 // ── SESSION SHARE CARD ───────────────────────────────────────────────────────
 function SessionShareCardInner({ stats, username, bankroll, masterBankroll, theme }) {
   const isDark = theme === 'dark'
-  const bg     = isDark ? BG     : '#F0F0F0'
-  const cardBg = isDark ? CARD   : '#FFFFFF'
-  const text   = isDark ? '#FFF' : '#0A0A0A'
-  const sub    = isDark ? '#888' : '#666'
-  const border = isDark ? '#222' : '#DDD'
+  const bg     = isDark ? '#0D0D0D' : '#F2F2F2'
+  const cardBg = isDark ? '#141414' : '#FFFFFF'
+  const text   = isDark ? '#FFF'    : '#0A0A0A'
+  const sub    = isDark ? '#555'    : '#888'
+  const border = isDark ? '#1E1E1E' : '#E0E0E0'
 
   const netPnl   = Number(stats?.netPnl$) || 0
   const pnlColor = netPnl >= 0 ? NEON : RED
@@ -213,42 +178,49 @@ function SessionShareCardInner({ stats, username, bankroll, masterBankroll, them
   const total    = stats?.total || 0
 
   return (
-    <div style={{ width: 360, background: bg, fontFamily: R, padding: 16, boxSizing: 'border-box' }}>
+    <div style={{ width: 300, background: bg, fontFamily: R, boxSizing: 'border-box', overflow: 'hidden' }}>
 
-      {/* Header: user left, RML logo right */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <UserBadge username={username} theme={theme} />
-        <RMLLogo size="sm" />
+      {/* Top accent bar */}
+      <div style={{ height: 3, background: pnlColor }} />
+
+      {/* Logo header */}
+      <div style={{ padding: '12px 14px 10px', borderBottom: `1px solid ${border}` }}>
+        <RMLLogoCenter />
       </div>
 
-      {/* Big P&L card */}
-      <div style={{ background: cardBg, border: `1px solid ${border}`, borderLeft: `3px solid ${pnlColor}`, borderRadius: 4, padding: '14px 16px', marginBottom: 8 }}>
-        <div style={{ fontSize: 9, color: sub, letterSpacing: '0.12em', marginBottom: 4 }}>SESSION P&amp;L</div>
-        <div style={{ fontSize: 36, fontWeight: 700, color: pnlColor, lineHeight: 1 }}>
+      {/* Session label */}
+      <div style={{ padding: '12px 14px 0' }}>
+        <div style={{ fontSize: 8, color: sub, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 3 }}>Session P&amp;L</div>
+
+        {/* Big P&L */}
+        <div style={{ fontSize: 38, fontWeight: 700, color: pnlColor, lineHeight: 1, marginBottom: 4 }}>
           {(netPnl >= 0 ? '+' : '') + fmt$(netPnl)}
         </div>
-        <div style={{ fontSize: 10, color: sub, marginTop: 6 }}>
-          ROI {roi}% &nbsp;·&nbsp; {wins}W {losses}L &nbsp;·&nbsp; {winRate}% WR
+        <div style={{ fontSize: 9, color: sub, marginBottom: 14 }}>
+          {wins}W · {losses}L · {winRate}% WR · ROI {roi}%
         </div>
-      </div>
 
-      {/* Stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 10 }}>
-        {[
-          { label: 'BANKROLL',   val: fmt$(masterBankroll || 0),               color: text },
-          { label: 'TOTAL BETS', val: String(total),                           color: text },
-          { label: 'NET UNITS',  val: fmtU(stats?.netPnlU || 0),              color: (stats?.netPnlU || 0) >= 0 ? NEON : RED },
-        ].map(({ label, val, color }) => (
-          <div key={label} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 4, padding: '8px 10px' }}>
-            <div style={{ fontSize: 7, fontWeight: 600, color: sub, letterSpacing: '0.1em', marginBottom: 3 }}>{label}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
-          </div>
-        ))}
+        {/* Divider */}
+        <div style={{ height: 1, background: border, marginBottom: 12 }} />
+
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+          {[
+            { label: 'Bankroll',   val: fmt$(masterBankroll || 0), color: text },
+            { label: 'Total Bets', val: String(total),             color: text },
+            { label: 'Net Units',  val: fmtU(stats?.netPnlU || 0), color: (stats?.netPnlU || 0) >= 0 ? NEON : RED },
+          ].map(({ label, val, color }) => (
+            <div key={label} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 7, color: sub, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 8, color: sub, letterSpacing: '0.06em' }}>Operate With Discipline 🛡️</span>
+      <div style={{ padding: '8px 14px 10px', borderTop: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <UserBadge username={username} theme={theme} />
         <span style={{ fontSize: 8, fontWeight: 700, color: NEON, letterSpacing: '0.1em' }}>riskmatrixlabs.com</span>
       </div>
     </div>
@@ -351,7 +323,7 @@ export default function ShareCardModal({ mode, bet, stats, username, bankroll, m
         border: '1px solid #222',
         borderTop: `2px solid ${NEON}`,
         borderRadius: isMobile ? '14px 14px 0 0' : '4px',
-        width: isMobile ? '100%' : '420px',
+        width: isMobile ? '100%' : '360px',
         maxHeight: isMobile ? '92vh' : '90vh',
         overflowY: 'auto',
         padding: '20px 18px 32px',

@@ -74,7 +74,7 @@ export default function PricingPage({ onBack, onSignup }) {
           >
             <ArrowLeft size={12} /> Back
           </button>
-          <button onClick={onSignup} style={{ background: NEON, border: 'none', borderRadius: '6px', padding: '7px 16px', color: BG, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', cursor: 'pointer', textTransform: 'uppercase' }}>
+          <button onClick={() => onSignup(billing)} style={{ background: NEON, border: 'none', borderRadius: '6px', padding: '7px 16px', color: BG, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', cursor: 'pointer', textTransform: 'uppercase' }}>
             Start Free Trial
           </button>
         </div>
@@ -140,7 +140,7 @@ export default function PricingPage({ onBack, onSignup }) {
             </div>
 
             {/* CTA */}
-            <button onClick={onSignup} style={{ width: '100%', padding: '16px', background: NEON, border: 'none', borderRadius: '6px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, marginBottom: '14px', transition: 'opacity 0.15s, transform 0.15s' }}
+            <button onClick={() => onSignup(billing)} style={{ width: '100%', padding: '16px', background: NEON, border: 'none', borderRadius: '6px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, marginBottom: '14px', transition: 'opacity 0.15s, transform 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
             >
@@ -198,7 +198,7 @@ export default function PricingPage({ onBack, onSignup }) {
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase', marginBottom: '14px' }}>Ready to operate?</div>
           <h2 style={{ fontFamily: R, fontSize: '32px', fontWeight: 700, color: '#fff', marginBottom: '10px' }}>3 days free. No card charge until day 4.</h2>
           <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.35)', marginBottom: '32px' }}>Cancel anytime before day 4 and you pay nothing.</p>
-          <button onClick={onSignup} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: NEON, color: BG, fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', border: 'none', padding: '15px 36px', borderRadius: '6px', cursor: 'pointer', transition: 'opacity 0.15s' }}
+          <button onClick={() => onSignup(billing)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: NEON, color: BG, fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', border: 'none', padding: '15px 36px', borderRadius: '6px', cursor: 'pointer', transition: 'opacity 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >

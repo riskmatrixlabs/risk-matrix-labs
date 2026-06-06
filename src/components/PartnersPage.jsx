@@ -32,17 +32,7 @@ const TOOLS = [
   { id: 'actionnet',  name: 'Action Network', icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and betting analytics.',                      cta: 'Sign Up',    url: 'https://www.actionnetwork.com' },
 ]
 
-// ─── Section label ────────────────────────────────────────────────────────────
-function SectionHeader({ label, right }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-      <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(189,255,0,0.55)', textTransform: 'uppercase' }}>{label}</div>
-      {right}
-    </div>
-  )
-}
-
-// ─── Book slider (vertical, one card at a time) ───────────────────────────────
+// ─── Book slider ──────────────────────────────────────────────────────────────
 function BookSlider({ books }) {
   const [idx, setIdx] = useState(0)
   const [dir, setDir] = useState(1)
@@ -54,7 +44,7 @@ function BookSlider({ books }) {
   }
 
   if (books.length === 0) return (
-    <div style={{ fontFamily: R, fontSize: '12px', color: 'rgba(255,255,255,0.3)', padding: '20px', textAlign: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+    <div style={{ fontFamily: R, fontSize: '12px', color: 'var(--text-dim)', padding: '20px', textAlign: 'center', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}>
       No books available in this state.
     </div>
   )
@@ -77,40 +67,40 @@ function BookSlider({ books }) {
                 {book.logo}
               </div>
               <div>
-                <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>{book.name}</div>
-                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: NEON, textTransform: 'uppercase' }}>★ AFFILIATE PARTNER</div>
+                <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em' }}>{book.name}</div>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--neon-accent)', textTransform: 'uppercase' }}>★ AFFILIATE PARTNER</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 800, color: NEON, lineHeight: 1 }}>{book.bonus}</div>
-              <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.35)', marginTop: '1px' }}>{book.bonusLabel}</div>
+              <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 800, color: 'var(--neon-title)', lineHeight: 1 }}>{book.bonus}</div>
+              <div style={{ fontFamily: I, fontSize: '9px', color: 'var(--text-dim)', marginTop: '1px' }}>{book.bonusLabel}</div>
             </div>
           </div>
 
           {/* Card body */}
           <div style={{ padding: '12px 16px 14px' }}>
-            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>{book.promo}</div>
-            <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginBottom: '12px' }}>{book.desc}</div>
+            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>{book.promo}</div>
+            <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: '12px' }}>{book.desc}</div>
             <a href={book.url} target="_blank" rel="noopener noreferrer"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', padding: '10px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none', boxSizing: 'border-box' }}>
               {book.cta} <ExternalLink size={10} strokeWidth={2.5} />
             </a>
-            <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.15)', marginTop: '7px', textAlign: 'center' }}>Must be 21+. Gambling problem? 1-800-GAMBLER.</div>
+            <div style={{ fontFamily: I, fontSize: '9px', color: 'var(--muted)', marginTop: '7px', textAlign: 'center' }}>Must be 21+. Gambling problem? 1-800-GAMBLER.</div>
           </div>
         </motion.div>
       </AnimatePresence>
 
       {/* Nav row: prev · dots · next */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '10px' }}>
-        <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '5px 10px', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}>
+        <button onClick={() => go(-1)} disabled={idx === 0} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '5px 10px', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? 'var(--muted)' : 'var(--text-sub)', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}>
           <ChevronUp size={14} />
         </button>
         <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
           {books.map((_, i) => (
-            <button key={i} onClick={() => { setDir(i > idx ? 1 : -1); setIdx(i) }} style={{ width: i === idx ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === idx ? NEON : 'rgba(255,255,255,0.18)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 0.2s' }} />
+            <button key={i} onClick={() => { setDir(i > idx ? 1 : -1); setIdx(i) }} style={{ width: i === idx ? '16px' : '6px', height: '6px', borderRadius: '3px', background: i === idx ? NEON : 'var(--border2)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 0.2s' }} />
           ))}
         </div>
-        <button onClick={() => go(1)} disabled={idx === books.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '5px 10px', cursor: idx === books.length - 1 ? 'not-allowed' : 'pointer', color: idx === books.length - 1 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}>
+        <button onClick={() => go(1)} disabled={idx === books.length - 1} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '4px', padding: '5px 10px', cursor: idx === books.length - 1 ? 'not-allowed' : 'pointer', color: idx === books.length - 1 ? 'var(--muted)' : 'var(--text-sub)', display: 'flex', alignItems: 'center', transition: 'color 0.15s' }}>
           <ChevronDown size={14} />
         </button>
       </div>
@@ -127,11 +117,11 @@ function ToolRow({ tool }) {
         <Icon size={17} color={tool.iconColor} strokeWidth={1.8} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: '#fff' }}>{tool.name}</div>
-        <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.38)', marginTop: '1px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.desc}</div>
+        <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{tool.name}</div>
+        <div style={{ fontFamily: I, fontSize: '10px', color: 'var(--text-dim)', marginTop: '1px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.desc}</div>
       </div>
       <a href={tool.url} target="_blank" rel="noopener noreferrer"
-        style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 11px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: NEON, textDecoration: 'none' }}>
+        style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 11px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--neon-accent)', textDecoration: 'none' }}>
         {tool.cta} <ChevronRight size={10} />
       </a>
     </div>
@@ -144,20 +134,20 @@ function CapperCard({ capper }) {
     <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px 16px', opacity: capper.disabled ? 0.55 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
         <div>
-          <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: '#fff' }}>{capper.name}</div>
-          <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '1px' }}>{capper.handle} · {capper.platform}</div>
+          <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{capper.name}</div>
+          <div style={{ fontFamily: I, fontSize: '10px', color: 'var(--text-dim)', marginTop: '1px' }}>{capper.handle} · {capper.platform}</div>
         </div>
         <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: capper.tagColor, border: `1px solid ${capper.tagColor}`, borderRadius: '3px', padding: '2px 6px', flexShrink: 0, marginLeft: '8px' }}>
           {capper.tag}
         </div>
       </div>
       <div style={{ display: 'flex', gap: '14px', marginBottom: '8px' }}>
-        <div><div style={{ fontFamily: R, fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Record</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: '#fff' }}>{capper.record}</div></div>
-        <div><div style={{ fontFamily: R, fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>ROI</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: NEON }}>{capper.roi}</div></div>
+        <div><div style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Record</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{capper.record}</div></div>
+        <div><div style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>ROI</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--neon-title)' }}>{capper.roi}</div></div>
       </div>
-      <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginBottom: capper.disabled ? 0 : '10px' }}>{capper.desc}</div>
+      <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: capper.disabled ? 0 : '10px' }}>{capper.desc}</div>
       {!capper.disabled && (
-        <a href={capper.url} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 13px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: NEON, textDecoration: 'none' }}>
+        <a href={capper.url} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '7px 13px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--neon-accent)', textDecoration: 'none' }}>
           Contact Us <ExternalLink size={10} />
         </a>
       )}
@@ -165,11 +155,11 @@ function CapperCard({ capper }) {
   )
 }
 
-const TABS = ['Bonuses', 'Tools', 'Promote', 'Cappers']
+const TABS = ['Promote', 'Tools', 'Bonuses', 'Cappers']
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PartnersPage({ isMobile }) {
-  const [tab, setTab]               = useState('Bonuses')
+  const [tab, setTab]               = useState('Promote')
   const [selectedState, setSelectedState] = useState('All States')
 
   const filteredBooks = selectedState === 'All States' ? BOOKS : BOOKS.filter(b => b.states.includes(selectedState))
@@ -180,9 +170,9 @@ export default function PartnersPage({ isMobile }) {
 
       {/* Page header */}
       <div style={{ marginBottom: '16px' }}>
-        <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(189,255,0,0.5)', textTransform: 'uppercase', marginBottom: '3px' }}>RISK MATRIX LABS</div>
-        <div style={{ fontFamily: R, fontSize: isMobile ? '20px' : '24px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em', lineHeight: 1.1 }}>Offers & Partners</div>
-        <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>Tools and partners trusted by the RML community.</div>
+        <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '3px' }}>RISK MATRIX LABS</div>
+        <div style={{ fontFamily: R, fontSize: isMobile ? '20px' : '24px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em', lineHeight: 1.1 }}>Offers & Partners</div>
+        <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px' }}>Tools and partners trusted by the RML community.</div>
       </div>
 
       {/* Tab bar */}
@@ -191,7 +181,7 @@ export default function PartnersPage({ isMobile }) {
           <button key={t} onClick={() => setTab(t)} style={{
             padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer',
             fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: tab === t ? NEON : 'rgba(255,255,255,0.3)',
+            color: tab === t ? NEON : 'var(--text-dim)',
             borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
             marginBottom: '-1px', whiteSpace: 'nowrap',
           }}>{t}</button>
@@ -203,17 +193,17 @@ export default function PartnersPage({ isMobile }) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             {totalBonus > 0
-              ? <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON }}>${totalBonus.toLocaleString()}+ available</span>
+              ? <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--neon-title)' }}>${totalBonus.toLocaleString()}+ available</span>
               : <span />}
             <div style={{ position: 'relative' }}>
-              <select value={selectedState} onChange={e => setSelectedState(e.target.value)} style={{ appearance: 'none', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '5px', color: '#fff', fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '5px 24px 5px 9px', cursor: 'pointer', outline: 'none', letterSpacing: '0.08em' }}>
+              <select value={selectedState} onChange={e => setSelectedState(e.target.value)} style={{ appearance: 'none', background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--text)', fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '5px 24px 5px 9px', cursor: 'pointer', outline: 'none', letterSpacing: '0.08em' }}>
                 {STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <ChevronDown size={11} color="rgba(255,255,255,0.4)" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <ChevronDown size={11} color="var(--text-dim)" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             </div>
           </div>
           <BookSlider books={filteredBooks} />
-          <p style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.12)', marginTop: '16px', lineHeight: 1.6 }}>
+          <p style={{ fontFamily: I, fontSize: '9px', color: 'var(--muted)', marginTop: '16px', lineHeight: 1.6 }}>
             Affiliate links — RML may earn a commission. Must be 21+. Problem gambling? 1-800-GAMBLER.
           </p>
         </div>
@@ -230,9 +220,9 @@ export default function PartnersPage({ isMobile }) {
       {tab === 'Promote' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ background: 'linear-gradient(135deg, rgba(189,255,0,0.1), rgba(189,255,0,0.03))', border: '1px solid rgba(189,255,0,0.25)', borderRadius: '10px', padding: '20px 18px' }}>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '5px' }}>AFFILIATE PROGRAM</div>
-          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '6px', letterSpacing: '0.03em' }}>You Build The Audience. We Built The System.</div>
-          <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, marginBottom: '16px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: 'var(--neon-accent)', textTransform: 'uppercase', marginBottom: '5px' }}>AFFILIATE PROGRAM</div>
+          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px', letterSpacing: '0.03em' }}>You Build The Audience. We Built The System.</div>
+          <div style={{ fontFamily: I, fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.6, marginBottom: '16px' }}>
             Refer operators to RML and earn 30% recurring commission — every month they stay subscribed. Built for cappers, Discord mods, content creators, and anyone in the betting space with an audience that deserves better tools.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '18px' }}>
@@ -242,25 +232,25 @@ export default function PartnersPage({ isMobile }) {
               { label: 'Payout',     value: 'Monthly', sub: 'PayPal or bank' },
               { label: 'Tracking',   value: 'Live',    sub: 'dashboard + stats' },
             ].map(p => (
-              <div key={p.label} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(189,255,0,0.12)', borderRadius: '6px', padding: '10px 12px' }}>
-                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: '3px' }}>{p.label}</div>
-                <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 800, color: NEON }}>{p.value}</div>
-                <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.25)', marginTop: '1px' }}>{p.sub}</div>
+              <div key={p.label} style={{ background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px 12px' }}>
+                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '3px' }}>{p.label}</div>
+                <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 800, color: 'var(--neon-title)' }}>{p.value}</div>
+                <div style={{ fontFamily: I, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>{p.sub}</div>
               </div>
             ))}
           </div>
-          <a href="mailto:hello@riskmatrixlabs.com?subject=RML Affiliate Program"
+          <a href="https://risk-matrix-labs.getrewardful.com/signup" target="_blank" rel="noopener noreferrer"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '11px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none' }}>
             Apply Now <ExternalLink size={11} strokeWidth={2.5} />
           </a>
-          <div style={{ fontFamily: I, fontSize: '9px', color: 'rgba(255,255,255,0.18)', marginTop: '8px', textAlign: 'center' }}>
-            hello@riskmatrixlabs.com — response within 48 hours
+          <div style={{ fontFamily: I, fontSize: '9px', color: 'var(--muted)', marginTop: '8px', textAlign: 'center' }}>
+            Instant access — get your link in minutes
           </div>
         </div>
 
         {/* How it works */}
         <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '18px 18px' }}>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: '14px' }}>HOW IT WORKS</div>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '14px' }}>HOW IT WORKS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {[
               { step: '01', title: 'Apply',           desc: 'Email us at hello@riskmatrixlabs.com. We review every application and respond within 48 hours.' },
@@ -269,10 +259,10 @@ export default function PartnersPage({ isMobile }) {
               { step: '04', title: 'Get Paid',         desc: 'Monthly payouts via PayPal or bank transfer. Real-time stats in your affiliate dashboard.' },
             ].map(s => (
               <div key={s.step} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 800, color: 'rgba(189,255,0,0.3)', minWidth: '26px', letterSpacing: '0.02em', lineHeight: 1 }}>{s.step}</div>
+                <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 800, color: 'var(--neon-sub)', minWidth: '26px', letterSpacing: '0.02em', lineHeight: 1 }}>{s.step}</div>
                 <div>
-                  <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>{s.title}</div>
-                  <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginTop: '2px', lineHeight: 1.5 }}>{s.desc}</div>
+                  <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', letterSpacing: '0.04em' }}>{s.title}</div>
+                  <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.5 }}>{s.desc}</div>
                 </div>
               </div>
             ))}
@@ -284,7 +274,7 @@ export default function PartnersPage({ isMobile }) {
       {/* ── Cappers ── */}
       {tab === 'Cappers' && (
         <div>
-          <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginBottom: '10px', lineHeight: 1.6 }}>
+          <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.6 }}>
             RML only partners with cappers who track their record publicly. No gurus. Just verifiable results.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

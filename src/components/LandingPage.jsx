@@ -190,8 +190,8 @@ const CAROUSEL_TABS = [
   { label: 'Analytics',    file: 'desktop-overview',   bar: 'BANKROLL COMMAND CENTER' },
   { label: 'Overview',     file: 'desktop-analytics',  bar: 'P&L CURVE + BEHAVIORAL DATA' },
   { label: 'Ladder',       file: 'desktop-ladder',     bar: 'PHLT™ LADDER SIMULATOR' },
-  { label: 'Bet Log',      file: 'desktop-bet log',    bar: 'BET LOG + HISTORY' },
-  { label: 'RR Engine',    file: 'desktop-rr engine',  bar: 'ROUND ROBIN CALCULATOR' },
+  { label: 'Bet Log',      file: 'desktop-bet-log',    bar: 'BET LOG + HISTORY' },
+  { label: 'RR Engine',    file: 'desktop-rr-engine',  bar: 'ROUND ROBIN CALCULATOR' },
   { label: 'Session',      file: 'desktop-session',    bar: 'SESSION RECAP + DISCIPLINE SCORE' },
 ]
 
@@ -358,10 +358,10 @@ export default function LandingPage({ onLogin }) {
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.color = '#fff' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
           >Log In</button>
-          <button onClick={onLogin} style={{ background: NEON, border: 'none', borderRadius: '3px', padding: '7px 16px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', color: BG, textTransform: 'uppercase', transition: 'opacity 0.15s, transform 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-          >Start Free Trial</button>
+          <a href="/pricing" style={{ background: NEON, border: 'none', borderRadius: '3px', padding: '7px 16px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.15em', color: BG, textTransform: 'uppercase', textDecoration: 'none', transition: 'opacity 0.15s, transform 0.15s', display: 'inline-block' }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+          >Start Free Trial</a>
           {/* Mobile hamburger */}
           <button onClick={() => setMobileMenu(o => !o)} className="lp-hamburger" style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', flexDirection: 'column', gap: '4px', padding: '4px' }}>
             {[0,1,2].map(i => <div key={i} style={{ width: '22px', height: '2px', background: 'rgba(255,255,255,0.7)', borderRadius: '1px' }} />)}
@@ -377,8 +377,9 @@ export default function LandingPage({ onLogin }) {
             {NAV_LINKS.map(([id, label]) => (
               <button key={id} onClick={() => scrollTo(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 0', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{label}</button>
             ))}
+            <a href="/pricing" onClick={() => setMobileMenu(false)} style={{ display: 'block', padding: '12px 0', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, textTransform: 'uppercase', textDecoration: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>Pricing</a>
             <button onClick={onLogin} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 0', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', textAlign: 'left' }}>Log In</button>
-            <button onClick={onLogin} style={{ marginTop: '8px', background: NEON, border: 'none', borderRadius: '3px', padding: '12px', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: BG, textTransform: 'uppercase', cursor: 'pointer' }}>Start Free Trial</button>
+            <a href="/pricing" style={{ marginTop: '8px', display: 'block', background: NEON, border: 'none', borderRadius: '3px', padding: '12px', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: BG, textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'none', textAlign: 'center' }}>Start Free Trial</a>
           </motion.div>
         )}
       </AnimatePresence>
@@ -411,11 +412,11 @@ export default function LandingPage({ onLogin }) {
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
-                <button onClick={onLogin}
-                  style={{ padding: '15px 36px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, transition: 'opacity 0.15s, transform 0.15s' }}
+                <a href="/pricing"
+                  style={{ display: 'inline-block', padding: '15px 36px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, textDecoration: 'none', transition: 'opacity 0.15s, transform 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
                   onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-                >Start My Free Trial →</button>
+                >Start My Free Trial →</a>
                 <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>3 days free · $29/mo or $149/yr after · cancel anytime</div>
               </motion.div>
 
@@ -614,17 +615,32 @@ export default function LandingPage({ onLogin }) {
                 ))}
               </div>
 
-              <button onClick={onLogin}
-                style={{ width: '100%', padding: '15px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, transition: 'opacity 0.15s, transform 0.15s' }}
+              <a href="/pricing"
+                style={{ display: 'block', width: '100%', boxSizing: 'border-box', padding: '15px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, textDecoration: 'none', textAlign: 'center', transition: 'opacity 0.15s, transform 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-              >Start My Free Trial →</button>
+              >Start My Free Trial →</a>
 
               <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.22)', textAlign: 'center', marginTop: '16px' }}>
                 3 days free · no charge until day 4 · cancel anytime · annual plan saves $199/yr
               </div>
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* ══ CREATORS EARN HOOK ══ */}
+      <section style={{ padding: '48px 40px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(189,255,0,0.03)' }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
+          <div>
+            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: NEON, textTransform: 'uppercase', marginBottom: '8px' }}>For Creators & Cappers</div>
+            <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, letterSpacing: '0.06em', color: '#fff', lineHeight: 1.3 }}>Your audience already bets.<br />Start getting paid for it.</div>
+            <div style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>30% recurring commission. Free to join.</div>
+          </div>
+          <a href="/affiliates" style={{ display: 'inline-block', padding: '12px 28px', background: 'transparent', border: `1px solid ${NEON}`, borderRadius: '3px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = NEON; e.currentTarget.style.color = BG }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = NEON }}
+          >Get Your Link →</a>
         </div>
       </section>
 
@@ -681,11 +697,11 @@ export default function LandingPage({ onLogin }) {
             </p>
           </FadeIn>
           <FadeIn delay={0.12}>
-            <button onClick={onLogin}
-              style={{ padding: '16px 48px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, transition: 'opacity 0.15s, transform 0.15s' }}
+            <a href="/pricing"
+              style={{ display: 'inline-block', padding: '16px 48px', background: NEON, border: 'none', borderRadius: '3px', cursor: 'pointer', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: BG, textDecoration: 'none', transition: 'opacity 0.15s, transform 0.15s' }}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-2px)' }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
-            >Start My Free Trial →</button>
+            >Start My Free Trial →</a>
             <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.18)', marginTop: '14px' }}>
               3 days free · cancel anytime · questions?{' '}
               <a href="mailto:hello@riskmatrixlabs.com" style={{ color: 'rgba(189,255,0,0.55)', textDecoration: 'none' }}
@@ -724,7 +740,7 @@ export default function LandingPage({ onLogin }) {
 
             <div>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.24em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', marginBottom: '14px' }}>Links</div>
-              {[['Features', '#features'], ['Pricing', '/pricing'], ['About', '#about'], ['FAQ', '#faq'], ['Affiliates', '/affiliates']].map(([label, href]) => (
+              {[['Features', '#features'], ['Pricing', '/pricing'], ['About', '#about'], ['FAQ', '#faq']].map(([label, href]) => (
                 <div key={label} style={{ marginBottom: '8px' }}>
                   <a href={href} style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.36)', textDecoration: 'none', transition: 'color 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#fff'}
