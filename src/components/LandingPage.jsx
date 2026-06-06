@@ -521,23 +521,6 @@ export default function LandingPage({ onLogin }) {
         </div>
       </section>
 
-      {/* ══ FEATURES GRID ══ */}
-      <section id="features" style={{ position: 'relative', padding: '80px 40px 120px', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-        <HexGrid opacity={0.022} />
-        <GlowOrb size={600} x="84%" y="55%" opacity={0.036} />
-        <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <SectionHeader pill="Features" title="Every tool an operator needs" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
-            <FeatureCard delay={0}    icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="13" width="16" height="2" rx="1" fill="#BDFF00"/><rect x="3" y="9" width="12" height="2" rx="1" fill="#BDFF00" opacity=".6"/><rect x="6" y="5" width="6" height="2" rx="1" fill="#BDFF00" opacity=".35"/></svg>} title="PHLT™ Ladder Simulator"  desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
-            <FeatureCard delay={0.06} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="3.5" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/><circle cx="9" cy="9" r="1" fill="#BDFF00"/></svg>} title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
-            <FeatureCard delay={0.12} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 6h12M3 9h8M3 12h10" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><rect x="12" y="7" width="4" height="7" rx="1" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/></svg>} title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
-            <FeatureCard delay={0.18} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 13 L5 9 L8 11 L11 6 L14 8 L16 4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
-            <FeatureCard delay={0.24} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="#BDFF00" strokeWidth="1.5"/><path d="M6 7h6M6 10h4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" opacity=".6"/></svg>} title="Session grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
-            <FeatureCard delay={0.30} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 14 L6 9 L9 11 L13 5 L16 7" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 5h3v3" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".6"/></svg>} title="Behavioral analytics"     desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
-          </div>
-        </div>
-      </section>
-
       {/* ══ DASHBOARD PREVIEW ══ */}
       <section style={{ position: 'relative', padding: '80px 40px', overflow: 'hidden' }}>
         <GlowOrb size={800} x="20%" y="50%" opacity={0.04} />
@@ -571,6 +554,23 @@ export default function LandingPage({ onLogin }) {
               </div>
             </motion.div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* ══ FEATURES GRID ══ */}
+      <section id="features" style={{ position: 'relative', padding: '80px 40px 120px', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+        <HexGrid opacity={0.022} />
+        <GlowOrb size={600} x="84%" y="55%" opacity={0.036} />
+        <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <SectionHeader pill="Features" title="Every tool an operator needs" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
+            <FeatureCard delay={0}    icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="13" width="16" height="2" rx="1" fill="#BDFF00"/><rect x="3" y="9" width="12" height="2" rx="1" fill="#BDFF00" opacity=".6"/><rect x="6" y="5" width="6" height="2" rx="1" fill="#BDFF00" opacity=".35"/></svg>} title="PHLT™ Ladder Simulator"  desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
+            <FeatureCard delay={0.06} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="3.5" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/><circle cx="9" cy="9" r="1" fill="#BDFF00"/></svg>} title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
+            <FeatureCard delay={0.12} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 6h12M3 9h8M3 12h10" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><rect x="12" y="7" width="4" height="7" rx="1" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/></svg>} title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
+            <FeatureCard delay={0.18} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 13 L5 9 L8 11 L11 6 L14 8 L16 4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
+            <FeatureCard delay={0.24} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="#BDFF00" strokeWidth="1.5"/><path d="M6 7h6M6 10h4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" opacity=".6"/></svg>} title="Session grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
+            <FeatureCard delay={0.30} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 14 L6 9 L9 11 L13 5 L16 7" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 5h3v3" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".6"/></svg>} title="Behavioral analytics"     desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
+          </div>
         </div>
       </section>
 
