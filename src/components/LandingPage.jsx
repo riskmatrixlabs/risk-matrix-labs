@@ -487,7 +487,7 @@ export default function LandingPage({ onLogin }) {
       <Marquee />
 
       {/* ══ HOW IT WORKS ══ */}
-      <section style={{ padding: '120px 40px', position: 'relative' }}>
+      <section style={{ padding: '72px 40px', position: 'relative' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <SectionHeader pill="How It Works" title="Four Steps.<br/><span style='color:#BDFF00'>One System.</span>" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0' }} className="lp-4col">
@@ -510,13 +510,13 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       {/* ══ THREE COLUMNS ══ */}
-      <section id="what" style={{ position: 'relative', padding: '120px 40px' }}>
+      <section id="what" style={{ position: 'relative', padding: '72px 40px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <SectionHeader pill="What Is It" title="Built for operators<br/><span style='color:#BDFF00'>who run a system.</span>" sub="Risk Matrix Labs is the Bankroll Simulator for disciplined sports bettors. Every bet logged, every dollar protected, every session graded — with the risk management tools of a real operator." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="lp-3col">
-            <FeatureCard delay={0}   icon="📊" title="Track like a trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
-            <FeatureCard delay={0.1} icon="🛡️" title="Manage your risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
-            <FeatureCard delay={0.2} icon="🧠" title="Stay in the system"         desc="Tilt detection flags when you're off track. Pre-session checklists enforce your process. Your Discipline Score™ doesn't lie." />
+            <FeatureCard delay={0}   icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="3" height="6" rx="1" fill="#BDFF00"/><rect x="7" y="6" width="3" height="10" rx="1" fill="#BDFF00" opacity=".7"/><rect x="12" y="2" width="3" height="14" rx="1" fill="#BDFF00" opacity=".4"/></svg>} title="Track like a trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
+            <FeatureCard delay={0.1} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L9 4M9 14L9 16M2 9L4 9M14 9L16 9" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><circle cx="9" cy="9" r="4" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="1.5" fill="#BDFF00" opacity=".5"/></svg>} title="Manage your risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
+            <FeatureCard delay={0.2} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2 L15 5 L15 10 C15 13.5 12 16 9 17 C6 16 3 13.5 3 10 L3 5 Z" stroke="#BDFF00" strokeWidth="1.5" fill="none"/><path d="M6 9l2 2 4-4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Stay in the system"         desc="Tilt detection flags when you're off track. Pre-session checklists enforce your process. Your Discipline Score™ doesn't lie." />
           </div>
         </div>
       </section>
@@ -528,18 +528,18 @@ export default function LandingPage({ onLogin }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <SectionHeader pill="Features" title="Every tool an operator needs" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
-            <FeatureCard delay={0}    icon="🪜" title="PHLT™ Ladder Simulator"  desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
-            <FeatureCard delay={0.06} icon="🎯" title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
-            <FeatureCard delay={0.12} icon="⚙️" title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
-            <FeatureCard delay={0.18} icon="🧪" title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
-            <FeatureCard delay={0.24} icon="📝" title="Session grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
-            <FeatureCard delay={0.30} icon="📈" title="Behavioral analytics"     desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
+            <FeatureCard delay={0}    icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="13" width="16" height="2" rx="1" fill="#BDFF00"/><rect x="3" y="9" width="12" height="2" rx="1" fill="#BDFF00" opacity=".6"/><rect x="6" y="5" width="6" height="2" rx="1" fill="#BDFF00" opacity=".35"/></svg>} title="PHLT™ Ladder Simulator"  desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
+            <FeatureCard delay={0.06} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="3.5" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/><circle cx="9" cy="9" r="1" fill="#BDFF00"/></svg>} title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
+            <FeatureCard delay={0.12} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 6h12M3 9h8M3 12h10" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><rect x="12" y="7" width="4" height="7" rx="1" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/></svg>} title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
+            <FeatureCard delay={0.18} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 13 L5 9 L8 11 L11 6 L14 8 L16 4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
+            <FeatureCard delay={0.24} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="#BDFF00" strokeWidth="1.5"/><path d="M6 7h6M6 10h4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" opacity=".6"/></svg>} title="Session grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
+            <FeatureCard delay={0.30} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 14 L6 9 L9 11 L13 5 L16 7" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 5h3v3" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".6"/></svg>} title="Behavioral analytics"     desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
           </div>
         </div>
       </section>
 
       {/* ══ DASHBOARD PREVIEW ══ */}
-      <section style={{ position: 'relative', padding: '120px 40px', overflow: 'hidden' }}>
+      <section style={{ position: 'relative', padding: '80px 40px', overflow: 'hidden' }}>
         <GlowOrb size={800} x="20%" y="50%" opacity={0.04} />
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }} className="lp-hero-grid">
           <FadeIn>
@@ -633,9 +633,12 @@ export default function LandingPage({ onLogin }) {
       <section style={{ padding: '48px 40px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(189,255,0,0.03)' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
           <div>
-            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: NEON, textTransform: 'uppercase', marginBottom: '8px' }}>For Creators & Cappers</div>
-            <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, letterSpacing: '0.06em', color: '#fff', lineHeight: 1.3 }}>Your audience already bets.<br />Start getting paid for it.</div>
-            <div style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>30% recurring commission. Free to join.</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(189,255,0,0.1)', border: '1px solid rgba(189,255,0,0.3)', borderRadius: '3px', padding: '4px 10px', marginBottom: '12px' }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: NEON, display: 'inline-block' }} />
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.24em', color: NEON, textTransform: 'uppercase' }}>For Creators & Cappers</span>
+            </div>
+            <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, letterSpacing: '0.04em', color: '#fff', lineHeight: 1.3 }}>Your audience already bets.<br />Start getting paid for it.</div>
+            <div style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>30% recurring commission. Free to join.</div>
           </div>
           <a href="/affiliates" style={{ display: 'inline-block', padding: '12px 28px', background: 'transparent', border: `1px solid ${NEON}`, borderRadius: '3px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, textTransform: 'uppercase', textDecoration: 'none', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = NEON; e.currentTarget.style.color = BG }}
@@ -669,7 +672,7 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       {/* ══ FAQ ══ */}
-      <section id="faq" style={{ padding: '100px 40px 80px' }}>
+      <section id="faq" style={{ padding: '80px 40px 60px' }}>
         <div style={{ maxWidth: '680px', margin: '0 auto' }}>
           <SectionHeader pill="FAQ" title="Common Questions" />
           <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A bankroll operating system and betting simulator built for disciplined operators. Track every bet, simulate bankroll growth, manage your risk, and grade every session — with the process tools of a real operator." />
@@ -682,7 +685,7 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       {/* ══ FINAL CTA ══ */}
-      <section id="beta" style={{ position: 'relative', padding: '140px 40px', overflow: 'hidden', textAlign: 'center' }}>
+      <section id="beta" style={{ position: 'relative', padding: '100px 40px', overflow: 'hidden', textAlign: 'center' }}>
         <HexGrid opacity={0.038} />
         <GlowOrb size={900} x="50%" y="50%" opacity={0.06} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: '660px', margin: '0 auto' }}>
