@@ -66,7 +66,8 @@
   --scrollbar-thumb: #A8A098;
 }
 
-/* Light: neon on cream backgrounds reads fine — darken only the text color of neon-colored labels */
+/* Light: override any inline neon green text to dark olive — backgrounds (background: #BDFF00) are unaffected */
+[data-theme='light'] [style*="color: rgb(189, 255, 0)"] { color: #3A5C00 !important; }
 [data-theme='light'] .neon-label { color: #3A5C00 !important; }
 
 [data-theme='light'] .badge-win  { color: #2A5000 !important; background: rgba(189,255,0,0.18) !important; border-color: rgba(189,255,0,0.55) !important; }
@@ -90,7 +91,7 @@ body {
 
 /* Smooth theme transition */
 *, *::before, *::after {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }

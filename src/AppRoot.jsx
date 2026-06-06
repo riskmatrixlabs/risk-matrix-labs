@@ -5,6 +5,10 @@ import LandingPage from './components/LandingPage'
 import AuthScreen from './components/AuthScreen'
 import ResetPasswordScreen from './components/ResetPasswordScreen'
 import PaywallScreen from './components/PaywallScreen'
+import PrivacyPolicy from './components/PrivacyPolicy'
+import TermsOfService from './components/TermsOfService'
+import AffiliatePage from './components/AffiliatePage'
+import PricingPage from './components/PricingPage'
 import App from './App'
 import posthog from 'posthog-js'
 import * as Sentry from '@sentry/react'
@@ -37,6 +41,10 @@ export default function AppRoot() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success' && session?.user) {
       window.history.replaceState({}, '', '/')
+      // Rewardful conversion tracking
+      if (typeof window.rewardful === 'function' && session.user.email) {
+        window.rewardful('convert', { email: session.user.email })
+      }
       // Poll up to 5 times (every 2s) until subscription is active
       let attempts = 0
       const poll = () => {
@@ -94,14 +102,39 @@ export default function AppRoot() {
     )
   }
 
+  // ── Legal pages (URL-based routing, no router needed) ──────────────────────
+  const path = window.location.pathname
+  if (path === '/privacy')    return <PrivacyPolicy onBack={() => window.history.back()} />
+  if (path === '/terms')      return <TermsOfService onBack={() => window.history.back()} />
+  if (path === '/affiliates') return <AffiliatePage onBack={() => window.location.href = '/'} />
+  if (path === '/pricing')    return <PricingPage onBack={() => window.location.href = '/'} onSignup={() => { window.location.href = '/?signup=true' }} />
+
+  // ── Demo mode (?demo=true) — bypasses auth + paywall, loads sample data ─────
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('demo') === 'true') {
+    const demoUser    = { id: 'demo', email: 'demo@riskmatrixlabs.com' }
+    const demoSession = { access_token: null, refresh_token: null, user: demoUser }
+    const demoStatus  = { active: true, plan: 'demo' }
+    return <App key="demo" user={demoUser} session={demoSession} subStatus={demoStatus} isDemo={true} />
+  }
+
   // ── Not logged in ───────────────────────────────────────────────────────────
   if (!session) {
-    if (showAuth) return <AuthScreen onBack={() => setShowAuth(false)} />
+    const autoSignup = new URLSearchParams(window.location.search).get('signup') === 'true'
+    if (showAuth || autoSignup) return <AuthScreen onBack={() => { window.history.replaceState({}, '', '/'); setShowAuth(false) }} />
     return <LandingPage onLogin={() => setShowAuth(true)} />
   }
 
+  // ── Team whitelist — bypass paywall for internal testers ───────────────────
+  const TEAM_EMAILS = [
+    'michaeltejeda08@gmail.com',
+    'josiahteem@yahoo.com',
+    'tremizy@gmail.com',
+  ]
+  const isTeamMember = TEAM_EMAILS.includes(session.user.email?.toLowerCase())
+
   // ── Logged in but not subscribed → paywall ──────────────────────────────────
-  if (!subStatus?.active) {
+  if (!subStatus?.active && !isTeamMember) {
     return (
       <PaywallScreen
         user={session.user}
@@ -112,5 +145,5 @@ export default function AppRoot() {
   }
 
   // ── Subscribed → dashboard ──────────────────────────────────────────────────
-  return <App user={session.user} session={session} subStatus={subStatus} />
+  return <App key={session.user.id} user={session.user} session={session} subStatus={subStatus} />
 }

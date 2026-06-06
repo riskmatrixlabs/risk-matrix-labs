@@ -185,7 +185,128 @@ function FAQItem({ q, a, delay = 0 }) {
   )
 }
 
+// ─── SCREENSHOT CAROUSEL ──────────────────────────────────────────────────────
+const CAROUSEL_TABS = [
+  { label: 'Analytics',    file: 'desktop-overview',   bar: 'BANKROLL COMMAND CENTER' },
+  { label: 'Overview',     file: 'desktop-analytics',  bar: 'P&L CURVE + BEHAVIORAL DATA' },
+  { label: 'Ladder',       file: 'desktop-ladder',     bar: 'PHLT™ LADDER SIMULATOR' },
+  { label: 'Bet Log',      file: 'desktop-bet log',    bar: 'BET LOG + HISTORY' },
+  { label: 'RR Engine',    file: 'desktop-rr engine',  bar: 'ROUND ROBIN CALCULATOR' },
+  { label: 'Session',      file: 'desktop-session',    bar: 'SESSION RECAP + DISCIPLINE SCORE' },
+]
+
+function ScreenshotCarousel() {
+  const [active, setActive] = useState(0)
+  const [direction, setDirection] = useState(1)
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDirection(1)
+      setActive(p => (p + 1) % CAROUSEL_TABS.length)
+    }, 3200)
+    return () => clearTimeout(t)
+  }, [active])
+
+  const go = (i) => {
+    setDirection(i > active ? 1 : -1)
+    setActive(i)
+  }
+
+  const tab = CAROUSEL_TABS[active]
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Preload all images to prevent flash on transition */}
+      <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        {CAROUSEL_TABS.map(t => <img key={t.file} src={`/brand/screenshots/${t.file}.png`} alt="" />)}
+      </div>
+      {/* Tab pills */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+        {CAROUSEL_TABS.map((t, i) => (
+          <button key={t.label} onClick={() => go(i)} style={{
+            fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
+            textTransform: 'uppercase', padding: '5px 12px', borderRadius: '3px', cursor: 'pointer',
+            border: `1px solid ${i === active ? NEON : 'rgba(255,255,255,0.1)'}`,
+            background: i === active ? 'rgba(189,255,0,0.1)' : 'transparent',
+            color: i === active ? NEON : 'rgba(255,255,255,0.35)',
+            transition: 'all 0.2s',
+          }}>{t.label}</button>
+        ))}
+      </div>
+      {/* Frame */}
+      <div style={{ position: 'absolute', inset: '-24px 0 0', borderRadius: '12px', background: 'radial-gradient(ellipse, rgba(189,255,0,0.07) 0%, transparent 70%)', filter: 'blur(24px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(189,255,0,0.16)', boxShadow: '0 32px 80px rgba(0,0,0,0.65)' }}>
+        <div style={{ background: '#111', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
+          <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX LABS — {tab.bar}</div>
+        </div>
+        <div style={{ position: 'relative', overflow: 'hidden' }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.img
+              key={tab.file}
+              src={`/brand/screenshots/${tab.file}.png`}
+              alt={tab.label}
+              initial={{ opacity: 0, x: direction * 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: direction * -24 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              style={{ width: '100%', display: 'block' }}
+            />
+          </AnimatePresence>
+        </div>
+      </div>
+      {/* Dots */}
+      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '14px' }}>
+        {CAROUSEL_TABS.map((_, i) => (
+          <div key={i} onClick={() => go(i)} style={{
+            width: i === active ? '20px' : '6px', height: '6px', borderRadius: '3px',
+            background: i === active ? NEON : 'rgba(255,255,255,0.18)',
+            cursor: 'pointer', transition: 'all 0.3s',
+          }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+function CookieBanner() {
+  const [visible, setVisible] = useState(() => {
+    try { return !localStorage.getItem('rml_cookie_ok') } catch { return true }
+  })
+  const accept = () => {
+    try { localStorage.setItem('rml_cookie_ok', '1') } catch {}
+    setVisible(false)
+  }
+  if (!visible) return null
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
+      background: 'rgba(10,10,10,0.97)', borderTop: '1px solid rgba(189,255,0,0.15)',
+      padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: '16px', flexWrap: 'wrap',
+    }}>
+      <p style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6, flex: 1, minWidth: '240px' }}>
+        We use cookies and similar technologies to operate the site and analyze usage.
+        By continuing you agree to our{' '}
+        <a href="/privacy" style={{ color: NEON, textDecoration: 'none' }}>Privacy Policy</a>.
+      </p>
+      <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
+        <button onClick={accept} style={{
+          fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em',
+          textTransform: 'uppercase', padding: '8px 20px', borderRadius: '3px', cursor: 'pointer',
+          background: NEON, border: 'none', color: '#0A0A0A',
+        }}>Accept</button>
+        <button onClick={accept} style={{
+          fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em',
+          textTransform: 'uppercase', padding: '8px 16px', borderRadius: '3px', cursor: 'pointer',
+          background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.4)',
+        }}>Dismiss</button>
+      </div>
+    </div>
+  )
+}
+
 export default function LandingPage({ onLogin }) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -202,7 +323,7 @@ export default function LandingPage({ onLogin }) {
 
   const scrollTo = (id) => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); setMobileMenu(false) }
 
-  const NAV_LINKS = [['features', 'Features'], ['pricing', 'Pricing'], ['beta', 'Beta']]
+  const NAV_LINKS = [['features', 'Features'], ['about', 'About'], ['faq', 'FAQ']]
 
   return (
     <div style={{ background: BG, color: '#fff', fontFamily: I, overflowX: 'hidden' }}>
@@ -224,8 +345,12 @@ export default function LandingPage({ onLogin }) {
           </div>
         </div>
 
-        <nav style={{ display: 'flex', gap: '28px' }} className="lp-nav-links">
+        <nav style={{ display: 'flex', gap: '28px', alignItems: 'center' }} className="lp-nav-links">
           {NAV_LINKS.map(([id, label]) => <NavLink key={id} label={label} onClick={() => scrollTo(id)} />)}
+          <a href="/pricing" style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', color: NEON, textTransform: 'uppercase', textDecoration: 'none', transition: 'opacity 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >Pricing</a>
         </nav>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -269,20 +394,20 @@ export default function LandingPage({ onLogin }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }} className="lp-hero-grid">
             <div>
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <Pill>Beta Access Open</Pill>
+                <Pill>The Bankroll Simulator</Pill>
               </motion.div>
 
               <motion.h1
                 initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 style={{ fontFamily: R, fontWeight: 700, fontSize: 'clamp(40px, 5.5vw, 70px)', letterSpacing: '-0.01em', lineHeight: 1.04, margin: '22px 0 18px', color: '#fff' }}
               >
-                Stop Gambling.<br />
-                <span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.2)' }}>Start Operating.</span>
+                Simulate. Execute.<br />
+                <span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.2)' }}>Operate With Discipline.</span>
               </motion.h1>
 
               <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.18 }}
                 style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.75, marginBottom: '32px', maxWidth: '440px' }}>
-                The platform built for operators who run a system. Bankroll management, risk simulation, and behavioral analytics — built for discipline, not luck.
+                The bankroll simulator built for operators who run a system. Model your edge, size every bet, and grade every session — with the discipline tools of a real operator.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
@@ -291,7 +416,7 @@ export default function LandingPage({ onLogin }) {
                   onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
                   onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
                 >Start My Free Trial →</button>
-                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>7 days free · $17/month after · cancel anytime</div>
+                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>3 days free · $29/mo or $149/yr after · cancel anytime</div>
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.44 }}
@@ -305,19 +430,12 @@ export default function LandingPage({ onLogin }) {
               </motion.div>
             </div>
 
-            {/* Dashboard mockup */}
+            {/* Dashboard mockup — screenshot carousel */}
             <motion.div className="lp-hero-img"
               initial={{ opacity: 0, x: 36, scale: 0.97 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ duration: 0.8, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
               style={{ position: 'relative' }}
             >
-              <div style={{ position: 'absolute', inset: '-24px', borderRadius: '12px', background: 'radial-gradient(ellipse, rgba(189,255,0,0.07) 0%, transparent 70%)', filter: 'blur(24px)' }} />
-              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(189,255,0,0.16)', boxShadow: '0 32px 80px rgba(0,0,0,0.65)' }}>
-                <div style={{ background: '#111', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
-                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX LABS — OPERATOR VIEW</div>
-                </div>
-                <img src="/brand/screenshots/desktop/dashboard-overview-full.png" alt="Dashboard Preview" style={{ width: '100%', display: 'block' }} />
-              </div>
+              <ScreenshotCarousel />
             </motion.div>
           </div>
         </motion.div>
@@ -329,13 +447,71 @@ export default function LandingPage({ onLogin }) {
         </motion.div>
       </section>
 
+      {/* ══ SOCIAL PROOF BAR ══ */}
+      <div style={{ position: 'relative', borderTop: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+        {/* subtle left neon bleed */}
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '3px', background: `linear-gradient(to bottom, transparent, ${NEON}, transparent)`, opacity: 0.35 }} />
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '3px', background: `linear-gradient(to bottom, transparent, ${NEON}, transparent)`, opacity: 0.35 }} />
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 40px', display: 'flex', alignItems: 'stretch' }}>
+          {/* trust signals */}
+          {[
+            { icon: '✦', value: '3-Day Free Trial', sub: 'No card charged until day 4' },
+            { icon: '✦', value: 'Cancel Anytime',   sub: 'No contracts, no questions' },
+            { icon: '✦', value: 'Free Demo',         sub: 'Try it before you subscribe' },
+          ].map(({ icon, value, sub }, i) => (
+            <div key={value} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 24px', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+              <span style={{ fontFamily: R, fontSize: '10px', color: NEON, opacity: 0.6, flexShrink: 0 }}>{icon}</span>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: '#fff', letterSpacing: '0.06em', lineHeight: 1 }}>{value}</div>
+                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '3px', lineHeight: 1 }}>{sub}</div>
+              </div>
+            </div>
+          ))}
+          {/* discord CTA — right-aligned, distinct */}
+          <a href="https://discord.gg/smHv7CHc4p" target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 28px', textDecoration: 'none', background: 'rgba(189,255,0,0.04)', transition: 'background 0.2s', flexShrink: 0 }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(189,255,0,0.08)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(189,255,0,0.04)'}
+          >
+            <FaDiscord size={16} color={NEON} style={{ opacity: 0.8 }} />
+            <div>
+              <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', color: NEON, textTransform: 'uppercase', lineHeight: 1 }}>Community</div>
+              <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(189,255,0,0.45)', marginTop: '3px' }}>Join on Discord</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
       {/* ══ MARQUEE ══ */}
       <Marquee />
+
+      {/* ══ HOW IT WORKS ══ */}
+      <section style={{ padding: '120px 40px', position: 'relative' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <SectionHeader pill="How It Works" title="Four Steps.<br/><span style='color:#BDFF00'>One System.</span>" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0' }} className="lp-4col">
+            {[
+              { num: '01', title: 'Simulate', desc: 'Model how your bankroll grows or shrinks under different unit sizes, risk levels, and win rates — before you risk a dollar.' },
+              { num: '02', title: 'Set your bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and lock in your risk limits. The system calculates everything else automatically.' },
+              { num: '03', title: 'Execute every session', desc: 'Log every bet. Run the pre-session checklist. Use the unit sizing engine and round robin engine. No guessing — just execution.' },
+              { num: '04', title: 'Grade your process', desc: 'Settle bets, review your Discipline Score™, and grade the session A–F. Your record is built on process — not results.' },
+            ].map((step, i) => (
+              <FadeIn key={step.num} delay={i * 0.1}>
+                <div style={{ padding: '40px 28px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', position: 'relative' }}>
+                  <div style={{ fontFamily: R, fontSize: '48px', fontWeight: 700, color: 'rgba(189,255,0,0.12)', lineHeight: 1, marginBottom: '20px', letterSpacing: '-0.02em' }}>{step.num}</div>
+                  <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.1em', color: '#fff', marginBottom: '10px', textTransform: 'uppercase' }}>{step.title}</div>
+                  <div style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.75 }}>{step.desc}</div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ══ THREE COLUMNS ══ */}
       <section id="what" style={{ position: 'relative', padding: '120px 40px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <SectionHeader pill="What Is It" title="Built for operators.<br/><span style='color:#BDFF00'>Not gamblers.</span>" sub="Risk Matrix Labs is a bankroll operating system and betting simulator. Every bet tracked, every dollar protected, every session graded — with the discipline tools of a real operator." />
+          <SectionHeader pill="What Is It" title="Built for operators<br/><span style='color:#BDFF00'>who run a system.</span>" sub="Risk Matrix Labs is the Bankroll Simulator for disciplined sports bettors. Every bet logged, every dollar protected, every session graded — with the risk management tools of a real operator." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="lp-3col">
             <FeatureCard delay={0}   icon="📊" title="Track like a trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
             <FeatureCard delay={0.1} icon="🛡️" title="Manage your risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
@@ -351,7 +527,7 @@ export default function LandingPage({ onLogin }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <SectionHeader pill="Features" title="Every tool an operator needs" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
-            <FeatureCard delay={0}    icon="🪜" title="PHLT™ Ladder Tracker"    desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
+            <FeatureCard delay={0}    icon="🪜" title="PHLT™ Ladder Simulator"  desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
             <FeatureCard delay={0.06} icon="🎯" title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
             <FeatureCard delay={0.12} icon="⚙️" title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
             <FeatureCard delay={0.18} icon="🧪" title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
@@ -388,9 +564,9 @@ export default function LandingPage({ onLogin }) {
               <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(189,255,0,0.14)', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
                 <div style={{ background: '#111', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   {['#FF5F57','#FFBD2E','#28CA41'].map(c => <div key={c} style={{ width: '9px', height: '9px', borderRadius: '50%', background: c }} />)}
-                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX LABS — SESSION VIEW</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.2)', marginLeft: '8px' }}>RISK MATRIX LABS — ANALYTICS VIEW</div>
                 </div>
-                <img src="/brand/screenshots/desktop/dashboard-overview-header.png" alt="Dashboard Stats" style={{ width: '100%', display: 'block' }} />
+                <img src="/brand/screenshots/desktop-analytics.png" alt="Dashboard Analytics" style={{ width: '100%', display: 'block' }} />
               </div>
             </motion.div>
           </FadeIn>
@@ -406,35 +582,30 @@ export default function LandingPage({ onLogin }) {
 
           <FadeIn delay={0.1}>
             <div style={{ position: 'relative', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(189,255,0,0.3)', borderRadius: '6px', padding: '48px', overflow: 'hidden' }}>
-              {/* Beta badge */}
-              <div style={{ position: 'absolute', top: '20px', right: '20px', background: NEON, color: BG, fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', padding: '4px 12px', borderRadius: '2px' }}>
-                BETA PRICE
-              </div>
-
               {/* Price display */}
               <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '32px' }}>
                 <div>
-                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Beta Price — Lock It In Now</div>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Monthly</div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                    <span style={{ fontFamily: R, fontSize: '56px', fontWeight: 700, color: NEON, lineHeight: 1, textShadow: '0 0 30px rgba(189,255,0,0.25)' }}>$17</span>
+                    <span style={{ fontFamily: R, fontSize: '56px', fontWeight: 700, color: NEON, lineHeight: 1, textShadow: '0 0 30px rgba(189,255,0,0.25)' }}>$29</span>
                     <span style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.4)' }}>/month</span>
                   </div>
-                  <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>Locked in for as long as you stay subscribed</div>
+                  <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.28)', marginTop: '4px' }}>Cancel anytime</div>
                 </div>
                 <div style={{ paddingBottom: '8px' }}>
-                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: '6px' }}>Regular Price</div>
-                  <div style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textDecoration: 'line-through' }}>$27/mo</div>
-                  <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.22)', marginTop: '2px' }}>or $197/year (save $127)</div>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.22em', color: NEON, textTransform: 'uppercase', marginBottom: '6px' }}>Annual — Best Value</div>
+                  <div style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: '#fff' }}>$149<span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.4)', fontWeight: 400 }}>/yr</span></div>
+                  <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(189,255,0,0.6)', marginTop: '2px' }}>$12.42/mo · save $199 vs monthly</div>
                 </div>
               </div>
 
               {/* Features list */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: '36px' }} className="lp-pricing-grid">
                 {[
-                  'PHLT™ Ladder Tracker', 'Unit Sizing Engine',
-                  'Round Robin Engine', 'Pre-Session Checklist',
+                  'Bankroll Simulator', 'Unit Sizing Engine',
+                  'PHLT™ Ladder System', 'Round Robin Engine',
                   'Session Grading (A–F)', 'Discipline Score™',
-                  'Bankroll Simulator', 'Behavioral Analytics',
+                  'Behavioral Analytics', 'Pre-Session Checklist',
                   'Cloud Sync + Backup', 'All future features',
                 ].map(feature => (
                   <div key={feature} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
@@ -450,32 +621,10 @@ export default function LandingPage({ onLogin }) {
               >Start My Free Trial →</button>
 
               <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.22)', textAlign: 'center', marginTop: '16px' }}>
-                7 days free · $17/month after · cancel anytime
+                3 days free · no charge until day 4 · cancel anytime · annual plan saves $199/yr
               </div>
             </div>
           </FadeIn>
-        </div>
-      </section>
-
-      {/* ══ HOW IT WORKS ══ */}
-      <section style={{ padding: '120px 40px', position: 'relative' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <SectionHeader pill="How It Works" title="Three Steps.<br/><span style='color:#BDFF00'>One System.</span>" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0' }} className="lp-3col">
-            {[
-              { num: '01', title: 'Set your bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and lock in your risk limits. The system calculates everything else automatically.' },
-              { num: '02', title: 'Operate every session', desc: 'Log every bet. Run the pre-session checklist. Use the unit sizing engine and round robin engine. No guessing — just execution.' },
-              { num: '03', title: 'Grade your process', desc: 'Settle bets, review your Discipline Score™, and grade the session A–F. Your record is built on process — not results.' },
-            ].map((step, i) => (
-              <FadeIn key={step.num} delay={i * 0.12}>
-                <div style={{ padding: '40px 32px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', position: 'relative' }}>
-                  <div style={{ fontFamily: R, fontSize: '52px', fontWeight: 700, color: 'rgba(189,255,0,0.12)', lineHeight: 1, marginBottom: '20px', letterSpacing: '-0.02em' }}>{step.num}</div>
-                  <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, letterSpacing: '0.1em', color: '#fff', marginBottom: '10px', textTransform: 'uppercase' }}>{step.title}</div>
-                  <div style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.75 }}>{step.desc}</div>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -491,6 +640,9 @@ export default function LandingPage({ onLogin }) {
             <p style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.85 }}>
               Risk Matrix Labs was built because no tool existed that treated sports betting like what it actually is — a risk management discipline and a bankroll simulation problem. We built the operating system we wished existed. Now we're sharing it.
             </p>
+            <p style={{ fontFamily: I, fontSize: '15px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.85, marginTop: '20px' }}>
+              Whether you're managing your own bankroll or you're a capper whose followers need real tools to tail your picks — Risk Matrix Labs gives everyone on your roster the infrastructure to execute with discipline.
+            </p>
             <div style={{ marginTop: '32px', padding: '24px 28px', background: 'rgba(189,255,0,0.05)', border: '1px solid rgba(189,255,0,0.2)', borderRadius: '4px' }}>
               <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, textTransform: 'uppercase' }}>
                 "Operate With Discipline."
@@ -501,13 +653,13 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       {/* ══ FAQ ══ */}
-      <section style={{ padding: '120px 40px' }}>
-        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+      <section id="faq" style={{ padding: '100px 40px 80px' }}>
+        <div style={{ maxWidth: '680px', margin: '0 auto' }}>
           <SectionHeader pill="FAQ" title="Common Questions" />
           <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A bankroll operating system and betting simulator built for disciplined operators. Track every bet, simulate bankroll growth, manage your risk, and grade every session — with the process tools of a real operator." />
           <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your bankroll with discipline. Risk Matrix Labs is about process — not predictions." />
-          <FAQItem delay={0.1}  q="When does it launch?" a="We are live now in beta. Start your 7-day free trial today — no credit card charge until day 8. Beta subscribers lock in their rate for as long as they stay subscribed." />
-          <FAQItem delay={0.15} q="How much does it cost?" a="$17/month or $197/year during beta (save $127). Regular pricing will be $27/month. Lock in the beta rate now — it won't be available once we exit beta." />
+          <FAQItem delay={0.1}  q="How does the free trial work?" a="Start your 3-day free trial — no charge until day 4. You'll see the exact billing date and amount before you enter your card. Cancel anytime, no questions asked." />
+          <FAQItem delay={0.15} q="How much does it cost?" a="$29/month, or $149/year (saves you $199 vs monthly). Annual plan works out to $12.42/month. Both plans include a 3-day free trial — no charge until day 4." />
           <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Labs is built mobile-first. Log bets, run the ladder, and grade sessions from your phone — your data syncs across every device automatically." />
           <FAQItem delay={0.25} q="Is my data safe?" a="All data is encrypted, stored securely, and backed up automatically. You own your data and can export it at any time." />
         </div>
@@ -524,8 +676,8 @@ export default function LandingPage({ onLogin }) {
               Ready To Operate<br /><span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.18)' }}>With Discipline?</span>
             </h2>
             <p style={{ fontFamily: I, fontSize: '15px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.75, marginBottom: '36px' }}>
-              Start your 7-day free trial today. No charge until day 8.<br />
-              <strong style={{ color: 'rgba(255,255,255,0.65)' }}>Beta users lock in $17/month — for as long as they stay subscribed.</strong>
+              Start your 3-day free trial today. No charge until day 4.<br />
+              <strong style={{ color: 'rgba(255,255,255,0.65)' }}>$29/month or $149/year — annual plan saves $199.</strong>
             </p>
           </FadeIn>
           <FadeIn delay={0.12}>
@@ -535,7 +687,7 @@ export default function LandingPage({ onLogin }) {
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
             >Start My Free Trial →</button>
             <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.18)', marginTop: '14px' }}>
-              7 days free · cancel anytime · questions?{' '}
+              3 days free · cancel anytime · questions?{' '}
               <a href="mailto:hello@riskmatrixlabs.com" style={{ color: 'rgba(189,255,0,0.55)', textDecoration: 'none' }}
                 onMouseEnter={e => e.currentTarget.style.color = NEON}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(189,255,0,0.55)'}
@@ -572,7 +724,7 @@ export default function LandingPage({ onLogin }) {
 
             <div>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.24em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase', marginBottom: '14px' }}>Links</div>
-              {[['Features', '#features'], ['Pricing', '#pricing'], ['Beta', '#beta'], ['About', '#about'], ['FAQ', '#faq']].map(([label, href]) => (
+              {[['Features', '#features'], ['Pricing', '/pricing'], ['About', '#about'], ['FAQ', '#faq'], ['Affiliates', '/affiliates']].map(([label, href]) => (
                 <div key={label} style={{ marginBottom: '8px' }}>
                   <a href={href} style={{ fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.36)', textDecoration: 'none', transition: 'color 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#fff'}
@@ -613,7 +765,25 @@ export default function LandingPage({ onLogin }) {
           </div>
 
           <div style={{ marginTop: '44px', paddingTop: '22px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.16)' }}>© 2026 Risk Matrix Labs LLC. All rights reserved.</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+              <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.16)' }}>© 2026 Risk Matrix Labs LLC. All rights reserved.</div>
+              <a href="/privacy" style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = NEON}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.28)'}
+              >Privacy Policy</a>
+              <a href="/terms" style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = NEON}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.28)'}
+              >Terms of Service</a>
+              <a href="/pricing" style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = NEON}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.28)'}
+              >Pricing</a>
+              <a href="/affiliates" style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = NEON}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.28)'}
+              >Affiliates</a>
+            </div>
             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: 'rgba(189,255,0,0.26)', textTransform: 'uppercase' }}>Operate With Discipline.</div>
           </div>
         </div>
@@ -625,18 +795,21 @@ export default function LandingPage({ onLogin }) {
           .lp-hero-grid    { grid-template-columns: 1fr !important; gap: 48px !important; }
           .lp-hero-img     { display: none !important; }
           .lp-3col         { grid-template-columns: 1fr 1fr !important; }
+          .lp-4col         { grid-template-columns: 1fr 1fr !important; }
           .lp-nav-links    { display: none !important; }
           .lp-pricing-grid { grid-template-columns: 1fr !important; }
           .lp-hamburger    { display: flex !important; }
         }
         @media (max-width: 560px) {
           .lp-3col { grid-template-columns: 1fr !important; }
+          .lp-4col { grid-template-columns: 1fr 1fr !important; }
         }
         @media (max-width: 640px) {
           section, footer { padding-left: 20px !important; padding-right: 20px !important; }
           header          { padding-left: 16px !important; padding-right: 16px !important; }
         }
       `}</style>
+      <CookieBanner />
     </div>
   )
 }
