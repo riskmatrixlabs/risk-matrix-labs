@@ -17,8 +17,10 @@ import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Mo
 import PartnersPage from './components/PartnersPage'
 import ShareCardModal from './components/ShareCardModal'
 
-const LS_KEY   = 'rml_session_v1'
-const TMPL_KEY = 'rml_templates_v1'
+const getKeys = (userId) => ({
+  LS_KEY:   `rml_session_v1_${userId}`,
+  TMPL_KEY: `rml_templates_v1_${userId}`,
+})
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // Brand accents — same in both themes
@@ -2212,8 +2214,9 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-function loadSession() {
+function loadSession(userId) {
   try {
+    const { LS_KEY } = getKeys(userId)
     const raw = localStorage.getItem(LS_KEY)
     return raw ? JSON.parse(raw) : null
   } catch { return null }
@@ -2226,7 +2229,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const pad = isMobile ? '10px' : '8px'
 
-  const saved          = useRef(loadSession())
+  const { LS_KEY, TMPL_KEY } = getKeys(isDemo ? 'demo' : user.id)
+  const saved          = useRef(loadSession(isDemo ? 'demo' : user.id))
   const [syncing,      setSyncing]      = useState(false)
   const [cloudSynced,  setCloudSynced]  = useState(false)
   const [syncError,    setSyncError]    = useState(null)
@@ -2259,7 +2263,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   const [saveStatus,   setSaveStatus]   = useState(null)  // 'saved' | 'saving' | null
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const [templates,    setTemplates]    = useState(() => { try { return JSON.parse(localStorage.getItem(TMPL_KEY) || '[]') } catch { return [] } })
+  const [templates,    setTemplates]    = useState(() => { try { return JSON.parse(localStorage.getItem(TMPL_KEY) || '[]') } catch { return [] } }) // TMPL_KEY now user-specific via getKeys above
   const [showTemplates,setShowTemplates]= useState(false)
 
   const [showWelcome,  setShowWelcome]  = useState(false)
