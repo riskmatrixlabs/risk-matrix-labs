@@ -2267,6 +2267,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [showTemplates,setShowTemplates]= useState(false)
 
   const [showWelcome,  setShowWelcome]  = useState(false)
+  const [onboardStep,  setOnboardStep]  = useState(1)
   const [welcomeBr,    setWelcomeBr]    = useState('')
   const [showHelp,     setShowHelp]     = useState(false)
   const [showMore,     setShowMore]     = useState(false)
@@ -2733,61 +2734,126 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         />
       )}
 
-      {/* WELCOME MODAL */}
-      {showWelcome && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ ...cardStyle, width: '100%', maxWidth: '460px', padding: '30px 32px', borderTop: `2px solid ${NEON}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: '36px' }} />
-              <div>
-                <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, lineHeight: 1 }}>WELCOME TO RISK MATRIX LABS</div>
-                <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.28em', color: 'var(--muted)', marginTop: '3px' }}>OPERATE WITH DISCIPLINE</div>
+      {/* ONBOARDING FLOW */}
+      {showWelcome && (() => {
+        const finishOnboarding = (useSampleData) => {
+          if (!useSampleData) setBets([])
+          localStorage.setItem('rml_welcomed_v1', '1')
+          setShowWelcome(false)
+          setOnboardStep(1)
+        }
+        const STEPS = [
+          {
+            pill: '01 / 03',
+            title: 'Set Your Bankroll',
+            desc: 'Your bankroll is the foundation. Every unit size, risk limit, and ladder rung is calculated from this number.',
+            content: (
+              <div style={{ marginBottom: '8px' }}>
+                <label style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Starting Bankroll ($)</label>
+                <input type="number" placeholder="e.g. 500" value={welcomeBr} onChange={e => setWelcomeBr(e.target.value)} autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') { const v = parseFloat(welcomeBr); if (!isNaN(v) && v > 0) { setBankroll(v); setOnboardStep(2) } } }}
+                  style={{ ...inputStyle, fontSize: '18px', fontWeight: 700, padding: '10px 14px', width: '100%', boxSizing: 'border-box' }} />
               </div>
-            </div>
-            <p style={{ fontFamily: R, fontSize: '11px', color: 'var(--text-sub)', lineHeight: 1.6, margin: '16px 0', letterSpacing: '0.04em' }}>
-              Set your starting bankroll to calibrate unit sizes, risk limits, and the PHLT™ Ladder.
-            </p>
+            ),
+            primary: { label: 'Set Bankroll →', action: () => { const v = parseFloat(welcomeBr); if (!isNaN(v) && v > 0) { setBankroll(v); setOnboardStep(2) } } },
+            secondary: { label: 'Explore with sample data', action: () => setOnboardStep(2) },
+          },
+          {
+            pill: '02 / 03',
+            title: 'How the System Works',
+            desc: null,
+            content: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
+                {[
+                  { tab: 'Analytics', icon: '📊', desc: 'Your bankroll command center — P&L curve, unit sizes, risk limits, Discipline Score™.' },
+                  { tab: 'Bet Log', icon: '📝', desc: 'Log every bet. Hit Log Bet → fill in the details → settle when it lands.' },
+                  { tab: 'Ladder', icon: '🪜', desc: 'The PHLT™ system — fund each rung only from previous winnings. Principal stays protected.' },
+                  { tab: 'RR Engine', icon: '⚙️', desc: 'Build round robins. See every combo, exposure, and the break-even hit rate you need.' },
+                  { tab: 'Session', icon: '📋', desc: 'Pre-session checklist + session grading. Every session earns an A–F based on process.' },
+                ].map(({ tab, icon, desc }) => (
+                  <div key={tab} style={{ display: 'flex', gap: '12px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '16px', flexShrink: 0 }}>{icon}</span>
+                    <div>
+                      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T, marginBottom: '2px' }}>{tab}</div>
+                      <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-sub)', lineHeight: 1.5 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ),
+            primary: { label: 'Got it →', action: () => setOnboardStep(3) },
+            secondary: null,
+          },
+          {
+            pill: '03 / 03',
+            title: "You're Ready to Operate",
+            desc: 'Start by logging your first bet or run the bankroll simulator. Discipline compounds — one session at a time.',
+            content: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                {[
+                  '✓  Set your unit % in Analytics → Settings',
+                  '✓  Log every bet — wins and losses',
+                  '✓  Complete the pre-session checklist before placing bets',
+                  '✓  Grade every session honestly',
+                  '✓  Never chase. Never skip the process.',
+                ].map(item => (
+                  <div key={item} style={{ fontFamily: I, fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.6 }}>{item}</div>
+                ))}
+              </div>
+            ),
+            primary: { label: "Let's Operate →", action: () => finishOnboarding(false) },
+            secondary: { label: 'Explore sample data', action: () => finishOnboarding(true) },
+          },
+        ]
+        const step = STEPS[onboardStep - 1]
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div style={{ ...cardStyle, width: '100%', maxWidth: '480px', padding: '28px 30px', borderTop: `2px solid ${NEON}` }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: '28px' }} />
+                  <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs</div>
+                </div>
+                <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: NEON, background: 'rgba(189,255,0,0.08)', border: `1px solid rgba(189,255,0,0.2)`, borderRadius: '3px', padding: '3px 8px' }}>{step.pill}</div>
+              </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--muted)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                Starting Bankroll ($)
-              </label>
-              <input
-                type="number"
-                placeholder="e.g. 500"
-                value={welcomeBr}
-                onChange={e => setWelcomeBr(e.target.value)}
-                autoFocus
-                style={{ ...inputStyle, fontSize: '16px', fontWeight: 700, padding: '9px 14px', width: '100%', boxSizing: 'border-box' }}
-              />
-            </div>
+              {/* Step dots */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
+                {[1,2,3].map(n => (
+                  <div key={n} style={{ height: '2px', flex: 1, borderRadius: '2px', background: n <= onboardStep ? NEON : 'rgba(255,255,255,0.1)', transition: 'background 0.3s' }} />
+                ))}
+              </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => {
-                  const v = parseFloat(welcomeBr)
-                  if (!isNaN(v) && v > 0) setBankroll(v)
-                  setBets([])
-                  localStorage.setItem('rml_welcomed_v1', '1')
-                  setShowWelcome(false)
-                }}
-                style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '11px', border: `1px solid ${NEON}`, borderRadius: '2px', background: NEON, color: '#0A0A0A', cursor: 'pointer' }}
-              >
-                Start Fresh
-              </button>
-              <button
-                onClick={() => {
-                  localStorage.setItem('rml_welcomed_v1', '1')
-                  setShowWelcome(false)
-                }}
-                style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '11px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer' }}
-              >
-                Explore with Sample Data
-              </button>
+              <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text)', marginBottom: '8px' }}>{step.title}</div>
+              {step.desc && <p style={{ fontFamily: I, fontSize: '13px', color: 'var(--text-sub)', lineHeight: 1.65, marginBottom: '20px' }}>{step.desc}</p>}
+              {!step.desc && <div style={{ marginBottom: '16px' }} />}
+
+              {step.content}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button onClick={step.primary.action}
+                  style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '12px', border: `1px solid ${NEON}`, borderRadius: '2px', background: NEON, color: '#0A0A0A', cursor: 'pointer' }}>
+                  {step.primary.label}
+                </button>
+                {step.secondary && (
+                  <button onClick={step.secondary.action}
+                    style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '12px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>
+                    {step.secondary.label}
+                  </button>
+                )}
+              </div>
+
+              {onboardStep > 1 && (
+                <button onClick={() => setOnboardStep(s => s - 1)}
+                  style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontSize: '11px', color: 'var(--muted)' }}>
+                  ← Back
+                </button>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* HELP PANEL */}
       {showHelp && (
