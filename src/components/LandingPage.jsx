@@ -275,7 +275,17 @@ function CookieBanner() {
     try { return !localStorage.getItem('rml_cookie_ok') } catch { return true }
   })
   const accept = () => {
-    try { localStorage.setItem('rml_cookie_ok', '1') } catch {}
+    try {
+      localStorage.setItem('rml_cookie_ok', 'accept')
+      // Enable PostHog analytics now that user has consented
+      if (typeof window !== 'undefined' && window.posthog?.opt_in_capturing) {
+        window.posthog.opt_in_capturing()
+      }
+    } catch { /* localStorage unavailable */ }
+    setVisible(false)
+  }
+  const dismiss = () => {
+    try { localStorage.setItem('rml_cookie_ok', 'dismiss') } catch { /* localStorage unavailable */ }
     setVisible(false)
   }
   if (!visible) return null
@@ -297,7 +307,7 @@ function CookieBanner() {
           textTransform: 'uppercase', padding: '8px 20px', borderRadius: '3px', cursor: 'pointer',
           background: NEON, border: 'none', color: '#0A0A0A',
         }}>Accept</button>
-        <button onClick={accept} style={{
+        <button onClick={dismiss} style={{
           fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em',
           textTransform: 'uppercase', padding: '8px 16px', borderRadius: '3px', cursor: 'pointer',
           background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.4)',
@@ -804,6 +814,13 @@ export default function LandingPage({ onLogin }) {
               >Affiliates</a>
             </div>
             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: 'rgba(189,255,0,0.26)', textTransform: 'uppercase' }}>Operate With Discipline.</div>
+          </div>
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <span style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.14)', lineHeight: 1.6 }}>
+              Please gamble responsibly. If you or someone you know has a gambling problem, help is available 24/7 at{' '}
+              <a href="https://www.ncpgambling.org" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.24)', textDecoration: 'underline' }}>ncpgambling.org</a>
+              {' '}or call the National Problem Gambling Helpline: <strong style={{ color: 'rgba(255,255,255,0.22)' }}>1-800-522-4700</strong>
+            </span>
           </div>
         </div>
       </footer>

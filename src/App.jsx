@@ -3,10 +3,10 @@ import { useSwipeable } from 'react-swipeable'
 import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
-  fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet, deleteAllBets,
+  fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet, deleteAllBets, deleteLadderBets,
   fetchSettings, upsertSettings,
   fetchTemplates, upsertTemplate, deleteTemplate as dbDeleteTemplate,
-  rowToBet,
+  rowToBet, betToRow,
 } from './lib/supabase'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -117,7 +117,8 @@ function calcStats(bets, bankroll) {
     (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * unitSize
 
   const regularNetDollars = regular.reduce((s, b) => s + regularDollar(b), 0)
-  const currentBankroll   = bankroll + regularNetDollars + ladderNetDollars
+  const openStakeTotal    = bets.filter(b => b.result === 'Open').reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
+  const currentBankroll   = bankroll + regularNetDollars + ladderNetDollars - openStakeTotal
 
   // Combined stats (all bets — regular + ladder together)
   const allWins   = settled.filter(b => b.result === 'W')
@@ -163,7 +164,11 @@ function buildCurve(bets, bankroll) {
   const pts = [{ label: 'Start', value: bankroll }]
   // Only settled bets move the bankroll
   bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P').forEach((b, i) => {
-    running += b.pnl * unitSize
+    // Ladder bets store pnl in dollars already — regular bets store pnl in units
+    const pnlDollar = b.ladder
+      ? b.pnl
+      : (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * unitSize
+    running += pnlDollar
     pts.push({ label: `#${i + 1}`, value: +running.toFixed(2) })
   })
   return pts
@@ -206,9 +211,12 @@ function calcRisk(bets, masterBankroll, startingBankroll, riskSettings) {
   // Unit size always derives from CURRENT (master) bankroll so it scales with your growth
   const unitSize = masterBankroll * ((unitPct || 1) / 100)
 
-  // Open bets = your true live exposure right now
+  // Open bets = your true live exposure right now (regular + ladder)
   const openBets       = bets.filter(b => b.result === 'Open' && !b.ladder)
-  const totalOpenRisk  = openBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
+  const ladderOpenBets = bets.filter(b => b.result === 'Open' && b.ladder)
+  const openOnlyRisk   = openBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
+  const ladderOpenRisk = ladderOpenBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : 0), 0)
+  const totalOpenRisk  = openOnlyRisk + ladderOpenRisk
   const openCount      = openBets.length
 
   // All limits calculated from master bankroll (current value, not starting)
@@ -280,12 +288,12 @@ const StatCard = ({ label, value, color, icon: Icon, sub }) => {
   )
 }
 
-const SmallCard = ({ label, value, color }) => {
+const SmallCard = ({ label, value, color, tip }) => {
   const c = color || 'var(--text-sub)'
   const glow = color === NEON ? '0 0 12px rgba(189,255,0,0.22)' : color === RED ? '0 0 10px rgba(255,59,59,0.18)' : 'none'
   return (
     <div style={{ ...cardStyle, padding: '12px 14px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', lineHeight: 1 }}>{label}</span>
+      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', lineHeight: 1, display: 'flex', alignItems: 'center' }}>{label}{tip && <InfoTip text={tip} />}</span>
       <span style={{ fontFamily: R, fontSize: '19px', fontWeight: 700, letterSpacing: '0.01em', color: c, lineHeight: 1, textShadow: glow }}>{value}</span>
     </div>
   )
@@ -748,7 +756,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
           onTouchStart={e => e.currentTarget.style.color = NEON}
           onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
           ><Pencil size={11} /></button>
-          <button onClick={() => onShare?.(bet)} style={{
+          <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)',
             padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderLeft: '1px solid var(--border)',
@@ -824,7 +832,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
             onTouchStart={e => e.currentTarget.style.color = NEON}
             onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
           ><Pencil size={11} /></button>
-          <button onClick={() => onShare?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid var(--border)' }}
+          <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid var(--border)' }}
             onTouchStart={e => e.currentTarget.style.color = NEON}
             onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
           ><Share2 size={11} /></button>
@@ -874,7 +882,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderTop: '1px solid var(--border)' }}>
-          {onShare  && <button onClick={() => onShare(bet)}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={12} /></button>}
+          {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={12} /></button>}
           {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={12} /></button>}
           {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = RED}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.25)'}><Trash2 size={12} /></button>}
         </div>
@@ -897,7 +905,7 @@ function profitFromLadderOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare }) {
+function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onResetSync }) {
   const { isMobile } = useMobile()
   const [startInput, setStartInput] = useState(String(ladderStarting))
   const [editRow,    setEditRow]    = useState(null)
@@ -917,9 +925,10 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   const setRow = (id, k, v) => setBets(p => p.map(b => b.id === id ? { ...b, [k]: v } : b))
 
   const resetLadder = () => {
-    // Reset uses the CURRENT starting bankroll (not hardcoded $150)
-    // so stakes scale proportionally to whatever starting $ the user set
-    const s = ladderStarting
+    // Reset rungs only — bank carries over (Option A)
+    // Use finalBankroll as the new starting bank so winnings aren't erased
+    const s = finalBankroll > 0 ? finalBankroll : ladderStarting
+    setLadderStarting(s)
     const defaults = [
       { id: 101, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[0]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '', confidence: 0 },
       { id: 102, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: +(scaleStake(s, LADDER_RATIOS[1]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake', confidence: 0 },
@@ -928,7 +937,11 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
       { id: 105, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: +(scaleStake(s, LADDER_RATIOS[4]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '', confidence: 0 },
       { id: 106, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: +(scaleStake(s, LADDER_RATIOS[5]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete', confidence: 0 },
     ]
-    setBets(p => [...p.filter(b => !b.ladder), ...defaults])
+    setBets(p => {
+      const next = [...p.filter(b => !b.ladder), ...defaults]
+      onResetSync?.(next, s)
+      return next
+    })
     setEditRow(null)
   }
 
@@ -954,6 +967,15 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
   const finalBankroll = computed.length ? computed[computed.length - 1].bankOut : ladderStarting
 
   const settleRow = (id, result) => {
+    if (result === 'L') {
+      const row = computed.find(r => r.id === id)
+      if (row && row.stake > row.bankIn) {
+        const ok = window.confirm(
+          `This loss ($${row.stake.toFixed(2)}) exceeds your current ladder bank ($${row.bankIn.toFixed(2)}).\n\nThis would put your ladder bank negative. Are you sure?`
+        )
+        if (!ok) return
+      }
+    }
     setBets(p => p.map(b => {
       if (b.id !== id) return b
       const profit = profitFromLadderOdds(b.stake, b.odds)
@@ -1381,7 +1403,7 @@ function RREngine({ unitSize, darkMode, isDemo = false }) {
             {n > 0 && totalCombos > 0 && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Break-even Hit Rate</span>
+                  <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>Break-even Hit Rate<InfoTip text="The minimum win rate needed across all legs for this round robin to be profitable at these odds." /></span>
                   <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>
                     {n > 0 ? `${minHits} / ${n} legs (${(minHits / n * 100).toFixed(0)}%)` : '—'}
                   </span>
@@ -1774,14 +1796,14 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
         <div onClick={() => setShowUnits(v => !v)} style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.netPnlU >= 0 ? NEON : RED}`, cursor: 'pointer' }}>
-          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{showUnits ? 'Net Units' : 'Net P&L'}</div>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>{showUnits ? 'Net Units' : 'Net P&L'}<InfoTip text="Total profit/loss across all settled bets. Tap to toggle between dollars and units." /></div>
           <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.netPnlU >= 0 ? NEON_T : RED, lineHeight: 1 }}>
             {showUnits ? fmtU(stats.netPnlU) : fmt$(stats.netPnl$, true)}
           </div>
           <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} settled · tap to toggle</div>
         </div>
         <div style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${stats.roi >= 0 ? NEON : RED}` }}>
-          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ROI</div>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>ROI<InfoTip text="Return on investment across all settled bets. Total P&L ÷ total dollars risked." /></div>
           <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.roi >= 0 ? NEON_T : RED, lineHeight: 1 }}>{stats.roi >= 0 ? '+' : ''}{(stats.roi * 100).toFixed(1)}%</div>
           <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>profit factor {profitFactor}</div>
         </div>
@@ -1860,14 +1882,14 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
       {!analyticspill && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '4px' }}>
           {[
-            { label: 'Win Streak', value: maxW ? `${maxW}W` : '—', color: NEON_T },
-            { label: 'Loss Streak', value: maxL ? `${maxL}L` : '—', color: RED },
-            { label: 'Profit Factor', value: profitFactor, color: parseFloat(profitFactor) >= 1 ? NEON_T : RED },
-            { label: 'Avg Win',  value: stats.wins   ? (showUnits ? `+${(stats.avgWin$ / stats.unitSize).toFixed(2)}u`   : fmt$(stats.avgWin$))            : '—', color: NEON_T },
-            { label: 'Avg Loss', value: stats.losses ? (showUnits ? `-${(stats.avgLoss$ / stats.unitSize).toFixed(2)}u`  : `-${fmt$(stats.avgLoss$)}`)       : '—', color: RED  },
-            { label: 'Avg Odds', value: fmtOdds(Math.round(stats.avgOdds)), color: 'var(--text)' },
-          ].map(({ label, value, color }) => (
-            <SmallCard key={label} label={label} value={value} color={color} />
+            { label: 'Win Streak', value: maxW ? `${maxW}W` : '—', color: NEON_T, tip: 'Your longest consecutive winning streak. Useful for tracking hot runs and variance.' },
+            { label: 'Loss Streak', value: maxL ? `${maxL}L` : '—', color: RED, tip: 'Your longest consecutive losing streak. High numbers may signal tilt or bad line shopping.' },
+            { label: 'Profit Factor', value: profitFactor, color: parseFloat(profitFactor) >= 1 ? NEON_T : RED, tip: 'Total won ÷ total lost. Above 1.0 = profitable. Below 1.0 = losing money overall.' },
+            { label: 'Avg Win',  value: stats.wins   ? (showUnits ? `+${(stats.avgWin$ / stats.unitSize).toFixed(2)}u`   : fmt$(stats.avgWin$))            : '—', color: NEON_T, tip: 'Average dollar (or unit) amount won per winning bet.' },
+            { label: 'Avg Loss', value: stats.losses ? (showUnits ? `-${(stats.avgLoss$ / stats.unitSize).toFixed(2)}u`  : `-${fmt$(stats.avgLoss$)}`)       : '—', color: RED, tip: 'Average dollar (or unit) amount lost per losing bet.' },
+            { label: 'Avg Odds', value: fmtOdds(Math.round(stats.avgOdds)), color: 'var(--text)', tip: 'Average American odds across all settled bets. Tracks line quality over time.' },
+          ].map(({ label, value, color, tip }) => (
+            <SmallCard key={label} label={label} value={value} color={color} tip={tip} />
           ))}
         </div>
       )}
@@ -2040,12 +2062,12 @@ function SessionRecap({ bets, stats, tilt, masterBankroll, riskSettings, darkMod
     <div style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${gradeColor}` }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Session Grade</div>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Session Grade<InfoTip text="A–F grade based on your process this session: checklist completion, bet sizing discipline, tilt control, and stop/lock adherence. Not based on results." /></div>
           <div style={{ fontFamily: R, fontSize: '40px', fontWeight: 700, lineHeight: 1, color: gradeColor }}>{displayGrade}</div>
           <div style={{ fontFamily: R, fontSize: '9px', color: gradeColor, marginTop: '3px', opacity: 0.8 }}>{gradeOverride ? {A:'Elite',B:'Strong',C:'Average',D:'Needs Work',F:'Restart'}[gradeOverride] : gradeLabel}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Discipline</div>
+          <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Discipline<InfoTip text="Discipline Score™ (0–100): measures how well you followed your process — checklist, bet sizing, tilt control, stop loss, and profit lock. High score = you operated correctly, regardless of results." /></div>
           <div style={{ fontFamily: R, fontSize: '32px', fontWeight: 700, color: scoreColor, lineHeight: 1 }}>{score}</div>
           <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>/100</div>
         </div>
@@ -2357,29 +2379,74 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             refresh_token: session.refresh_token,
           })
         }
+        console.log('[RML] load — userId:', userId, '| token present:', !!token, '| token prefix:', token?.slice(0,20))
         // Load bets from cloud
         const { data: betRows, error: betErr } = await fetchBets(userId, token)
+        const localSave = loadSession(userId)
+        const localBets = localSave?.bets || []
+
         if (betErr) {
           console.error('[RML] fetchBets error:', betErr)
+          // Cloud failed — use localStorage so data isn't lost
+          if (localBets.length > 0) {
+            setBets(localBets)
+            console.log('[RML] loaded bets from localStorage fallback:', localBets.length)
+          }
         } else if (betRows?.length > 0) {
-          setBets(betRows.map(rowToBet))
+          const cloudBets = betRows.map(rowToBet)
+          // Merge: add any localStorage bets not present in cloud (by id)
+          const cloudIds = new Set(cloudBets.map(b => String(b.id)))
+          const orphans  = localBets.filter(b => !cloudIds.has(String(b.id)))
+          const merged   = [...cloudBets, ...orphans]
+          if (orphans.length > 0) {
+            console.log('[RML] merged', orphans.length, 'local-only bets into cloud data — will up-sync')
+          }
+          setBets(merged)
         } else {
-          // DB empty — welcome new users, then push local bets up on first sync
-          const welcomed = localStorage.getItem('rml_welcomed_v1')
-          if (!welcomed) setShowWelcome(true)
+          // Cloud empty — check localStorage before showing welcome
+          if (localBets.length > 0) {
+            // User had data locally (e.g. session expired mid-session) — restore it
+            setBets(localBets)
+            console.log('[RML] restored bets from localStorage (cloud was empty):', localBets.length)
+          } else {
+            // Truly new user — show welcome
+            const welcomed = localStorage.getItem(`rml_welcomed_v1_${userId}`)
+            if (!welcomed) setShowWelcome(true)
+          }
         }
 
         // Load settings from cloud
         const { data: settings, error: settErr } = await fetchSettings(userId, token)
         if (settErr && settErr.code !== 'PGRST116') {
           console.error('[RML] fetchSettings error:', settErr)
+          // Cloud failed — fall back to localStorage settings
+          const localSave = loadSession(userId)
+          if (localSave) {
+            if (localSave.ladderStarting) setLadderStarting(localSave.ladderStarting)
+            if (localSave.bankroll)       setBankroll(localSave.bankroll)
+            if (localSave.masterBrOverride != null) setMasterBrOverride(localSave.masterBrOverride)
+            if (localSave.username)       setUsername(localSave.username)
+            if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
+            if (localSave.darkMode !== undefined) setDarkMode(localSave.darkMode)
+          }
         } else if (settings) {
           if (settings.ladder_starting)    setLadderStarting(settings.ladder_starting)
           if (settings.bankroll)           setBankroll(settings.bankroll)
-          if (settings.master_br_override != null) setMasterBrOverride(settings.master_br_override)
+          setMasterBrOverride(settings.master_br_override ?? null)
           if (settings.username)           setUsername(settings.username)
           if (settings.risk_settings)      setRiskSettings(settings.risk_settings)
           if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
+        } else {
+          // No cloud settings — try localStorage
+          const localSave = loadSession(userId)
+          if (localSave) {
+            if (localSave.ladderStarting) setLadderStarting(localSave.ladderStarting)
+            if (localSave.bankroll)       setBankroll(localSave.bankroll)
+            if (localSave.masterBrOverride != null) setMasterBrOverride(localSave.masterBrOverride)
+            if (localSave.username)       setUsername(localSave.username)
+            if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
+            if (localSave.darkMode !== undefined) setDarkMode(localSave.darkMode)
+          }
         }
 
         // Load templates from cloud
@@ -2416,7 +2483,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     return () => clearTimeout(t)
   }, [bets, userId, cloudSynced, token])
 
-  // ── Realtime subscription — sync from other devices ──
+  // ── Realtime subscription — sync bets from other devices ──
   useEffect(() => {
     if (!userId || !cloudSynced || !token) return
     supabase.auth.setSession({ access_token: token, refresh_token: session?.refresh_token || '' })
@@ -2428,16 +2495,48 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         table: 'bets',
         filter: `user_id=eq.${userId}`,
       }, () => {
-        if (Date.now() < realtimeIgnoreUntil.current) return // own save, skip
+        // Skip if this is our own write (within 1s of our last sync)
+        if (Date.now() < realtimeIgnoreUntil.current) return
         fetchBets(userId, token).then(({ data, error }) => {
-          if (!error && data?.length > 0) {
-            realtimeIgnoreUntil.current = Date.now() + 5000
-            setBets(data.map(rowToBet))
-          }
+          if (error) return
+          const incoming = (data || []).map(rowToBet)
+          // Only update if the data actually changed (avoids stomping local state with identical data)
+          setBets(current => {
+            const curIds  = current.map(b => `${b.id}:${b.result}:${b.pnl}`).sort().join(',')
+            const newIds  = incoming.map(b => `${b.id}:${b.result}:${b.pnl}`).sort().join(',')
+            if (curIds === newIds) return current // identical — no update needed
+            return incoming
+          })
         })
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
+  }, [userId, cloudSynced, token])
+
+  // ── Realtime subscription — sync settings from other devices ──
+  useEffect(() => {
+    if (!userId || !cloudSynced || !token) return
+    const settCh = supabase
+      .channel(`settings:${userId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_settings',
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        if (Date.now() < realtimeIgnoreUntil.current) return // own save, skip
+        fetchSettings(userId, token).then(({ data, error }) => {
+          if (error || !data) return
+          if (data.bankroll)           setBankroll(data.bankroll)
+          if (data.ladder_starting)    setLadderStarting(data.ladder_starting)
+          setMasterBrOverride(data.master_br_override ?? null)
+          if (data.username)           setUsername(data.username)
+          if (data.risk_settings)      setRiskSettings(data.risk_settings)
+          if (data.dark_mode !== undefined) setDarkMode(data.dark_mode)
+        })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(settCh) }
   }, [userId, cloudSynced, token])
 
   // ── Auto-sync settings to Supabase (debounced 2s) ──
@@ -2456,6 +2555,44 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }, 2000)
     return () => clearTimeout(t)
   }, [bankroll, ladderStarting, username, riskSettings, darkMode, userId, cloudSynced, token])
+
+  // ── Force localStorage save + Supabase sync before tab close ──
+  // This catches bets added within the 2s debounce window before the user closes the tab.
+  const betsRef           = useRef(bets)
+  const userIdRef         = useRef(userId)
+  const tokenRef          = useRef(token)
+  const cloudSyncedRef    = useRef(cloudSynced)
+  useEffect(() => { betsRef.current        = bets       }, [bets])
+  useEffect(() => { userIdRef.current      = userId     }, [userId])
+  useEffect(() => { tokenRef.current       = token      }, [token])
+  useEffect(() => { cloudSyncedRef.current = cloudSynced }, [cloudSynced])
+
+  useEffect(() => {
+    if (!userId || isDemo) return
+    const handleUnload = () => {
+      const uid  = userIdRef.current
+      const tok  = tokenRef.current
+      const b    = betsRef.current
+      const cs   = cloudSyncedRef.current
+      if (!uid || !cs || !b?.length) return
+      // keepalive:true survives tab close on mobile Safari
+      try {
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/bets`, {
+          method:    'POST',
+          keepalive: true,
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${tok}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Prefer':        'resolution=merge-duplicates',
+          },
+          body: JSON.stringify(b.map(bet => betToRow(bet, uid))),
+        })
+      } catch (_) {}
+    }
+    window.addEventListener('pagehide', handleUnload)
+    return () => window.removeEventListener('pagehide', handleUnload)
+  }, [userId, isDemo])
 
   // ── Close user menu on outside click ──
   useEffect(() => {
@@ -2487,8 +2624,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }, [bets, bankroll, masterBrOverride, username, ladderStarting, riskSettings, darkMode])
 
   // ── Reset session ──
-  const resetSession = useCallback(() => {
+  const resetSession = useCallback(async () => {
     if (!window.confirm('Reset everything to zero? All bets and data will be cleared. This cannot be undone.')) return
+    if (userId) await deleteAllBets(userId, token)
     localStorage.removeItem(LS_KEY)
     setBets([])
     setBankroll(0)
@@ -2497,8 +2635,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     setUsername('OPERATOR')
     setLadderStarting(LADDER_STARTING_BR)
     setRiskSettings({ maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20, unitPct: 2 })
-    if (userId) deleteAllBets(userId, token)
-  }, [userId])
+  }, [userId, token])
 
   // ── Save template ──
   const saveTemplate = useCallback(() => {
@@ -2650,22 +2787,33 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }
 
   const settleBet = (id, result) => {
-    setBets(prev => prev.map(b => {
-      if (b.id !== id) return b
-      let pnl
-      if (b.ladder) {
-        // Ladder bets: pnl stored in DOLLARS (stake-based)
-        const profit = b.odds > 0 ? b.stake * (b.odds / 100) : b.stake * (100 / Math.abs(b.odds))
-        pnl = result === 'W' ? +profit.toFixed(2) : result === 'L' ? -b.stake : 0
-      } else {
-        // Regular bets: pnl stored in UNITS
-        pnl = result === 'W'
-          ? (b.odds > 0 ? b.units * b.odds / 100 : b.units * 100 / Math.abs(b.odds))
-          : result === 'L' ? -b.units : 0
-        pnl = +pnl.toFixed(2)
+    setBets(prev => {
+      const next = prev.map(b => {
+        if (b.id !== id) return b
+        let pnl
+        if (b.ladder) {
+          const profit = b.odds > 0 ? b.stake * (b.odds / 100) : b.stake * (100 / Math.abs(b.odds))
+          pnl = result === 'W' ? +profit.toFixed(2) : result === 'L' ? -b.stake : 0
+        } else {
+          pnl = result === 'W'
+            ? (b.odds > 0 ? b.units * b.odds / 100 : b.units * 100 / Math.abs(b.odds))
+            : result === 'L' ? -b.units : 0
+          pnl = +pnl.toFixed(2)
+        }
+        return { ...b, result, pnl }
+      })
+      // Immediate upsert — don't wait for debounce
+      if (userId && cloudSyncedRef.current) {
+        const settled = next.find(b => b.id === id)
+        if (settled) {
+          realtimeIgnoreUntil.current = Date.now() + 5000
+          upsertBet(settled, userId, tokenRef.current).then(({ error }) => {
+            if (error) console.error('[RML] settleBet upsert error:', error)
+          }).catch(e => console.error('[RML] settleBet upsert threw:', e))
+        }
       }
-      return { ...b, result, pnl }
-    }))
+      return next
+    })
   }
 
 
@@ -2698,7 +2846,15 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   return (
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '960px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
-      {showAdd && <AddBetModal onAdd={b => setBets(p => [...p, b])} onClose={() => setShowAdd(false)} unitSize={stats.unitSize} />}
+      {showAdd && <AddBetModal onAdd={b => {
+        setBets(p => [...p, b])
+        if (userId && cloudSyncedRef.current) {
+          realtimeIgnoreUntil.current = Date.now() + 5000
+          upsertBet(b, userId, tokenRef.current).then(({ error }) => {
+            if (error) console.error('[RML] addBet upsert error:', error)
+          }).catch(e => console.error('[RML] addBet upsert threw:', e))
+        }
+      }} onClose={() => setShowAdd(false)} unitSize={stats.unitSize} />}
 
       {/* SHARE SESSION CARD MODAL */}
       {showShare && (
@@ -2719,6 +2875,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           bet={shareCardBet}
           username={username}
           unitSize={stats.unitSize}
+          bankIn={shareCardBet?._bankIn}
           onClose={() => setShareCardBet(null)}
         />
       )}
@@ -2728,6 +2885,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           onAdd={updated => {
             setBets(p => p.map(b => b.id === updated.id ? updated : b))
             setEditingBet(null)
+            if (userId && cloudSyncedRef.current) {
+              realtimeIgnoreUntil.current = Date.now() + 5000
+              upsertBet(updated, userId, tokenRef.current).then(({ error }) => {
+                if (error) console.error('[RML] editBet upsert error:', error)
+              }).catch(e => console.error('[RML] editBet upsert threw:', e))
+            }
           }}
           onClose={() => setEditingBet(null)}
           unitSize={stats.unitSize}
@@ -2737,8 +2900,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       {/* ONBOARDING FLOW */}
       {showWelcome && (() => {
         const finishOnboarding = (useSampleData) => {
-          if (!useSampleData) setBets([])
-          localStorage.setItem('rml_welcomed_v1', '1')
+          if (useSampleData) {
+            setBets(INITIAL_BETS)
+            setBankroll(1000)
+            setMasterBrOverride(null)
+          } else {
+            setBets([])
+          }
+          localStorage.setItem(`rml_welcomed_v1_${userId}`, '1')
           setShowWelcome(false)
           setOnboardStep(1)
         }
@@ -2756,7 +2925,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               </div>
             ),
             primary: { label: 'Set Bankroll →', action: () => { const v = parseFloat(welcomeBr); if (!isNaN(v) && v > 0) { setBankroll(v); setOnboardStep(2) } } },
-            secondary: { label: 'Explore with sample data', action: () => setOnboardStep(2) },
+            secondary: { label: 'Explore with sample data', action: () => { setBankroll(1000); setWelcomeBr('1000'); setOnboardStep(2) } },
           },
           {
             pill: '02 / 03',
@@ -2775,7 +2944,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     <span style={{ fontSize: '16px', flexShrink: 0 }}>{icon}</span>
                     <div>
                       <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T, marginBottom: '2px' }}>{tab}</div>
-                      <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-sub)', lineHeight: 1.5 }}>{desc}</div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'var(--text-sub)', lineHeight: 1.5 }}>{desc}</div>
                     </div>
                   </div>
                 ))}
@@ -2797,11 +2966,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   '✓  Grade every session honestly',
                   '✓  Never chase. Never skip the process.',
                 ].map(item => (
-                  <div key={item} style={{ fontFamily: I, fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.6 }}>{item}</div>
+                  <div key={item} style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.6 }}>{item}</div>
                 ))}
               </div>
             ),
-            primary: { label: "Let's Operate →", action: () => finishOnboarding(false) },
+            primary: { label: bankroll > 0 ? "Let's Operate →" : "Set Bankroll First", action: () => { if (bankroll > 0) finishOnboarding(false); else setOnboardStep(1) } },
             secondary: { label: 'Explore sample data', action: () => finishOnboarding(true) },
           },
         ]
@@ -2826,7 +2995,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               </div>
 
               <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text)', marginBottom: '8px' }}>{step.title}</div>
-              {step.desc && <p style={{ fontFamily: I, fontSize: '13px', color: 'var(--text-sub)', lineHeight: 1.65, marginBottom: '20px' }}>{step.desc}</p>}
+              {step.desc && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--text-sub)', lineHeight: 1.65, marginBottom: '20px' }}>{step.desc}</p>}
               {!step.desc && <div style={{ marginBottom: '16px' }} />}
 
               {step.content}
@@ -2846,7 +3015,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
               {onboardStep > 1 && (
                 <button onClick={() => setOnboardStep(s => s - 1)}
-                  style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontSize: '11px', color: 'var(--muted)' }}>
+                  style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'var(--muted)' }}>
                   ← Back
                 </button>
               )}
@@ -2903,7 +3072,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   <button
                     onClick={async () => {
                       try {
-                        const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerId: subStatus.sub.stripe_customer_id, returnUrl: window.location.href }) })
+                        const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ returnUrl: window.location.href }) })
                         const { url } = await res.json()
                         if (url) window.location.href = url
                       } catch {}
@@ -3015,7 +3184,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         const reg = await navigator.serviceWorker.ready
                         const sub = await reg.pushManager.getSubscription()
                         if (sub) await sub.unsubscribe()
-                        await fetch('/api/push-subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user?.id }) })
+                        await fetch('/api/push-subscribe', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } })
                         setPushEnabled(false)
                       } else {
                         // Subscribe
@@ -3026,7 +3195,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           userVisibleOnly: true,
                           applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
                         })
-                        await fetch('/api/push-subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user?.id, subscription: sub.toJSON() }) })
+                        await fetch('/api/push-subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ subscription: sub.toJSON() }) })
                         setPushEnabled(true)
                       }
                     } catch {}
@@ -3113,7 +3282,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               onClick={async () => {
                                 setUserMenuOpen(false)
                                 try {
-                                  const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerId: subStatus.sub.stripe_customer_id, returnUrl: window.location.href }) })
+                                  const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ returnUrl: window.location.href }) })
                                   const { url } = await res.json()
                                   if (url) window.location.href = url
                                 } catch {}
@@ -3228,7 +3397,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                             onClick={async () => {
                               setUserMenuOpen(false)
                               try {
-                                const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerId: subStatus.sub.stripe_customer_id, returnUrl: window.location.href }) })
+                                const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ returnUrl: window.location.href }) })
                                 const { url } = await res.json()
                                 if (url) window.location.href = url
                               } catch {}
@@ -3316,7 +3485,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               {/* ── Master Bankroll — single editable top card ── */}
               <div style={{ ...cardStyle, padding: '12px 14px', marginBottom: '6px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Master Bankroll</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>Master Bankroll<InfoTip text="Your current bankroll = starting bankroll + all settled P&L. Click the number to manually override it." /></div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {masterBrOverride !== null && <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }} style={{ fontFamily: R, fontSize: '7px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.35)`, borderRadius: '2px', cursor: 'pointer', padding: '0 4px' }}>↺ AUTO</button>}
                     <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>1u = <strong style={{ color: 'var(--text)' }}>{fmt$(stats.unitSize)}</strong></span>
@@ -3452,7 +3621,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="label" tick={false} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
-                      <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)', fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(1)}k`} width={42} />
+                      <YAxis tick={{ fontFamily: R, fontSize: 9, fill: 'var(--muted)', fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${Math.round(v)}`} width={42} />
                       <Tooltip content={<BankrollTip />} />
                       <ReferenceLine y={bankroll} stroke="var(--border2)" strokeDasharray="4 4" />
                       <Area type="monotone" dataKey="value" stroke={NEON} strokeWidth={2} fill="url(#gradm)" dot={false} activeDot={{ r: 4, fill: NEON, strokeWidth: 0 }} />
@@ -3501,7 +3670,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                       <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: risk.health === 'GOOD' ? NEON_T : risk.health === 'CAUTION' ? YELLOW : RED }}>
                         {risk.health === 'GOOD' ? 'BANKROLL HEALTHY' : risk.health === 'CAUTION' ? 'USE CAUTION' : 'DANGER ZONE'}
                       </div>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>Tilt: <span style={{ color: tilt.level === 'GREEN' ? NEON_T : tilt.level === 'YELLOW' ? YELLOW : RED, fontWeight: 700 }}>{tilt.level === 'GREEN' ? 'IN CONTROL' : tilt.level === 'YELLOW' ? 'WATCH YOURSELF' : 'STOP BETTING'}</span></div>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px', display: 'flex', alignItems: 'center' }}>Tilt<InfoTip text="Tilt is detected after 3+ straight losses or abnormal bet sizing. Red = stop immediately." />: <span style={{ color: tilt.level === 'GREEN' ? NEON_T : tilt.level === 'YELLOW' ? YELLOW : RED, fontWeight: 700, marginLeft: '4px' }}>{tilt.level === 'GREEN' ? 'IN CONTROL' : tilt.level === 'YELLOW' ? 'WATCH YOURSELF' : 'STOP BETTING'}</span></div>
                     </div>
                     <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: risk.health === 'GOOD' ? NEON_T : risk.health === 'CAUTION' ? YELLOW : RED }}>{risk.currentRiskPct.toFixed(1)}%</div>
                   </div>
@@ -3542,12 +3711,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   {/* Stop Loss + Profit Lock — derived from masterBankroll */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     <div style={{ padding: '10px 12px', border: `1px solid rgba(255,59,59,0.3)`, background: 'rgba(255,59,59,0.05)', borderRadius: 'var(--radius-sm)' }}>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Stop Loss</div>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px', display: 'flex', alignItems: 'center' }}>Stop Loss<InfoTip text="If your bankroll drops by this amount today, stop betting. Protects against tilt and bad runs." /></div>
                       <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: RED }}>-{fmt$(risk.stopLoss$)}</div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>{riskSettings.stopLossPct ?? 10}% · walk away</div>
                     </div>
                     <div style={{ padding: '10px 12px', border: `1px solid rgba(189,255,0,0.28)`, background: 'rgba(189,255,0,0.05)', borderRadius: 'var(--radius-sm)' }}>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: NEON_T, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>Profit Lock</div>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: NEON_T, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px', display: 'flex', alignItems: 'center' }}>Profit Lock<InfoTip text="Once you're up this amount, protect your gains. Consider stopping or reducing bet size." /></div>
                       <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>+{fmt$(risk.profitLock$)}</div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>{riskSettings.profitLockPct ?? 20}% · protect gains</div>
                     </div>
@@ -3580,15 +3749,15 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {[
-                      { label: 'Unit Size',   key: 'unitPct',          desc: 'per unit' },
-                      { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet' },
-                      { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap' },
-                      { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away' },
-                      { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in' },
-                    ].map(({ label, key, desc }) => (
+                      { label: 'Unit Size',   key: 'unitPct',          desc: 'per unit',  tip: 'Your standard bet size as a % of bankroll. 2% is conservative. 1u = this % × bankroll.' },
+                      { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet',   tip: 'Max you can risk on a single bet. Prevents oversizing on any one play.' },
+                      { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap', tip: 'Total risk cap for the day. Once hit, no more bets — regardless of confidence.' },
+                      { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away', tip: 'If your bankroll drops by this % today, stop betting. Hard rule — no exceptions.' },
+                      { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in',   tip: 'Once up by this % on the day, protect your gains. Reduce size or stop.' },
+                    ].map(({ label, key, desc, tip }) => (
                       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text-sub)' }}>{label}</div>
+                          <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text-sub)', display: 'flex', alignItems: 'center' }}>{label}<InfoTip text={tip} /></div>
                           <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>{desc} · {fmt$(masterBankroll * (riskSettings[key]/100))}</div>
                         </div>
                         <input type="number" min="0" max="100" step="0.5" value={riskSettings[key]} onChange={setRS(key)}
@@ -3611,12 +3780,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                 <div style={{ ...cardStyle, padding: '10px 12px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Risk</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Total Risk<InfoTip text="Total dollars at risk across all open (pending) bets right now." /></div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
                 </div>
                 <div onClick={() => setAnalyticsShowUnits(v => !v)} style={{ ...cardStyle, padding: '10px 12px', borderTop: `2px solid ${up(stats.netPnl$) ? NEON : RED}`, cursor: 'pointer' }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{analyticsShowUnits ? 'Net Units' : 'Total P / L'}</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>{analyticsShowUnits ? 'Net Units' : 'Total P / L'}<InfoTip text="Total profit/loss across all settled bets. Tap to toggle between dollars and units." /></div>
                   <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(stats.netPnl$) ? NEON_T : RED, lineHeight: 1 }}>
                     {analyticsShowUnits ? fmtU(stats.netPnlU) : fmt$(stats.netPnl$, true)}
                   </div>
@@ -3632,7 +3801,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
                 </div>
                 <div style={{ ...cardStyle, padding: '10px 12px' }}>
-                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>W / L</div>
+                  <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>W / L<InfoTip text="Your win-loss record across all settled bets. Wins — Losses." /></div>
                   <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{stats.wins} — {stats.losses}</div>
                   <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
                 </div>
@@ -3646,14 +3815,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
               {/* ── 8 small stat chips ── */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '4px', marginBottom: '10px', marginTop: '2px' }}>
-                <SmallCard label="Won"  value={analyticsShowUnits ? `+${(stats.allWon$ / stats.unitSize).toFixed(1)}u`  : fmt$(stats.allWon$)}        color={NEON_T} />
-                <SmallCard label="Lost" value={analyticsShowUnits ? `-${(stats.allLost$ / stats.unitSize).toFixed(1)}u` : `-${fmt$(stats.allLost$)}`}  color={RED} />
-                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} />
-                <SmallCard label="Settled"    value={String(stats.total)} />
-                <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin)  : '—'} color={NEON_T} />
-                <SmallCard label="Worst Loss" value={stats.losses ? fmt$(stats.largestLoss) : '—'} color={RED} />
-                <SmallCard label="Risked"     value={`${stats.totalRiskedU.toFixed(1)}u`} />
-                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} />
+                <SmallCard label="Won"  value={analyticsShowUnits ? `+${(stats.allWon$ / stats.unitSize).toFixed(1)}u`  : fmt$(stats.allWon$)}        color={NEON_T} tip="Total dollars (or units) won across all settled winning bets." />
+                <SmallCard label="Lost" value={analyticsShowUnits ? `-${(stats.allLost$ / stats.unitSize).toFixed(1)}u` : `-${fmt$(stats.allLost$)}`}  color={RED} tip="Total dollars (or units) lost across all settled losing bets." />
+                <SmallCard label="Avg Odds"   value={fmtOdds(Math.round(stats.avgOdds))} tip="Average American odds across all settled bets. Tracks line quality over time." />
+                <SmallCard label="Settled"    value={String(stats.total)} tip="Total number of bets graded (won or lost). Excludes pending bets." />
+                <SmallCard label="Best Win"   value={stats.wins   ? fmt$(stats.largestWin)  : '—'} color={NEON_T} tip="Your single largest winning bet in dollars." />
+                <SmallCard label="Worst Loss" value={stats.losses ? fmt$(stats.largestLoss) : '—'} color={RED} tip="Your single largest losing bet in dollars." />
+                <SmallCard label="Risked"     value={`${stats.totalRiskedU.toFixed(1)}u`} tip="Total units risked across all settled bets. 1 unit = your standard bet size." />
+                <SmallCard label="Unit $"     value={fmt$(stats.unitSize)} tip="Your current unit size in dollars. Calculated as unit % × current bankroll." />
               </div>
 
             </>
@@ -3663,7 +3832,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           {/* ── Master Bankroll card — same as mobile ── */}
           <div style={{ ...cardStyle, padding: '14px 18px', marginBottom: '8px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Master Bankroll</div>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>Master Bankroll<InfoTip text="Your current bankroll = starting bankroll + all settled P&L. Click the number to manually override it." /></div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 {masterBrOverride !== null && <button onClick={() => { setMasterBrOverride(null); setMasterBrInput('') }} style={{ fontFamily: R, fontSize: '8px', color: YELLOW, background: 'none', border: `1px solid rgba(245,166,35,0.35)`, borderRadius: '2px', cursor: 'pointer', padding: '1px 6px' }}>↺ AUTO</button>}
                 <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)' }}>1u = <strong style={{ color: 'var(--text)' }}>{fmt$(stats.unitSize)}</strong></span>
@@ -3847,7 +4016,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     {risk.health === 'GOOD' ? <ShieldCheck size={18} color={NEON_T} strokeWidth={2} /> : risk.health === 'CAUTION' ? <AlertTriangle size={18} color={YELLOW} strokeWidth={2} /> : <ShieldAlert size={18} color={RED} strokeWidth={2} />}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: risk.health === 'GOOD' ? NEON_T : risk.health === 'CAUTION' ? YELLOW : RED }}>{risk.health === 'GOOD' ? 'BANKROLL HEALTHY' : risk.health === 'CAUTION' ? 'USE CAUTION' : 'DANGER ZONE'}</div>
-                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>Tilt: <span style={{ color: tilt.level === 'GREEN' ? NEON_T : tilt.level === 'YELLOW' ? YELLOW : RED, fontWeight: 700 }}>{tilt.level === 'GREEN' ? 'IN CONTROL' : tilt.level === 'YELLOW' ? 'WATCH YOURSELF' : 'STOP BETTING'}</span></div>
+                      <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px', display: 'flex', alignItems: 'center' }}>Tilt<InfoTip text="Tilt is detected after 3+ straight losses or abnormal bet sizing. Red = stop immediately." />: <span style={{ color: tilt.level === 'GREEN' ? NEON_T : tilt.level === 'YELLOW' ? YELLOW : RED, fontWeight: 700, marginLeft: '4px' }}>{tilt.level === 'GREEN' ? 'IN CONTROL' : tilt.level === 'YELLOW' ? 'WATCH YOURSELF' : 'STOP BETTING'}</span></div>
                     </div>
                     <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: risk.health === 'GOOD' ? NEON_T : risk.health === 'CAUTION' ? YELLOW : RED }}>{risk.currentRiskPct.toFixed(1)}%</div>
                   </div>
@@ -3868,12 +4037,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 </div>
                 <div>
                   <div style={{ padding: '10px 12px', background: 'rgba(255,59,59,0.05)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '2px', marginBottom: '8px' }}>
-                    <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px' }}>Stop Loss</div>
+                    <div style={{ fontFamily: R, fontSize: '9px', color: RED, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Stop Loss<InfoTip text="If your bankroll drops by this amount today, stop betting. Protects against tilt and bad runs." /></div>
                     <div style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: RED }}>-{fmt$(risk.stopLoss$)}</div>
                     <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>walk away trigger</div>
                   </div>
                   <div style={{ padding: '10px 12px', background: 'rgba(189,255,0,0.05)', border: '1px solid rgba(189,255,0,0.28)', borderRadius: '2px' }}>
-                    <div style={{ fontFamily: R, fontSize: '9px', color: NEON_T, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px' }}>Profit Lock</div>
+                    <div style={{ fontFamily: R, fontSize: '9px', color: NEON_T, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Profit Lock<InfoTip text="Once you're up this amount, protect your gains. Consider stopping or reducing bet size." /></div>
                     <div style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: NEON_T }}>+{fmt$(risk.profitLock$)}</div>
                     <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>protect your gains</div>
                   </div>
@@ -3888,13 +4057,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 <SectionLabel icon={Wallet}>Bankroll Limits</SectionLabel>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '10px' }}>
                   {[
-                    { label: 'Stop Loss',   value: fmt$(risk.stopLoss$),    sub: `${riskSettings.stopLossPct}% — walk away`, color: RED },
-                    { label: 'Profit Lock', value: fmt$(risk.profitLock$),  sub: `${riskSettings.profitLockPct}% — lock in`,  color: NEON_T },
-                    { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% per bet`, color: 'var(--text)' },
-                    { label: 'Daily Max',   value: fmt$(risk.maxRiskCap$),  sub: `${riskSettings.maxRiskTodayPct}% daily cap`, color: 'var(--text)' },
-                  ].map(({ label, value, sub, color }) => (
+                    { label: 'Stop Loss',   value: fmt$(risk.stopLoss$),    sub: `${riskSettings.stopLossPct}% — walk away`, color: RED,          tip: 'If your bankroll drops by this amount today, stop betting. Hard rule — no exceptions.' },
+                    { label: 'Profit Lock', value: fmt$(risk.profitLock$),  sub: `${riskSettings.profitLockPct}% — lock in`,  color: NEON_T,       tip: 'Once you\'re up this amount, protect your gains. Reduce size or stop.' },
+                    { label: 'Max Per Bet', value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% per bet`, color: 'var(--text)', tip: 'Max you can risk on a single bet. Prevents oversizing on any one play.' },
+                    { label: 'Daily Max',   value: fmt$(risk.maxRiskCap$),  sub: `${riskSettings.maxRiskTodayPct}% daily cap`, color: 'var(--text)', tip: 'Total risk cap for the day. Once hit, no more bets — regardless of confidence.' },
+                  ].map(({ label, value, sub, color, tip }) => (
                     <div key={label} style={{ padding: '10px 12px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
-                      <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
+                      <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>{label}{tip && <InfoTip text={tip} />}</div>
                       <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color }}>{value}</div>
                       <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', marginTop: '2px' }}>{sub}</div>
                     </div>
@@ -3928,15 +4097,15 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 {[
-                  { label: 'Unit Size',   key: 'unitPct',          desc: 'per 1 unit' },
-                  { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet' },
-                  { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap' },
-                  { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away' },
-                  { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in' },
-                ].map(({ label, key, desc }) => (
+                  { label: 'Unit Size',   key: 'unitPct',          desc: 'per 1 unit', tip: 'Your standard bet size as a % of bankroll. 2% is conservative. 1u = this % × bankroll.' },
+                  { label: 'Max Bet',     key: 'maxRiskPerBetPct', desc: 'per bet',    tip: 'Max you can risk on a single bet. Prevents oversizing on any one play.' },
+                  { label: 'Daily Max',   key: 'maxRiskTodayPct',  desc: 'daily cap',  tip: 'Total risk cap for the day. Once hit, no more bets — regardless of confidence.' },
+                  { label: 'Stop Loss',   key: 'stopLossPct',      desc: 'walk away',  tip: 'If your bankroll drops by this % today, stop betting. Hard rule — no exceptions.' },
+                  { label: 'Profit Lock', key: 'profitLockPct',    desc: 'lock in',    tip: 'Once up by this % on the day, protect your gains. Reduce size or stop.' },
+                ].map(({ label, key, desc, tip }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text-sub)' }}>{label}</div>
+                      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text-sub)', display: 'flex', alignItems: 'center' }}>{label}<InfoTip text={tip} /></div>
                       <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '1px' }}>{desc} · {fmt$(masterBankroll * (riskSettings[key]/100))}</div>
                     </div>
                     <input type="number" min="0" max="100" step="0.5" value={riskSettings[key]} onChange={setRS(key)}
@@ -3954,12 +4123,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '6px' }}>
             <div style={{ ...cardStyle, padding: '12px 14px', borderTop: stats.openBets > 0 ? `2px solid ${YELLOW}` : undefined }}>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Total Risk</div>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>Total Risk<InfoTip text="Total dollars at risk across all open (pending) bets right now." /></div>
               <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: stats.openBets > 0 ? YELLOW : 'var(--text)', lineHeight: 1 }}>{fmt$(stats.openRisk$)}</div>
               <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>{stats.openBets > 0 ? `${stats.openBets} pending` : 'none open'}</div>
             </div>
             <div onClick={() => setAnalyticsShowUnits(v => !v)} style={{ ...cardStyle, padding: '12px 14px', borderTop: `2px solid ${up(stats.netPnl$) ? NEON : RED}`, cursor: 'pointer' }}>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{analyticsShowUnits ? 'Net Units' : 'Total P / L'}</div>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>{analyticsShowUnits ? 'Net Units' : 'Total P / L'}<InfoTip text="Total profit/loss across all settled bets. Tap to toggle between dollars and units." /></div>
               <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: up(stats.netPnl$) ? NEON_T : RED, lineHeight: 1 }}>{analyticsShowUnits ? fmtU(stats.netPnlU) : fmt$(stats.netPnl$, true)}</div>
               <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '3px' }}>tap to toggle</div>
             </div>
@@ -3973,7 +4142,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>{stats.total} bets</div>
             </div>
             <div style={{ ...cardStyle, padding: '10px 12px' }}>
-              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>W / L</div>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>W / L<InfoTip text="Your win-loss record across all settled bets. Wins — Losses." /></div>
               <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{stats.wins} — {stats.losses}</div>
               <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '3px' }}>record</div>
             </div>
@@ -3986,16 +4155,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
           {/* ── 8 small chips in 4+4 rows (matches mobile) ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '6px' }}>
-            <SmallCard label="Won"          value={analyticsShowUnits ? `+${(stats.allWon$ / stats.unitSize).toFixed(1)}u` : fmt$(stats.allWon$)} color={NEON_T} />
-            <SmallCard label="Lost"         value={analyticsShowUnits ? `-${(stats.allLost$ / stats.unitSize).toFixed(1)}u` : `-${fmt$(stats.allLost$)}`} color={RED} />
-            <SmallCard label="Avg Odds"     value={fmtOdds(Math.round(stats.avgOdds))} />
-            <SmallCard label="Settled"      value={String(stats.total)} />
+            <SmallCard label="Won"          value={analyticsShowUnits ? `+${(stats.allWon$ / stats.unitSize).toFixed(1)}u` : fmt$(stats.allWon$)} color={NEON_T} tip="Total dollars (or units) won across all settled winning bets." />
+            <SmallCard label="Lost"         value={analyticsShowUnits ? `-${(stats.allLost$ / stats.unitSize).toFixed(1)}u` : `-${fmt$(stats.allLost$)}`} color={RED} tip="Total dollars (or units) lost across all settled losing bets." />
+            <SmallCard label="Avg Odds"     value={fmtOdds(Math.round(stats.avgOdds))} tip="Average American odds across all settled bets. Tracks line quality over time." />
+            <SmallCard label="Settled"      value={String(stats.total)} tip="Total number of bets graded (won or lost). Excludes pending bets." />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-            <SmallCard label="Best Win"     value={stats.wins ? fmt$(stats.largestWin) : '—'} color={NEON_T} />
-            <SmallCard label="Worst Loss"   value={stats.losses ? fmt$(stats.largestLoss) : '—'} color={RED} />
-            <SmallCard label="Risked"       value={`${stats.totalRiskedU.toFixed(1)}u`} />
-            <SmallCard label="Unit $"       value={fmt$(stats.unitSize)} />
+            <SmallCard label="Best Win"     value={stats.wins ? fmt$(stats.largestWin) : '—'} color={NEON_T} tip="Your single largest winning bet in dollars." />
+            <SmallCard label="Worst Loss"   value={stats.losses ? fmt$(stats.largestLoss) : '—'} color={RED} tip="Your single largest losing bet in dollars." />
+            <SmallCard label="Risked"       value={`${stats.totalRiskedU.toFixed(1)}u`} tip="Total units risked across all settled bets. 1 unit = your standard bet size." />
+            <SmallCard label="Unit $"       value={fmt$(stats.unitSize)} tip="Your current unit size in dollars. Calculated as unit % × current bankroll." />
           </div>
             </>
           )}
@@ -4047,7 +4216,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     bet={bet}
                     onSettle={settleBet}
                     onEdit={setEditingBet}
-                    onDelete={id => setBets(b => b.filter(x => x.id !== id))}
+                    onDelete={id => {
+                      setBets(b => b.filter(x => x.id !== id))
+                      if (userId && cloudSyncedRef.current) {
+                        realtimeIgnoreUntil.current = Date.now() + 5000
+                        dbDeleteBet(String(id), userId, tokenRef.current).catch(e => console.error('[RML] deleteBet:', e))
+                      }
+                    }}
                     onShare={setShareCardBet}
                     unitSize={stats.unitSize}
                   />
@@ -4094,7 +4269,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         )}
 
         {/* ── LADDER ── */}
-        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} onShare={setShareCardBet} />}
+        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} onShare={setShareCardBet}
+          onResetSync={(nextBets, newStarting) => {
+            // Delete only ladder bets (not all bets!) then upsert new rungs
+            const ladderBets = nextBets.filter(b => b.ladder)
+            deleteLadderBets(userId, token).then(() => {
+              Promise.all(ladderBets.map(b => upsertBet(b, userId, token)))
+            })
+            upsertSettings(userId, { ladder_starting: newStarting }, token)
+          }}
+        />}
 
         {/* ── ANALYTICS ── */}
         {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
@@ -4231,13 +4415,18 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
       {/* ── FOOTER ── desktop only branding strip */}
       {!isMobile && (
-        <footer style={{ borderTop: `1px solid var(--border)`, backgroundColor: 'var(--bg)', marginTop: '18px', padding: '10px 28px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: darkMode ? '0 0 6px rgba(189,255,0,0.5)' : 'none' }} />
-            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Auto-saving</span>
+        <footer style={{ borderTop: `1px solid var(--border)`, backgroundColor: 'var(--bg)', marginTop: '18px', padding: '10px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '9px', color: 'rgba(255,255,255,0.18)', lineHeight: 1.5 }}>
+            Please gamble responsibly. If you need help: <a href="https://www.ncpgambling.org" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>NCPG</a> · 1-800-522-4700
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: darkMode ? '0 0 6px rgba(189,255,0,0.5)' : 'none' }} />
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase' }}>Auto-saving</span>
+            </div>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs © 2026</span>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-sub)', textTransform: 'uppercase' }}>Operate With Discipline</span>
           </div>
-          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase' }}>Risk Matrix Labs © 2026</span>
-          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-sub)', textTransform: 'uppercase' }}>Operate With Discipline</span>
         </footer>
       )}
     </div>

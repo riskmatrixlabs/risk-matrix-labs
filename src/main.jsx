@@ -6,12 +6,20 @@ import posthog from 'posthog-js'
 import * as Sentry from '@sentry/react'
 
 // ── PostHog ──────────────────────────────────────────────────────────────────
+// Opt-out by default — only capture after explicit cookie consent (rml_cookie_ok=accept)
 posthog.init('phc_rAec6z6YAWLnAzkNih3rv9dMUCxAYfQdq94DxLJbHeJz', {
   api_host: 'https://us.i.posthog.com',
   person_profiles: 'identified_only',
   capture_pageview: true,
   capture_pageleave: true,
+  opt_out_capturing_by_default: true,
 })
+// Expose on window so cookie banner can call opt_in_capturing after consent
+window.posthog = posthog
+// Re-enable if user already consented in a prior session
+try {
+  if (localStorage.getItem('rml_cookie_ok') === 'accept') posthog.opt_in_capturing()
+} catch { /* localStorage unavailable */ }
 
 // ── Sentry ───────────────────────────────────────────────────────────────────
 Sentry.init({
