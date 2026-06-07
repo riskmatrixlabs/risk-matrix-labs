@@ -42,6 +42,11 @@ export default async function handler(req, res) {
         email,
         metadata: { supabase_user_id: userId, ...(rewardfulReferral && { referral: rewardfulReferral }) },
       })
+    } else {
+      // Always update metadata so supabase_user_id stays in sync
+      await stripe.customers.update(customer.id, {
+        metadata: { ...customer.metadata, supabase_user_id: userId, ...(rewardfulReferral && { referral: rewardfulReferral }) },
+      })
     }
 
     // Fetch price details so we can show the after-trial amount in the disclosure
