@@ -3483,7 +3483,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               {/* ══ MOBILE HOME — stats always visible + 5 sub-panel pills ══ */}
 
               {/* ── Master Bankroll — single editable top card ── */}
-              <div style={{ ...cardStyle, padding: '12px 14px', marginBottom: '6px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
+              <div style={{ ...cardStyle, padding: '12px 14px', marginBottom: '6px', borderTop: `2px solid ${(masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON : RED}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                   <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>Master Bankroll<InfoTip text="Your current bankroll = starting bankroll + all settled P&L. Click the number to manually override it." /></div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -3493,20 +3493,20 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', flex: 1, minWidth: 0 }}>
-                    <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, color: up(masterBankroll - bankroll) ? NEON_T : RED }}>$</span>
+                    <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, color: (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON_T : RED }}>$</span>
                     <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
                       onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
                       onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
                       onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
-                      style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON_T : RED }} />
+                      style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON_T : RED }} />
                   </div>
-                  <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON_T : RED, whiteSpace: 'nowrap' }}>
-                    {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
+                  <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON_T : RED, whiteSpace: 'nowrap' }}>
+                    {(masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
                   </div>
                 </div>
                 <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px' }}>
                   {bankroll > 0
-                    ? `started ${fmt$(bankroll)} · ${up(masterBankroll - bankroll) ? '+' : ''}${((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time`
+                    ? `started ${fmt$(bankroll)} · ${(masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? '+' : ''}${((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time`
                     : 'set your starting bankroll below ↓'}
                 </div>
               </div>
@@ -3830,7 +3830,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             /* ══ DESKTOP OVERVIEW — mirrors mobile ══ */
             <>
           {/* ── Master Bankroll card — same as mobile ── */}
-          <div style={{ ...cardStyle, padding: '14px 18px', marginBottom: '8px', borderTop: `2px solid ${up(masterBankroll - bankroll) ? NEON : RED}` }}>
+          <div style={{ ...cardStyle, padding: '14px 18px', marginBottom: '8px', borderTop: `2px solid ${(masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON : RED}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
               <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>Master Bankroll<InfoTip text="Your current bankroll = starting bankroll + all settled P&L. Click the number to manually override it." /></div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -3841,19 +3841,19 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', flex: 1, minWidth: 0 }}>
-                <span style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, lineHeight: 1, color: up(masterBankroll - bankroll) ? NEON_T : RED, textShadow: darkMode && up(masterBankroll - bankroll) ? '0 0 20px rgba(189,255,0,0.25)' : 'none' }}>$</span>
+                <span style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, lineHeight: 1, color: (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON_T : RED, textShadow: darkMode && (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? '0 0 20px rgba(189,255,0,0.25)' : 'none' }}>$</span>
                 <input value={masterBrFocused ? masterBrInput : masterBankroll.toFixed(2)}
                   onFocus={() => { setMasterBrFocused(true); setMasterBrInput(masterBankroll.toFixed(2)) }}
                   onChange={e => setMasterBrInput(e.target.value)} onBlur={applyMasterBr}
                   onKeyDown={e => e.key === 'Enter' && applyMasterBr()}
-                  style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: up(masterBankroll - bankroll) ? NEON_T : RED, textShadow: darkMode && up(masterBankroll - bankroll) ? '0 0 20px rgba(189,255,0,0.25)' : 'none' }} />
+                  style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, lineHeight: 1, background: 'none', border: 'none', padding: 0, width: '100%', cursor: 'text', color: (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON_T : RED, textShadow: darkMode && (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? '0 0 20px rgba(189,255,0,0.25)' : 'none' }} />
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: up(masterBankroll - bankroll) ? NEON_T : RED }}>
-                  {up(masterBankroll - bankroll) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
+                <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: (masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? NEON_T : RED }}>
+                  {(masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? '+' : ''}{fmt$(masterBankroll - bankroll)}
                 </div>
                 <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>
-                  {bankroll > 0 ? `${up(masterBankroll - bankroll) ? '+' : ''}${((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time` : 'set starting bankroll'}
+                  {bankroll > 0 ? `${(masterBrOverride !== null ? masterBrOverride >= bankroll : stats.netPnl$ >= 0) ? '+' : ''}${((masterBankroll - bankroll) / bankroll * 100).toFixed(1)}% all time` : 'set starting bankroll'}
                 </div>
               </div>
             </div>
