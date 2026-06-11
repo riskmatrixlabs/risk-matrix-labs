@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { sendTrialEnding } from './lib/emails.js'
+import { sendTrialEnding } from './_lib/emails.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     // Look up user email from Supabase auth
     const { data: { user } } = await supabase.auth.admin.getUserById(row.user_id)
     if (!user?.email) continue
-    await sendTrialEnding({ email: user.email, trialEnd: row.trial_end }).catch(console.error)
+    await sendTrialEnding({ email: user.email, trialEnd: row.trial_end }).catch(e => console.error('[cron-trial-reminder] send error uid:', user.id, e.message))
     sent++
   }
 

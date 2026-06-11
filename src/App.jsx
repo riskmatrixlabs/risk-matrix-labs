@@ -1,9 +1,21 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+
+// Polyfill for crypto.randomUUID — not available on iOS < 15.4
+function genUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback: RFC 4122 v4 UUID using Math.random
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+  })
+}
 import { useSwipeable } from 'react-swipeable'
 import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
-  fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet, deleteAllBets, deleteLadderBets,
+  fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet, deleteAllBets,
   fetchSettings, upsertSettings,
   fetchTemplates, upsertTemplate, deleteTemplate as dbDeleteTemplate,
   rowToBet, betToRow,
@@ -13,8 +25,9 @@ import {
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
   PieChart, Pie, RadialBarChart, RadialBar, Legend,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio } from 'lucide-react'
 import PartnersPage from './components/PartnersPage'
+import LiveCenter   from './components/LiveCenter'
 import ShareCardModal from './components/ShareCardModal'
 
 const getKeys = (userId) => ({
@@ -59,12 +72,12 @@ const INITIAL_BETS = [
   { id: 22, date: '2025-03-24', sport: 'MLB', book: 'FanDuel',    betType: 'Straight', event: 'Dodgers vs Giants',       pick: 'Dodgers ML',      odds: -138, units: 1.0, stake: 20.00, result: 'Open', pnl: 0 },
   { id: 23, date: '2025-03-24', sport: 'NHL', book: 'BetMGM',     betType: 'SGP',      event: 'Oilers vs Canucks',       pick: 'Oilers ML + Over 5.5', odds: +142, units: 0.5, stake: 10.00, result: 'Open', pnl: 0 },
   // ── PHLT™ Ladder — rungs 1-4 complete, rung 5 active, rung 6 pending ──
-  { id: 101, date: '2025-03-10', sport: 'NBA', book: 'DraftKings', betType: 'Straight', event: 'Knicks vs Nets',    pick: 'Knicks -4',     odds: -110, units: 1.0, stake: 20.00,  result: 'W',    pnl: +18.18,  ladder: true, ladderId: 1, pull: false, pullNote: '' },
-  { id: 102, date: '2025-03-13', sport: 'NHL', book: 'FanDuel',    betType: 'Straight', event: 'Oilers vs Kings',   pick: 'Oilers ML',     odds: -120, units: 1.9, stake: 38.00,  result: 'W',    pnl: +31.67,  ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake' },
-  { id: 103, date: '2025-03-17', sport: 'MLB', book: 'BetMGM',     betType: 'Straight', event: 'Dodgers vs Padres', pick: 'Dodgers -1.5',  odds: +135, units: 3.5, stake: 70.00,  result: 'W',    pnl: +94.50,  ladder: true, ladderId: 3, pull: false, pullNote: '' },
-  { id: 104, date: '2025-03-20', sport: 'NBA', book: 'Caesars',    betType: 'Straight', event: 'Thunder vs Mavs',   pick: 'Thunder -5',    odds: -115, units: 8.25, stake: 165.00, result: 'W',    pnl: +143.48, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
-  { id: 105, date: '2025-03-24', sport: 'NHL', book: 'DraftKings', betType: 'Straight', event: 'Panthers vs Bruins', pick: 'Panthers ML',  odds: -110, units: 15.5, stake: 310.00, result: 'Open', pnl: 0,       ladder: true, ladderId: 5, pull: false, pullNote: '' },
-  { id: 106, date: '2025-03-24', sport: 'NHL', book: 'DraftKings', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD',          odds: -118, units: 0,  stake: 0,      result: 'Open', pnl: 0,       ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete' },
+  { id: 101, date: '2025-03-10', sport: 'NBA', book: 'DraftKings', betType: 'Straight', event: 'Knicks vs Nets',    pick: 'Knicks -4',     odds: -110, units: 1.0, stake: 20.00,  result: 'W',    pnl: +18.18,  ladder: true, ladderId: 1, ladderSession: 'demo', pull: false, pullNote: '' },
+  { id: 102, date: '2025-03-13', sport: 'NHL', book: 'FanDuel',    betType: 'Straight', event: 'Oilers vs Kings',   pick: 'Oilers ML',     odds: -120, units: 1.9, stake: 38.00,  result: 'W',    pnl: +31.67,  ladder: true, ladderId: 2, ladderSession: 'demo', pull: true,  pullNote: 'Risk free from here — pull original stake' },
+  { id: 103, date: '2025-03-17', sport: 'MLB', book: 'BetMGM',     betType: 'Straight', event: 'Dodgers vs Padres', pick: 'Dodgers -1.5',  odds: +135, units: 3.5, stake: 70.00,  result: 'W',    pnl: +94.50,  ladder: true, ladderId: 3, ladderSession: 'demo', pull: false, pullNote: '' },
+  { id: 104, date: '2025-03-20', sport: 'NBA', book: 'Caesars',    betType: 'Straight', event: 'Thunder vs Mavs',   pick: 'Thunder -5',    odds: -115, units: 8.25, stake: 165.00, result: 'W',    pnl: +143.48, ladder: true, ladderId: 4, ladderSession: 'demo', pull: true,  pullNote: 'Pull profit — you are now playing with house money' },
+  { id: 105, date: '2025-03-24', sport: 'NHL', book: 'DraftKings', betType: 'Straight', event: 'Panthers vs Bruins', pick: 'Panthers ML',  odds: -110, units: 15.5, stake: 310.00, result: 'Open', pnl: 0,       ladder: true, ladderId: 5, ladderSession: 'demo', pull: false, pullNote: '' },
+  { id: 106, date: '2025-03-24', sport: 'NHL', book: 'DraftKings', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD',          odds: -118, units: 0,  stake: 0,      result: 'Open', pnl: 0,       ladder: true, ladderId: 6, ladderSession: 'demo', pull: true,  pullNote: 'Bank majority — session complete' },
 ]
 
 const DEFAULT_LADDER_IDS = [101, 102, 103, 104, 105, 106]
@@ -93,11 +106,11 @@ const fmt$ = (v, sign = false) => {
 const fmtU   = (v) => `${v > 0 ? '+' : v < 0 ? '-' : ''}${Math.abs(v).toFixed(2)}u`
 const fmtOdds = (v) => v > 0 ? `+${v}` : `${v}`
 
-function calcStats(bets, bankroll) {
+function calcStats(bets, bankroll, ladderSessionKey) {
   // Only settled bets count toward stats and bankroll
   const settled        = bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P')
   const regular        = settled.filter(b => !b.ladder)   // unit-based bets
-  const ladderSettled  = settled.filter(b => b.ladder)    // dollar-based pnl
+  const ladderSettled  = settled.filter(b => b.ladder)    // dollar-based pnl (ALL sessions — keep old P&L in bankroll)
   const unitSize       = bankroll > 0 ? bankroll / 100 : 1
 
   // Unit-based stats (regular bets only — used for bankroll math)
@@ -108,16 +121,25 @@ function calcStats(bets, bankroll) {
   const unitsWon    = wins.reduce((s, b) => s + b.pnl, 0)
   const unitsLost   = losses.reduce((s, b) => s + Math.abs(b.pnl), 0)
 
-  // Ladder net P&L is in dollars — add directly without unit conversion
+  // Ladder net P&L in dollars — settled results DO affect bankroll (wins grow it, losses shrink it)
   const ladderNetDollars = ladderSettled.reduce((s, b) => s + b.pnl, 0)
 
   // Dollar P&L for a regular bet: use stake/units ratio (the actual $ per unit logged)
-  // Falls back to bankroll/100 unit size only if stake or units are missing
   const regularDollar = (b) =>
     (b.units > 0 && b.stake > 0) ? b.pnl * (b.stake / b.units) : b.pnl * unitSize
 
   const regularNetDollars = regular.reduce((s, b) => s + regularDollar(b), 0)
-  const openStakeTotal    = bets.filter(b => b.result === 'Open').reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
+
+  // Open stake: regular bets + ONLY the active ladder rung (lowest open ladderId in current session)
+  // Future ladder rungs are placeholders — not deployed capital yet
+  const openRegularStake  = bets.filter(b => b.result === 'Open' && !b.ladder)
+                                .reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
+  const openLadderBets    = bets.filter(b => b.result === 'Open' && b.ladder && b.ladderSession === ladderSessionKey)
+  const activeLadderRung0 = openLadderBets.length > 0
+    ? openLadderBets.reduce((min, b) => (!min || (b.ladderId ?? 999) < (min.ladderId ?? 999)) ? b : min, null)
+    : null
+  const activeLadderStake = activeLadderRung0 ? (activeLadderRung0.stake > 0 ? activeLadderRung0.stake : activeLadderRung0.units * unitSize) : 0
+  const openStakeTotal    = openRegularStake + activeLadderStake
   const currentBankroll   = bankroll + regularNetDollars + ladderNetDollars - openStakeTotal
 
   // Combined stats (all bets — regular + ladder together)
@@ -128,7 +150,7 @@ function calcStats(bets, bankroll) {
   const avgWin$   = allWins.length   ? allWon$  / allWins.length   : 0
   const avgLoss$  = allLosses.length ? allLost$ / allLosses.length : 0
 
-  const activeLadderRung = bets.filter(b => b.ladder && b.result === 'Open').sort((a,z) => a.ladderId - z.ladderId)[0] ?? null
+  const activeLadderRung = bets.filter(b => b.ladder && b.result === 'Open' && b.ladderSession === ladderSessionKey).sort((a,z) => a.ladderId - z.ladderId)[0] ?? null
   const openBets    = activeLadderRung
     ? [...bets.filter(b => b.result === 'Open' && !b.ladder), activeLadderRung]
     : bets.filter(b => b.result === 'Open' && !b.ladder)
@@ -138,13 +160,12 @@ function calcStats(bets, bankroll) {
   const largestLoss$ = allLosses.length ? Math.max(...allLosses.map(b => b.ladder ? Math.abs(b.pnl) : Math.abs(regularDollar(b)))) : 0
   const avgOdds     = settled.length ? settled.reduce((s, b) => s + b.odds, 0) / settled.length : 0
   const winRate     = (allWins.length + allLosses.length) > 0 ? allWins.length / (allWins.length + allLosses.length) : 0
-  // Total stake risked across all settled bets (b.stake is the actual $ logged)
+  // All settled bets — ladder wins/losses count toward total P&L and ROI
   const totalRisked$  = settled.reduce((s, b) => s + (b.stake || b.units * unitSize), 0)
   const totalRiskedU  = unitSize > 0 ? totalRisked$ / unitSize : 0
-  // Combined net P/L in dollars
-  const netPnl$  = regularNetDollars + ladderNetDollars
-  const netPnlU  = unitSize > 0 ? netPnl$ / unitSize : 0
-  const roi      = totalRisked$ > 0 ? netPnl$ / totalRisked$ : 0
+  const netPnl$       = regularNetDollars + ladderNetDollars
+  const netPnlU       = unitSize > 0 ? netPnl$ / unitSize : 0
+  const roi           = totalRisked$ > 0 ? netPnl$ / totalRisked$ : 0
   return {
     currentBankroll, netUnits, totalUnits, unitsWon, unitsLost,
     wins: allWins.length, losses: allLosses.length, total: allWins.length + allLosses.length,
@@ -186,10 +207,18 @@ function calcTilt(bets) {
     else break
   }
 
-  // Detect bet sizing up after a loss
+  // Detect bet sizing up after a loss — only look at bets SINCE the last win
+  // A win resets the chasing flag (operator corrected course)
   let chasingDetected = false
-  for (let i = 1; i < settled.length; i++) {
-    if (settled[i - 1].result === 'L' && settled[i].units > settled[i - 1].units) {
+  const lastWinIdx = (() => {
+    for (let i = settled.length - 1; i >= 0; i--) {
+      if (settled[i].result === 'W') return i
+    }
+    return -1
+  })()
+  const recentBets = lastWinIdx >= 0 ? settled.slice(lastWinIdx) : settled
+  for (let i = 1; i < recentBets.length; i++) {
+    if (recentBets[i - 1].result === 'L' && recentBets[i].units > recentBets[i - 1].units) {
       chasingDetected = true
       break
     }
@@ -205,17 +234,20 @@ function calcTilt(bets) {
   return { level: 'GREEN', reasons: [] }
 }
 
-function calcRisk(bets, masterBankroll, startingBankroll, riskSettings) {
+function calcRisk(bets, masterBankroll, startingBankroll, riskSettings, ladderSessionKey) {
   const { maxRiskPerBetPct, maxRiskTodayPct, stopLossPct, profitLockPct, unitPct } = riskSettings
 
   // Unit size always derives from CURRENT (master) bankroll so it scales with your growth
   const unitSize = masterBankroll * ((unitPct || 1) / 100)
 
-  // Open bets = your true live exposure right now (regular + ladder)
-  const openBets       = bets.filter(b => b.result === 'Open' && !b.ladder)
-  const ladderOpenBets = bets.filter(b => b.result === 'Open' && b.ladder)
+  // Open bets = your true live exposure right now (regular + active ladder rung only)
+  const openBets        = bets.filter(b => b.result === 'Open' && !b.ladder)
+  const openLadderBets  = bets.filter(b => b.result === 'Open' && b.ladder && b.ladderSession === ladderSessionKey)
+  const activeLadderRung = openLadderBets.length > 0
+    ? openLadderBets.reduce((min, b) => (!min || (b.ladderId ?? 999) < (min.ladderId ?? 999)) ? b : min, null)
+    : null
   const openOnlyRisk   = openBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : b.units * unitSize), 0)
-  const ladderOpenRisk = ladderOpenBets.reduce((s, b) => s + (b.stake > 0 ? b.stake : 0), 0)
+  const ladderOpenRisk = activeLadderRung ? (activeLadderRung.stake > 0 ? activeLadderRung.stake : 0) : 0
   const totalOpenRisk  = openOnlyRisk + ladderOpenRisk
   const openCount      = openBets.length
 
@@ -241,6 +273,7 @@ function calcRisk(bets, masterBankroll, startingBankroll, riskSettings) {
 
 // ─── PRIMITIVES ───────────────────────────────────────────────────────────────
 const R = 'Rajdhani, sans-serif'
+const I = 'Inter, sans-serif'
 
 const cardStyle = {
   backgroundColor: 'var(--card)',
@@ -905,7 +938,7 @@ function profitFromLadderOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onResetSync }) {
+function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladderSessionKey, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onCloseSync }) {
   const { isMobile } = useMobile()
   const [startInput, setStartInput] = useState(String(ladderStarting))
   const [editRow,    setEditRow]    = useState(null)
@@ -919,29 +952,35 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
     }
   }, [masterBankroll]) // eslint-disable-line
 
-  // Ladder rows = all ladder-tagged bets sorted by ladderId
-  const rows = bets.filter(b => b.ladder).sort((a, z) => a.ladderId - z.ladderId)
+  // Ladder rows = current session only
+  const rows = bets.filter(b => b.ladder && b.ladderSession === ladderSessionKey).sort((a, z) => a.ladderId - z.ladderId)
 
   const setRow = (id, k, v) => setBets(p => p.map(b => b.id === id ? { ...b, [k]: v } : b))
 
-  const resetLadder = () => {
-    // Reset rungs only — bank carries over (Option A)
-    // Use finalBankroll as the new starting bank so winnings aren't erased
+  const closeLadder = () => {
+    // Close current session — auto-fill next session stake with final BR (PHLT formula compounds)
     const s = finalBankroll > 0 ? finalBankroll : ladderStarting
+    const newKey = genUUID()
     setLadderStarting(s)
-    const defaults = [
-      { id: 101, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[0]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, pull: false, pullNote: '', confidence: 0 },
-      { id: 102, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: +(scaleStake(s, LADDER_RATIOS[1]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, pull: true,  pullNote: 'Risk free from here — pull original stake', confidence: 0 },
-      { id: 103, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[2]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, pull: false, pullNote: '', confidence: 0 },
-      { id: 104, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: +(scaleStake(s, LADDER_RATIOS[3]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, pull: true,  pullNote: 'Pull profit — you are now playing with house money', confidence: 0 },
-      { id: 105, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: +(scaleStake(s, LADDER_RATIOS[4]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, pull: false, pullNote: '', confidence: 0 },
-      { id: 106, date: new Date().toISOString().slice(0,10), sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: +(scaleStake(s, LADDER_RATIOS[5]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, pull: true,  pullNote: 'Bank majority — session complete', confidence: 0 },
+    setStartInput(String(s))
+    setEditRow(null)
+    onCloseSync?.(newKey, s, [])
+  }
+
+  const startSession = () => {
+    // Generate 6 fresh rungs for the current session key with user-set stake
+    const s    = ladderStarting > 0 ? ladderStarting : LADDER_STARTING_BR
+    const base  = Date.now()
+    const today = new Date().toISOString().slice(0, 10)
+    const newRungs = [
+      { id: base+1, date: today, sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 1', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[0]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[0]), result: 'Open', pnl: 0, ladder: true, ladderId: 1, ladderSession: ladderSessionKey, pull: false, pullNote: '', confidence: 0 },
+      { id: base+2, date: today, sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 2', pick: 'TBD', odds: -115, units: +(scaleStake(s, LADDER_RATIOS[1]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[1]), result: 'Open', pnl: 0, ladder: true, ladderId: 2, ladderSession: ladderSessionKey, pull: true,  pullNote: 'Risk free from here — pull original stake', confidence: 0 },
+      { id: base+3, date: today, sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 3', pick: 'TBD', odds: -120, units: +(scaleStake(s, LADDER_RATIOS[2]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[2]), result: 'Open', pnl: 0, ladder: true, ladderId: 3, ladderSession: ladderSessionKey, pull: false, pullNote: '', confidence: 0 },
+      { id: base+4, date: today, sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 4', pick: 'TBD', odds: -110, units: +(scaleStake(s, LADDER_RATIOS[3]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[3]), result: 'Open', pnl: 0, ladder: true, ladderId: 4, ladderSession: ladderSessionKey, pull: true,  pullNote: 'Pull profit — you are now playing with house money', confidence: 0 },
+      { id: base+5, date: today, sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 5', pick: 'TBD', odds: -125, units: +(scaleStake(s, LADDER_RATIOS[4]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[4]), result: 'Open', pnl: 0, ladder: true, ladderId: 5, ladderSession: ladderSessionKey, pull: false, pullNote: '', confidence: 0 },
+      { id: base+6, date: today, sport: 'MLB', book: 'Hard Rock', betType: 'Straight', event: 'PHLT Ladder Rung 6', pick: 'TBD', odds: -118, units: +(scaleStake(s, LADDER_RATIOS[5]) / unitSize).toFixed(2), stake: scaleStake(s, LADDER_RATIOS[5]), result: 'Open', pnl: 0, ladder: true, ladderId: 6, ladderSession: ladderSessionKey, pull: true,  pullNote: 'Bank majority — session complete', confidence: 0 },
     ]
-    setBets(p => {
-      const next = [...p.filter(b => !b.ladder), ...defaults]
-      onResetSync?.(next, s)
-      return next
-    })
+    setBets(p => [...p, ...newRungs])
     setEditRow(null)
   }
 
@@ -995,7 +1034,7 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
       sport: last?.sport || 'MLB', book: last?.book || 'Hard Rock', betType: 'Straight', event: `PHLT Ladder Rung ${rows.length + 1}`,
       pick: 'TBD', odds: -110, units: +(newStake / unitSize).toFixed(2), stake: newStake,
       result: 'Open', pnl: 0, ladder: true,
-      ladderId: (last?.ladderId || 0) + 1, pull: false, pullNote: '', confidence: 0,
+      ladderId: (last?.ladderId || 0) + 1, ladderSession: ladderSessionKey, pull: false, pullNote: '', confidence: 0,
     }])
   }
 
@@ -1020,13 +1059,13 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
             <div style={{ fontFamily: R, fontSize: isMobile ? '11px' : '13px', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--neon-title)' }}>PHLT™ LADDER TRACKER</div>
             <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.14em', color: 'var(--neon-sub)', marginTop: '2px' }}>FUND EACH BET FROM PREVIOUS WINNINGS ONLY</div>
           </div>
-          {/* Reset button always top-right on mobile */}
+          {/* Close session button always top-right on mobile */}
           {isMobile && (
-            <button onClick={resetLadder} style={{
+            <button onClick={closeLadder} style={{
               ...btnStyle(), display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px',
               borderColor: 'rgba(255,59,59,0.35)', color: 'rgba(255,59,59,0.6)',
             }}>
-              <RotateCcw size={11} /> Reset
+              <RotateCcw size={11} /> Close
             </button>
           )}
         </div>
@@ -1072,11 +1111,11 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
               </div>
             ))}
             {!isMobile && (
-              <button onClick={resetLadder} style={{
+              <button onClick={closeLadder} style={{
                 ...btnStyle(), display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px',
                 borderColor: 'rgba(255,59,59,0.35)', color: 'rgba(255,59,59,0.6)',
               }}>
-                <RotateCcw size={11} /> Reset
+                <RotateCcw size={11} /> Close Session
               </button>
             )}
           </div>
@@ -1106,13 +1145,15 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, darkM
           <div style={{ fontFamily: R, fontSize: '10px', color: 'var(--text-dim)', letterSpacing: '0.06em', marginBottom: '20px' }}>
             Set your Ladder Starting amount above, then tap Start to generate your 6 rungs.
           </div>
-          <button onClick={resetLadder} style={{
+          <button onClick={startSession} disabled={!(ladderStarting > 0)} style={{
             fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase',
-            padding: '12px 32px', borderRadius: '2px', cursor: 'pointer',
-            border: `1px solid rgba(189,255,0,0.5)`, background: 'rgba(189,255,0,0.1)', color: NEON_T,
-            boxShadow: '0 0 16px rgba(189,255,0,0.15)',
+            padding: '12px 32px', borderRadius: '2px', cursor: ladderStarting > 0 ? 'pointer' : 'not-allowed',
+            border: `1px solid rgba(189,255,0,${ladderStarting > 0 ? '0.5' : '0.2'})`,
+            background: `rgba(189,255,0,${ladderStarting > 0 ? '0.1' : '0.03'})`,
+            color: ladderStarting > 0 ? NEON_T : 'var(--muted)',
+            boxShadow: ladderStarting > 0 ? '0 0 16px rgba(189,255,0,0.15)' : 'none',
           }}>
-            ⚡ Start Session
+            ⚡ {ladderStarting > 0 ? 'Start Session' : 'Enter Session Stake Above'}
           </button>
         </div>
       )}
@@ -2261,7 +2302,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   const [darkMode,       setDarkMode]       = useState(saved.current?.darkMode       ?? true)
   const [tiltDismissed,  setTiltDismissed]  = useState(isDemo)
-  const [ladderStarting, setLadderStarting] = useState(isDemo ? 20 : (saved.current?.ladderStarting ?? LADDER_STARTING_BR))
+  const [ladderStarting,  setLadderStarting]  = useState(isDemo ? 20 : (saved.current?.ladderStarting ?? LADDER_STARTING_BR))
+  const [ladderSessionKey, setLadderSessionKey] = useState(() => isDemo ? 'demo' : (saved.current?.ladderSessionKey ?? genUUID()))
   const [bets,           setBets]           = useState(isDemo ? INITIAL_BETS : (saved.current?.bets ?? []))
   const [bankroll,       setBankroll]       = useState(isDemo ? 1000 : (saved.current?.bankroll ?? 0))
   const [username,       setUsername]       = useState(isDemo ? 'OPERATOR' : (saved.current?.username ?? 'OPERATOR'))
@@ -2275,6 +2317,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [shareCardBet, setShareCardBet] = useState(null)   // null = closed, 'session' = session card, bet obj = bet card
   const [editingBet,   setEditingBet]   = useState(null)
   const [tab,          setTab]          = useState('overview')
+  const [initialBet,   setInitialBet]   = useState(null)
   const [riskSettings, setRiskSettings] = useState(saved.current?.riskSettings ?? {
     maxRiskPerBetPct: 3,
     maxRiskTodayPct:  10,
@@ -2294,9 +2337,35 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [showHelp,     setShowHelp]     = useState(false)
   const [showMore,     setShowMore]     = useState(false)
   const [settingsPill, setSettingsPill] = useState(null)
+  const [showCancelSurvey, setShowCancelSurvey] = useState(false)
+  const [cancelReason,     setCancelReason]     = useState(null)
+  const [portalPending,    setPortalPending]    = useState(false)
   const [overviewSection, setOverviewSection] = useState('limits')
   const [analyticsShowUnits, setAnalyticsShowUnits] = useState(false)
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
+
+  // NPS prompt
+  const [showNPS,        setShowNPS]        = useState(false)
+  const [npsScore,       setNpsScore]       = useState(null)
+  const [npsSubmitted,   setNpsSubmitted]   = useState(false)
+  // Testimonial prompt
+  const [showTestimonial, setShowTestimonial] = useState(false)
+  // Changelog / What's New
+  const CHANGELOG_VERSION = 'v2.6'
+  const [showChangelog,  setShowChangelog]  = useState(false)
+  const changelogUnseen = (() => { try { return localStorage.getItem('rml_changelog_seen') !== CHANGELOG_VERSION } catch { return false } })()
+
+  // Open Stripe billing portal — shared helper used by all Manage Billing buttons
+  const openBillingPortal = async () => {
+    setPortalPending(true)
+    try {
+      const res  = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ returnUrl: window.location.href }) })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+      else alert(data.error || 'Could not open billing portal. Please try again.')
+    } catch { alert('Connection error. Please try again.') }
+    setPortalPending(false)
+  }
 
   // Tab order for swipe navigation
   const TAB_ORDER = ['overview', 'ladder', 'bet log', 'analytics', 'rr engine', 'session', 'partners']
@@ -2320,9 +2389,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [masterBrFocused,  setMasterBrFocused]  = useState(false)
   const [masterBrOverride, setMasterBrOverride] = useState(isDemo ? null : (saved.current?.masterBrOverride ?? null))
 
-  const _stats = useMemo(() => calcStats(bets, bankroll), [bets, bankroll])
+  const _stats = useMemo(() => calcStats(bets, bankroll, ladderSessionKey), [bets, bankroll, ladderSessionKey])
   const curve  = useMemo(() => buildCurve(bets, bankroll), [bets, bankroll])
-  const tilt   = useMemo(() => { if (!isDemo) setTiltDismissed(false); return calcTilt(bets) }, [bets])
+  const tilt   = useMemo(() => {
+    const result = calcTilt(bets)
+    // Auto-clear dismissed state when tilt resolves (win clears the flag)
+    if (result.level === 'GREEN') setTiltDismissed(false)
+    return result
+  }, [bets])
 
   // Master Bankroll = manual override OR auto-follows P/L from bets
   const masterBankroll = masterBrOverride !== null ? masterBrOverride : _stats.currentBankroll
@@ -2338,10 +2412,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }
   }, [_stats, masterBankroll, riskSettings.unitPct])
 
-  const risk  = useMemo(() => calcRisk(bets, masterBankroll, bankroll, riskSettings), [bets, masterBankroll, bankroll, riskSettings])
+  const risk  = useMemo(() => calcRisk(bets, masterBankroll, bankroll, riskSettings, ladderSessionKey), [bets, masterBankroll, bankroll, riskSettings, ladderSessionKey])
   const setRS = (k) => (e) => setRiskSettings(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))
 
   const applyMasterBr = () => {
+    if (!masterBrFocused) return  // input was never focused — don't touch state
     setMasterBrFocused(false)
     const v = parseFloat(masterBrInput)
     if (!isNaN(v) && v > 0) {
@@ -2362,9 +2437,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Auto-save to localStorage whenever key state changes ──
   useEffect(() => {
     if (isDemo) return // never overwrite real user data with demo data
-    const payload = { bets, username, ladderStarting, bankroll, masterBrOverride, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, ladderSessionKey, bankroll, masterBrOverride, riskSettings, darkMode }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
-  }, [bets, bankroll, masterBrOverride, username, ladderStarting, riskSettings, darkMode])
+  }, [bets, bankroll, masterBrOverride, username, ladderStarting, ladderSessionKey, riskSettings, darkMode])
 
   // ── On first load: pull data from Supabase if user is logged in ──
   useEffect(() => {
@@ -2430,11 +2505,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             if (localSave.darkMode !== undefined) setDarkMode(localSave.darkMode)
           }
         } else if (settings) {
-          if (settings.ladder_starting)    setLadderStarting(settings.ladder_starting)
-          if (settings.bankroll)           setBankroll(settings.bankroll)
+          if (settings.ladder_starting)     setLadderStarting(settings.ladder_starting)
+          if (settings.ladder_session_key)  setLadderSessionKey(settings.ladder_session_key)
+          if (settings.bankroll)            setBankroll(settings.bankroll)
           setMasterBrOverride(settings.master_br_override ?? null)
-          if (settings.username)           setUsername(settings.username)
-          if (settings.risk_settings)      setRiskSettings(settings.risk_settings)
+          if (settings.username)            setUsername(settings.username)
+          if (settings.risk_settings)       setRiskSettings(settings.risk_settings)
           if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
         } else {
           // No cloud settings — try localStorage
@@ -2527,8 +2603,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         if (Date.now() < realtimeIgnoreUntil.current) return // own save, skip
         fetchSettings(userId, token).then(({ data, error }) => {
           if (error || !data) return
-          if (data.bankroll)           setBankroll(data.bankroll)
+          if (data.bankroll)            setBankroll(data.bankroll)
           if (data.ladder_starting)    setLadderStarting(data.ladder_starting)
+          if (data.ladder_session_key) setLadderSessionKey(data.ladder_session_key)
           setMasterBrOverride(data.master_br_override ?? null)
           if (data.username)           setUsername(data.username)
           if (data.risk_settings)      setRiskSettings(data.risk_settings)
@@ -2544,7 +2621,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
       upsertSettings(userId, {
-        bankroll, master_br_override: masterBrOverride, ladder_starting: ladderStarting, username,
+        bankroll, master_br_override: masterBrOverride, ladder_starting: ladderStarting,
+        ladder_session_key: ladderSessionKey, username,
         risk_settings: riskSettings, dark_mode: darkMode,
       }, token).then(({ error }) => {
         if (error) {
@@ -2554,7 +2632,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       })
     }, 2000)
     return () => clearTimeout(t)
-  }, [bankroll, ladderStarting, username, riskSettings, darkMode, userId, cloudSynced, token])
+  }, [bankroll, masterBrOverride, ladderStarting, ladderSessionKey, username, riskSettings, darkMode, userId, cloudSynced, token])
 
   // ── Force localStorage save + Supabase sync before tab close ──
   // This catches bets added within the 2s debounce window before the user closes the tab.
@@ -2617,7 +2695,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Manual save ──
   const saveSession = useCallback(() => {
     setSaveStatus('saving')
-    const payload = { bets, username, ladderStarting, bankroll, masterBrOverride, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, ladderSessionKey, bankroll, masterBrOverride, riskSettings, darkMode }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
     setTimeout(() => setSaveStatus('saved'), 400)
     setTimeout(() => setSaveStatus(null), 2400)
@@ -2768,7 +2846,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }, [bets, bankroll, username, stats])
 
   const filtered = useMemo(() => {
-    const activeRungId = bets.filter(x => x.ladder && x.result === 'Open').sort((a,z) => a.ladderId - z.ladderId)[0]?.id
+    const activeRungId = bets.filter(x => x.ladder && x.result === 'Open' && x.ladderSession === ladderSessionKey).sort((a,z) => a.ladderId - z.ladderId)[0]?.id
+    // Show: non-ladder bets, settled ladder bets, and only the active rung of current session
     let b = bets.filter(x => !x.ladder || x.result !== 'Open' || x.id === activeRungId)
     if (sportFilter  !== 'ALL')   b = b.filter(x => x.sport  === sportFilter)
     if (resultFilter === 'OPEN')  b = b.filter(x => x.result === 'Open')
@@ -2827,8 +2906,51 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     return Object.values(map).sort((a, z) => z.bets - a.bets)
   }, [bets])
 
+  // NPS: show after 7 days for subscribed users, once only
+  useEffect(() => {
+    if (isDemo) return
+    const done = (() => { try { return localStorage.getItem('rml_nps_done') === '1' } catch { return true } })()
+    if (done) return
+    const isSubscribed = subStatus?.active || subStatus?.sub?.status === 'trialing'
+    if (!isSubscribed) return
+    const signupMs = user?.created_at ? new Date(user.created_at).getTime() : 0
+    if (Date.now() - signupMs < 7 * 24 * 60 * 60 * 1000) return
+    const t = setTimeout(() => setShowNPS(true), 4000)
+    return () => clearTimeout(t)
+  }, [subStatus, user, isDemo])
+
+  // Testimonial: show after 10 settled bets, once only
+  useEffect(() => {
+    if (isDemo) return
+    const done = (() => { try { return localStorage.getItem('rml_testimonial_shown') === '1' } catch { return true } })()
+    if (done) return
+    const settledCount = bets.filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P').length
+    if (settledCount < 10) return
+    try { localStorage.setItem('rml_testimonial_shown', '1') } catch {}
+    const t = setTimeout(() => setShowTestimonial(true), 1500)
+    return () => clearTimeout(t)
+  }, [bets, isDemo])
+
   const roi = stats.roi
   const up  = v => v >= 0
+
+  const handleLogPosition = (event) => {
+    setInitialBet({
+      date:    new Date().toISOString().slice(0, 10),
+      sport:   event.sport,
+      event:   `${event.away_team} vs ${event.home_team}`,
+      betType: 'Straight',
+      book:    '',
+      pick:    '',
+      odds:    event.odds_ml_away != null ? String(event.odds_ml_away) : '',
+      units:   '',
+      stake:   '',
+      result:  'Open',
+      pnl:     0,
+      notes:   `Live Center — ${event.league} · ${event.external_event_id}`,
+    })
+    setShowAdd(true)
+  }
 
   const TH = ({ col, label, right }) => (
     <th onClick={() => toggleSort(col)} style={{
@@ -2846,15 +2968,150 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   return (
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '960px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
-      {showAdd && <AddBetModal onAdd={b => {
-        setBets(p => [...p, b])
+      {showAdd && <AddBetModal initial={initialBet} onAdd={b => {
+        setBets(p => {
+          // GA4: fire bet_logged on first real bet only
+          if (p.filter(x => !x.ladder).length === 0) {
+            try { window.dataLayer = window.dataLayer || []; window.dataLayer.push({ event: 'bet_logged' }) } catch {}
+          }
+          return [...p, b]
+        })
         if (userId && cloudSyncedRef.current) {
           realtimeIgnoreUntil.current = Date.now() + 5000
           upsertBet(b, userId, tokenRef.current).then(({ error }) => {
             if (error) console.error('[RML] addBet upsert error:', error)
           }).catch(e => console.error('[RML] addBet upsert threw:', e))
         }
-      }} onClose={() => setShowAdd(false)} unitSize={stats.unitSize} />}
+      }} onClose={() => { setShowAdd(false); setInitialBet(null) }} unitSize={stats.unitSize} />}
+
+      {/* CANCEL SURVEY MODAL */}
+      {showCancelSurvey && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '28px 24px', maxWidth: '380px', width: '100%' }}>
+            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.25em', color: '#555', marginBottom: '10px', textTransform: 'uppercase' }}>Before you go</div>
+            <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.06em', color: '#fff', marginBottom: '6px' }}>What's not working?</div>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '20px', lineHeight: 1.6 }}>Your feedback directly shapes what we build next.</div>
+            {[
+              'Too expensive right now',
+              'Missing a feature I need',
+              "Don't use it enough to justify it",
+              'Something broke or didn\'t work',
+            ].map(reason => (
+              <button key={reason} onClick={() => setCancelReason(reason)} style={{
+                width: '100%', textAlign: 'left', padding: '11px 14px', marginBottom: '6px',
+                borderRadius: '6px', cursor: 'pointer', fontFamily: I, fontSize: '13px',
+                background: cancelReason === reason ? 'rgba(189,255,0,0.08)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${cancelReason === reason ? 'rgba(189,255,0,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                color: cancelReason === reason ? '#BDFF00' : '#aaa', transition: 'all 0.15s',
+              }}>{reason}</button>
+            ))}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => setShowCancelSurvey(false)} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #2a2a2a', background: 'transparent', color: '#555', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                Stay
+              </button>
+              <button onClick={() => { setShowCancelSurvey(false); openBillingPortal() }} style={{ flex: 2, padding: '10px', borderRadius: '6px', border: '1px solid #444', background: 'rgba(255,255,255,0.05)', color: '#888', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                {portalPending ? 'Opening...' : 'Continue to Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NPS MODAL ── */}
+      {showNPS && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderTop: `2px solid ${NEON}`, borderRadius: 'var(--radius)', padding: '24px', maxWidth: '400px', width: '100%', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+            {!npsSubmitted ? (
+              <>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '6px' }}>Quick Question</div>
+                <div style={{ fontFamily: I, fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px', lineHeight: 1.4 }}>How likely are you to recommend Risk Matrix Labs to a friend?</div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <button key={n} onClick={() => setNpsScore(n)} style={{ flex: '0 0 auto', width: '36px', height: '36px', borderRadius: '4px', border: npsScore === n ? `2px solid ${NEON}` : '1px solid var(--border2)', background: npsScore === n ? 'rgba(189,255,0,0.1)' : 'var(--card)', color: npsScore === n ? NEON_T : 'var(--text-dim)', fontFamily: R, fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>{n}</button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: R, fontSize: '8px', letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
+                  <span>Not likely</span><span>Extremely likely</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => { setShowNPS(false); try { localStorage.setItem('rml_nps_done', '1') } catch {} }} style={{ flex: 1, padding: '9px', borderRadius: '4px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Skip</button>
+                  <button disabled={npsScore === null} onClick={() => { try { localStorage.setItem('rml_nps_done', '1') } catch {}; setNpsSubmitted(true) }} style={{ flex: 2, padding: '9px', borderRadius: '4px', border: 'none', background: npsScore !== null ? NEON : 'var(--border)', color: '#0A0A0A', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: npsScore !== null ? 'pointer' : 'not-allowed', opacity: npsScore !== null ? 1 : 0.4 }}>Submit</button>
+                </div>
+              </>
+            ) : npsScore >= 9 ? (
+              <>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '6px' }}>You're a Promoter 🔥</div>
+                <div style={{ fontFamily: I, fontSize: '14px', color: 'var(--text)', marginBottom: '16px', lineHeight: 1.5 }}>Thank you! Would you share RML on X? It helps us reach more operators.</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setShowNPS(false)} style={{ flex: 1, padding: '9px', borderRadius: '4px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Maybe Later</button>
+                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("I've been using Risk Matrix Labs to manage my bankroll and it's a game changer. Try it free → riskmatrixlabs.com")}`} target="_blank" rel="noreferrer" onClick={() => setShowNPS(false)} style={{ flex: 2, padding: '9px', borderRadius: '4px', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Share on X →</a>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '6px' }}>Thanks for the Feedback</div>
+                <div style={{ fontFamily: I, fontSize: '14px', color: 'var(--text)', marginBottom: '8px', lineHeight: 1.5 }}>
+                  {npsScore <= 6 ? "We're sorry to hear that. What could we improve?" : "Glad you're finding value. Anything we could do better?"}
+                </div>
+                <textarea placeholder="Optional — your thoughts help us improve..." style={{ width: '100%', background: 'var(--card)', border: '1px solid var(--border2)', borderRadius: '4px', color: 'var(--text)', fontFamily: I, fontSize: '13px', padding: '10px', boxSizing: 'border-box', resize: 'vertical', minHeight: '80px' }} />
+                <button onClick={() => setShowNPS(false)} style={{ marginTop: '12px', width: '100%', padding: '9px', borderRadius: '4px', border: 'none', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Done</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TESTIMONIAL MODAL ── */}
+      {showTestimonial && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderTop: `2px solid ${NEON}`, borderRadius: 'var(--radius)', padding: '24px', maxWidth: '400px', width: '100%', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '6px' }}>10 Bets Logged 🎯</div>
+            <div style={{ fontFamily: I, fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px', lineHeight: 1.4 }}>How's the system working for you?</div>
+            <div style={{ fontFamily: I, fontSize: '12px', color: 'var(--text-dim)', marginBottom: '16px', lineHeight: 1.5 }}>If RML is helping you operate with more discipline, sharing it helps others find it — and helps us keep building.</div>
+            <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '4px', padding: '12px 14px', marginBottom: '16px' }}>
+              <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
+                "Using <span style={{ color: NEON_T }}>@RiskMatrixLabs</span> to manage my bankroll. Game changer for any serious operator. Try it free → riskmatrixlabs.com"
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setShowTestimonial(false)} style={{ flex: 1, padding: '9px', borderRadius: '4px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Not Now</button>
+              <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Using @RiskMatrixLabs to manage my bankroll. Game changer for any serious operator. Try it free → riskmatrixlabs.com')}`} target="_blank" rel="noreferrer" onClick={() => setShowTestimonial(false)} style={{ flex: 2, padding: '9px', borderRadius: '4px', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Share on X →</a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CHANGELOG / WHAT'S NEW MODAL ── */}
+      {showChangelog && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setShowChangelog(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderTop: `2px solid ${NEON}`, borderRadius: 'var(--radius)', padding: '24px', maxWidth: '420px', width: '100%', boxShadow: '0 16px 48px rgba(0,0,0,0.5)', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase' }}>What's New</div>
+                <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.1em', marginTop: '2px' }}>v2.6 — June 2026</div>
+              </div>
+              <button onClick={() => setShowChangelog(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>✕</button>
+            </div>
+            {[
+              { icon: '🔄', title: 'Ladder Session Keys', desc: 'Each ladder run gets a unique session ID. "Close Session" starts fresh without deleting any history. Bankroll math stays perfect.' },
+              { icon: '📧', title: 'Full Email Sequence', desc: 'Day 1 activation email, trial expired nudge, win-back on cancel, re-engagement for inactive subscribers — all automated.' },
+              { icon: '📊', title: 'GA4 Funnel Events', desc: 'trial_started, subscribed, bet_logged, churned — full funnel visibility in Google Analytics.' },
+              { icon: '💸', title: 'Referral Earn Banner', desc: 'Active subscribers see a one-time banner with their Rewardful link. Earn 30% recurring on every referral.' },
+              { icon: '🗓', title: 'Annual Upgrade Nudge', desc: 'Monthly subscribers see a savings prompt after 30 days. Switch to $149/yr and save $199.' },
+              { icon: '📋', title: 'Cancel Exit Survey', desc: 'Before billing portal opens, a 4-reason survey captures why subscribers cancel.' },
+            ].map(({ icon, title, desc }) => (
+              <div key={title} style={{ display: 'flex', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '18px', flexShrink: 0, marginTop: '1px' }}>{icon}</span>
+                <div>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--text)', textTransform: 'uppercase', marginBottom: '3px' }}>{title}</div>
+                  <div style={{ fontFamily: I, fontSize: '12px', color: 'var(--text-dim)', lineHeight: 1.5 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+            <button onClick={() => setShowChangelog(false)} style={{ marginTop: '16px', width: '100%', padding: '10px', borderRadius: '4px', border: 'none', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>Got It</button>
+          </div>
+        </div>
+      )}
 
       {/* SHARE SESSION CARD MODAL */}
       {showShare && (
@@ -2864,6 +3121,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           username={username}
           bankroll={bankroll}
           masterBankroll={masterBankroll}
+          unitSize={stats.unitSize}
           bets={bets}
           onClose={() => setShowShare(false)}
         />
@@ -3070,13 +3328,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 )}
                 {subStatus.sub.stripe_customer_id && (
                   <button
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ returnUrl: window.location.href }) })
-                        const { url } = await res.json()
-                        if (url) window.location.href = url
-                      } catch {}
-                    }}
+                    onClick={() => { setCancelReason(null); setShowCancelSurvey(true) }}
                     style={{ marginTop: '10px', width: '100%', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '7px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer' }}
                   >
                     Manage Billing →
@@ -3246,6 +3498,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   Live
                 </span>
               )}
+              <button onClick={() => { setShowChangelog(true); try { localStorage.setItem('rml_changelog_seen', CHANGELOG_VERSION) } catch {} }} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer' }} title="What's New">
+                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--neon-sub)' }}>NEW</span>
+                {changelogUnseen && <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 5px rgba(255,59,59,0.7)', animation: 'pulseDot 1.4s ease infinite' }} />}
+              </button>
               <button onClick={() => setDarkMode(d => !d)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer' }}>
                 {darkMode ? <Sun size={14} color={NEON_T} strokeWidth={2} /> : <Moon size={14} color='var(--text-sub)' strokeWidth={2} />}
               </button>
@@ -3255,10 +3511,29 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     <Lock size={10} color={NEON_T} strokeWidth={2} />
                   </button>
                   {userMenuOpen && (
-                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '200px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '220px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
                       <div style={{ padding: '8px 16px 10px', borderBottom: `1px solid var(--border)` }}>
                         <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Signed in as</div>
                         <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', wordBreak: 'break-all' }}>{user.email}</div>
+                      </div>
+                      {/* Display name — mobile */}
+                      <div style={{ padding: '10px 16px', borderBottom: `1px solid var(--border)` }}>
+                        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Display Name</div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <input
+                            key={username}
+                            defaultValue={username}
+                            placeholder="Your name"
+                            maxLength={24}
+                            onKeyDown={e => { if (e.key === 'Enter') { const val = e.target.value.trim(); if (val) { setUsername(val); setUserMenuOpen(false) } } }}
+                            style={{ flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text)', background: 'var(--card)', border: `1px solid var(--border2)`, borderRadius: '2px', padding: '5px 8px', outline: 'none' }}
+                            id="username-input-mobile"
+                          />
+                          <button
+                            onClick={() => { const el = document.getElementById('username-input-mobile'); const val = el?.value?.trim(); if (val) { setUsername(val); setUserMenuOpen(false) } }}
+                            style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', padding: '5px 10px', border: `1px solid ${NEON}`, borderRadius: '2px', background: 'rgba(189,255,0,0.1)', color: NEON, cursor: 'pointer' }}
+                          >Save</button>
+                        </div>
                       </div>
                       {subStatus?.sub && (
                         <div style={{ padding: '8px 16px', borderBottom: `1px solid var(--border)` }}>
@@ -3305,69 +3580,87 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', flexWrap: 'nowrap' }}>
 
-
-          {/* Desktop-only controls */}
+          {/* ── DESKTOP NAV: Live | ? | Theme | NEW | OPERATOR | Share ── */}
           {!isMobile && <>
-            {/* Theme toggle */}
-            <button
-              onClick={() => setDarkMode(d => !d)}
-              title={darkMode ? 'Light Mode' : 'Dark Mode'}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer', flexShrink: 0, boxShadow: 'var(--card-shadow)' }}
-            >
-              {darkMode ? <Sun size={14} color={NEON_T} strokeWidth={2} /> : <Moon size={14} color='var(--text-sub)' strokeWidth={2} />}
-            </button>
 
-            {/* Share button */}
-            <button onClick={() => setShowShare(true)} title="Share session stats"
-              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', padding: '6px 12px', border: `1px solid rgba(189,255,0,0.4)`, borderRadius: '2px', background: 'rgba(189,255,0,0.08)', color: NEON_T, cursor: 'pointer', textTransform: 'uppercase' }}>
-              <Share2 size={12} strokeWidth={2} /> Share
-            </button>
-          </>}
-
-          {/* Share on mobile — icon only */}
-          {isMobile && (
-            <button onClick={() => setShowShare(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', cursor: 'pointer' }}>
-              <Share2 size={13} color={NEON_T} strokeWidth={2} />
-            </button>
-          )}
-
-          {/* Help button — mobile */}
-          {isMobile && (
-            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer' }}>
-              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON_T : 'var(--text-dim)' }}>?</span>
-            </button>
-          )}
-
-          {/* Help button — desktop */}
-          {!isMobile && (
-            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, backgroundColor: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
-              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON_T : 'var(--text-dim)' }}>?</span>
-            </button>
-          )}
-
-          {/* Desktop: sync + user menu + version */}
-          {!isMobile && <>
+            {/* Live indicator */}
             {cloudSynced && (
-              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, display: 'inline-block', boxShadow: '0 0 6px rgba(189,255,0,0.8)', animation: 'pulseDot 2s infinite' }} />
                 Live
               </span>
             )}
+
+            {/* Help / ? */}
+            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, backgroundColor: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON_T : 'var(--text-dim)' }}>?</span>
+            </button>
+
+            {/* Theme toggle */}
+            <button onClick={() => setDarkMode(d => !d)} title={darkMode ? 'Light Mode' : 'Dark Mode'}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid var(--border2)`, backgroundColor: 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              {darkMode ? <Sun size={14} color={NEON_T} strokeWidth={2} /> : <Moon size={14} color='var(--text-sub)' strokeWidth={2} />}
+            </button>
+
+            {/* NEW / Changelog */}
+            <button onClick={() => { setShowChangelog(true); try { localStorage.setItem('rml_changelog_seen', CHANGELOG_VERSION) } catch {} }} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '34px', padding: '0 10px', borderRadius: '2px', border: '1px solid var(--border2)', backgroundColor: 'var(--card)', cursor: 'pointer', flexShrink: 0 }} title="What's New">
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--neon-sub)' }}>NEW</span>
+              <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--muted)' }}>v2.6</span>
+              {changelogUnseen && <span style={{ position: 'absolute', top: '5px', right: '5px', width: '5px', height: '5px', borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 5px rgba(255,59,59,0.7)', animation: 'pulseDot 1.4s ease infinite' }} />}
+            </button>
+
+            {/* OPERATOR / User menu */}
             {user && (
               <div data-user-menu style={{ position: 'relative' }}>
                 <button onClick={() => setUserMenuOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '5px 10px', border: `1px solid var(--border2)`, borderRadius: '2px', background: 'var(--card)', color: 'var(--text-dim)', cursor: 'pointer', maxWidth: '180px' }} title="Account">
                   <Lock size={10} color={NEON_T} strokeWidth={2} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>OPERATOR</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '130px' }}>{username}</span>
                 </button>
                 {userMenuOpen && (
                   <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--card2)', border: `1px solid var(--border2)`, borderTop: `2px solid ${NEON}`, borderRadius: '2px', minWidth: '220px', zIndex: 500, padding: '6px 0', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
                     <div style={{ padding: '8px 16px 10px', borderBottom: `1px solid var(--border)` }}>
                       <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>Signed in as</div>
                       <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', wordBreak: 'break-all' }}>{user.email}</div>
+                    </div>
+                    {/* Display name */}
+                    <div style={{ padding: '10px 16px', borderBottom: `1px solid var(--border)` }}>
+                      <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.18em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '6px' }}>Display Name</div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <input
+                          key={username}
+                          defaultValue={username}
+                          placeholder="Your name"
+                          maxLength={24}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              const val = e.target.value.trim()
+                              if (val) { setUsername(val); setUserMenuOpen(false) }
+                            }
+                          }}
+                          style={{
+                            flex: 1, fontFamily: R, fontSize: '11px', fontWeight: 700,
+                            letterSpacing: '0.04em', color: 'var(--text)',
+                            background: 'var(--card)', border: `1px solid var(--border2)`,
+                            borderRadius: '2px', padding: '5px 8px', outline: 'none',
+                          }}
+                          id="username-input"
+                        />
+                        <button
+                          onClick={() => {
+                            const el = document.getElementById('username-input')
+                            const val = el?.value?.trim()
+                            if (val) { setUsername(val); setUserMenuOpen(false) }
+                          }}
+                          style={{
+                            fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em',
+                            padding: '5px 10px', border: `1px solid ${NEON}`, borderRadius: '2px',
+                            background: 'rgba(189,255,0,0.1)', color: NEON, cursor: 'pointer',
+                          }}
+                        >Save</button>
+                      </div>
                     </div>
                     {/* Subscription info in user menu */}
                     {subStatus?.sub && (
@@ -3416,15 +3709,33 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 )}
               </div>
             )}
-            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--neon-sub)' }}>v2.4</span>
+
+            {/* Share — rightmost */}
+            <button onClick={() => setShowShare(true)} title="Share session stats"
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', padding: '6px 12px', border: `1px solid rgba(189,255,0,0.4)`, borderRadius: '2px', background: 'rgba(189,255,0,0.08)', color: NEON_T, cursor: 'pointer', textTransform: 'uppercase', flexShrink: 0 }}>
+              <Share2 size={12} strokeWidth={2} /> Share
+            </button>
           </>}
+
+          {/* ── MOBILE NAV ── */}
+          {isMobile && (
+            <button onClick={() => setShowShare(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', cursor: 'pointer' }}>
+              <Share2 size={13} color={NEON_T} strokeWidth={2} />
+            </button>
+          )}
+          {isMobile && (
+            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer' }}>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON_T : 'var(--text-dim)' }}>?</span>
+            </button>
+          )}
         </div>
       </header>
 
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
+          {[['live','Live'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -3452,6 +3763,53 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         style={{ paddingTop: isMobile ? '8px' : '4px', paddingLeft: isMobile ? '10px' : pad, paddingRight: isMobile ? '10px' : pad, overflowX: 'hidden', width: '100%', boxSizing: 'border-box', animation: 'tabIn 0.18s ease', touchAction: 'pan-y' }}
         key={tab}
       >
+
+      {/* REFERRAL EARN BANNER — shown once to active subscribers, dismissible */}
+      {(() => {
+        const dismissed = (() => { try { return localStorage.getItem('rml_ref_banner_dismissed') === '1' } catch { return true } })()
+        const isActive  = subStatus?.active && subStatus?.sub?.status === 'active'
+        if (!isActive || dismissed || isDemo) return null
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'rgba(189,255,0,0.05)', border: '1px solid rgba(189,255,0,0.2)', borderRadius: 'var(--radius)', padding: '11px 14px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', align: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>💸</span>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#BDFF00', textTransform: 'uppercase' }}>Earn 30% recurring</div>
+                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>Share your link — earn every month they stay subscribed.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <a href="https://risk-matrix-labs.getrewardful.com/signup" target="_blank" rel="noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '6px 12px', borderRadius: '4px', background: '#BDFF00', color: '#0A0A0A', textDecoration: 'none', cursor: 'pointer' }}>Get Link</a>
+              <button onClick={() => { try { localStorage.setItem('rml_ref_banner_dismissed', '1') } catch {} }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 10px', borderRadius: '4px', border: '1px solid #2a2a2a', background: 'transparent', color: '#555', cursor: 'pointer' }}>✕</button>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ANNUAL UPGRADE NUDGE — shown to monthly subscribers after 30 days, dismissible */}
+      {(() => {
+        const dismissed    = (() => { try { return localStorage.getItem('rml_annual_dismissed') === '1' } catch { return true } })()
+        const isMonthly    = subStatus?.sub?.plan?.includes('monthly')
+        const isActive     = subStatus?.active && subStatus?.sub?.status === 'active'
+        const signupMs     = (() => { try { return user?.created_at ? new Date(user.created_at).getTime() : 0 } catch { return 0 } })()
+        const over30days   = Date.now() - signupMs > 30 * 24 * 60 * 60 * 1000
+        if (!isActive || !isMonthly || dismissed || isDemo || !over30days) return null
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'rgba(96,180,255,0.05)', border: '1px solid rgba(96,180,255,0.2)', borderRadius: 'var(--radius)', padding: '11px 14px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: '16px', flexShrink: 0 }}>🗓</span>
+              <div>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: '#60B4FF', textTransform: 'uppercase' }}>Save $199/yr — Switch to Annual</div>
+                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>$149/yr instead of $348/yr. Same full access. Lock it in.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <button onClick={() => { setCancelReason(null); setShowCancelSurvey(true) }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '6px 12px', borderRadius: '4px', background: '#60B4FF', color: '#0A0A0A', border: 'none', cursor: 'pointer' }}>Switch</button>
+              <button onClick={() => { try { localStorage.setItem('rml_annual_dismissed', '1') } catch {} }} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '6px 10px', borderRadius: '4px', border: '1px solid #2a2a2a', background: 'transparent', color: '#555', cursor: 'pointer' }}>✕</button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* OPEN BETS LIVE BANNER — overview tab */}
       {tab === 'overview' && stats.openBets > 0 && (
@@ -3694,6 +4052,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         { label: 'Daily Cap',     value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
                         { label: '⚡ Ladder',     value: fmt$(ladderStake),          sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : '', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                         { label: 'Open Bet Risk', value: fmt$(openOnlyRisk),         sub: openOnlyRisk > 0 ? `${bets.filter(b=>b.result==='Open'&&!b.ladder).length} bets pending` : '', color: openOnlyRisk > 0 ? YELLOW : 'var(--text)' },
+                        { label: 'Total Risk',    value: fmt$(totalRisk),             sub: masterBankroll > 0 ? `${((totalRisk / masterBankroll) * 100).toFixed(1)}% of bankroll` : '', color: totalRisk > 0 ? RED : 'var(--text)' },
                         ]
                     })().map(({ label, value, sub, color }) => (
                       <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
@@ -4026,6 +4385,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                       { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap` },
                       { label: '⚡ Ladder',   value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                       (() => { const openOnlyRisk = bets.filter(b => b.result === 'Open' && !b.ladder).reduce((s, b) => s + (b.stake || b.units * stats.unitSize), 0); return { label: 'Open Bet Risk', value: fmt$(openOnlyRisk), sub: openOnlyRisk > 0 ? `${bets.filter(b=>b.result==='Open'&&!b.ladder).length} bets pending` : 'none open', color: openOnlyRisk > 0 ? YELLOW : 'var(--text)' }; })(),
+                      (() => { const openOnlyRisk = bets.filter(b => b.result === 'Open' && !b.ladder).reduce((s, b) => s + (b.stake || b.units * stats.unitSize), 0); const ladderStake = stats.activeLadderRung ? stats.activeLadderRung.stake : 0; const totalRisk = openOnlyRisk + ladderStake; return { label: 'Total Risk', value: fmt$(totalRisk), sub: masterBankroll > 0 ? `${((totalRisk / masterBankroll) * 100).toFixed(1)}% of bankroll` : '', color: totalRisk > 0 ? RED : 'var(--text)' }; })(),
                     ].map(({ label, value, sub, color }) => (
                       <div key={label} style={{ padding: '9px 11px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
                         <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
@@ -4269,14 +4629,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         )}
 
         {/* ── LADDER ── */}
-        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} onShare={setShareCardBet}
-          onResetSync={(nextBets, newStarting) => {
-            // Delete only ladder bets (not all bets!) then upsert new rungs
-            const ladderBets = nextBets.filter(b => b.ladder)
-            deleteLadderBets(userId, token).then(() => {
-              Promise.all(ladderBets.map(b => upsertBet(b, userId, token)))
-            })
-            upsertSettings(userId, { ladder_starting: newStarting }, token)
+        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} ladderSessionKey={ladderSessionKey} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} onShare={setShareCardBet}
+          onCloseSync={(newKey, newStarting, newRungs) => {
+            // No deletes — update session key so ladder tab shows fresh session, upsert new rungs
+            setLadderSessionKey(newKey)
+            upsertSettings(userId, { ladder_session_key: newKey, ladder_starting: newStarting }, token)
+            if (newRungs?.length) Promise.all(newRungs.map(b => upsertBet(b, userId, token)))
           }}
         />}
 
@@ -4287,6 +4645,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
+        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} />}
 
       </div>
 
@@ -4307,6 +4666,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
+                { id: 'live',      label: 'Live',      icon: Radio      },
                 { id: 'analytics', label: 'Analytics', icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Sliders },
               ].map(({ id, label, icon: Icon }) => (

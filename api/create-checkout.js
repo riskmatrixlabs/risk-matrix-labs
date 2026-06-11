@@ -1,34 +1,36 @@
 import Stripe from 'stripe'
+import { requireAuth } from './_lib/auth.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-const OWNER_EMAIL = 'michaeltejeda08@gmail.com'
-
-function parseBody(req) {
-  return new Promise((resolve, reject) => {
-    // Already parsed (Vercel auto-parse)
-    if (req.body && typeof req.body === 'object') return resolve(req.body)
-    // Manual parse from raw stream
-    let data = ''
-    req.on('data', chunk => data += chunk)
-    req.on('end', () => {
-      try { resolve(JSON.parse(data)) } catch { resolve({}) }
-    })
-    req.on('error', reject)
-  })
-}
+const TEAM_EMAILS = [
+  'michaeltejeda08@gmail.com',
+  'josiahteem@yahoo.com',
+  'tremizy@gmail.com',
+  'j.willey2489@gmail.com',
+  'lauriesjeanpaul@gmail.com',
+]
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { priceId, userId, email, successUrl, cancelUrl, rewardfulReferral } = await parseBody(req)
+  // Verify caller identity from JWT — never trust userId/email from body
+  const user = await requireAuth(req, res)
+  if (!user) return
 
-  if (!priceId || !userId || !email) {
-    return res.status(400).json({ error: 'Missing required fields' })
+  const body = req.body || {}
+  const { priceId, successUrl, cancelUrl, rewardfulReferral } = body
+
+  // Use verified identity from token
+  const userId = user.id
+  const email  = user.email
+
+  if (!priceId) {
+    return res.status(400).json({ error: 'Missing priceId' })
   }
 
-  // Owner bypass — never charge the owner
-  if (email === OWNER_EMAIL) {
+  // Team bypass — never charge team members
+  if (TEAM_EMAILS.includes(email?.toLowerCase())) {
     return res.status(200).json({ bypass: true })
   }
 
