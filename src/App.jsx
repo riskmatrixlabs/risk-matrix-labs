@@ -4666,9 +4666,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'live',      label: 'Live',      icon: Radio      },
-                { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-                { id: 'session',   label: 'Session',   icon: Sliders },
+                { id: 'analytics', label: 'Overview',  icon: BarChart3  },
+                { id: 'session',   label: 'Session',   icon: Sliders    },
+                { id: 'partners',  label: 'Earn',      icon: Handshake  },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
                   display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
@@ -4694,13 +4694,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
+              { id: 'live',      label: 'Live',     icon: Radio      },
               { id: 'overview',  label: 'Analytics',icon: TrendingUp },
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
-              { id: 'analytics', label: 'Overview', icon: BarChart3  },
               { id: 'rr engine', label: 'RR',       icon: Target     },
-              { id: 'session',   label: 'Session',  icon: Sliders    },
-              { id: 'partners',  label: 'Earn',     icon: Handshake  },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
@@ -4725,6 +4723,23 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 </button>
               )
             })}
+            {/* More button */}
+            <button onClick={() => setShowMore(p => !p)} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: '2px', background: 'none', border: 'none', cursor: 'pointer',
+              color: ['analytics','session','partners'].includes(tab) ? NEON_T : 'var(--muted)',
+              transition: 'color 0.12s', position: 'relative', minWidth: 0, padding: '0 2px',
+            }}>
+              {['analytics','session','partners'].includes(tab) && (
+                <div style={{
+                  position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                  width: '20px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
+                  boxShadow: `0 0 8px ${NEON}`,
+                }} />
+              )}
+              <Sliders size={15} strokeWidth={2} color={['analytics','session','partners'].includes(tab) ? NEON : 'var(--muted)'} />
+              <span style={{ fontFamily: R, fontSize: '6px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>More</span>
+            </button>
           </nav>
         </>
       )}
