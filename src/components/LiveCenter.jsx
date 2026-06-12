@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchEvents, fetchLiveEvents } from '../lib/events'
+import { devigTwoWay } from '../lib/devig'
 
 const NEON   = '#BDFF00'
 const NEON_T = 'var(--neon-title)'
@@ -1029,6 +1030,30 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                     )}
                   </div>
                 ))}
+
+                {/* No-Vig Fair Odds — moneyline de-vigged (true implied prob, juice removed) + book hold */}
+                {hasML && (() => {
+                  const dv = devigTwoWay(event.odds_ml_away, event.odds_ml_home)
+                  if (!dv) return null
+                  const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
+                  return (
+                    <div style={{ marginTop: '4px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)' }}>
+                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</span>
+                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center' }}>No-Vig Fair ML</span>
+                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{event.home_abbr}</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '12px 14px' }}>
+                        <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{fair(dv.fairAmericanA)}</span>
+                        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, textAlign: 'center' }}>{(dv.fairA * 100).toFixed(1)}% / {(dv.fairB * 100).toFixed(1)}%</span>
+                        <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T, textAlign: 'right' }}>{fair(dv.fairAmericanB)}</span>
+                      </div>
+                      <div style={{ padding: '0 14px 11px', textAlign: 'center', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>
+                        BOOK HOLD <span style={{ color: dv.holdPct > 5 ? '#FF3B3B' : NEON_T }}>{dv.holdPct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             )
           })()}
