@@ -1102,6 +1102,11 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                         {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} /> : <OddsCard key={i} empty />)}
                       </div>
                     ))}
+                    {meta.odds_provider && (
+                      <div style={{ textAlign: 'center', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginTop: '2px' }}>
+                        Odds by <span style={{ color: NEON_T }}>{meta.odds_provider}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 

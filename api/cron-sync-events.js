@@ -118,6 +118,7 @@ async function fetchSport({ key, sport, league }, dateStr) {
         // ML odds + juice + spread/total (pickcenter is the reliable source for live games)
         const pc = s.pickcenter?.[0]
         if (pc) {
+          if (pc.provider?.name) meta.odds_provider = pc.provider.name
           if (pc.awayTeamOdds?.moneyLine != null) {
             homeMLRaw = pc.homeTeamOdds?.moneyLine ?? homeMLRaw
             awayMLRaw = pc.awayTeamOdds?.moneyLine ?? awayMLRaw
