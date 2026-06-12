@@ -661,13 +661,35 @@ function WinProbability({ awayAbbr, homeAbbr, fairA, fairB }) {
 }
 
 // ── Starting pitcher line — shown under each team's score in the hero ─────────
-function PitcherLine({ pitcher }) {
-  if (!pitcher?.name) return null
-  const sub = [pitcher.era ? `${pitcher.era} ERA` : null, pitcher.record || null].filter(Boolean).join(' · ')
+// ── Probable Pitchers matchup — outlined box in the hero (shows on all tabs). ──
+function PitcherMatchup({ away, home, awayAbbr, homeAbbr }) {
+  if (!away?.name && !home?.name) return null
+  const hand = (t) => t === 'R' ? 'RHP' : t === 'L' ? 'LHP' : null
+  const col = (p, abbr) => (
+    <div style={{ padding: '12px 14px', textAlign: 'center' }}>
+      <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED }}>{abbr}</div>
+      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginTop: '3px' }}>
+        {p?.name ?? 'TBD'}{hand(p?.throws) && <span style={{ color: NEON_T, fontSize: '11px', fontWeight: 700 }}> {hand(p.throws)}</span>}
+      </div>
+      {p?.name && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
+          {[['ERA', p.era], ['REC', p.record], ['K', p.strikeouts]].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
+            <div key={l}>
+              <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED }}>{l}</div>
+              <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
   return (
-    <div style={{ textAlign: 'center', marginTop: '4px' }}>
-      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{pitcher.name}{pitcher.throws ? ` (${pitcher.throws})` : ''}</div>
-      {sub && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.04em' }}>{sub}</div>}
+    <div style={{ margin: '0 16px 16px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MUTED, textAlign: 'center' }}>Probable Pitchers</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+        {col(away, awayAbbr)}
+        <div style={{ borderLeft: `1px solid ${BORDER}` }}>{col(home, homeAbbr)}</div>
+      </div>
     </div>
   )
 }
@@ -871,7 +893,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                 {event.away_record && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>{event.away_record}</div>}
               </div>
               {hasScore && <div style={{ fontFamily: R, fontSize: '64px', fontWeight: 700, lineHeight: 1, color: (awayWin || awayLead) ? TEXT : 'rgba(255,255,255,0.55)', letterSpacing: '-0.02em' }}>{event.away_score}</div>}
-              <PitcherLine pitcher={meta.away_pitcher} />
             </div>
             {/* Center status */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '70px' }}>
@@ -929,9 +950,13 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                 {event.home_record && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>{event.home_record}</div>}
               </div>
               {hasScore && <div style={{ fontFamily: R, fontSize: '64px', fontWeight: 700, lineHeight: 1, color: (homeWin || homeLead) ? TEXT : 'rgba(255,255,255,0.55)', letterSpacing: '-0.02em' }}>{event.home_score}</div>}
-              <PitcherLine pitcher={meta.home_pitcher} />
             </div>
           </div>
+
+          {/* Probable Pitchers matchup box — MLB, in the hero (all tabs) */}
+          {event.sport === 'MLB' && (meta.away_pitcher?.name || meta.home_pitcher?.name) && (
+            <PitcherMatchup away={meta.away_pitcher} home={meta.home_pitcher} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} />
+          )}
 
           {/* NHL goal scorers — puck summary by team */}
           {event.sport === 'NHL' && (meta.goals?.away?.length || meta.goals?.home?.length) && (
