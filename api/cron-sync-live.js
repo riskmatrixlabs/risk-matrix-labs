@@ -254,6 +254,39 @@ export function buildOddsSnapshots(rows, capturedAt) {
   return out
 }
 
+// Team trends — record splits (overall/home/road) + streak + win% + recent form.
+// All derived from data already fetched (scoreboard competitor `records`, summary
+// standings, and in-game `lastFiveGames`). No extra network calls.
+export function parseTrends(away, home, s) {
+  const standingEntry = (teamId) => {
+    const groups = s?.standings?.groups ?? (s?.standings ? [s.standings] : [])
+    for (const g of groups) {
+      const entries = g.standings?.entries ?? g.entries ?? []
+      const e = entries.find(x => String(x.team?.id) === String(teamId))
+      if (e) return e
+    }
+    return null
+  }
+  const formFor = (teamId) => {
+    const t = (s?.lastFiveGames ?? []).find(x => String(x.team?.id) === String(teamId))
+    const evs = (t?.events ?? []).map(e => e.gameResult).filter(Boolean)
+    return evs.length ? evs : null
+  }
+  const build = (comp) => {
+    const recs = comp?.records ?? []
+    const rec = (type) => recs.find(r => r.type === type)?.summary ?? null
+    const st = standingEntry(comp?.team?.id)
+    const stat = (n) => (st?.stats ?? []).find(x => x.name === n)?.displayValue ?? null
+    const out = { overall: rec('total'), home: rec('home'), road: rec('road'), streak: stat('streak'), winPct: stat('winPercent') }
+    const form = formFor(comp?.team?.id)
+    if (form) { out.form = form; out.l5wins = form.filter(r => r === 'W').length; out.l5total = form.length }
+    return out
+  }
+  const t = { away: build(away), home: build(home) }
+  const useful = (x) => x && (x.overall || x.home || x.road || x.streak || x.form)
+  return (useful(t.away) || useful(t.home)) ? t : null
+}
+
 export function eventNote(comp) {
   const n = comp.notes?.find(x => x.type === 'event') ?? comp.notes?.[0]
   return n?.headline ?? null
@@ -265,6 +298,9 @@ export function buildLiveMeta(s, comp, away, home, key) {
 
   const _note = eventNote(comp)
   if (_note) meta.event_note = _note
+
+  const _trends = parseTrends(away, home, s)
+  if (_trends) meta.trends = _trends
 
   // Sport-specific team stats (Apple Sports style) for the always-visible comparison
   const _ts = parseTeamStats(s, away, home, key)

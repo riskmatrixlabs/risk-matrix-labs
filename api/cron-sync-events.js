@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
-import { parseTeamStats, parseNHLSkaters, parseNHLGoalie, parseStandings, parseHoopsPlayers, parsePeriodLinescore, eventNote, parseNHLGoals, parseSimplePlays, buildOddsSnapshots } from './cron-sync-live.js'
+import { parseTeamStats, parseNHLSkaters, parseNHLGoalie, parseStandings, parseHoopsPlayers, parsePeriodLinescore, eventNote, parseNHLGoals, parseSimplePlays, buildOddsSnapshots, parseTrends } from './cron-sync-live.js'
 
 // Allow this serverless function up to 60s — a full slate (3 dates × 5 sports,
 // each with a per-game summary fetch) needs more than the 10s default.
@@ -158,6 +158,9 @@ async function fetchSport({ key, sport, league }, dateStr) {
         // Standings (all sports) — shared parser
         const _standings = parseStandings(s)
         if (_standings) meta.standings = _standings
+
+        const _trends = parseTrends(away, home, s)
+        if (_trends) meta.trends = _trends
 
         // MLB: probable pitchers
         if (key === 'MLB') {
