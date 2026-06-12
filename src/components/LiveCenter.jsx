@@ -527,6 +527,51 @@ function TeamStats({ sport, awayAbbr, homeAbbr, aStats, hStats }) {
   )
 }
 
+// ── Trends — record splits (overall/home/road), streak, recent form. Collapsible (default open). ──
+function Trends({ awayAbbr, homeAbbr, trends }) {
+  const [open, setOpen] = useState(true)
+  if (!trends?.away && !trends?.home) return null
+  const a = trends.away ?? {}, h = trends.home ?? {}
+  const rows = [
+    ['Record', a.overall, h.overall],
+    ['Home',   a.home,    h.home],
+    ['Away',   a.road,    h.road],
+    ['Streak', a.streak,  h.streak],
+  ].filter(([, av, hv]) => av != null || hv != null)
+  const formPips = (form) => (form ?? []).slice(-5).map((r, i) => (
+    <span key={i} style={{ display: 'inline-block', width: 14, height: 14, lineHeight: '14px', textAlign: 'center', borderRadius: '50%', fontFamily: R, fontSize: '8px', fontWeight: 700, marginLeft: i ? 3 : 0, color: r === 'W' ? '#0A0A0A' : '#fff', background: r === 'W' ? NEON : '#FF3B3B' }}>{r}</span>
+  ))
+  const hasForm = a.form?.length || h.form?.length
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr auto', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{awayAbbr}</span>
+        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'right' }}>Trends</span>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{homeAbbr}</span>
+      </button>
+      {open && (
+        <>
+          {rows.map(([label, av, hv], i) => (
+            <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '10px 16px', borderBottom: (i < rows.length - 1 || hasForm) ? `1px solid ${BORDER}` : 'none' }}>
+              <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{av ?? '—'}</span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', minWidth: '70px' }}>{label}</span>
+              <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{hv ?? '—'}</span>
+            </div>
+          ))}
+          {hasForm && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '10px 16px' }}>
+              <span style={{ textAlign: 'left' }}>{formPips(a.form)}</span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', minWidth: '70px' }}>Last 5</span>
+              <span style={{ textAlign: 'right' }}>{formPips(h.form)}</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Starting pitcher line — shown under each team's score in the hero ─────────
 function PitcherLine({ pitcher }) {
   if (!pitcher?.name) return null
@@ -860,6 +905,11 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
           {/* Game Info — the first thing under the tabs, on every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
+
+          {/* Trends — record splits / streak / form (collapsible, default open). Hidden on Play by Play. */}
+          {dtab !== 'Play by Play' && meta.trends && (
+            <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />
+          )}
 
           {/* Team Stats (collapsible, default open) — under the tabs, above the tab content.
               Only live/final: ESPN returns SEASON totals pre-game, which aren't game stats.
