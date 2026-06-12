@@ -572,6 +572,49 @@ function Trends({ awayAbbr, homeAbbr, trends }) {
   )
 }
 
+// ── Injuries — per-team list (collapsible, default open). ──
+function Injuries({ awayAbbr, homeAbbr, injuries }) {
+  const [open, setOpen] = useState(true)
+  const a = injuries?.away ?? [], h = injuries?.home ?? []
+  if (!a.length && !h.length) return null
+  const statusColor = (s) => {
+    const t = (s || '').toLowerCase()
+    if (t.includes('out') || t.includes('il')) return '#FF3B3B'
+    if (t.includes('day')) return NEON_T
+    return MUTED
+  }
+  const teamBlock = (abbr, list) => (
+    <div style={{ padding: '4px 0' }}>
+      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', padding: '8px 16px 4px' }}>{abbr}</div>
+      {list.length === 0
+        ? <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: MUTED, padding: '4px 16px 8px' }}>No reported injuries</div>
+        : list.map((p, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', padding: '6px 16px' }}>
+            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</span>
+            <span style={{ textAlign: 'right', flexShrink: 0 }}>
+              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: statusColor(p.status) }}>{p.status}</span>
+              {p.detail && <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: MUTED }}> · {p.detail}</span>}
+            </span>
+          </div>
+        ))}
+    </div>
+  )
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Injury Report</span>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+      {open && (
+        <div>
+          {teamBlock(awayAbbr, a)}
+          <div style={{ borderTop: `1px solid ${BORDER}` }}>{teamBlock(homeAbbr, h)}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Starting pitcher line — shown under each team's score in the hero ─────────
 function PitcherLine({ pitcher }) {
   if (!pitcher?.name) return null
@@ -909,6 +952,11 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
           {/* Trends — record splits / streak / form (collapsible, default open). Hidden on Play by Play. */}
           {dtab !== 'Play by Play' && meta.trends && (
             <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />
+          )}
+
+          {/* Injury report (collapsible, default open). Hidden on Play by Play. */}
+          {dtab !== 'Play by Play' && meta.injuries && (
+            <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />
           )}
 
           {/* Team Stats (collapsible, default open) — under the tabs, above the tab content.
