@@ -476,9 +476,14 @@ export default async function handler(req, res) {
   }
 
   // Append odds snapshots for line movement + CLV (append-only; never blocks the sync).
+  // NOTE: supabase-js .insert() resolves with { error } instead of throwing on DB
+  // errors (RLS/permission), so we MUST check the returned error — not just try/catch.
   try {
     const snaps = buildOddsSnapshots(allRows, new Date().toISOString())
-    if (snaps.length) await supabase.from('odds_history').insert(snaps)
+    if (snaps.length) {
+      const { error: snapErr } = await supabase.from('odds_history').insert(snaps)
+      if (snapErr) console.warn('odds_history snapshot insert error:', snapErr.message)
+    }
   } catch (e) {
     console.warn('odds_history snapshot failed:', e.message)
   }
