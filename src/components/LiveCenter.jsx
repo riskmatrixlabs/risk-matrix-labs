@@ -1048,10 +1048,12 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
           {dtab === 'Insights' && (() => {
             const hasML = !!event.odds_ml_away && !!event.odds_ml_home
             const dv = hasML ? devigTwoWay(event.odds_ml_away, event.odds_ml_home) : null
+            const dvSpread = (meta.spread_away_juice != null && meta.spread_home_juice != null) ? devigTwoWay(meta.spread_away_juice, meta.spread_home_juice) : null
+            const dvTotal  = (meta.over_juice != null && meta.under_juice != null) ? devigTwoWay(meta.over_juice, meta.under_juice) : null
             const fmtMv = (mkt, v) => v == null ? '—' : (mkt === 'ml' ? (v > 0 ? `+${v}` : `${v}`) : (mkt === 'spread' && v > 0 ? `+${v}` : `${v}`))
             const labelFor = { ml_away: `${event.away_abbr} ML`, ml_home: `${event.home_abbr} ML`, spread_away: `${event.away_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, spread_home: `${event.home_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, total: 'Total' }
             const order = ['ml_home', 'ml_away', 'spread_home', 'spread_away', 'total']
-            const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
+            const moved = order.filter(k => movement[k] && movement[k].points >= 2)
             const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
 
             // ── Odds table (was the Odds tab) ──
@@ -1113,20 +1115,28 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
                 {dv && <WinProbability awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} fairA={dv.fairA} fairB={dv.fairB} />}
 
-                {dv && (
-                  <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
-                      <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</span>
-                      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center' }}>No-Vig Fair ML</span>
-                      <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{event.home_abbr}</span>
+                {(dv || dvSpread || dvTotal) && (() => {
+                  const rows = [
+                    dv       && { name: 'Moneyline',  aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct },
+                    dvSpread && { name: spreadLabel,  aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct },
+                    dvTotal  && { name: 'Total',      aL: 'O',             bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct },
+                  ].filter(Boolean)
+                  return (
+                    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>No-Vig Fair Value</div>
+                      {rows.map((m, i) => (
+                        <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                          <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}><span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}>{m.aL} </span>{m.a}</span>
+                          <span style={{ textAlign: 'center' }}>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{m.name}</div>
+                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>HOLD <span style={{ color: m.hold > 5 ? '#FF3B3B' : NEON_T }}>{m.hold.toFixed(1)}%</span></div>
+                          </span>
+                          <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, textAlign: 'right' }}>{m.b}<span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}> {m.bL}</span></span>
+                        </div>
+                      ))}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '12px 14px' }}>
-                      <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{fair(dv.fairAmericanA)}</span>
-                      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, textAlign: 'center' }}>HOLD <span style={{ color: dv.holdPct > 5 ? '#FF3B3B' : NEON_T }}>{dv.holdPct.toFixed(1)}%</span></span>
-                      <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T, textAlign: 'right' }}>{fair(dv.fairAmericanB)}</span>
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {moved.length > 0 && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
@@ -1134,15 +1144,16 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                     {moved.map((k, i) => {
                       const mkt = k.split('_')[0]
                       const m = movement[k]
+                      const flat = m.delta === 0
                       const up = m.delta > 0
-                      const lineColor = up ? NEON : '#FF3B3B'
+                      const lineColor = flat ? MUTED : up ? NEON : '#FF3B3B'
                       return (
                         <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, minWidth: '64px' }}>{labelFor[k]}</span>
-                          <Sparkline series={m.series} color={lineColor} />
+                          <Sparkline series={m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
                           <span style={{ textAlign: 'right' }}>
                             <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtMv(mkt, m.current)}</div>
-                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{up ? '▲' : '▼'} {Math.abs(m.delta)}</div>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{flat ? '→ 0' : `${up ? '▲' : '▼'} ${Math.abs(m.delta)}`}</div>
                           </span>
                         </div>
                       )

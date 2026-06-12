@@ -16,12 +16,13 @@ create index if not exists odds_history_event_idx
 
 alter table public.odds_history enable row level security;
 
--- This project's cron writes via the ANON key (same pattern as the events table),
--- so anon needs SELECT (frontend reads movement) AND INSERT (cron appends snapshots),
--- plus USAGE on the bigserial sequence. Table-level GRANTs are required in addition
--- to RLS policies — a policy alone is not enough (PostgREST returns 42501 otherwise).
-grant select, insert on public.odds_history to anon;
-grant usage, select on sequence public.odds_history_id_seq to anon;
+-- The CRON writes as service_role (same as the events table); the frontend reads as anon.
+-- Table-level GRANTs are required IN ADDITION to RLS policies (a policy alone → 42501).
+-- service_role = cron INSERT; anon = frontend SELECT (movement charts). Both need the
+-- bigserial sequence USAGE for INSERT.
+grant insert, select on public.odds_history to service_role;
+grant select on public.odds_history to anon;
+grant usage, select on sequence public.odds_history_id_seq to service_role, anon;
 
 drop policy if exists odds_history_read on public.odds_history;
 create policy odds_history_read on public.odds_history
