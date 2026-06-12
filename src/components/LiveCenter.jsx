@@ -1006,10 +1006,13 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
           {/* Context strip — venue / coverage + weather, always visible above every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
           {meta.weather && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', flexWrap: 'wrap', padding: '8px 14px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px' }}>
-              {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
-              {meta.weather.windMph != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>WIND </span>{meta.weather.windMph} mph {meta.weather.windDir}</span>}
-              {meta.weather.precipPct != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: meta.weather.precipPct >= 50 ? '#FF3B3B' : MUTED }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>RAIN </span>{meta.weather.precipPct}%</span>}
+            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Weather</div>
+              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>
+                {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
+                {meta.weather.windMph != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>WIND</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.windMph} {meta.weather.windDir}</div></span>}
+                {meta.weather.precipPct != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>RAIN</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: meta.weather.precipPct >= 50 ? '#FF3B3B' : TEXT }}>{meta.weather.precipPct}%</div></span>}
+              </div>
             </div>
           )}
 
