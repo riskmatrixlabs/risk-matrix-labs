@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
 import { parseTeamStats, parseNHLSkaters, parseNHLGoalie, parseStandings, parseHoopsPlayers, parsePeriodLinescore, eventNote, parseNHLGoals, parseSimplePlays, buildOddsSnapshots, parseTrends, parseInjuries } from './cron-sync-live.js'
+import { geocode, fetchWeather } from './lib/weather.js'
 
 // Allow this serverless function up to 60s — a full slate (3 dates × 5 sports,
 // each with a per-game summary fetch) needs more than the 10s default.
@@ -366,6 +367,23 @@ async function fetchSport({ key, sport, league }, dateStr) {
       }
     } catch (e) {
       console.warn(`summary fetch failed for ${ev.id}: ${e.message}`)
+    }
+
+    // Weather for OUTDOOR MLB/NFL games (wind/rain matter). ESPN gives the indoor flag;
+    // geocode the venue city → Open-Meteo hourly forecast at game time (free, no key).
+    if ((key === 'MLB' || key === 'NFL') && comp.venue?.indoor !== true) {
+      const city = comp.venue?.address?.city
+      if (city) {
+        try {
+          const geo = await geocode(city)
+          if (geo) {
+            const wx = await fetchWeather(geo.lat, geo.lon, ev.date)
+            if (wx) meta.weather = wx
+          }
+        } catch (e) {
+          console.warn(`weather failed for ${ev.id}: ${e.message}`)
+        }
+      }
     }
 
     return {

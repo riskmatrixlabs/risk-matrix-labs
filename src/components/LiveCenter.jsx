@@ -959,6 +959,15 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
           {/* Game Info — the first thing under the tabs, on every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
 
+          {/* Weather chip — outdoor MLB/NFL (wind/rain matter) */}
+          {meta.weather && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px', flexWrap: 'wrap', padding: '8px 14px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px' }}>
+              {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
+              {meta.weather.windMph != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>WIND </span>{meta.weather.windMph} mph {meta.weather.windDir}</span>}
+              {meta.weather.precipPct != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: meta.weather.precipPct >= 50 ? '#FF3B3B' : MUTED }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>PRECIP </span>{meta.weather.precipPct}%</span>}
+            </div>
+          )}
+
           {/* Trends — record splits / streak / form (collapsible, default open). Hidden on Play by Play. */}
           {dtab !== 'Play by Play' && meta.trends && (
             <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />
