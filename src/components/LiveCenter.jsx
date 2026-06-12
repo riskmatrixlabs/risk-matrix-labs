@@ -664,13 +664,14 @@ function WinProbability({ awayAbbr, homeAbbr, fairA, fairB }) {
 // ── Probable Pitchers matchup — outlined box in the hero (shows on all tabs). ──
 function PitcherMatchup({ away, home, awayAbbr, homeAbbr }) {
   if (!away?.name && !home?.name) return null
-  const hand = (t) => t === 'R' ? 'RHP' : t === 'L' ? 'LHP' : null
+  const hand = (t) => { const s = String(t || '').toUpperCase(); return s.startsWith('R') ? 'RHP' : s.startsWith('L') ? 'LHP' : null }
   const col = (p, abbr) => (
     <div style={{ padding: '12px 14px', textAlign: 'center' }}>
       <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED }}>{abbr}</div>
-      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginTop: '3px' }}>
-        {p?.name ?? 'TBD'}{hand(p?.throws) && <span style={{ color: NEON_T, fontSize: '11px', fontWeight: 700 }}> {hand(p.throws)}</span>}
-      </div>
+      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginTop: '3px' }}>{p?.name ?? 'TBD'}</div>
+      {hand(p?.throws) && (
+        <span style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '4px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T }}>{hand(p.throws)}</span>
+      )}
       {p?.name && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
           {[['ERA', p.era], ['REC', p.record], ['K', p.strikeouts]].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
