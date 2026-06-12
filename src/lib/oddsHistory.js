@@ -1,12 +1,14 @@
 import { supabase } from './supabase'
 
-// Open → current → delta for one market/side's chronological snapshots.
+// Open → current → delta (+ the full value series for sparklines) for one
+// market/side's chronological snapshots.
 export function computeMovement(snapshots) {
   if (!snapshots || !snapshots.length) return null
   const sorted = [...snapshots].sort((a, b) => new Date(a.captured_at) - new Date(b.captured_at))
-  const open = sorted[0].value
-  const current = sorted[sorted.length - 1].value
-  return { open, current, delta: Math.round((current - open) * 100) / 100, points: sorted.length }
+  const series = sorted.map(s => s.value)
+  const open = series[0]
+  const current = series[series.length - 1]
+  return { open, current, delta: Math.round((current - open) * 100) / 100, points: series.length, series }
 }
 
 // Fetch all snapshots for an event and reduce to per-market/side movement.
