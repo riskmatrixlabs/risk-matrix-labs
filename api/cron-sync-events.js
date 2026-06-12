@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
-import { parseTeamStats, parseNHLSkaters, parseNHLGoalie, parseStandings, parseHoopsPlayers, parsePeriodLinescore, eventNote, parseNHLGoals, parseSimplePlays } from './cron-sync-live.js'
+import { parseTeamStats, parseNHLSkaters, parseNHLGoalie, parseStandings, parseHoopsPlayers, parsePeriodLinescore, eventNote, parseNHLGoals, parseSimplePlays, buildOddsSnapshots } from './cron-sync-live.js'
 
 // Allow this serverless function up to 60s — a full slate (3 dates × 5 sports,
 // each with a per-game summary fetch) needs more than the 10s default.
@@ -467,6 +467,14 @@ export default async function handler(req, res) {
   if (error) {
     console.error('cron-sync-events upsert error:', error)
     return res.status(500).json({ error: error.message })
+  }
+
+  // Append odds snapshots for line movement + CLV (append-only; never blocks the sync).
+  try {
+    const snaps = buildOddsSnapshots(allRows, new Date().toISOString())
+    if (snaps.length) await supabase.from('odds_history').insert(snaps)
+  } catch (e) {
+    console.warn('odds_history snapshot failed:', e.message)
   }
 
   return res.status(200).json({ upserted: allRows.length, counts, dates })

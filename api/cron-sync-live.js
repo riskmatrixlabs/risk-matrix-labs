@@ -235,6 +235,25 @@ export function parseNHLGoals(s, away, home) {
 
 // Event subtitle from the scoreboard competition notes
 // ("Stanley Cup Final - Game 5", "WNBA Commissioner's Cup", etc.).
+// Flatten an events row's current odds into append-only odds_history snapshot rows.
+// captured_at is passed in (caller stamps it once per run).
+export function buildOddsSnapshots(rows, capturedAt) {
+  const out = []
+  for (const r of rows) {
+    const base = { external_event_id: r.external_event_id, provider: 'espn', sport: r.sport, captured_at: capturedAt }
+    const push = (market, side, value) => {
+      if (value === null || value === undefined) return
+      out.push({ ...base, market, side, value })
+    }
+    push('ml', 'home', r.odds_ml_home)
+    push('ml', 'away', r.odds_ml_away)
+    push('spread', 'home', r.odds_spread_home)
+    push('spread', 'away', r.odds_spread_away)
+    push('total', null, r.odds_total)
+  }
+  return out
+}
+
 export function eventNote(comp) {
   const n = comp.notes?.find(x => x.type === 'event') ?? comp.notes?.[0]
   return n?.headline ?? null
