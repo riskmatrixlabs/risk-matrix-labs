@@ -1082,7 +1082,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                   if (!moved.length) return null
                   return (
                     <div style={{ marginTop: '4px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement</div>
+                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement{final && <span style={{ color: NEON_T }}> · open → close</span>}</div>
                       {moved.map((k, i) => {
                         const mkt = k.split('_')[0]
                         const m = movement[k]
