@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { fetchEvents, fetchLiveEvents } from '../lib/events'
 import { devigTwoWay } from '../lib/devig'
+import { fetchLineMovement } from '../lib/oddsHistory'
 
 const NEON   = '#BDFF00'
 const NEON_T = 'var(--neon-title)'
@@ -692,6 +693,14 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
   const [hitTeam,     setHitTeam]     = useState('away')
   const [pitchTeam,   setPitchTeam]   = useState('away')
   const [skatersTeam, setSkatersTeam] = useState('away')
+  const [movement,    setMovement]    = useState({})
+
+  useEffect(() => {
+    if (!event.external_event_id) return
+    let cancelled = false
+    fetchLineMovement(event.external_event_id).then(m => { if (!cancelled) setMovement(m || {}) })
+    return () => { cancelled = true }
+  }, [event.external_event_id])
 
   const meta       = event.metadata || {}
   const awayPitch  = meta.away_pitcher  || null
@@ -1051,6 +1060,36 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                       <div style={{ padding: '0 14px 11px', textAlign: 'center', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>
                         BOOK HOLD <span style={{ color: dv.holdPct > 5 ? '#FF3B3B' : NEON_T }}>{dv.holdPct.toFixed(1)}%</span>
                       </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Line Movement — open → current per market (from odds_history snapshots) */}
+                {(() => {
+                  const fmt = (mkt, v) => v == null ? '—' : (mkt === 'ml' ? (v > 0 ? `+${v}` : `${v}`) : (mkt === 'spread' && v > 0 ? `+${v}` : `${v}`))
+                  const labelFor = { ml_away: `${event.away_abbr} ML`, ml_home: `${event.home_abbr} ML`, spread_away: `${event.away_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, spread_home: `${event.home_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, total: 'Total' }
+                  const order = ['spread_away', 'spread_home', 'total', 'ml_away', 'ml_home']
+                  const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
+                  if (!moved.length) return null
+                  return (
+                    <div style={{ marginTop: '4px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement</div>
+                      {moved.map((k, i) => {
+                        const mkt = k.split('_')[0]
+                        const m = movement[k]
+                        const up = m.delta > 0
+                        return (
+                          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                            <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontFamily: R, fontSize: '12px', color: MUTED }}>{fmt(mkt, m.open)}</span>
+                              <span style={{ color: MUTED, fontSize: '11px' }}>→</span>
+                              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmt(mkt, m.current)}</span>
+                              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: up ? NEON_T : '#FF3B3B' }}>{up ? '▲' : '▼'}{Math.abs(m.delta)}</span>
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )
                 })()}
