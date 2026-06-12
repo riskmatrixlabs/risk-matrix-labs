@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { fetchEvents, fetchLiveEvents } from '../lib/events'
-import { devigTwoWay } from '../lib/devig'
+import { devigTwoWay, americanToDecimal } from '../lib/devig'
+import { computeClv } from '../lib/clv'
+import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 
 const NEON   = '#BDFF00'
@@ -642,20 +644,117 @@ function Sparkline({ series, color }) {
   )
 }
 
-// ── Win Probability split — both teams' no-vig implied %, from the moneyline. ──
-function WinProbability({ awayAbbr, homeAbbr, fairA, fairB }) {
-  const a = Math.round(fairA * 100), h = Math.round(fairB * 100)
+// Plain-English explanations for every Insights term — surfaced via the tap-ⓘ.
+const GLOSSARY = {
+  winProb:  "Each side's real chance to win — the sportsbook's odds with their built-in profit margin stripped out. The honest read on who's better.",
+  fairValue:"The fair price — what the odds would be if the book took no cut (“no-vig”). Compare it to what you're actually being asked to pay. HOLD is the book's margin on that market.",
+  lineMove: "How the price has moved since it opened. When a line drifts steadily one way, money is piling in on that side — the market is getting more confident.",
+  clvOpen:  "If you'd taken the OPENING price, how much better it was than now. Beating the closing line (green) is the #1 predictor of a winning bettor.",
+  yourBet:  "Your logged bet on this game, graded. Win Prob = its true chance. +EV = is the price worth it. CLV = did you beat the closing line.",
+  ev:       "Is this bet worth it? Compares your price to the fair price. Green = you're getting paid fairly or better; red = you overpaid (a −EV bet bleeds money long-term even when it wins).",
+  clv:      "Did you beat the closing line? Green = you locked a better number than where the market ended up. Pros track this above win/loss.",
+}
+
+// Tap-to-explain label: renders the (already-styled) label + a ⓘ that toggles a
+// plain-English caption underneath. Stops click-through so it works inside tappable cards.
+function InfoLabel({ label, tip }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+        {label}
+        {tip && (
+          <button
+            type="button"
+            aria-label="What does this mean?"
+            onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
+            style={{ width: '15px', height: '15px', flexShrink: 0, borderRadius: '50%', border: `1px solid ${open ? NEON_T : MUTED}`, background: open ? 'rgba(189,255,0,0.12)' : 'transparent', color: open ? NEON_T : MUTED, fontSize: '10px', fontWeight: 700, lineHeight: 1, fontFamily: 'Georgia, serif', fontStyle: 'italic', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >i</button>
+        )}
+      </span>
+      {open && tip && (
+        <div style={{ marginTop: '7px', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '11px', lineHeight: 1.5, color: 'rgba(255,255,255,0.62)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{tip}</div>
+      )}
+    </div>
+  )
+}
+
+// ── Win Probability split — both teams' no-vig implied %, all three markets. ──
+// markets: [{ label, aLabel, bLabel, pA, pB }] — pA/pB are 0–1 fair probabilities.
+function WinProbability({ markets }) {
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px 16px' }}>
-      <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase', marginBottom: '10px' }}>Win Probability <span style={{ color: 'rgba(255,255,255,0.3)' }}>· no-vig</span></div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: a >= h ? NEON_T : TEXT }}>{awayAbbr} {a}%</span>
-        <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: h > a ? NEON_T : TEXT }}>{h}% {homeAbbr}</span>
+      <div style={{ marginBottom: '12px' }}>
+        <InfoLabel tip={GLOSSARY.winProb} label={
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Win Probability <span style={{ color: 'rgba(255,255,255,0.3)' }}>· true chance to win</span></span>
+        } />
       </div>
-      <div style={{ display: 'flex', height: '7px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
-        <div style={{ width: `${a}%`, background: a >= h ? NEON : 'rgba(255,255,255,0.3)' }} />
-        <div style={{ width: `${h}%`, background: h > a ? NEON : 'rgba(255,255,255,0.3)' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {markets.map((m, i) => {
+          const a = Math.round(m.pA * 100), b = Math.round(m.pB * 100)
+          return (
+            <div key={i}>
+              {m.label && <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', marginBottom: '5px' }}>{m.label}</div>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: a >= b ? NEON_T : TEXT }}>{m.aLabel} {a}%</span>
+                <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: b > a ? NEON_T : TEXT }}>{b}% {m.bLabel}</span>
+              </div>
+              <div style={{ display: 'flex', height: '7px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+                <div style={{ width: `${a}%`, background: a >= b ? NEON : 'rgba(255,255,255,0.3)' }} />
+                <div style={{ width: `${b}%`, background: b > a ? NEON : 'rgba(255,255,255,0.3)' }} />
+              </div>
+            </div>
+          )
+        })}
       </div>
+    </div>
+  )
+}
+
+// ── Your Bet — links a logged bet to this game: your price vs no-vig fair (EV) + CLV. ──
+// graded: array of evaluateBet() results. The free Pikkit-PRO card, pinned atop Insights.
+function PersonalBet({ graded }) {
+  const fmtAm = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
+  const resultColor = (r) => r === 'W' ? NEON_T : r === 'L' ? '#FF3B3B' : MUTED
+  return (
+    <div style={{ background: CARD, border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '10px', overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <InfoLabel tip={GLOSSARY.yourBet} label={
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: NEON_T }}>Your Bet</span>
+        } />
+        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED }}>Position ↔ Edge</span>
+      </div>
+      {graded.map((g, i) => {
+        const evPos = g.evPct != null && g.evPct >= 0
+        const clvPos = g.clvPct != null && g.clvPct >= 0
+        const stat = (label, val, color, tip) => (
+          <div style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <InfoLabel tip={tip} label={<span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>} />
+            </div>
+            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color }}>{val}</div>
+          </div>
+        )
+        return (
+          <div key={i} style={{ padding: '12px 14px', borderBottom: i < graded.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2px' }}>
+              <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.01em' }}>{g.pick}</span>
+              <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{fmtAm(g.yourAmerican)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '11px' }}>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 600, color: MUTED }}>
+                {g.book || 'Your book'}{g.fairAmerican != null && <> · fair <span style={{ color: TEXT, fontWeight: 700 }}>{fmtAm(g.fairAmerican)}</span></>}
+              </span>
+              {g.result && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: resultColor(g.result) }}>{g.result === 'Open' ? 'Open' : g.result}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {stat('Win Prob', g.fairProb != null ? `${Math.round(g.fairProb * 100)}%` : '—', TEXT, GLOSSARY.winProb)}
+              {stat('+EV', g.evPct != null ? `${evPos ? '+' : ''}${g.evPct.toFixed(1)}%` : '—', g.evPct == null ? MUTED : evPos ? NEON_T : '#FF3B3B', GLOSSARY.ev)}
+              {stat('CLV', g.clvPct != null ? `${clvPos ? '+' : ''}${g.clvPct.toFixed(1)}%` : '—', g.clvPct == null ? MUTED : clvPos ? NEON_T : '#FF3B3B', GLOSSARY.clv)}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -742,7 +841,7 @@ function useLiveGame(propEvent) {
 }
 
 // ── Game detail — full-screen overlay ──────────────────────────────────────
-function GameDetail({ event: propEvent, onLogPosition, onBack }) {
+function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
   const event = useLiveGame(propEvent)
   const live     = event.status === 'LIVE' || event.status === 'IP'
   const final    = event.status === 'FT'   || event.status === 'AOT'
@@ -1055,6 +1154,12 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             const moved = order.filter(k => movement[k] && movement[k].points >= 2)
             const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
 
+            // ── Your bets on THIS game → graded against fair value + closing line ──
+            const myBets = (bets || [])
+              .filter(b => matchBetToEvent(b, event))
+              .map(b => evaluateBet(b, event, { dv, dvSpread, dvTotal }))
+              .filter(Boolean)
+
             // ── Odds table (was the Odds tab) ──
             const hasSpread = event.odds_spread_home != null
             const hasTotal  = event.odds_total != null
@@ -1078,10 +1183,18 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
               </div>
             )
 
-            const anything = hasAnyOdds || dv || moved.length || meta.trends || meta.injuries
+            const anything = myBets.length || hasAnyOdds || dv || moved.length || meta.trends || meta.injuries
             if (!anything) return <EmptyState label="Insights" />
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                <a href="/how-to-read-insights.html" target="_blank" rel="noopener noreferrer"
+                  style={{ alignSelf: 'flex-end', display: 'inline-flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: NEON_T, textDecoration: 'none', opacity: 0.85 }}>
+                  <span style={{ width: '14px', height: '14px', borderRadius: '50%', border: `1px solid ${NEON_T}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>i</span>
+                  How to read this
+                </a>
+
+                {myBets.length > 0 && <PersonalBet graded={myBets} />}
 
                 {hasAnyOdds && (
                   <div>
@@ -1112,7 +1225,15 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                   </div>
                 )}
 
-                {dv && <WinProbability awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} fairA={dv.fairA} fairB={dv.fairB} />}
+                {(dv || dvSpread || dvTotal) && (() => {
+                  const sh = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
+                  const wpMarkets = [
+                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB },
+                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB },
+                    dvTotal  && { label: `Total ${event.odds_total}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB },
+                  ].filter(Boolean)
+                  return <WinProbability markets={wpMarkets} />
+                })()}
 
                 {(dv || dvSpread || dvTotal) && (() => {
                   const sh = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
@@ -1124,7 +1245,11 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                   ].filter(Boolean)
                   return (
                     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>No-Vig Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· true odds + win %</span></div>
+                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
+                        <InfoLabel tip={GLOSSARY.fairValue} label={
+                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· the honest price</span></span>
+                        } />
+                      </div>
                       {rows.map((m, i) => (
                         <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span>
@@ -1147,20 +1272,46 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
                 {moved.length > 0 && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement{final && <span style={{ color: NEON_T }}> · open → close</span>}</div>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
+                      <InfoLabel tip={GLOSSARY.lineMove} label={
+                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {final ? 'open → close' : 'how the price is moving'}</span></span>
+                      } />
+                    </div>
                     {moved.map((k, i) => {
                       const mkt = k.split('_')[0]
                       const m = movement[k]
                       const flat = m.delta === 0
                       const up = m.delta > 0
                       const lineColor = flat ? MUTED : up ? NEON : '#FF3B3B'
+                      // Closing-line EV: value of taking the OPEN price vs now (moneyline only — spread/total
+                      // capture the line value, not its juice, so CLV% isn't meaningful for them).
+                      const clv = mkt === 'ml' ? computeClv(m.open, m.current) : null
                       return (
                         <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, minWidth: '64px' }}>{labelFor[k]}</span>
+                          <span style={{ minWidth: '64px' }}>
+                            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</div>
+                            {clv && Math.abs(clv.clvPct) >= 0.1 && (
+                              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: clv.beat ? NEON_T : '#FF3B3B' }}>
+                                {clv.beat ? '+' : ''}{clv.clvPct.toFixed(1)}% <span style={{ color: MUTED, fontWeight: 500 }}>CLV@open</span>
+                              </div>
+                            )}
+                          </span>
                           <Sparkline series={m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
                           <span style={{ textAlign: 'right' }}>
                             <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtMv(mkt, m.current)}</div>
-                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{flat ? '→ 0' : `${up ? '▲' : '▼'} ${Math.abs(m.delta)}`}</div>
+                            {(() => {
+                              // Pikkit-style % move: change from open → now. ML uses decimal-odds %
+                              // (consistent across +/−); spread/total use the line value's % change.
+                              const arrow = flat ? '→' : up ? '↗' : '↘'
+                              let pctMove
+                              if (mkt === 'ml') {
+                                const od = americanToDecimal(m.open), cd = americanToDecimal(m.current)
+                                pctMove = (od && cd) ? Math.abs((cd / od - 1) * 100) : 0
+                              } else {
+                                pctMove = Math.abs((m.current - m.open) / (Math.abs(m.open) || 1) * 100)
+                              }
+                              return <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{flat ? '→ 0%' : `${arrow} ${pctMove.toFixed(1)}%`}</div>
+                            })()}
                           </span>
                         </div>
                       )
@@ -1436,7 +1587,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-export default function LiveCenter({ onLogPosition }) {
+export default function LiveCenter({ onLogPosition, bets = [] }) {
   const [sport,       setSport]      = useState('Live')
   const [dateFilter,  setDateFilter] = useState('Today')
   const [events,      setEvents]     = useState([])
@@ -1556,7 +1707,7 @@ export default function LiveCenter({ onLogPosition }) {
           LOADING SLATE...
         </div>
       ) : selected ? (
-        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} />
+        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} bets={bets} />
       ) : events.length === 0 ? (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
           {isLiveTab ? 'NO LIVE GAMES RIGHT NOW' : 'NO GAMES FOUND'}
