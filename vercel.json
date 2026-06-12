@@ -32,8 +32,8 @@
     { "path": "/api/cron-day-one",          "schedule": "0 15 * * *" },
     { "path": "/api/cron-trial-expired",    "schedule": "0 16 * * *" },
     { "path": "/api/cron-reengagement",     "schedule": "0 13 * * *" },
-    { "path": "/api/cron-sync-events",      "schedule": "*/30 13-23 * * *" },
-    { "path": "/api/cron-sync-events",      "schedule": "*/30 0-4 * * *" },
+    { "path": "/api/cron-sync-events",      "schedule": "*/15 13-23 * * *" },
+    { "path": "/api/cron-sync-events",      "schedule": "*/15 0-4 * * *" },
     { "path": "/api/cron-sync-live",        "schedule": "*/2 13-23 * * *" },
     { "path": "/api/cron-sync-live",        "schedule": "*/2 0-4 * * *" }
   ]
