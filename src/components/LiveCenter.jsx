@@ -1017,8 +1017,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
             const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
             const w = meta.weather
-            const hasTeamStats = (live || final) && (meta.away_team_stats || meta.home_team_stats)
-            const anything = dv || moved.length || meta.trends || meta.injuries || w || hasTeamStats
+            const anything = dv || moved.length || meta.trends || meta.injuries || w
             if (!anything) return <EmptyState label="Insights" />
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1064,6 +1063,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
                 {meta.trends && <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />}
                 {meta.injuries && <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />}
+                {/* Team Stats intentionally NOT here — it's game stats, lives with the box score */}
 
                 {w && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
@@ -1075,11 +1075,14 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                     </div>
                   </div>
                 )}
-
-                {hasTeamStats && <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />}
               </div>
             )
           })()}
+
+          {/* Team Stats — head-to-head game stats; lives with the box score, not Insights ── */}
+          {['Hitting', 'Pitching', 'Box Score', 'Skaters', 'Goalies'].includes(dtab) && (live || final) && (meta.away_team_stats || meta.home_team_stats) && (
+            <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />
+          )}
 
           {/* ── Odds ── */}
           {dtab === 'Odds' && (() => {
