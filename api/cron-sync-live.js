@@ -250,6 +250,14 @@ export function buildOddsSnapshots(rows, capturedAt) {
     push('spread', 'home', r.odds_spread_home)
     push('spread', 'away', r.odds_spread_away)
     push('total', null, r.odds_total)
+    // Also snapshot the JUICE (price) on the spread/total lines — the line value
+    // (-1.5, 8.5) barely moves, but its price does. This is what powers CLV + real
+    // movement % on Run Line / Total (ML already stores its price above).
+    const m = r.metadata || {}
+    push('spread_juice', 'home', m.spread_home_juice)
+    push('spread_juice', 'away', m.spread_away_juice)
+    push('total_juice', 'over',  m.over_juice)
+    push('total_juice', 'under', m.under_juice)
   }
   return out
 }

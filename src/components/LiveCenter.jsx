@@ -1278,14 +1278,20 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
                       } />
                     </div>
                     {moved.map((k, i) => {
-                      const mkt = k.split('_')[0]
-                      const m = movement[k]
-                      const flat = m.delta === 0
-                      const up = m.delta > 0
+                      const mkt = k.split('_')[0]           // 'ml' | 'spread' | 'total'
+                      const m = movement[k]                 // line/price series → the headline number
+                      // The PRICE ("juice") series that actually moves — drives %, CLV, arrow, sparkline.
+                      // ML already stores its price; spread/total read the parallel *_juice keys.
+                      const side = k.split('_')[1]          // 'home' | 'away' | undefined (total)
+                      const juiceKey = mkt === 'ml' ? k : mkt === 'total' ? 'total_juice_over' : `spread_juice_${side}`
+                      const jm = (movement[juiceKey] && movement[juiceKey].points >= 2) ? movement[juiceKey] : (mkt === 'ml' ? m : null)
+                      const flat = !jm || jm.delta === 0
+                      const up = !!jm && jm.delta > 0
                       const lineColor = flat ? MUTED : up ? NEON : '#FF3B3B'
-                      // Closing-line EV: value of taking the OPEN price vs now (moneyline only — spread/total
-                      // capture the line value, not its juice, so CLV% isn't meaningful for them).
-                      const clv = mkt === 'ml' ? computeClv(m.open, m.current) : null
+                      const clv = jm ? computeClv(jm.open, jm.current) : null
+                      const od = jm ? americanToDecimal(jm.open) : null
+                      const cd = jm ? americanToDecimal(jm.current) : null
+                      const pctMove = (od && cd) ? Math.abs((cd / od - 1) * 100) : 0
                       return (
                         <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span style={{ minWidth: '64px' }}>
@@ -1296,22 +1302,10 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
                               </div>
                             )}
                           </span>
-                          <Sparkline series={m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
+                          <Sparkline series={jm ? jm.series : m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
                           <span style={{ textAlign: 'right' }}>
                             <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtMv(mkt, m.current)}</div>
-                            {(() => {
-                              // Pikkit-style % move: change from open → now. ML uses decimal-odds %
-                              // (consistent across +/−); spread/total use the line value's % change.
-                              const arrow = flat ? '→' : up ? '↗' : '↘'
-                              let pctMove
-                              if (mkt === 'ml') {
-                                const od = americanToDecimal(m.open), cd = americanToDecimal(m.current)
-                                pctMove = (od && cd) ? Math.abs((cd / od - 1) * 100) : 0
-                              } else {
-                                pctMove = Math.abs((m.current - m.open) / (Math.abs(m.open) || 1) * 100)
-                              }
-                              return <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{flat ? '→ 0%' : `${arrow} ${pctMove.toFixed(1)}%`}</div>
-                            })()}
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{flat ? '→ 0%' : `${up ? '↗' : '↘'} ${pctMove.toFixed(1)}%`}</div>
                           </span>
                         </div>
                       )
