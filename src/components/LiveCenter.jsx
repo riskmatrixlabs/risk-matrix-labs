@@ -1003,8 +1003,15 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
         {/* ── Tab content ── */}
         <div style={{ padding: '14px 16px 40px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-          {/* Context strip — venue / coverage, always visible above every tab */}
+          {/* Context strip — venue / coverage + weather, always visible above every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
+          {meta.weather && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', flexWrap: 'wrap', padding: '8px 14px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px' }}>
+              {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
+              {meta.weather.windMph != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>WIND </span>{meta.weather.windMph} mph {meta.weather.windDir}</span>}
+              {meta.weather.precipPct != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: meta.weather.precipPct >= 50 ? '#FF3B3B' : MUTED }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>RAIN </span>{meta.weather.precipPct}%</span>}
+            </div>
+          )}
 
           {/* ── Insights tab — ALL the RML edge features, premium card stack ── */}
           {dtab === 'Insights' && (() => {
@@ -1015,7 +1022,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             const order = ['ml_home', 'ml_away', 'spread_home', 'spread_away', 'total']
             const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
             const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
-            const w = meta.weather
 
             // ── Odds table (was the Odds tab) ──
             const hasSpread = event.odds_spread_home != null
@@ -1040,7 +1046,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
               </div>
             )
 
-            const anything = hasAnyOdds || dv || moved.length || meta.trends || meta.injuries || w
+            const anything = hasAnyOdds || dv || moved.length || meta.trends || meta.injuries
             if (!anything) return <EmptyState label="Insights" />
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1112,16 +1118,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                 {meta.injuries && <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />}
                 {/* Team Stats intentionally NOT here — it's game stats, lives with the box score */}
 
-                {w && (
-                  <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Weather</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>
-                      {w.tempF != null && <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{w.tempF}°F</span>}
-                      {w.windMph != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>WIND</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{w.windMph} {w.windDir}</div></span>}
-                      {w.precipPct != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>PRECIP</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: w.precipPct >= 50 ? '#FF3B3B' : TEXT }}>{w.precipPct}%</div></span>}
-                    </div>
-                  </div>
-                )}
               </div>
             )
           })()}
