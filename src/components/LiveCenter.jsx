@@ -516,10 +516,12 @@ function TeamStats({ sport, awayAbbr, homeAbbr, aStats, hStats }) {
   if (!statRows.length) return null
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr auto', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
-        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{awayAbbr}</span>
-        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'right' }}>Team Stats</span>
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'left' }}>{awayAbbr}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Team Stats</span>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </span>
         <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{homeAbbr}</span>
       </button>
       {open && statRows.map(({ label, a, h }, i) => {
@@ -559,10 +561,12 @@ function Trends({ awayAbbr, homeAbbr, trends }) {
   const hasForm = a.form?.length || h.form?.length
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr auto', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
-        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{awayAbbr}</span>
-        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'right' }}>Trends</span>
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'left' }}>{awayAbbr}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Trends</span>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </span>
         <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{homeAbbr}</span>
       </button>
       {open && (
@@ -616,9 +620,9 @@ function Injuries({ awayAbbr, homeAbbr, injuries }) {
   )
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
         <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Injury Report</span>
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
       {open && (
         <div>
@@ -661,10 +665,10 @@ const GLOSSARY = {
 
 // Tap-to-explain label: renders the (already-styled) label + a ⓘ that toggles a
 // plain-English caption underneath. Stops click-through so it works inside tappable cards.
-function InfoLabel({ label, tip }) {
+function InfoLabel({ label, tip, center = false }) {
   const [open, setOpen] = useState(false)
   return (
-    <div>
+    <div style={center ? { textAlign: 'center' } : undefined}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
         {label}
         {tip && (
@@ -689,7 +693,7 @@ function WinProbability({ markets }) {
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px 16px' }}>
       <div style={{ marginBottom: '12px' }}>
-        <InfoLabel tip={GLOSSARY.winProb} label={
+        <InfoLabel center tip={GLOSSARY.winProb} label={
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Win Probability <span style={{ color: 'rgba(255,255,255,0.3)' }}>· true chance to win</span></span>
         } />
       </div>
@@ -722,11 +726,10 @@ function PersonalBet({ graded }) {
   const resultColor = (r) => r === 'W' ? NEON_T : r === 'L' ? '#FF3B3B' : MUTED
   return (
     <div style={{ background: CARD, border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <InfoLabel tip={GLOSSARY.yourBet} label={
-          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: NEON_T }}>Your Bet</span>
+      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.07)' }}>
+        <InfoLabel center tip={GLOSSARY.yourBet} label={
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: NEON_T }}>Your Bet <span style={{ color: 'rgba(255,255,255,0.3)' }}>· position ↔ edge</span></span>
         } />
-        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED }}>Position ↔ Edge</span>
       </div>
       {graded.map((g, i) => {
         const evPos = g.evPct != null && g.evPct >= 0
@@ -1137,7 +1140,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
           {meta.weather && (
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-              <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Weather</div>
+              <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, textAlign: 'center' }}>Weather</div>
               <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>
                 {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
                 {meta.weather.windMph != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>WIND</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.windMph} {meta.weather.windDir}</div></span>}
@@ -1250,7 +1253,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
                   return (
                     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
                       <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
-                        <InfoLabel tip={GLOSSARY.fairValue} label={
+                        <InfoLabel center tip={GLOSSARY.fairValue} label={
                           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· the honest price</span></span>
                         } />
                       </div>
@@ -1277,7 +1280,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
                 {moved.length > 0 && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
                     <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
-                      <InfoLabel tip={GLOSSARY.lineMove} label={
+                      <InfoLabel center tip={GLOSSARY.lineMove} label={
                         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {final ? 'open → close' : 'how the price is moving'}</span></span>
                       } />
                     </div>
