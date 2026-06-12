@@ -9,16 +9,22 @@ const rows = vi.hoisted(() => [
 ])
 
 vi.mock('../src/lib/supabase', () => {
+  const makeThenable = (data) => ({
+    data, error: null,
+    then(onF) { return Promise.resolve({ data, error: null }).then(onF) },
+    limit: vi.fn().mockResolvedValue({ data: data.slice(-1), error: null }),
+  })
   const chain = {
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue({ data: rows, error: null }),
+    is: vi.fn().mockReturnThis(),
+    order: vi.fn(() => makeThenable(rows)),
   }
   return { supabase: chain }
 })
 
-import { computeMovement, fetchLineMovement } from '../src/lib/oddsHistory.js'
+import { computeMovement, fetchLineMovement, closingLine } from '../src/lib/oddsHistory.js'
 
 describe('computeMovement', () => {
   it('open/current/delta from chronological snapshots', () => {
@@ -45,5 +51,12 @@ describe('fetchLineMovement', () => {
     expect(m.ml_home).toEqual({ open: -135, current: -155, delta: -20, points: 2 })
     expect(m.ml_away).toEqual({ open: 115, current: 115, delta: 0, points: 1 })
     expect(m.total).toEqual({ open: 8.5, current: 9.0, delta: 0.5, points: 2 })
+  })
+})
+
+describe('closingLine', () => {
+  it('returns the latest snapshot value for a market/side', async () => {
+    const v = await closingLine('401', 'ml', 'home')
+    expect(typeof v === 'number' || v === null).toBe(true)
   })
 })

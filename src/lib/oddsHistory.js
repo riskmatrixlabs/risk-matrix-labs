@@ -27,3 +27,16 @@ export async function fetchLineMovement(externalEventId) {
   for (const [key, snaps] of Object.entries(groups)) out[key] = computeMovement(snaps)
   return out
 }
+
+// The closing line = the most recent snapshot for a market/side.
+export async function closingLine(externalEventId, market, side) {
+  let q = supabase
+    .from('odds_history')
+    .select('*')
+    .eq('external_event_id', String(externalEventId))
+    .eq('market', market)
+  q = side == null ? q.is('side', null) : q.eq('side', side)
+  const { data, error } = await q.order('captured_at', { ascending: false }).limit(1)
+  if (error || !data?.length) return null
+  return data[0].value
+}
