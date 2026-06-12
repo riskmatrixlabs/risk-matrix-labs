@@ -292,6 +292,24 @@ export function eventNote(comp) {
   return n?.headline ?? null
 }
 
+// Injuries per team from the ESPN summary `s.injuries` (already fetched — no extra call).
+export function parseInjuries(s, away, home) {
+  const list = s?.injuries ?? []
+  if (!list.length) return null
+  const forTeam = (teamId) => {
+    const t = list.find(x => String(x.team?.id) === String(teamId))
+    return (t?.injuries ?? []).map(i => ({
+      name: i.athlete?.displayName ?? null,
+      pos: i.athlete?.position?.abbreviation ?? null,
+      status: i.status ?? null,
+      detail: [i.details?.type, i.details?.detail].filter(Boolean).join(' ') || i.shortComment || null,
+    })).filter(x => x.name)
+  }
+  const a = forTeam(away?.team?.id)
+  const h = forTeam(home?.team?.id)
+  return (a.length || h.length) ? { away: a, home: h } : null
+}
+
 // Parse the live-changing slice of metadata for one in-progress game's summary.
 export function buildLiveMeta(s, comp, away, home, key) {
   const meta = {}
@@ -301,6 +319,9 @@ export function buildLiveMeta(s, comp, away, home, key) {
 
   const _trends = parseTrends(away, home, s)
   if (_trends) meta.trends = _trends
+
+  const _inj = parseInjuries(s, away, home)
+  if (_inj) meta.injuries = _inj
 
   // Sport-specific team stats (Apple Sports style) for the always-visible comparison
   const _ts = parseTeamStats(s, away, home, key)
