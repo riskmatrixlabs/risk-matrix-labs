@@ -668,10 +668,9 @@ function PitcherMatchup({ away, home, awayAbbr, homeAbbr }) {
   const col = (p, abbr) => (
     <div style={{ padding: '12px 14px', textAlign: 'center' }}>
       <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED }}>{abbr}</div>
-      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginTop: '3px' }}>{p?.name ?? 'TBD'}</div>
-      {hand(p?.throws) && (
-        <span style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '4px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T }}>{hand(p.throws)}</span>
-      )}
+      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginTop: '3px' }}>
+        {p?.name ?? 'TBD'}{hand(p?.throws) && <span style={{ color: NEON_T, fontSize: '12px', fontWeight: 700 }}> {hand(p.throws)}</span>}
+      </div>
       {p?.name && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
           {[['ERA', p.era], ['REC', p.record], ['K', p.strikeouts]].filter(([, v]) => v != null && v !== '').map(([l, v]) => (
@@ -1116,10 +1115,11 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                 {dv && <WinProbability awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} fairA={dv.fairA} fairB={dv.fairB} />}
 
                 {(dv || dvSpread || dvTotal) && (() => {
+                  const sh = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
                   const rows = [
-                    dv       && { name: 'Moneyline',  aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct },
-                    dvSpread && { name: spreadLabel,  aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct },
-                    dvTotal  && { name: 'Total',      aL: 'O',             bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct },
+                    dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct },
+                    dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct },
+                    dvTotal  && { name: `Total ${event.odds_total}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct },
                   ].filter(Boolean)
                   return (
                     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
