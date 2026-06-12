@@ -985,18 +985,20 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
         {/* ── Sticky tab bar — horizontal scroll (Apple/Pikkit pattern); active = filled neon pill ── */}
         <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(10,10,10,0.97)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '10px 16px' }}>
-          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {tabs.map(t => (
-              <button key={t} onClick={() => setDtab(t)} style={{
-                flexShrink: 0, padding: '7px 15px', fontFamily: R, fontSize: '10px', fontWeight: 700,
-                letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-                border: 'none', borderRadius: '20px', cursor: 'pointer',
-                background: dtab === t ? NEON : 'rgba(255,255,255,0.05)',
-                color: dtab === t ? '#0A0A0A' : MUTED,
-                boxShadow: dtab === t ? '0 0 10px rgba(189,255,0,0.25)' : 'none',
-                transition: 'background 0.15s, color 0.15s',
-              }}>{t}</button>
-            ))}
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div style={{ display: 'flex', gap: '6px', width: 'fit-content', margin: '0 auto' }}>
+              {tabs.map(t => (
+                <button key={t} onClick={() => setDtab(t)} style={{
+                  flexShrink: 0, padding: '7px 15px', fontFamily: R, fontSize: '10px', fontWeight: 700,
+                  letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  border: 'none', borderRadius: '20px', cursor: 'pointer',
+                  background: dtab === t ? NEON : 'rgba(255,255,255,0.05)',
+                  color: dtab === t ? '#0A0A0A' : MUTED,
+                  boxShadow: dtab === t ? '0 0 10px rgba(189,255,0,0.25)' : 'none',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>{t}</button>
+              ))}
+            </div>
           </div>
         </div>
 
