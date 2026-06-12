@@ -2316,7 +2316,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [shareCopied,  setShareCopied]  = useState(false)
   const [shareCardBet, setShareCardBet] = useState(null)   // null = closed, 'session' = session card, bet obj = bet card
   const [editingBet,   setEditingBet]   = useState(null)
-  const [tab,          setTab]          = useState('overview')
+  const [tab,          setTab]          = useState(isDemo ? 'overview' : (saved.current?.tab ?? 'overview'))
   const [initialBet,   setInitialBet]   = useState(null)
   const [riskSettings, setRiskSettings] = useState(saved.current?.riskSettings ?? {
     maxRiskPerBetPct: 3,
@@ -2437,9 +2437,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Auto-save to localStorage whenever key state changes ──
   useEffect(() => {
     if (isDemo) return // never overwrite real user data with demo data
-    const payload = { bets, username, ladderStarting, ladderSessionKey, bankroll, masterBrOverride, riskSettings, darkMode }
+    const payload = { bets, username, ladderStarting, ladderSessionKey, bankroll, masterBrOverride, riskSettings, darkMode, tab }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
-  }, [bets, bankroll, masterBrOverride, username, ladderStarting, ladderSessionKey, riskSettings, darkMode])
+  }, [bets, bankroll, masterBrOverride, username, ladderStarting, ladderSessionKey, riskSettings, darkMode, tab])
 
   // ── On first load: pull data from Supabase if user is logged in ──
   useEffect(() => {

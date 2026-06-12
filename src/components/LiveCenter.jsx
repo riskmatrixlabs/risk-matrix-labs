@@ -13,9 +13,9 @@ const CARD   = 'var(--card)'
 const BORDER = 'var(--border2)'
 const TEXT   = 'var(--text)'
 
-const SPORTS = ['MLB', 'NBA', 'WNBA', 'NHL', 'NFL']
-// Filter pills — "Live" aggregates in-progress games across all sports; NBA sits second-to-last.
-const FILTER_TABS = ['Live', 'MLB', 'WNBA', 'NHL', 'NBA', 'NFL']
+// Sport pills in display order. "All" (default) + "Live" (only when games are in progress)
+// are prepended dynamically in the component.
+const SPORTS = ['MLB', 'WNBA', 'NHL', 'NBA', 'NFL']
 
 const SPREAD_LABEL = { MLB: 'Run Line', NHL: 'Puck Line', NBA: 'Spread', WNBA: 'Spread', NFL: 'Spread' }
 const DATES  = ['Yesterday', 'Today', 'Upcoming']
@@ -116,7 +116,7 @@ function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
 }
 
 // ── Game card — Apple Sports horizontal layout ──────────────────────────────
-function GameCard({ event, onClick }) {
+function GameCard({ event, onClick, showSport = false }) {
   const live  = event.status === 'LIVE' || event.status === 'IP'
   const final = event.status === 'FT'   || event.status === 'AOT'
   const isOT  = event.status === 'AOT'
@@ -141,6 +141,10 @@ function GameCard({ event, onClick }) {
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)'}
       onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
     >
+      {/* League tag — shown on the mixed-sport "All" slate so each card is identifiable */}
+      {showSport && event.sport && (
+        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '8px' }}>{event.sport}</div>
+      )}
       {/* Event subtitle — series/round name (e.g. "Stanley Cup Final · Game 5", "Commissioner's Cup") */}
       {(event.metadata?.event_note || event.metadata?.series_summary) && (() => {
         const raw = event.metadata.event_note || event.metadata.series_summary
@@ -1582,25 +1586,47 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function LiveCenter({ onLogPosition, bets = [] }) {
-  const [sport,       setSport]      = useState('Live')
+  const [sport,       setSport]      = useState('All')
   const [dateFilter,  setDateFilter] = useState('Today')
   const [events,      setEvents]     = useState([])
   const [loading,     setLoading]    = useState(true)
   const [selectedId,  setSelectedId] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [hasLive,     setHasLive]    = useState(false)
 
   const isLiveTab = sport === 'Live'
+  const isAllTab  = sport === 'All'
+  // "Live" only shows as a tab when games are actually in progress; "All" is the default.
+  const filterTabs = [...(hasLive ? ['Live'] : []), 'All', ...SPORTS]
 
   useEffect(() => {
     setLoading(true)
     setSelectedId(null)
     const req = isLiveTab
       ? fetchLiveEvents()
-      : fetchEvents(sport.toLowerCase(), dateFilter.toLowerCase())
+      : isAllTab
+        // All-sports slate for the day — fetch every league, merge, sort by start time.
+        ? Promise.all(SPORTS.map(s => fetchEvents(s.toLowerCase(), dateFilter.toLowerCase())))
+            .then(results => ({ data: results.flatMap(r => r.data ?? []).sort((a, b) => new Date(a.start_time) - new Date(b.start_time)) }))
+        : fetchEvents(sport.toLowerCase(), dateFilter.toLowerCase())
     req
       .then(({ data }) => setEvents(data ?? []))
       .finally(() => setLoading(false))
   }, [sport, dateFilter])
+
+  // Detect whether any game is live (independent of the selected tab) so the "Live"
+  // tab can appear/disappear. If the user is on Live and games end, fall back to All.
+  useEffect(() => {
+    let cancelled = false
+    const check = () => fetchLiveEvents()
+      .then(({ data }) => { if (!cancelled) setHasLive((data ?? []).length > 0) })
+      .catch(() => {})
+    check()
+    const id = setInterval(check, 60000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
+
+  useEffect(() => { if (isLiveTab && !hasLive) setSport('All') }, [hasLive, isLiveTab])
 
   // Live polling — refresh each in-progress game on-demand (direct from ESPN) every 30s
   // so the cards' score, inning and bases stay current even when the cron is behind.
@@ -1660,7 +1686,7 @@ export default function LiveCenter({ onLogPosition, bets = [] }) {
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {/* Sport pills */}
         <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
-          {FILTER_TABS.map(s => {
+          {filterTabs.map(s => {
             const isLive = s === 'Live'
             const active = sport === s
             return (
@@ -1709,7 +1735,7 @@ export default function LiveCenter({ onLogPosition, bets = [] }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {events.map(e => (
-            <GameCard key={e.id} event={e} onClick={() => setSelectedId(e.id)} />
+            <GameCard key={e.id} event={e} showSport={isAllTab} onClick={() => setSelectedId(e.id)} />
           ))}
         </div>
       )}
