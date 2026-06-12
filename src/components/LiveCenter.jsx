@@ -1116,22 +1116,29 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
                 {(dv || dvSpread || dvTotal) && (() => {
                   const sh = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
+                  const pct = (p) => `${Math.round(p * 100)}%`
                   const rows = [
-                    dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct },
-                    dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct },
-                    dvTotal  && { name: `Total ${event.odds_total}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct },
+                    dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct,       pA: dv.fairA,       pB: dv.fairB,       pLabel: 'win' },
+                    dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct, pA: dvSpread.fairA, pB: dvSpread.fairB, pLabel: 'cover' },
+                    dvTotal  && { name: `Total ${event.odds_total}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
                     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>No-Vig Fair Value</div>
+                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>No-Vig Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· true odds + win %</span></div>
                       {rows.map((m, i) => (
                         <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                          <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}><span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}>{m.aL} </span>{m.a}</span>
+                          <span>
+                            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}><span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}>{m.aL} </span>{m.a}</div>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>{pct(m.pA)} <span style={{ color: MUTED, fontWeight: 500 }}>{m.pLabel}</span></div>
+                          </span>
                           <span style={{ textAlign: 'center' }}>
                             <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{m.name}</div>
                             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>HOLD <span style={{ color: m.hold > 5 ? '#FF3B3B' : NEON_T }}>{m.hold.toFixed(1)}%</span></div>
                           </span>
-                          <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, textAlign: 'right' }}>{m.b}<span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}> {m.bL}</span></span>
+                          <span style={{ textAlign: 'right' }}>
+                            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}>{m.b}<span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}> {m.bL}</span></div>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>{pct(m.pB)} <span style={{ color: MUTED, fontWeight: 500 }}>{m.pLabel}</span></div>
+                          </span>
                         </div>
                       ))}
                     </div>
