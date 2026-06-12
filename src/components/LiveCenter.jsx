@@ -23,7 +23,7 @@ const DATES  = ['Yesterday', 'Today', 'Upcoming']
 function getDetailTabs(event, meta, live, final) {
   const sport = event.sport
   const hasOdds = event.odds_ml_home != null || event.odds_spread_home != null || event.odds_total != null
-  const statTabs = sport === 'MLB' ? ['Hitting', 'Pitching']
+  const statTabs = sport === 'MLB' ? ['Box Score']
     : sport === 'NHL' ? ['Goalies', 'Skaters']
     : (sport === 'NBA' || sport === 'WNBA') ? ['Box Score']
     : []
@@ -1183,8 +1183,8 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             )
           })()}
 
-          {/* ── Hitting ── */}
-          {dtab === 'Hitting' && (
+          {/* ── Box Score: Hitting (MLB) ── */}
+          {dtab === 'Box Score' && event.sport === 'MLB' && (
             awayHit.length > 0 || homeHit.length > 0 ? (
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
@@ -1217,8 +1217,8 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             ) : <EmptyState label="Hitting" />
           )}
 
-          {/* ── Pitching ── */}
-          {dtab === 'Pitching' && (
+          {/* ── Box Score: Pitching (MLB) — stacked under Hitting ── */}
+          {dtab === 'Box Score' && event.sport === 'MLB' && (
             awayPitch2.length > 0 || homePitch2.length > 0 ? (
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
@@ -1296,7 +1296,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
           )}
 
           {/* ── NBA/WNBA Box Score (Starters / Bench) ── */}
-          {dtab === 'Box Score' && (() => {
+          {dtab === 'Box Score' && (event.sport === 'NBA' || event.sport === 'WNBA') && (() => {
             const awayP = meta.away_players ?? []
             const homeP = meta.home_players ?? []
             if (!awayP.length && !homeP.length) return <EmptyState label="Box Score" />
