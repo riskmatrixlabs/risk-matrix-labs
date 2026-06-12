@@ -29,7 +29,6 @@ function getDetailTabs(event, meta, live, final) {
     : []
   const hasInsights = hasOdds || meta.trends || meta.injuries || meta.weather || meta.away_team_stats || meta.home_team_stats
   return [
-    'Odds',
     hasInsights && 'Insights',
     ...statTabs,
     'Play by Play',
@@ -1017,10 +1016,58 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
             const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
             const w = meta.weather
-            const anything = dv || moved.length || meta.trends || meta.injuries || w
+
+            // ── Odds table (was the Odds tab) ──
+            const hasSpread = event.odds_spread_home != null
+            const hasTotal  = event.odds_total != null
+            const spreadLabel = SPREAD_LABEL[event.sport] || 'Spread'
+            const spreadAway = event.odds_spread_away > 0 ? `+${event.odds_spread_away}` : `${event.odds_spread_away}`
+            const spreadHome = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
+            const hasAnyOdds = hasSpread || hasTotal || hasML
+            const OddsCard = ({ line, juice, pick, odds, empty }) => (
+              <div
+                onClick={() => !empty && onLogPosition && onLogPosition(event, { pick, odds })}
+                style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '66px', cursor: (!empty && onLogPosition) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
+                onMouseEnter={e => { if (!empty && onLogPosition) { e.currentTarget.style.background = 'rgba(189,255,0,0.06)'; e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)' } }}
+                onMouseLeave={e => { e.currentTarget.style.background = CARD; e.currentTarget.style.borderColor = BORDER }}
+              >
+                {empty ? <span style={{ fontFamily: R, fontSize: '18px', color: 'rgba(255,255,255,0.15)' }}>—</span> : (
+                  <>
+                    <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', lineHeight: 1 }}>{line}</span>
+                    {juice != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T }}>{fmtOdds(juice)}</span>}
+                  </>
+                )}
+              </div>
+            )
+
+            const anything = hasAnyOdds || dv || moved.length || meta.trends || meta.injuries || w
             if (!anything) return <EmptyState label="Insights" />
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                {hasAnyOdds && (
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px' }}>
+                      {[spreadLabel, 'Total', 'ML'].map(l => <div key={l} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center' }}>{l}</div>)}
+                    </div>
+                    {[
+                      { label: event.away_abbr, cells: [
+                        hasSpread ? { line: spreadAway, juice: meta.spread_away_juice, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`, odds: meta.spread_away_juice ?? spreadAway } : null,
+                        hasTotal  ? { line: `O ${event.odds_total}`, juice: meta.over_juice, pick: `Over ${event.odds_total}`, odds: meta.over_juice ?? `O ${event.odds_total}` } : null,
+                        hasML     ? { line: fmtOdds(event.odds_ml_away), juice: null, pick: `${event.away_abbr} ML`, odds: event.odds_ml_away } : null,
+                      ]},
+                      { label: event.home_abbr, cells: [
+                        hasSpread ? { line: spreadHome, juice: meta.spread_home_juice, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`, odds: meta.spread_home_juice ?? spreadHome } : null,
+                        hasTotal  ? { line: `U ${event.odds_total}`, juice: meta.under_juice, pick: `Under ${event.odds_total}`, odds: meta.under_juice ?? `U ${event.odds_total}` } : null,
+                        hasML     ? { line: fmtOdds(event.odds_ml_home), juice: null, pick: `${event.home_abbr} ML`, odds: event.odds_ml_home } : null,
+                      ]},
+                    ].map(({ label, cells }) => (
+                      <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                        {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} /> : <OddsCard key={i} empty />)}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {dv && <WinProbability awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} fairA={dv.fairA} fairB={dv.fairB} />}
 
@@ -1085,72 +1132,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
           )}
 
           {/* ── Odds ── */}
-          {dtab === 'Odds' && (() => {
-            const hasSpread = event.odds_spread_home != null
-            const hasTotal  = event.odds_total != null
-            // ESPN drops the moneyline for live games (returns 0) — treat 0 as "no ML"
-            const hasML     = !!event.odds_ml_away && !!event.odds_ml_home
-            if (!hasSpread && !hasTotal && !hasML) return <EmptyState label="Odds" />
-
-            const spreadLabel = SPREAD_LABEL[event.sport] || 'Spread'
-            const spreadAway = event.odds_spread_away > 0 ? `+${event.odds_spread_away}` : `${event.odds_spread_away}`
-            const spreadHome = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
-
-            const betRows = [
-              hasSpread && { team: event.away_abbr, type: spreadLabel, line: spreadAway,           juice: meta.spread_away_juice, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`,   odds: meta.spread_away_juice ?? spreadAway },
-              hasSpread && { team: event.home_abbr, type: spreadLabel, line: spreadHome,           juice: meta.spread_home_juice, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`,   odds: meta.spread_home_juice ?? spreadHome },
-              hasTotal  && { team: 'Over',          type: 'Total',     line: `O ${event.odds_total}`, juice: meta.over_juice,     pick: `Over ${event.odds_total}`,                          odds: meta.over_juice  ?? `O ${event.odds_total}` },
-              hasTotal  && { team: 'Under',         type: 'Total',     line: `U ${event.odds_total}`, juice: meta.under_juice,    pick: `Under ${event.odds_total}`,                         odds: meta.under_juice ?? `U ${event.odds_total}` },
-              hasML     && { team: event.away_abbr, type: 'Moneyline', line: fmtOdds(event.odds_ml_away),  juice: null,           pick: `${event.away_abbr} ML`,                             odds: event.odds_ml_away },
-              hasML     && { team: event.home_abbr, type: 'Moneyline', line: fmtOdds(event.odds_ml_home),  juice: null,           pick: `${event.home_abbr} ML`,                             odds: event.odds_ml_home },
-            ].filter(Boolean)
-
-            const OddsCard = ({ line, juice, pick, odds, empty }) => (
-              <div
-                onClick={() => !empty && onLogPosition && onLogPosition(event, { pick, odds })}
-                style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '16px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '72px', cursor: (!empty && onLogPosition) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
-                onMouseEnter={e => { if (!empty && onLogPosition) { e.currentTarget.style.background = 'rgba(189,255,0,0.06)'; e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)' } }}
-                onMouseLeave={e => { e.currentTarget.style.background = CARD; e.currentTarget.style.borderColor = BORDER }}
-              >
-                {empty ? <span style={{ fontFamily: R, fontSize: '18px', color: 'rgba(255,255,255,0.15)' }}>—</span> : (
-                  <>
-                    <span style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', lineHeight: 1 }}>{line}</span>
-                    {juice != null && <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T, letterSpacing: '0.02em' }}>{fmtOdds(juice)}</span>}
-                  </>
-                )}
-              </div>
-            )
-            const colLabels = [spreadLabel, 'Total', 'ML']
-            return (
-              <div>
-                {/* Column labels */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px' }}>
-                  {colLabels.map(l => <div key={l} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center' }}>{l}</div>)}
-                </div>
-                {/* Row labels + cards */}
-                {[
-                  { label: event.away_abbr, cells: [
-                    hasSpread ? { line: spreadAway, juice: meta.spread_away_juice, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`, odds: meta.spread_away_juice ?? spreadAway } : null,
-                    hasTotal  ? { line: `O ${event.odds_total}`, juice: meta.over_juice, pick: `Over ${event.odds_total}`, odds: meta.over_juice ?? `O ${event.odds_total}` } : null,
-                    hasML     ? { line: fmtOdds(event.odds_ml_away), juice: null, pick: `${event.away_abbr} ML`, odds: event.odds_ml_away } : null,
-                  ]},
-                  { label: event.home_abbr, cells: [
-                    hasSpread ? { line: spreadHome, juice: meta.spread_home_juice, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`, odds: meta.spread_home_juice ?? spreadHome } : null,
-                    hasTotal  ? { line: `U ${event.odds_total}`, juice: meta.under_juice, pick: `Under ${event.odds_total}`, odds: meta.under_juice ?? `U ${event.odds_total}` } : null,
-                    hasML     ? { line: fmtOdds(event.odds_ml_home), juice: null, pick: `${event.home_abbr} ML`, odds: event.odds_ml_home } : null,
-                  ]},
-                ].map(({ label, cells }) => (
-                  <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                    {cells.map((c, i) => c
-                      ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} />
-                      : <OddsCard key={i} empty />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          })()}
-
           {/* ── Plays ── */}
           {dtab === 'Play by Play' && (() => {
             const allPlays = meta.plays ?? []
