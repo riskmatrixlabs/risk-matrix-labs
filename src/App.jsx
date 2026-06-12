@@ -436,7 +436,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
     ? { ...initial, odds: String(initial.odds), units: String(initial.units), stake: String(initial.stake) }
     : { ...EMPTY, date: new Date().toISOString().slice(0, 10) }
   )
-  const isEdit = !!initial
+  const isEdit = !!initial?.id
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const f   = (k)    => (e) => set(k, e.target.value)
@@ -535,7 +535,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
     const BET_TYPES  = ['Straight','Parlay','SGP','RR 2s','RR 3s','Live Bet','Hedge']
 
     return (
-      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: isMobile ? '100%' : '480px', height: '100dvh', zIndex: 200, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: isMobile ? '100%' : '480px', height: '100dvh', zIndex: 10000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{ flexShrink: 0, padding: '14px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `3px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)' }}>
@@ -556,41 +556,14 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
               style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '20px', color: 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '7px 14px', outline: 'none' }} />
           </div>
 
-          {/* ── MATCHUP CARD ── */}
+          {/* ── RESULT CARD ── */}
           <div style={card}>
-            <span style={lbl}>Matchup</span>
-            <input value={form.event} onChange={f('event')} placeholder="Event  ·  e.g. Chiefs vs Raiders"
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', padding: '11px 14px', outline: 'none', marginBottom: '8px' }} />
-            <input value={form.pick} onChange={f('pick')} placeholder="Pick  ·  e.g. Chiefs -6.5"
-              style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '10px', color: form.pick ? NEON_T : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', fontWeight: form.pick ? 700 : 400, padding: '11px 14px', outline: 'none' }} />
-          </div>
-
-          {/* ── SPORT CARD ── */}
-          <div style={card}>
-            <span style={lbl}>Sport</span>
-            <div style={scrollRow}>
-              {TOP_SPORTS.map(s => (
-                <button key={s} type="button" onClick={() => set('sport', s)} style={pill(form.sport === s)}>{s}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── BOOK CARD ── */}
-          <div style={card}>
-            <span style={lbl}>Sportsbook</span>
-            <div style={scrollRow}>
-              {TOP_BOOKS.map(b => (
-                <button key={b} type="button" onClick={() => set('book', b)} style={pill(form.book === b)}>{b}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── BET TYPE CARD ── */}
-          <div style={card}>
-            <span style={lbl}>Bet Type</span>
-            <div style={scrollRow}>
-              {BET_TYPES.map(t => (
-                <button key={t} type="button" onClick={() => set('betType', t)} style={pill(form.betType === t)}>{t}</button>
+            <span style={lbl}>Result</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
+              {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
+                <button key={val} type="button" onClick={() => set('result', val)} style={{
+                  ...pill(form.result === val, color), padding: '13px 4px', textAlign: 'center',
+                }}>{label}</button>
               ))}
             </div>
           </div>
@@ -649,14 +622,41 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             )}
           </div>
 
-          {/* ── RESULT CARD ── */}
+          {/* ── MATCHUP CARD ── */}
           <div style={card}>
-            <span style={lbl}>Result</span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
-              {[['Open','OPEN',YELLOW],['W','WIN',NEON],['L','LOSS',RED],['P','PUSH',MUTED]].map(([val, label, color]) => (
-                <button key={val} type="button" onClick={() => set('result', val)} style={{
-                  ...pill(form.result === val, color), padding: '13px 4px', textAlign: 'center',
-                }}>{label}</button>
+            <span style={lbl}>Matchup</span>
+            <input value={form.event} onChange={f('event')} placeholder="Event  ·  e.g. Chiefs vs Raiders"
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', padding: '11px 14px', outline: 'none', marginBottom: '8px' }} />
+            <input value={form.pick} onChange={f('pick')} placeholder="Pick  ·  e.g. Chiefs -6.5"
+              style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '10px', color: form.pick ? NEON_T : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', fontWeight: form.pick ? 700 : 400, padding: '11px 14px', outline: 'none' }} />
+          </div>
+
+          {/* ── SPORT CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Sport</span>
+            <div style={scrollRow}>
+              {TOP_SPORTS.map(s => (
+                <button key={s} type="button" onClick={() => set('sport', s)} style={pill(form.sport === s)}>{s}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── BOOK CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Sportsbook</span>
+            <div style={scrollRow}>
+              {TOP_BOOKS.map(b => (
+                <button key={b} type="button" onClick={() => set('book', b)} style={pill(form.book === b)}>{b}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── BET TYPE CARD ── */}
+          <div style={card}>
+            <span style={lbl}>Bet Type</span>
+            <div style={scrollRow}>
+              {BET_TYPES.map(t => (
+                <button key={t} type="button" onClick={() => set('betType', t)} style={pill(form.betType === t)}>{t}</button>
               ))}
             </div>
           </div>
@@ -2934,15 +2934,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const roi = stats.roi
   const up  = v => v >= 0
 
-  const handleLogPosition = (event) => {
+  const handleLogPosition = (event, { pick = '', odds = '' } = {}) => {
+    const gameDate = event.start_time ? event.start_time.slice(0, 10) : new Date().toISOString().slice(0, 10)
     setInitialBet({
-      date:    new Date().toISOString().slice(0, 10),
+      date:    gameDate,
       sport:   event.sport,
       event:   `${event.away_team} vs ${event.home_team}`,
       betType: 'Straight',
       book:    '',
-      pick:    '',
-      odds:    event.odds_ml_away != null ? String(event.odds_ml_away) : '',
+      pick,
+      odds:    odds !== '' ? String(odds) : '',
       units:   '',
       stake:   '',
       result:  'Open',
@@ -3721,6 +3722,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           {isMobile && (
             <button onClick={() => setShowShare(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', cursor: 'pointer' }}>
               <Share2 size={13} color={NEON_T} strokeWidth={2} />
+            </button>
+          )}
+          {isMobile && (
+            <button onClick={() => setTab('live')} title="Live Center"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 10px', borderRadius: '2px', border: tab === 'live' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'live' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, display: 'inline-block', boxShadow: '0 0 6px rgba(189,255,0,0.8)', animation: 'pulseDot 2s infinite', flexShrink: 0 }} />
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: tab === 'live' ? NEON_T : 'var(--text-dim)' }}>Live</span>
             </button>
           )}
           {isMobile && (
@@ -4666,9 +4674,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'analytics', label: 'Overview',  icon: BarChart3  },
+                { id: 'live',      label: 'Live',      icon: Radio      },
+                { id: 'analytics', label: 'Analytics', icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Sliders    },
-                { id: 'partners',  label: 'Earn',      icon: Handshake  },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => { setTab(id); setShowMore(false) }} style={{
                   display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
@@ -4694,11 +4702,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
           }}>
             {[
-              { id: 'live',      label: 'Live',     icon: Radio      },
               { id: 'overview',  label: 'Analytics',icon: TrendingUp },
               { id: 'ladder',    label: 'Ladder',   icon: Zap        },
               { id: 'bet log',   label: 'Bets',     icon: BookMarked },
+              { id: 'analytics', label: 'Overview', icon: BarChart3  },
               { id: 'rr engine', label: 'RR',       icon: Target     },
+              { id: 'session',   label: 'Session',  icon: Sliders    },
+              { id: 'partners',  label: 'Earn',     icon: Handshake  },
             ].map(({ id, label, icon: Icon }) => {
               const active = tab === id
               return (
@@ -4723,23 +4733,6 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 </button>
               )
             })}
-            {/* More button */}
-            <button onClick={() => setShowMore(p => !p)} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: '2px', background: 'none', border: 'none', cursor: 'pointer',
-              color: ['analytics','session','partners'].includes(tab) ? NEON_T : 'var(--muted)',
-              transition: 'color 0.12s', position: 'relative', minWidth: 0, padding: '0 2px',
-            }}>
-              {['analytics','session','partners'].includes(tab) && (
-                <div style={{
-                  position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                  width: '20px', height: '2px', background: NEON, borderRadius: '0 0 2px 2px',
-                  boxShadow: `0 0 8px ${NEON}`,
-                }} />
-              )}
-              <Sliders size={15} strokeWidth={2} color={['analytics','session','partners'].includes(tab) ? NEON : 'var(--muted)'} />
-              <span style={{ fontFamily: R, fontSize: '6px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>More</span>
-            </button>
           </nav>
         </>
       )}

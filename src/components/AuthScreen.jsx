@@ -58,14 +58,32 @@ export default function AuthScreen({ onAuth, onBack }) {
         else setError(err.message)
       }
     } else {
-      const { error: err } = await signUpEmail(email, password)
+      const { data: signUpData, error: err } = await signUpEmail(email, password)
       if (err) {
         if (err.message.includes('already registered') || err.message.includes('already been registered')) setError('An account with this email already exists. Try logging in.')
         else if (err.message.includes('invalid') && err.message.toLowerCase().includes('email')) setError('Please enter a valid email address.')
         else if (err.message.includes('weak') || err.message.includes('too short')) setError('Password must be at least 6 characters.')
         else setError(err.message)
-      } else {
-        setSuccess('Check your email to confirm your account, then log in.')
+      } else if (signUpData?.user) {
+        // Auto-confirm email server-side so user doesn't need to check inbox
+        try {
+          await fetch('/api/auto-confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: signUpData.user.id }),
+          })
+        } catch (e) {
+          console.warn('[RML] auto-confirm failed:', e)
+        }
+        // Sign them in immediately
+        const { error: loginErr } = await signInEmail(email, password)
+        if (loginErr) {
+          // Auto-confirm might not have worked — show email fallback with clear message
+          setSuccess(`Almost there — check ${email} for a confirmation link. Click it and you'll be taken straight to checkout.`)
+          setLoading(false)
+          return
+        }
+        // If login succeeded, onAuthStateChange fires and AppRoot takes over — no action needed here
       }
     }
 
@@ -245,7 +263,7 @@ export default function AuthScreen({ onAuth, onBack }) {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '20px', fontFamily: R, fontSize: '8px', letterSpacing: '0.18em', color: 'var(--text-dim)' }}>
-          RISK MATRIX LABS © 2025 · DISCIPLINE TODAY. FREEDOM TOMORROW.
+          RISK MATRIX LABS © 2026 · DISCIPLINE TODAY. FREEDOM TOMORROW.
         </div>
       </div>
     </div>

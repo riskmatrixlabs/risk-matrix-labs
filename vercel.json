@@ -1,10 +1,40 @@
 {
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+    },
+    {
+      "source": "/",
+      "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)",     "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/cron-trial-reminder",   "schedule": "0 14 * * *" },
-    { "path": "/api/cron-push-reminder",    "schedule": "0 20 * * *" }
+    { "path": "/api/cron-push-reminder",    "schedule": "0 20 * * *" },
+    { "path": "/api/cron-day-one",          "schedule": "0 15 * * *" },
+    { "path": "/api/cron-trial-expired",    "schedule": "0 16 * * *" },
+    { "path": "/api/cron-reengagement",     "schedule": "0 13 * * *" },
+    { "path": "/api/cron-sync-events",      "schedule": "*/30 13-23 * * *" },
+    { "path": "/api/cron-sync-events",      "schedule": "*/30 0-4 * * *" },
+    { "path": "/api/cron-sync-live",        "schedule": "*/2 13-23 * * *" },
+    { "path": "/api/cron-sync-live",        "schedule": "*/2 0-4 * * *" }
   ]
 }

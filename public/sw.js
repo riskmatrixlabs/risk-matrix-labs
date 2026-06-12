@@ -1,11 +1,11 @@
-const CACHE = 'rml-v3';
+const CACHE = 'rml-v46';
 const PRECACHE = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/brand/logo-dashboard.png',
-  '/brand/logo-labs.png',
+  '/brand/logos/logo-dashboard.png',
+  '/brand/logos/logo-labs.png',
 ];
 
 self.addEventListener('install', e => {

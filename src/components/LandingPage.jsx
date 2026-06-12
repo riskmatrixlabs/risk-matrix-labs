@@ -73,9 +73,17 @@ function Pill({ children, color = NEON }) {
 
 // ─── WAITLIST FORM ────────────────────────────────────────────────────────────
 function WaitlistForm() {
-  return (
-    <div data-beehiiv-form="d6ea407b-4704-4045-be5f-b241d4b3c26b" style={{ width: '100%' }} />
-  )
+  useEffect(() => {
+    // Remove any stale beehiiv script so the loader re-runs after React mounts the div
+    document.querySelectorAll('script[src*="beehiiv.com/v3/loader"]').forEach(s => s.remove())
+    const script = document.createElement('script')
+    script.src = 'https://subscribe-forms.beehiiv.com/v3/loader.js'
+    script.async = true
+    script.setAttribute('data-beehiiv-form', 'd6ea407b-4704-4045-be5f-b241d4b3c26b')
+    document.head.appendChild(script)
+    return () => { try { document.head.removeChild(script) } catch {} }
+  }, [])
+  return <div data-beehiiv-form="d6ea407b-4704-4045-be5f-b241d4b3c26b" style={{ width: '100%' }} />
 }
 
 // ─── FEATURE CARD ─────────────────────────────────────────────────────────────
@@ -694,6 +702,25 @@ export default function LandingPage({ onLogin }) {
         </div>
       </section>
 
+      {/* ══ NEWSLETTER ══ */}
+      <section id="newsletter" style={{ padding: '80px 40px', borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+        <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+          <FadeIn>
+            <Pill>Free Newsletter</Pill>
+            <h2 style={{ fontFamily: R, fontSize: 'clamp(24px, 4vw, 38px)', fontWeight: 700, letterSpacing: '0.04em', color: '#fff', margin: '16px 0 10px', textTransform: 'uppercase' }}>
+              Operate With Discipline
+            </h2>
+            <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.75, marginBottom: '28px' }}>
+              Bankroll strategy, risk management frameworks, and discipline systems — straight to your inbox. No picks. No hype.
+            </p>
+            <WaitlistForm />
+            <p style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '14px', letterSpacing: '0.04em' }}>
+              Free forever. Unsubscribe anytime.
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ══ FINAL CTA ══ */}
       <section id="beta" style={{ position: 'relative', padding: '100px 40px', overflow: 'hidden', textAlign: 'center' }}>
         <HexGrid opacity={0.038} />
@@ -812,10 +839,19 @@ export default function LandingPage({ onLogin }) {
                 onMouseEnter={e => e.currentTarget.style.color = NEON}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.28)'}
               >Affiliates</a>
+            <a href="/press" style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.color = NEON}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.28)'}
+              >Press</a>
             </div>
             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.28em', color: 'rgba(189,255,0,0.26)', textTransform: 'uppercase' }}>Operate With Discipline.</div>
           </div>
           <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <span style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.14)', lineHeight: 1.6 }}>
+              Past performance does not guarantee future results. Risk Matrix Labs is a bankroll simulation and tracking tool — not financial or gambling advice.
+            </span>
+          </div>
+          <div style={{ marginTop: '10px', textAlign: 'center' }}>
             <span style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.14)', lineHeight: 1.6 }}>
               Please gamble responsibly. If you or someone you know has a gambling problem, help is available 24/7 at{' '}
               <a href="https://www.ncpgambling.org" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.24)', textDecoration: 'underline' }}>ncpgambling.org</a>

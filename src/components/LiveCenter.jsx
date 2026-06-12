@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchEvents } from '../lib/events'
+import { fetchEvents, fetchLiveEvents } from '../lib/events'
 
 const NEON   = '#BDFF00'
 const NEON_T = 'var(--neon-title)'
@@ -9,8 +9,23 @@ const CARD   = 'var(--card)'
 const BORDER = 'var(--border2)'
 const TEXT   = 'var(--text)'
 
-const SPORTS = ['MLB', 'NBA', 'NHL', 'NFL']
+const SPORTS = ['MLB', 'NBA', 'WNBA', 'NHL', 'NFL']
+// Filter pills — "Live" aggregates in-progress games across all sports; NBA sits second-to-last.
+const FILTER_TABS = ['Live', 'MLB', 'WNBA', 'NHL', 'NBA', 'NFL']
+
+const SPREAD_LABEL = { MLB: 'Run Line', NHL: 'Puck Line', NBA: 'Spread', WNBA: 'Spread', NFL: 'Spread' }
 const DATES  = ['Yesterday', 'Today', 'Upcoming']
+
+// Sport-specific detail tabs — always shown regardless of game state
+function getDetailTabs(sport, live, final) {
+  switch (sport) {
+    case 'MLB': return ['Odds', 'Play by Play', 'Hitting', 'Pitching', 'Standings']
+    case 'NHL': return ['Odds', 'Goalies', 'Play by Play', 'Skaters', 'Standings']
+    case 'NBA':
+    case 'WNBA': return ['Odds', 'Play by Play', 'Box Score', 'Standings']
+    default: return ['Odds', 'Play by Play', 'Standings']
+  }
+}
 
 function fmtTime(iso) {
   if (!iso) return ''
@@ -47,14 +62,62 @@ function TeamLogo({ logo, abbr, size = 44 }) {
   )
 }
 
+// ── Form tab — last 5 games per team ────────────────────────────────────────
+function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
+  const [side, setSide] = useState('away')
+  const rows = side === 'away' ? awayL5 : homeL5
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+        {[{ k: 'away', label: awayAbbr }, { k: 'home', label: homeAbbr }].map((t, i) => (
+          <button key={t.k} onClick={() => setSide(t.k)} style={{
+            flex: 1, padding: '9px', fontFamily: R, fontSize: '11px', fontWeight: 700,
+            letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer',
+            background: side === t.k ? 'rgba(189,255,0,0.1)' : 'transparent',
+            color: side === t.k ? NEON_T : MUTED,
+            borderRight: i === 0 ? `1px solid ${BORDER}` : 'none',
+            borderBottom: side === t.k ? `2px solid ${NEON}` : '2px solid transparent',
+          }}>{t.label} Last 5</button>
+        ))}
+      </div>
+      {!rows.length ? (
+        <div style={{ padding: '24px', textAlign: 'center', fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.12em' }}>NO DATA</div>
+      ) : rows.map((g, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 60px', alignItems: 'center', gap: '12px', padding: '12px 16px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: g.result === 'W' ? 'rgba(189,255,0,0.15)' : 'rgba(255,59,59,0.12)',
+            border: `1px solid ${g.result === 'W' ? 'rgba(189,255,0,0.35)' : 'rgba(255,59,59,0.3)'}`,
+          }}>
+            <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: g.result === 'W' ? NEON : '#FF3B3B' }}>{g.result}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{g.score}</span>
+              {g.opponent && <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{g.atVs === '@' ? '@' : 'vs'} {g.opponent}</span>}
+            </div>
+            <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>{g.date ? new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Game card — Apple Sports horizontal layout ──────────────────────────────
 function GameCard({ event, onClick }) {
   const live  = event.status === 'LIVE' || event.status === 'IP'
   const final = event.status === 'FT'   || event.status === 'AOT'
+  const isOT  = event.status === 'AOT'
   const hasScore = event.home_score != null
 
-  const centerLabel = live ? 'LIVE' : final ? 'Final' : fmtTime(event.start_time)
+  const centerLabel = live ? 'LIVE' : final ? (isOT ? 'Final/OT' : 'Final') : fmtTime(event.start_time)
   const centerColor = live ? '#FF3B3B' : final ? MUTED : TEXT
+
+  const awayWin = hasScore && final && event.away_score > event.home_score
+  const homeWin = hasScore && final && event.home_score > event.away_score
+  const awayLead = hasScore && live && event.away_score > event.home_score
+  const homeLead = hasScore && live && event.home_score > event.away_score
 
   return (
     <div
@@ -67,77 +130,313 @@ function GameCard({ event, onClick }) {
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)'}
       onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
     >
-      {/* Main row: away | center | home */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px' }}>
-
-        {/* Away team */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={40} />
-          <div>
-            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, letterSpacing: '0.02em' }}>
-              {event.away_team}
+      {/* Event subtitle — series/round name (e.g. "Stanley Cup Final · Game 5", "Commissioner's Cup") */}
+      {(event.metadata?.event_note || event.metadata?.series_summary) && (() => {
+        const raw = event.metadata.event_note || event.metadata.series_summary
+        const clean = raw.replace(new RegExp(`^${event.league}\\s*`, 'i'), '').replace(/\s*-\s*/g, ' · ').trim()
+        return (
+          <div style={{ textAlign: 'center', marginBottom: '10px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {clean}
+          </div>
+        )
+      })()}
+      {/* Main row */}
+      {live && hasScore && event.sport === 'MLB' ? (() => {
+        // Live MLB: [Logo · Name · Score] [Bases · Inning] [Score · Name · Logo]
+        const sit = event.metadata?.situation
+        const ordinal = n => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`
+        const half = sit?.inningHalf?.toLowerCase() === 'bottom' ? '▼' : '▲'
+        const inningLabel = sit?.inning ? `${half} ${ordinal(sit.inning)}` : '● LIVE'
+        const bases = [sit?.onFirst, sit?.onSecond, sit?.onThird]
+        const B = 11
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px' }}>
+            {/* Away: logo · abbr/record · score */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={40} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</div>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.away_record}</div>
+              </div>
+              <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: awayLead ? TEXT : MUTED, opacity: homeLead ? 0.7 : 1, flexShrink: 0 }}>{event.away_score}</span>
             </div>
-            {event.away_record && (
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{event.away_record}</div>
+            {/* Center: bases diamond + inning */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '0 8px' }}>
+              <div style={{ position: 'relative', width: '36px', height: '36px' }}>
+                <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '0px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', background: bases[1] ? NEON : 'transparent', border: `1.5px solid ${bases[1] ? NEON : 'rgba(189,255,0,0.35)'}` }} />
+                <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '50%', left: '1px', transform: 'translateY(-50%) rotate(45deg)', background: bases[2] ? NEON : 'transparent', border: `1.5px solid ${bases[2] ? NEON : 'rgba(189,255,0,0.35)'}` }} />
+                <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '50%', right: '1px', transform: 'translateY(-50%) rotate(45deg)', background: bases[0] ? NEON : 'transparent', border: `1.5px solid ${bases[0] ? NEON : 'rgba(189,255,0,0.35)'}` }} />
+                <div style={{ position: 'absolute', width: 8, height: 8, borderRadius: '1px', bottom: '1px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', background: 'transparent', border: '1.5px solid rgba(189,255,0,0.18)' }} />
+              </div>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{inningLabel}</span>
+            </div>
+            {/* Home: score · abbr/record · logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-end', minWidth: 0 }}>
+              <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: homeLead ? TEXT : MUTED, opacity: awayLead ? 0.7 : 1, flexShrink: 0 }}>{event.home_score}</span>
+              <div style={{ minWidth: 0, flex: 1, textAlign: 'right' }}>
+                <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{event.home_abbr}</div>
+                <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.home_record}</div>
+              </div>
+              <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={40} />
+            </div>
+          </div>
+        )
+      })() : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px' }}>
+          {/* Away team */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={40} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.away_abbr || event.away_team}</div>
+              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>{event.away_record || event.away_team}</div>
+            </div>
+          </div>
+          {/* Center */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '76px' }}>
+            {hasScore ? (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: (awayWin || awayLead) ? TEXT : MUTED, opacity: (homeWin || homeLead) ? 0.7 : 1 }}>{event.away_score}</span>
+                <span style={{ fontFamily: R, fontSize: '12px', color: MUTED }}>–</span>
+                <span style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: (homeWin || homeLead) ? TEXT : MUTED, opacity: (awayWin || awayLead) ? 0.7 : 1 }}>{event.home_score}</span>
+              </div>
+            ) : (
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: centerColor, letterSpacing: live ? '0.08em' : '0', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                {live && <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 5px #FF3B3B', flexShrink: 0 }} />}
+                {centerLabel}
+              </span>
             )}
+            {event.odds_spread_home != null && !hasScore && (
+              <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, whiteSpace: 'nowrap' }}>
+                <span style={{ color: MUTED }}>{event.home_abbr} </span>
+                <span style={{ fontWeight: 700, color: NEON_T }}>{event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : event.odds_spread_home}</span>
+              </span>
+            )}
+            {hasScore && (
+              <span style={{ fontFamily: R, fontSize: '10px', color: centerColor, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{centerLabel}</span>
+            )}
+            {live && hasScore && event.sport !== 'MLB' && event.metadata?.situation?.period && event.metadata?.situation?.clock && (() => {
+              const sit = event.metadata.situation
+              const regP = event.sport === 'NHL' ? 3 : 4
+              const ord = n => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`
+              const lbl = sit.period <= regP ? ord(sit.period) : (sit.period === regP + 1 ? 'OT' : `${sit.period - regP}OT`)
+              return <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{lbl} · {sit.clock}</span>
+            })()}
+          </div>
+          {/* Home team */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-end', minWidth: 0 }}>
+            <div style={{ textAlign: 'right', minWidth: 0 }}>
+              <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.home_abbr || event.home_team}</div>
+              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px', direction: 'rtl', textAlign: 'right' }}>{event.home_record || event.home_team}</div>
+            </div>
+            <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={40} />
           </div>
         </div>
+      )}
 
-        {/* Center: score or time */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '70px' }}>
-          {hasScore ? (
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: TEXT }}>{event.away_score}</span>
-              <span style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>–</span>
-              <span style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: TEXT }}>{event.home_score}</span>
+      {/* Live situation row — MLB uses center column, this is only for other sports + MLB outs/count sub-row */}
+      {live && event.metadata?.situation && (() => {
+        const sit = event.metadata.situation
+        // MLB — show outs + count below the card (inning + bases already in center column)
+        if (event.sport === 'MLB' && hasScore) {
+          const outsLabel = sit.outs != null ? `${sit.outs} Out${sit.outs !== 1 ? 's' : ''}` : null
+          const countLabel = sit.balls != null && sit.strikes != null ? `${sit.balls}-${sit.strikes}` : null
+          if (!outsLabel && !countLabel) return null
+          return (
+            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'center', gap: '12px' }}>
+              {outsLabel && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>{outsLabel}</span>}
+              {countLabel && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>{countLabel}</span>}
             </div>
-          ) : (
-            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: centerColor, letterSpacing: live ? '0.1em' : '0' }}>
-              {live && <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 5px #FF3B3B', marginRight: '5px', verticalAlign: 'middle' }} />}
-              {centerLabel}
-            </span>
-          )}
-          {/* Spread below time */}
-          {event.odds_spread_home != null && !hasScore && (
-            <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>
-              {event.home_abbr} {event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : event.odds_spread_home}
-            </span>
-          )}
-          {hasScore && (
-            <span style={{ fontFamily: R, fontSize: '9px', color: centerColor, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              {centerLabel}
-            </span>
-          )}
-        </div>
+          )
+        }
+        // NHL / NBA / WNBA period+clock now render under LIVE in the center column
+        return null
+      })()}
 
-        {/* Home team */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-end' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, letterSpacing: '0.02em' }}>
-              {event.home_team}
-            </div>
-            {event.home_record && (
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{event.home_record}</div>
-            )}
-          </div>
-          <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={40} />
-        </div>
-      </div>
-
-      {/* Odds row — compact, only if pre-game */}
+      {/* Odds row */}
       {!hasScore && event.odds_ml_away != null && (
-        <div style={{
-          marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`,
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px',
-        }}>
+        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
           {[
             { label: event.away_abbr || 'Away', val: `ML ${fmtOdds(event.odds_ml_away)}` },
             { label: 'O/U',                     val: event.odds_total != null ? `${event.odds_total}` : '—' },
             { label: event.home_abbr || 'Home', val: `ML ${fmtOdds(event.odds_ml_home)}` },
           ].map(({ label, val }) => (
-            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
-              <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>
-              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>{val}</span>
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T }}>{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Probable pitcher matchup */}
+      {event.metadata?.away_pitcher && event.metadata?.home_pitcher && !hasScore && (
+        <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{event.metadata.away_pitcher.name}</span>
+          <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>vs</span>
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{event.metadata.home_pitcher.name}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Collapsible at-bat card ───────────────────────────────────────────────────
+function AtBatCard({ ab, awayAbbr, homeAbbr, resultColor, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen ?? false)
+  return (
+    <div style={{ background: ab.scoring ? 'rgba(189,255,0,0.04)' : CARD, border: `1px solid ${ab.scoring ? 'rgba(189,255,0,0.3)' : BORDER}`, borderLeft: `3px solid ${ab.scoring ? NEON : 'transparent'}`, borderRadius: '10px', overflow: 'hidden' }}>
+      {/* Header — always visible, click to toggle */}
+      <div
+        onClick={() => setOpen(v => !v)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', cursor: 'pointer', userSelect: 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+          {ab.teamAbbr && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>{ab.teamAbbr}:</span>}
+          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ab.batter ?? '—'}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          {ab.result && (
+            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: resultColor(ab.result), background: 'rgba(0,0,0,0.3)', borderRadius: '4px', padding: '2px 6px' }}>
+              {ab.result}
+            </span>
+          )}
+          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+        </div>
+      </div>
+
+      {open && (
+        <>
+          {ab.resultText && (
+            <div style={{ padding: '0 14px 10px', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: ab.scoring ? TEXT : MUTED, lineHeight: 1.45 }}>
+              {ab.resultText}
+            </div>
+          )}
+          {ab.scoring && ab.awayScore != null && (
+            <div style={{ padding: '0 14px 10px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON }}>
+              {awayAbbr} {ab.awayScore} – {homeAbbr} {ab.homeScore}
+            </div>
+          )}
+          {ab.pitches.length > 0 && (
+            <div style={{ borderTop: `1px solid ${BORDER}` }}>
+              {ab.pitches.map((pitch, j) => (
+                <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', borderBottom: j < ab.pitches.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{pitch.n}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{pitch.type ?? pitch.pitchType ?? '—'}</span>
+                  </div>
+                  {pitch.balls != null && pitch.strikes != null && (
+                    <span style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>{pitch.balls}-{pitch.strikes}</span>
+                  )}
+                  {pitch.vel != null && pitch.pitchType && (
+                    <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, whiteSpace: 'nowrap' }}>{pitch.vel} mph {pitch.pitchType}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── MLB Play-by-play — at-bat cards with pitch sequences ─────────────────────
+function MLBPlays({ plays, awayAbbr, homeAbbr, sit }) {
+  const [filter, setFilter] = useState('all') // 'all' | 'scoring'
+
+  // Group consecutive pitches into at-bats by atBatId, preserving order
+  const atBats = []
+  const seen = {}
+  for (const p of plays) {
+    const key = p.atBatId ?? `solo-${atBats.length}`
+    if (!seen[key]) {
+      seen[key] = { pitches: [], result: null, batter: p.batter, teamAbbr: p.teamAbbr, scoring: false, awayScore: null, homeScore: null }
+      atBats.push(seen[key])
+    }
+    const ab = seen[key]
+    if (p.batter && !ab.batter) ab.batter = p.batter
+    if (p.teamAbbr && !ab.teamAbbr) ab.teamAbbr = p.teamAbbr
+    if (p.scoring) { ab.scoring = true; ab.awayScore = p.awayScore; ab.homeScore = p.homeScore; ab.resultText = p.text }
+    // Last non-null text with a play type is the result
+    if (p.playType && p.playType !== 'At Bat' && !p.playType.startsWith('End')) {
+      ab.result = p.playType
+      if (!ab.scoring) ab.resultText = p.text
+    }
+    if (p.pitchType || p.pitchVelocity) {
+      ab.pitches.push({ n: ab.pitches.length + 1, type: p.playType, pitchType: p.pitchType, vel: p.pitchVelocity, balls: p.balls, strikes: p.strikes })
+    }
+  }
+
+  const visible = filter === 'scoring' ? atBats.filter(a => a.scoring) : atBats
+
+  // Current pitcher from situation
+  const currentPitcher = sit?.pitcher
+  const currentBatter  = sit?.batter
+
+  const resultColor = (result) => {
+    if (!result) return MUTED
+    const r = result.toLowerCase()
+    if (r.includes('home run') || r.includes('hit') || r.includes('single') || r.includes('double') || r.includes('triple')) return NEON_T
+    if (r.includes('out') || r.includes('strikeout') || r.includes('struck')) return '#FF3B3B'
+    return TEXT
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* All Plays / Scoring Plays toggle */}
+      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '3px', gap: '3px' }}>
+        {[{ k: 'all', label: 'All Plays' }, { k: 'scoring', label: 'Scoring Plays' }].map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+            flex: 1, padding: '8px', fontFamily: R, fontSize: '11px', fontWeight: 700,
+            letterSpacing: '0.08em', textTransform: 'uppercase', border: 'none', cursor: 'pointer',
+            borderRadius: '6px',
+            background: filter === t.k ? CARD : 'transparent',
+            color: filter === t.k ? TEXT : MUTED,
+            boxShadow: filter === t.k ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* Current pitcher / batter */}
+      {(currentPitcher || currentBatter) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
+          {currentPitcher && <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>P: {currentPitcher}</span>}
+          {currentBatter  && <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>AB: {currentBatter}</span>}
+        </div>
+      )}
+
+      {/* At-bat cards — collapsible dropdowns */}
+      {!visible.length ? (
+        <div style={{ textAlign: 'center', padding: '32px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.12em' }}>NO PLAYS</div>
+      ) : visible.map((ab, i) => <AtBatCard key={i} ab={ab} awayAbbr={awayAbbr} homeAbbr={homeAbbr} resultColor={resultColor} defaultOpen={i === 0} />)}
+    </div>
+  )
+}
+
+// ── Collapsible hitter row ────────────────────────────────────────────────────
+function HitterRow({ p }) {
+  const [open, setOpen] = useState(false)
+  const summary = [p.h != null && p.ab != null ? `${p.h}-${p.ab}` : null, p.hr > 0 ? `${p.hr} HR` : null, p.rbi > 0 ? `${p.rbi} RBI` : null].filter(Boolean).join(', ')
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 14px', cursor: 'pointer', userSelect: 'none' }}>
+        <div>
+          <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{p.name}</span>
+          {p.pos && <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginLeft: '6px', letterSpacing: '0.08em' }}>{p.pos}</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {summary && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: p.h > 0 ? NEON_T : MUTED }}>{summary}</span>}
+          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+        </div>
+      </div>
+      {open && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', borderTop: `1px solid ${BORDER}`, background: BORDER }}>
+          {[{ l: 'AB', v: p.ab }, { l: 'H', v: p.h }, { l: 'R', v: p.r }, { l: 'RBI', v: p.rbi }, { l: 'HR', v: p.hr }, { l: 'BB', v: p.bb }, { l: 'K', v: p.k }, { l: 'AVG', v: p.avg }].map(({ l, v }) => (
+            <div key={l} style={{ background: '#0A0A0A', padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: '4px' }}>{l}</div>
+              <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: l === 'H' && v > 0 ? NEON_T : TEXT }}>{v ?? '—'}</div>
             </div>
           ))}
         </div>
@@ -146,190 +445,866 @@ function GameCard({ event, onClick }) {
   )
 }
 
-// ── Game detail — full odds table + LOG POSITION ────────────────────────────
-function GameDetail({ event, onLogPosition, onBack }) {
-  const live  = event.status === 'LIVE' || event.status === 'IP'
-  const final = event.status === 'FT'   || event.status === 'AOT'
-  const hasScore = event.home_score != null
-
+// ── Collapsible pitcher row ───────────────────────────────────────────────────
+function PitcherRow({ p }) {
+  const [open, setOpen] = useState(false)
+  const summary = [p.ip != null ? `${p.ip} IP` : null, p.k != null ? `${p.k} K` : null, p.er != null ? `${p.er} ER` : null].filter(Boolean).join(' · ')
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-      {/* Back */}
-      <button onClick={onBack} style={{
-        background: 'none', border: 'none', cursor: 'pointer', padding: '0',
-        width: 'fit-content',
-      }}>
-        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>← BACK</span>
-      </button>
-
-      {/* Hero header */}
-      <div style={{
-        background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px',
-        overflow: 'hidden',
-      }}>
-        {/* League + context label */}
-        <div style={{
-          padding: '12px 16px 0',
-          fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em',
-          color: MUTED, textTransform: 'uppercase', textAlign: 'center',
-        }}>
-          {event.league} · {fmtTime(event.start_time)}
-        </div>
-
-        {/* Teams */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr auto 1fr',
-          alignItems: 'center', gap: '12px', padding: '20px 20px',
-        }}>
-          {/* Away */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={56} />
-            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>{event.away_team}</div>
-            {event.away_record && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{event.away_record}</div>}
-            {hasScore && <div style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, color: TEXT, lineHeight: 1 }}>{event.away_score}</div>}
-          </div>
-
-          {/* Center */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-            {live && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: '#FF3B3B' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 5px #FF3B3B', display: 'inline-block' }} />
-                LIVE
-              </span>
-            )}
-            {!live && !hasScore && (
-              <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 600, color: MUTED }}>vs</span>
-            )}
-            {final && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Final</span>}
-          </div>
-
-          {/* Home */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={56} />
-            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>{event.home_team}</div>
-            {event.home_record && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{event.home_record}</div>}
-            {hasScore && <div style={{ fontFamily: R, fontSize: '36px', fontWeight: 700, color: TEXT, lineHeight: 1 }}>{event.home_score}</div>}
-          </div>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 14px', cursor: 'pointer', userSelect: 'none' }}>
+        <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{p.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {summary && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED }}>{summary}</span>}
+          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
         </div>
       </div>
-
-      {/* Betting Odds table — Apple Sports style */}
-      {event.odds_ml_away != null && (
-        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px 10px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>
-            Betting Odds
-          </div>
-          {/* Header row */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr',
-            padding: '6px 16px', borderBottom: `1px solid ${BORDER}`,
-          }}>
-            {['Team', 'Spread', 'Total', 'Moneyline'].map((h, i) => (
-              <span key={h} style={{
-                fontFamily: R, fontSize: '9px', fontWeight: 600, color: MUTED,
-                textAlign: i === 0 ? 'left' : 'center',
-              }}>{h}</span>
-            ))}
-          </div>
-          {/* Away row */}
-          {[
-            {
-              abbr: event.away_abbr,
-              spread: event.odds_spread_home != null ? fmtOdds(-event.odds_spread_home) : '—',
-              total: event.odds_total != null ? `O${event.odds_total}` : '—',
-              ml: fmtOdds(event.odds_ml_away),
-            },
-            {
-              abbr: event.home_abbr,
-              spread: event.odds_spread_home != null ? fmtOdds(event.odds_spread_home) : '—',
-              total: event.odds_total != null ? `U${event.odds_total}` : '—',
-              ml: fmtOdds(event.odds_ml_home),
-            },
-          ].map((row, i) => (
-            <div key={i} style={{
-              display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr',
-              padding: '10px 16px',
-              borderBottom: i === 0 ? `1px solid ${BORDER}` : 'none',
-              background: i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent',
-            }}>
-              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{row.abbr}</span>
-              <span style={{ fontFamily: R, fontSize: '11px', color: NEON_T, textAlign: 'center' }}>{row.spread}</span>
-              <span style={{ fontFamily: R, fontSize: '11px', color: NEON_T, textAlign: 'center' }}>{row.total}</span>
-              <span style={{ fontFamily: R, fontSize: '11px', color: NEON_T, textAlign: 'center' }}>{row.ml}</span>
+      {open && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', borderTop: `1px solid ${BORDER}`, background: BORDER }}>
+          {[{ l: 'IP', v: p.ip }, { l: 'H', v: p.h }, { l: 'R', v: p.r }, { l: 'ER', v: p.er }, { l: 'BB', v: p.bb }, { l: 'K', v: p.k }, { l: 'PC', v: p.pc_st }, { l: 'ERA', v: p.era }].map(({ l, v }) => (
+            <div key={l} style={{ background: '#0A0A0A', padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: '4px' }}>{l}</div>
+              <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: l === 'K' && v > 0 ? NEON_T : TEXT }}>{v ?? '—'}</div>
             </div>
           ))}
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* LOG POSITION */}
-      <button
-        onClick={() => onLogPosition(event)}
-        style={{
-          width: '100%', padding: '16px', borderRadius: '8px',
-          background: NEON, border: 'none', cursor: 'pointer',
-          fontFamily: R, fontSize: '13px', fontWeight: 700,
-          letterSpacing: '0.18em', color: '#0A0A0A', textTransform: 'uppercase',
-          boxShadow: '0 0 24px rgba(189,255,0,0.35)',
-        }}
-      >
-        LOG POSITION
+// ── Team stats — always-visible comparison section (not a tab), Apple Sports style ──
+const TEAM_STAT_ROWS = {
+  MLB: [
+    ['Hits', 'hits'], ['Home Runs', 'homeRuns'], ['Strikeouts', 'strikeouts'], ['Walks', 'walks'],
+    ['Extra Base Hits', 'extraBaseHits'], ['Total Bases', 'totalBases'], ['Left on Base', 'lob'],
+    ['Stolen Bases', 'stolenBases'], ['Double Plays', 'doublePlays'], ['Errors', 'errors'],
+  ],
+  NHL: [
+    ['Shots on Goal', 'sog'], ['Hits', 'hits'], ['Face-Off %', 'faceoffPct'],
+    ['Power Play Opportunities', 'ppOpp'], ['Power Play Goals', 'ppGoals'],
+    ['Short Handed Goals', 'shGoals'], ['Penalties', 'penalties'], ['Penalty Minutes', 'pim'],
+  ],
+  NBA: [
+    ['Field Goal %', 'fgPct'], ['Free Throw %', 'ftPct'], ['Three Point %', 'tpPct'],
+    ['Assists', 'assists'], ['Rebounds', 'rebounds'], ['Defensive Rebounds', 'defReb'], ['Offensive Rebounds', 'offReb'],
+    ['Steals', 'steals'], ['Blocks', 'blocks'], ['Fouls', 'fouls'], ['Turnovers', 'turnovers'],
+    ['Points Off Turnovers', 'pointsOffTO'], ['Points in the Paint', 'pointsInPaint'], ['Largest Lead', 'largestLead'],
+  ],
+}
+TEAM_STAT_ROWS.WNBA = TEAM_STAT_ROWS.NBA
+
+function TeamStats({ sport, awayAbbr, homeAbbr, aStats, hStats }) {
+  const [open, setOpen] = useState(true)
+  const statRows = (TEAM_STAT_ROWS[sport] ?? [])
+    .map(([label, key]) => ({ label, a: aStats?.[key], h: hStats?.[key] }))
+    .filter(r => r.a != null || r.h != null)
+  if (!statRows.length) return null
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr auto', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{awayAbbr}</span>
+        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'right' }}>Team Stats</span>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{homeAbbr}</span>
       </button>
+      {open && statRows.map(({ label, a, h }, i) => {
+        const av = a ?? 0; const hv = h ?? 0; const total = av + hv || 1
+        return (
+          <div key={label} style={{ padding: '12px 16px', borderBottom: i < statRows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '7px' }}>
+              <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: TEXT }}>{av}</span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', minWidth: '100px' }}>{label}</span>
+              <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{hv}</span>
+            </div>
+            <div style={{ display: 'flex', height: '5px', borderRadius: '3px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+              <div style={{ width: `${(av / total) * 100}%`, background: '#FF3B3B', transition: 'width 0.4s ease' }} />
+              <div style={{ width: `${(hv / total) * 100}%`, background: NEON, transition: 'width 0.4s ease' }} />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Starting pitcher line — shown under each team's score in the hero ─────────
+function PitcherLine({ pitcher }) {
+  if (!pitcher?.name) return null
+  const sub = [pitcher.era ? `${pitcher.era} ERA` : null, pitcher.record || null].filter(Boolean).join(' · ')
+  return (
+    <div style={{ textAlign: 'center', marginTop: '4px' }}>
+      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{pitcher.name}{pitcher.throws ? ` (${pitcher.throws})` : ''}</div>
+      {sub && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.04em' }}>{sub}</div>}
+    </div>
+  )
+}
+
+// ── Game info — Coverage / Venue / Location, shown under Team Stats ───────────
+function GameInfo({ broadcast, venue, venueCity, series }) {
+  const items = [broadcast, venue, venueCity, series].filter(Boolean)
+  if (!items.length) return null
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '11px 14px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+      {items.map((value, i) => (
+        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {i > 0 && <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>·</span>}
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: TEXT, whiteSpace: 'nowrap' }}>{value}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ── Poll one live game's fresh data on-demand while its detail is open ────────
+function useLiveGame(propEvent) {
+  const [evt, setEvt] = useState(propEvent)
+  // Reset when the user switches to a different game
+  useEffect(() => { setEvt(propEvent) }, [propEvent?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const isLive = propEvent?.status === 'IP' || propEvent?.status === 'LIVE'
+    if (!isLive || !propEvent?.external_event_id || !propEvent?.sport) return
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const r = await fetch(`/api/live-game?id=${encodeURIComponent(propEvent.external_event_id)}&sport=${encodeURIComponent(propEvent.sport)}`)
+        if (!r.ok) return
+        const d = await r.json()
+        if (cancelled || !d || d.notFound || d.error) return
+        setEvt(prev => ({
+          ...prev,
+          status:     d.status     ?? prev.status,
+          home_score: d.home_score ?? prev.home_score,
+          away_score: d.away_score ?? prev.away_score,
+          metadata:   { ...(prev.metadata ?? {}), ...(d.metadata ?? {}) },
+        }))
+      } catch { /* network blip — keep last good data */ }
+    }
+    tick()
+    const iv = setInterval(tick, 25000)
+    return () => { cancelled = true; clearInterval(iv) }
+  }, [propEvent?.external_event_id, propEvent?.status, propEvent?.sport])
+  return evt
+}
+
+// ── Game detail — full-screen overlay ──────────────────────────────────────
+function GameDetail({ event: propEvent, onLogPosition, onBack }) {
+  const event = useLiveGame(propEvent)
+  const live     = event.status === 'LIVE' || event.status === 'IP'
+  const final    = event.status === 'FT'   || event.status === 'AOT'
+  const isOT     = event.status === 'AOT'
+  const hasScore = event.home_score != null
+  const awayWin  = hasScore && final && event.away_score > event.home_score
+  const homeWin  = hasScore && final && event.home_score > event.away_score
+  const awayLead = hasScore && live  && event.away_score > event.home_score
+  const homeLead = hasScore && live  && event.home_score > event.away_score
+
+  const tabs = getDetailTabs(event.sport, live, final)
+  const [dtab, setDtab] = useState(tabs[0] ?? 'Odds')
+  const [hitTeam,     setHitTeam]     = useState('away')
+  const [pitchTeam,   setPitchTeam]   = useState('away')
+  const [skatersTeam, setSkatersTeam] = useState('away')
+
+  const meta       = event.metadata || {}
+  const awayPitch  = meta.away_pitcher  || null
+  const homePitch  = meta.home_pitcher  || null
+  const awayHit    = meta.away_hitting  || []
+  const homeHit    = meta.home_hitting  || []
+  const awayPitch2 = meta.away_pitching || []
+  const homePitch2 = meta.home_pitching || []
+
+  function EmptyState({ label }) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+        <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>{label}</div>
+        <div style={{ fontFamily: R, fontSize: '9px', color: 'rgba(255,255,255,0.15)', letterSpacing: '0.1em' }}>NO DATA AVAILABLE</div>
+      </div>
+    )
+  }
+
+  // ── MLB Linescore ──────────────────────────────────────────────────────────
+  const Linescore = () => {
+    if (event.sport !== 'MLB' || (!live && !final) || !meta.linescore) return null
+    const { away, home, currentInning } = meta.linescore
+    const innings = Math.max(away.innings?.length ?? 0, home.innings?.length ?? 0, 9)
+    const cols = Array.from({ length: innings }, (_, i) => i + 1)
+    const cell  = (highlight, bold) => ({ fontFamily: R, fontSize: '12px', fontWeight: bold ? 700 : 500, color: highlight ? NEON : TEXT, textAlign: 'center', minWidth: '24px', padding: '5px 2px' })
+    const hdr   = (active) => ({ fontFamily: R, fontSize: '10px', fontWeight: 700, color: active ? NEON : MUTED, textAlign: 'center', minWidth: '24px', padding: '4px 2px', letterSpacing: '0.06em' })
+    return (
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ width: 'fit-content', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '2px' }}>
+            <div style={{ width: '40px' }} />
+            {cols.map(n => <div key={n} style={hdr(live && n === currentInning)}>{n}</div>)}
+            <div style={{ width: '10px' }} />
+            {['R','H','E'].map(l => <div key={l} style={{ ...hdr(l==='R'), minWidth: '28px' }}>{l}</div>)}
+          </div>
+          {[{ abbr: event.away_abbr, line: away }, { abbr: event.home_abbr, line: home }].map((t, ri) => (
+            <div key={t.abbr} style={{ display: 'flex', alignItems: 'center', paddingTop: '4px', paddingBottom: ri === 0 ? '4px' : '0', borderBottom: ri === 0 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+              <div style={{ width: '40px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{t.abbr}</div>
+              {cols.map((n, i) => <div key={n} style={cell(false, false)}>{t.line.innings?.[i] ?? (live && n > currentInning ? '' : '-')}</div>)}
+              <div style={{ width: '10px' }} />
+              <div style={cell(true, true)}>{t.line.r ?? (t.abbr === event.away_abbr ? event.away_score : event.home_score) ?? '-'}</div>
+              <div style={cell(false, false)}>{t.line.h ?? '-'}</div>
+              <div style={cell(false, false)}>{t.line.e ?? '-'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── NHL/NBA/WNBA period-quarter linescore ──────────────────────────────────
+  const PeriodLinescore = () => {
+    if (event.sport === 'MLB' || (!live && !final) || !meta.linescore?.cols) return null
+    const { cols, away, home } = meta.linescore
+    const curIdx = (meta.situation?.period ?? 0) - 1
+    const cell = (bold, hl) => ({ fontFamily: R, fontSize: '17px', fontWeight: bold ? 700 : 500, color: hl ? NEON : TEXT, textAlign: 'center', minWidth: '46px', padding: '7px 4px' })
+    const hdr  = (active) => ({ fontFamily: R, fontSize: '12px', fontWeight: 700, color: active ? NEON : MUTED, textAlign: 'center', minWidth: '46px', padding: '5px 4px', letterSpacing: '0.08em' })
+    return (
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ width: 'fit-content', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '2px' }}>
+            <div style={{ width: '56px' }} />
+            {cols.map((c, i) => <div key={i} style={hdr(live && i === curIdx)}>{c}</div>)}
+            <div style={{ width: '14px' }} />
+            <div style={{ ...hdr(true), minWidth: '52px' }}>T</div>
+          </div>
+          {[{ abbr: event.away_abbr, line: away }, { abbr: event.home_abbr, line: home }].map((t, ri) => (
+            <div key={t.abbr} style={{ display: 'flex', alignItems: 'center', paddingTop: '5px', paddingBottom: ri === 0 ? '5px' : '0', borderBottom: ri === 0 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+              <div style={{ width: '56px', fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{t.abbr}</div>
+              {cols.map((c, i) => <div key={i} style={cell(false, live && i === curIdx)}>{t.line.periods?.[i] ?? '-'}</div>)}
+              <div style={{ width: '14px' }} />
+              <div style={{ ...cell(true, false), minWidth: '52px', color: NEON_T }}>{t.line.total ?? '-'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ── MLB Live Situation bar ─────────────────────────────────────────────────
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0A0A0A', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    >
+
+      {/* ── Top bar ── */}
+      <div style={{ flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,10,10,0.95)' }}>
+      <div style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', padding: '12px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '960px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>Back</span>
+        </button>
+        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>{event.league} · {fmtTime(event.start_time)}</span>
+        <div style={{ width: '60px' }} />
+      </div>
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ maxWidth: '960px', width: '100%', margin: '0 auto' }}>
+
+        {/* ── HERO ── */}
+        <div style={{ background: 'linear-gradient(180deg, rgba(189,255,0,0.03) 0%, transparent 100%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* Event subtitle — league · series/event name (e.g. "NHL · Stanley Cup Final · Game 5") */}
+          {(() => {
+            const raw = meta.event_note
+            if (!raw) return null
+            const clean = raw.replace(new RegExp(`^${event.league}\\s*`, 'i'), '').replace(/\s*-\s*/g, ' · ').trim()
+            return (
+              <div style={{ textAlign: 'center', padding: '14px 20px 0', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>
+                {event.league} · {clean}
+              </div>
+            )
+          })()}
+          {/* Scores + logos */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '24px 20px 16px', gap: '12px' }}>
+            {/* Away */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={60} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.away_team}</div>
+                {event.away_record && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>{event.away_record}</div>}
+              </div>
+              {hasScore && <div style={{ fontFamily: R, fontSize: '64px', fontWeight: 700, lineHeight: 1, color: (awayWin || awayLead) ? TEXT : 'rgba(255,255,255,0.55)', letterSpacing: '-0.02em' }}>{event.away_score}</div>}
+              <PitcherLine pitcher={meta.away_pitcher} />
+            </div>
+            {/* Center status */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '70px' }}>
+              {live ? (() => {
+                const sit = meta.situation
+                const half = sit?.inningHalf?.toLowerCase() === 'bottom' ? '▼' : '▲'
+                const ordinal = n => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`
+                const inningLabel = sit?.inning ? `${half} ${ordinal(sit.inning)}` : null
+                const bases = sit ? [sit.onFirst, sit.onSecond, sit.onThird] : []
+                const B = 12
+                return (
+                  <>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 8px #FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                      <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.16em' }}>LIVE</span>
+                    </span>
+                    {sit && event.sport === 'MLB' && (
+                      <div style={{ position: 'relative', width: '40px', height: '40px' }}>
+                        <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '2px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', background: bases[1] ? NEON : 'transparent', border: `1.5px solid ${bases[1] ? NEON : 'rgba(189,255,0,0.3)'}` }} />
+                        <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '50%', left: '2px', transform: 'translateY(-50%) rotate(45deg)', background: bases[2] ? NEON : 'transparent', border: `1.5px solid ${bases[2] ? NEON : 'rgba(189,255,0,0.3)'}` }} />
+                        <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '50%', right: '2px', transform: 'translateY(-50%) rotate(45deg)', background: bases[0] ? NEON : 'transparent', border: `1.5px solid ${bases[0] ? NEON : 'rgba(189,255,0,0.3)'}` }} />
+                        <div style={{ position: 'absolute', width: 9, height: 9, borderRadius: '1px', bottom: '2px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', border: '1.5px solid rgba(189,255,0,0.15)' }} />
+                      </div>
+                    )}
+                    {inningLabel && <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.08em' }}>{inningLabel}</span>}
+                    {event.sport !== 'MLB' && sit?.period && (() => {
+                      const regP = event.sport === 'NHL' ? 3 : 4
+                      const ord = n => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`
+                      const lbl = sit.period <= regP ? ord(sit.period) : (sit.period === regP + 1 ? 'OT' : `${sit.period - regP}OT`)
+                      return <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{lbl}{sit.clock ? ` ${sit.clock}` : ''}</span>
+                    })()}
+                    {event.sport === 'NHL' && meta.away_team_stats?.sog != null && meta.home_team_stats?.sog != null && (
+                      <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>SOG: {meta.away_team_stats.sog}-{meta.home_team_stats.sog}</span>
+                    )}
+                    {sit && (
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {sit.outs != null && <div style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT, lineHeight: 1 }}>{sit.outs}</div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>OUTS</div></div>}
+                        {sit.balls != null && <div style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT, lineHeight: 1 }}>{sit.balls}-{sit.strikes}</div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>COUNT</div></div>}
+                      </div>
+                    )}
+                    {meta.broadcast && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.08em' }}>{meta.broadcast}</span>}
+                  </>
+                )
+              })() : final ? (
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{isOT ? 'Final/OT' : 'Final'}</span>
+              ) : (
+                <span style={{ fontFamily: R, fontSize: '13px', color: MUTED }}>vs</span>
+              )}
+            </div>
+            {/* Home */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={60} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.home_team}</div>
+                {event.home_record && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>{event.home_record}</div>}
+              </div>
+              {hasScore && <div style={{ fontFamily: R, fontSize: '64px', fontWeight: 700, lineHeight: 1, color: (homeWin || homeLead) ? TEXT : 'rgba(255,255,255,0.55)', letterSpacing: '-0.02em' }}>{event.home_score}</div>}
+              <PitcherLine pitcher={meta.home_pitcher} />
+            </div>
+          </div>
+
+          {/* NHL goal scorers — puck summary by team */}
+          {event.sport === 'NHL' && (meta.goals?.away?.length || meta.goals?.home?.length) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', padding: '0 20px 16px', alignItems: 'start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {(meta.goals.away ?? []).map((g, i) => (
+                  <div key={i} style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: TEXT, textAlign: 'left' }}>
+                    {g.scorer} <span style={{ color: MUTED }}>{g.period}{g.ppg ? ' (PPG)' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '2px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'rgba(255,255,255,0.55)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {(meta.goals.home ?? []).map((g, i) => (
+                  <div key={i} style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: TEXT, textAlign: 'right' }}>
+                    {g.scorer} <span style={{ color: MUTED }}>{g.period}{g.ppg ? ' (PPG)' : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pitcher decisions — MLB final */}
+          {event.sport === 'MLB' && final && meta.decisions && (() => {
+            const { winner, loser, save } = meta.decisions
+            if (!winner && !loser) return null
+            return (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', padding: '0 20px 14px' }}>
+                {[winner && { label:'W', p: winner }, loser && { label:'L', p: loser }, save && { label:'SV', p: save }].filter(Boolean).map(({ label, p }) => (
+                  <div key={label} style={{ textAlign: 'center' }}>
+                    <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: label==='W' ? NEON : label==='L' ? '#FF3B3B' : MUTED }}>{label}</span>
+                    <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{p.name}</div>
+                    <div style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>{p.record}{p.era ? ` · ${p.era}` : ''}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* Linescore */}
+          {(live || final) && (
+            <div style={{ padding: '10px 20px 0' }}>
+              <Linescore />
+              <PeriodLinescore />
+            </div>
+          )}
+
+        </div>
+
+        {/* ── Sticky tab bar ── */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(10,10,10,0.97)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '10px 16px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px' }}>
+            {tabs.map(t => (
+              <button key={t} onClick={() => setDtab(t)} style={{
+                flexShrink: 0, padding: '7px 16px', fontFamily: R, fontSize: '10px', fontWeight: 700,
+                letterSpacing: '0.12em', textTransform: 'uppercase',
+                border: `1px solid ${dtab === t ? NEON : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap',
+                background: dtab === t ? 'rgba(189,255,0,0.12)' : 'transparent',
+                color: dtab === t ? NEON_T : MUTED,
+              }}>{t}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Tab content ── */}
+        <div style={{ padding: '14px 16px 40px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+          {/* Game Info — the first thing under the tabs, on every tab */}
+          <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
+
+          {/* Team Stats (collapsible, default open) — under the tabs, above the tab content.
+              Only live/final: ESPN returns SEASON totals pre-game, which aren't game stats.
+              Excluded on Play by Play; on Odds it renders at the bottom instead (see below). */}
+          {(live || final) && dtab !== 'Play by Play' && dtab !== 'Odds' && (meta.away_team_stats || meta.home_team_stats) && (
+            <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />
+          )}
+
+          {/* ── Odds ── */}
+          {dtab === 'Odds' && (() => {
+            const hasSpread = event.odds_spread_home != null
+            const hasTotal  = event.odds_total != null
+            // ESPN drops the moneyline for live games (returns 0) — treat 0 as "no ML"
+            const hasML     = !!event.odds_ml_away && !!event.odds_ml_home
+            if (!hasSpread && !hasTotal && !hasML) return <EmptyState label="Odds" />
+
+            const spreadLabel = SPREAD_LABEL[event.sport] || 'Spread'
+            const spreadAway = event.odds_spread_away > 0 ? `+${event.odds_spread_away}` : `${event.odds_spread_away}`
+            const spreadHome = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
+
+            const betRows = [
+              hasSpread && { team: event.away_abbr, type: spreadLabel, line: spreadAway,           juice: meta.spread_away_juice, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`,   odds: meta.spread_away_juice ?? spreadAway },
+              hasSpread && { team: event.home_abbr, type: spreadLabel, line: spreadHome,           juice: meta.spread_home_juice, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`,   odds: meta.spread_home_juice ?? spreadHome },
+              hasTotal  && { team: 'Over',          type: 'Total',     line: `O ${event.odds_total}`, juice: meta.over_juice,     pick: `Over ${event.odds_total}`,                          odds: meta.over_juice  ?? `O ${event.odds_total}` },
+              hasTotal  && { team: 'Under',         type: 'Total',     line: `U ${event.odds_total}`, juice: meta.under_juice,    pick: `Under ${event.odds_total}`,                         odds: meta.under_juice ?? `U ${event.odds_total}` },
+              hasML     && { team: event.away_abbr, type: 'Moneyline', line: fmtOdds(event.odds_ml_away),  juice: null,           pick: `${event.away_abbr} ML`,                             odds: event.odds_ml_away },
+              hasML     && { team: event.home_abbr, type: 'Moneyline', line: fmtOdds(event.odds_ml_home),  juice: null,           pick: `${event.home_abbr} ML`,                             odds: event.odds_ml_home },
+            ].filter(Boolean)
+
+            const OddsCard = ({ line, juice, pick, odds, empty }) => (
+              <div
+                onClick={() => !empty && onLogPosition && onLogPosition(event, { pick, odds })}
+                style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '16px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '72px', cursor: (!empty && onLogPosition) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
+                onMouseEnter={e => { if (!empty && onLogPosition) { e.currentTarget.style.background = 'rgba(189,255,0,0.06)'; e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)' } }}
+                onMouseLeave={e => { e.currentTarget.style.background = CARD; e.currentTarget.style.borderColor = BORDER }}
+              >
+                {empty ? <span style={{ fontFamily: R, fontSize: '18px', color: 'rgba(255,255,255,0.15)' }}>—</span> : (
+                  <>
+                    <span style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', lineHeight: 1 }}>{line}</span>
+                    {juice != null && <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T, letterSpacing: '0.02em' }}>{fmtOdds(juice)}</span>}
+                  </>
+                )}
+              </div>
+            )
+            const colLabels = [spreadLabel, 'Total', 'ML']
+            return (
+              <div>
+                {/* Column labels */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px' }}>
+                  {colLabels.map(l => <div key={l} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center' }}>{l}</div>)}
+                </div>
+                {/* Row labels + cards */}
+                {[
+                  { label: event.away_abbr, cells: [
+                    hasSpread ? { line: spreadAway, juice: meta.spread_away_juice, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`, odds: meta.spread_away_juice ?? spreadAway } : null,
+                    hasTotal  ? { line: `O ${event.odds_total}`, juice: meta.over_juice, pick: `Over ${event.odds_total}`, odds: meta.over_juice ?? `O ${event.odds_total}` } : null,
+                    hasML     ? { line: fmtOdds(event.odds_ml_away), juice: null, pick: `${event.away_abbr} ML`, odds: event.odds_ml_away } : null,
+                  ]},
+                  { label: event.home_abbr, cells: [
+                    hasSpread ? { line: spreadHome, juice: meta.spread_home_juice, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`, odds: meta.spread_home_juice ?? spreadHome } : null,
+                    hasTotal  ? { line: `U ${event.odds_total}`, juice: meta.under_juice, pick: `Under ${event.odds_total}`, odds: meta.under_juice ?? `U ${event.odds_total}` } : null,
+                    hasML     ? { line: fmtOdds(event.odds_ml_home), juice: null, pick: `${event.home_abbr} ML`, odds: event.odds_ml_home } : null,
+                  ]},
+                ].map(({ label, cells }) => (
+                  <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                    {cells.map((c, i) => c
+                      ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} />
+                      : <OddsCard key={i} empty />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* ── Plays ── */}
+          {dtab === 'Play by Play' && (() => {
+            const allPlays = meta.plays ?? []
+            if (!allPlays.length) return <EmptyState label="Play-by-play" />
+            if (event.sport === 'MLB') {
+              return <MLBPlays plays={allPlays} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} sit={meta.situation} />
+            }
+            return (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                {allPlays.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 14px', borderBottom: i < allPlays.length - 1 ? `1px solid ${BORDER}` : 'none', background: p.scoring ? 'rgba(189,255,0,0.04)' : 'transparent', borderLeft: p.scoring ? `3px solid ${NEON}` : '3px solid transparent' }}>
+                    <div style={{ flexShrink: 0, minWidth: '32px' }}>
+                      {p.clock && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{p.clock}</span>}
+                      {p.period && <div style={{ fontFamily: R, fontSize: '9px', color: 'rgba(255,255,255,0.3)' }}>P{p.period}</div>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: p.scoring ? 600 : 400, color: p.scoring ? TEXT : MUTED, lineHeight: 1.4 }}>{p.text}</span>
+                      {p.scoring && p.awayScore != null && <div style={{ marginTop: '3px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON }}>{event.away_abbr} {p.awayScore} – {event.home_abbr} {p.homeScore}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* ── Hitting ── */}
+          {dtab === 'Hitting' && (
+            awayHit.length > 0 || homeHit.length > 0 ? (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+                  {[{ key: 'away', label: `${event.away_abbr}` }, { key: 'home', label: `${event.home_abbr}` }].map((t, i) => (
+                    <button key={t.key} onClick={() => setHitTeam(t.key)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: hitTeam === t.key ? 'rgba(189,255,0,0.1)' : 'transparent', color: hitTeam === t.key ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: hitTeam === t.key ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label} Hitting</button>
+                  ))}
+                </div>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', minWidth: '420px', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(189,255,0,0.03)' }}>
+                        {['Hitter','AB','R','H','RBI','HR','BB','K','AVG'].map((h, i) => (
+                          <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', padding: '8px 8px', textAlign: i === 0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(hitTeam === 'away' ? awayHit : homeHit).map((p, i, arr) => (
+                        <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                          <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</td>
+                          {[p.ab, p.r, p.h, p.rbi, p.hr, p.bb, p.k, p.avg].map((v, j) => (
+                            <td key={j} style={{ fontFamily: R, fontSize: '12px', fontWeight: j === 2 && p.h > 0 ? 700 : 500, color: j === 2 && p.h > 0 ? NEON_T : TEXT, textAlign: 'center', padding: '9px 8px' }}>{v ?? '—'}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : <EmptyState label="Hitting" />
+          )}
+
+          {/* ── Pitching ── */}
+          {dtab === 'Pitching' && (
+            awayPitch2.length > 0 || homePitch2.length > 0 ? (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+                  {[{ key: 'away', label: `${event.away_abbr}` }, { key: 'home', label: `${event.home_abbr}` }].map((t, i) => (
+                    <button key={t.key} onClick={() => setPitchTeam(t.key)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: pitchTeam === t.key ? 'rgba(189,255,0,0.1)' : 'transparent', color: pitchTeam === t.key ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: pitchTeam === t.key ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label} Pitching</button>
+                  ))}
+                </div>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', minWidth: '380px', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(189,255,0,0.03)' }}>
+                        {['Pitcher','IP','H','R','ER','BB','K','PC-ST'].map((h, i) => (
+                          <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', padding: '8px 8px', textAlign: i === 0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(pitchTeam === 'away' ? awayPitch2 : homePitch2).map((p, i, arr) => (
+                        <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                          <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}</td>
+                          {[p.ip, p.h, p.r, p.er, p.bb, p.k, p.pc_st].map((v, j) => (
+                            <td key={j} style={{ fontFamily: R, fontSize: '12px', color: TEXT, textAlign: 'center', padding: '9px 8px' }}>{v ?? '—'}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : <EmptyState label="Pitching" />
+          )}
+
+          {/* ── Pitchers tab ── */}
+          {dtab === 'Pitchers' && (
+            awayPitch || homePitch ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[{ abbr: event.away_abbr, pitcher: awayPitch }, { abbr: event.home_abbr, pitcher: homePitch }].map(({ abbr, pitcher }) => pitcher && (
+                  <div key={abbr} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '16px' }}>
+                    <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase', marginBottom: '10px' }}>{abbr} Starter</div>
+                    <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT, marginBottom: '12px' }}>{pitcher.name}{pitcher.throws && <span style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 500 }}> ({pitcher.throws}HP)</span>}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
+                      {[{ label:'ERA', value: pitcher.era }, { label:'Record', value: pitcher.record }, { label:'K', value: pitcher.strikeouts }, { label:'Throws', value: pitcher.throws }].map(({ label, value }) => (
+                        <div key={label} style={{ background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '8px 4px', textAlign: 'center' }}>
+                          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
+                          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{value ?? '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : <EmptyState label="Probable pitchers" />
+          )}
+
+          {/* ── Goalies ── */}
+          {dtab === 'Goalies' && (
+            meta.away_goalie || meta.home_goalie ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[{ abbr: event.away_abbr, goalie: meta.away_goalie }, { abbr: event.home_abbr, goalie: meta.home_goalie }].map(({ abbr, goalie }) => goalie && (
+                  <div key={abbr} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '16px' }}>
+                    <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>{abbr} Goalie</div>
+                    <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT, marginBottom: '12px' }}>{goalie.name}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
+                      {[{ label:'Saves', value: goalie.shots != null ? `${goalie.saves ?? '—'}/${goalie.shots}` : goalie.saves }, { label:'SV%', value: goalie.savePct }, { label:'GA', value: goalie.ga }].map(({ label, value }) => (
+                        <div key={label} style={{ background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '8px 4px', textAlign: 'center' }}>
+                          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: '4px' }}>{label}</div>
+                          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{value ?? '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : <EmptyState label="Goalies" />
+          )}
+
+          {/* ── NBA/WNBA Box Score (Starters / Bench) ── */}
+          {dtab === 'Box Score' && (() => {
+            const awayP = meta.away_players ?? []
+            const homeP = meta.home_players ?? []
+            if (!awayP.length && !homeP.length) return <EmptyState label="Box Score" />
+            const rows = skatersTeam === 'away' ? awayP : homeP
+            const starters = rows.filter(p => p.starter)
+            const bench = rows.filter(p => !p.starter)
+            const COLS = [['MIN','min'],['PTS','pts'],['REB','reb'],['AST','ast'],['STL','stl'],['BLK','blk'],['TO','to'],['FG','fg'],['3PT','tp'],['FT','ft']]
+            const Section = ({ label, list }) => list.length ? (
+              <>
+                <tr><td colSpan={COLS.length + 1} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON_T, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '10px 8px 5px', background: 'rgba(189,255,0,0.05)', borderLeft: `3px solid ${NEON}` }}>{label}</td></tr>
+                {list.map((p, i) => (
+                  <tr key={label + i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
+                    <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</td>
+                    {COLS.map(([, k], j) => <td key={j} style={{ fontFamily: R, fontSize: '12px', fontWeight: k === 'pts' ? 700 : 400, color: k === 'pts' ? NEON_T : TEXT, textAlign: 'center', padding: '9px 8px' }}>{p[k] ?? '—'}</td>)}
+                  </tr>
+                ))}
+              </>
+            ) : null
+            return (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+                  {[{ k: 'away', label: event.away_abbr }, { k: 'home', label: event.home_abbr }].map((t, i) => (
+                    <button key={t.k} onClick={() => setSkatersTeam(t.k)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: skatersTeam === t.k ? 'rgba(189,255,0,0.1)' : 'transparent', color: skatersTeam === t.k ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: skatersTeam === t.k ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label}</button>
+                  ))}
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse' }}>
+                    <thead><tr style={{ background: 'rgba(189,255,0,0.03)' }}>
+                      {['Player', ...COLS.map(c => c[0])].map((h,i) => <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', padding: '8px', textAlign: i===0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      <Section label="Starters" list={starters} />
+                      <Section label="Bench" list={bench} />
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── NHL Skaters ── */}
+          {dtab === 'Skaters' && (() => {
+            const awayP = meta.away_skaters ?? []
+            const homeP = meta.home_skaters ?? []
+            if (!awayP.length && !homeP.length) return <EmptyState label="Skaters" />
+            const rows = skatersTeam === 'away' ? awayP : homeP
+            return (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+                  {[{ k: 'away', label: event.away_abbr }, { k: 'home', label: event.home_abbr }].map((t, i) => (
+                    <button key={t.k} onClick={() => setSkatersTeam(t.k)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: skatersTeam === t.k ? 'rgba(189,255,0,0.1)' : 'transparent', color: skatersTeam === t.k ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: skatersTeam === t.k ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label}</button>
+                  ))}
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', minWidth: '360px', borderCollapse: 'collapse' }}>
+                    <thead><tr style={{ background: 'rgba(189,255,0,0.03)' }}>
+                      {['Player','G','A','PTS','+/-','PIM','SOG','HITS'].map((h,i) => <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', padding: '8px', textAlign: i===0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      {rows.map((p, i, arr) => (
+                        <tr key={i} style={{ borderBottom: i < arr.length-1 ? `1px solid ${BORDER}` : 'none', background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
+                          <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</td>
+                          {[p.g, p.a, p.pts, p.pm, p.pim, p.sog, p.hits].map((v, j) => <td key={j} style={{ fontFamily: R, fontSize: '12px', fontWeight: j === 2 ? 700 : 400, color: j === 2 ? NEON_T : TEXT, textAlign: 'center', padding: '9px 8px' }}>{v ?? '—'}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── Form ── */}
+          {dtab === 'Form' && (
+            meta.away_last5?.length || meta.home_last5?.length
+              ? <FormTab awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} awayL5={meta.away_last5 ?? []} homeL5={meta.home_last5 ?? []} />
+              : <EmptyState label="Last 5 Games" />
+          )}
+
+          {/* ── Standings ── */}
+          {dtab === 'Standings' && (() => {
+            if (!meta.standings?.length) return <EmptyState label="Standings" />
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {meta.standings.map(group => (
+                  <div key={group.name} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 8px 5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', background: 'rgba(255,255,255,0.02)' }}>{group.name}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 36px)', padding: '8px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)' }}>
+                      {['Team','W','L','OTL','PTS'].map((h, i) => <span key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, textAlign: i===0?'left':'center', letterSpacing: '0.08em' }}>{h}</span>)}
+                    </div>
+                    {(group.entries ?? []).map((e, i) => {
+                      const cur = e.team === event.away_team || e.team === event.home_team
+                      return (
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 36px)', padding: '9px 8px', borderBottom: i < group.entries.length-1 ? `1px solid ${BORDER}` : 'none', background: cur ? 'rgba(189,255,0,0.07)' : (i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent'), borderLeft: `3px solid ${cur ? NEON : 'transparent'}` }}>
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: cur ? NEON_T : TEXT }}>{e.team}</span>
+                          {['wins','losses','otLosses','points'].map(k => <span key={k} style={{ fontFamily: R, fontSize: '12px', fontWeight: k==='points' ? 700 : 400, color: k==='points' ? NEON_T : TEXT, textAlign: 'center' }}>{e.stats?.[k] ?? '—'}</span>)}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+
+          {/* On the Odds tab, Team Stats sits at the bottom instead of under the tabs (live/final only) */}
+          {dtab === 'Odds' && (live || final) && (meta.away_team_stats || meta.home_team_stats) && (
+            <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />
+          )}
+
+        </div>
+      </div>
+      </div>
+
     </div>
   )
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
 export default function LiveCenter({ onLogPosition }) {
-  const [sport,      setSport]      = useState('MLB')
-  const [dateFilter, setDateFilter] = useState('Today')
-  const [events,     setEvents]     = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [selectedId, setSelectedId] = useState(null)
+  const [sport,       setSport]      = useState('Live')
+  const [dateFilter,  setDateFilter] = useState('Today')
+  const [events,      setEvents]     = useState([])
+  const [loading,     setLoading]    = useState(true)
+  const [selectedId,  setSelectedId] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
+  const isLiveTab = sport === 'Live'
 
   useEffect(() => {
     setLoading(true)
     setSelectedId(null)
-    fetchEvents(sport.toLowerCase(), dateFilter.toLowerCase())
+    const req = isLiveTab
+      ? fetchLiveEvents()
+      : fetchEvents(sport.toLowerCase(), dateFilter.toLowerCase())
+    req
       .then(({ data }) => setEvents(data ?? []))
       .finally(() => setLoading(false))
   }, [sport, dateFilter])
 
+  // Live polling — refresh each in-progress game on-demand (direct from ESPN) every 30s
+  // so the cards' score, inning and bases stay current even when the cron is behind.
+  useEffect(() => {
+    if (!isLiveTab && dateFilter !== 'Today') return
+    const liveGames = events.filter(e => (e.status === 'IP' || e.status === 'LIVE') && e.external_event_id && e.sport)
+    if (!liveGames.length) return
+    const interval = setInterval(async () => {
+      const results = await Promise.all(liveGames.map(async (g) => {
+        try {
+          const r = await fetch(`/api/live-game?id=${encodeURIComponent(g.external_event_id)}&sport=${encodeURIComponent(g.sport)}`)
+          if (!r.ok) return null
+          const d = await r.json()
+          if (!d || d.notFound || d.error) return null
+          return [g.id, d]
+        } catch { return null }
+      }))
+      const map = Object.fromEntries(results.filter(Boolean))
+      if (!Object.keys(map).length) return
+      setEvents(prev => prev.map(e => {
+        const d = map[e.id]
+        if (!d) return e
+        return {
+          ...e,
+          status:     d.status     ?? e.status,
+          home_score: d.home_score ?? e.home_score,
+          away_score: d.away_score ?? e.away_score,
+          metadata:   { ...(e.metadata ?? {}), ...(d.metadata ?? {}) },
+        }
+      }))
+      setLastUpdated(new Date())
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [events, sport, dateFilter])
+
   const selected = events.find(e => e.id === selectedId) ?? null
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingBottom: '80px' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' }}>
       {/* Header */}
-      <div>
-        <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.08em', color: TEXT }}>LIVE CENTER™</div>
-        <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>Game → Position → Settlement</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.08em', color: TEXT }}>LIVE CENTER™</div>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>Game → Position → Settlement</div>
+        </div>
+        {lastUpdated && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 6px #FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase' }}>
+              {lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Sport pills */}
-      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
-        {SPORTS.map(s => (
-          <button key={s} onClick={() => setSport(s)} style={{
-            fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-            padding: '6px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', flexShrink: 0,
-            background: sport === s ? NEON : CARD,
-            color:      sport === s ? '#0A0A0A' : MUTED,
-            boxShadow:  sport === s ? '0 0 12px rgba(189,255,0,0.3)' : 'none',
-            transition: 'background 0.15s',
-          }}>{s}</button>
-        ))}
-      </div>
-
-      {/* Date tabs */}
-      <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${BORDER}` }}>
-        {DATES.map((d, i) => (
-          <button key={d} onClick={() => setDateFilter(d)} style={{
-            flex: 1, padding: '8px', fontFamily: R, fontSize: '9px', fontWeight: 700,
-            letterSpacing: '0.14em', textTransform: 'uppercase', border: 'none', cursor: 'pointer',
-            background: dateFilter === d ? 'rgba(189,255,0,0.12)' : CARD,
-            color:      dateFilter === d ? NEON_T : MUTED,
-            borderRight: i < DATES.length - 1 ? `1px solid ${BORDER}` : 'none',
-          }}>{d}</button>
-        ))}
+      {/* Filters card — sport pills + date tabs grouped */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Sport pills */}
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
+          {FILTER_TABS.map(s => {
+            const isLive = s === 'Live'
+            const active = sport === s
+            return (
+              <button key={s} onClick={() => setSport(s)} style={{
+                fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
+                padding: '5px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: '5px',
+                background: active ? (isLive ? '#FF3B3B' : NEON) : 'rgba(189,255,0,0.06)',
+                color:      active ? (isLive ? '#fff' : '#0A0A0A') : (isLive ? '#FF3B3B' : MUTED),
+                boxShadow:  active ? (isLive ? '0 0 10px rgba(255,59,59,0.3)' : '0 0 10px rgba(189,255,0,0.25)') : 'none',
+                transition: 'background 0.15s',
+              }}>
+                {isLive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: active ? '#fff' : '#FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}
+                {isLive ? 'LIVE' : s}
+              </button>
+            )
+          })}
+        </div>
+        {/* Date tabs */}
+        {!isLiveTab && (
+          <div style={{ display: 'flex', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+            {DATES.map((d, i) => (
+              <button key={d} onClick={() => setDateFilter(d)} style={{
+                flex: 1, padding: '7px', fontFamily: R, fontSize: '9px', fontWeight: 700,
+                letterSpacing: '0.14em', textTransform: 'uppercase', border: 'none', cursor: 'pointer',
+                background: dateFilter === d ? 'rgba(189,255,0,0.12)' : 'transparent',
+                color:      dateFilter === d ? NEON_T : MUTED,
+                borderRight: i < DATES.length - 1 ? `1px solid ${BORDER}` : 'none',
+              }}>{d}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -340,8 +1315,8 @@ export default function LiveCenter({ onLogPosition }) {
       ) : selected ? (
         <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} />
       ) : events.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
-          NO GAMES FOUND
+        <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
+          {isLiveTab ? 'NO LIVE GAMES RIGHT NOW' : 'NO GAMES FOUND'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

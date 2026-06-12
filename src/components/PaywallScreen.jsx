@@ -8,9 +8,9 @@ const I    = 'Inter, sans-serif'
 
 // ── Price IDs ─────────────────────────────────────────────────────────────────
 // Pricing: $29/mo · $149/yr ($12.42/mo)
-// Stripe price IDs set via VITE_STRIPE_PRICE_MONTHLY / VITE_STRIPE_PRICE_YEARLY
-const PRICE_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_MONTHLY || import.meta.env.VITE_STRIPE_PRICE_BETA_MONTHLY || 'price_1Td5MzJEv6JkAZy9C5xTxiBj'
-const PRICE_YEARLY  = import.meta.env.VITE_STRIPE_PRICE_YEARLY  || import.meta.env.VITE_STRIPE_PRICE_BETA_YEARLY  || 'price_1Td5MzJEv6JkAZy9DssU8aTH'
+// Stripe price IDs — must match AppRoot.jsx fallbacks exactly
+const PRICE_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_MONTHLY || 'price_1Tf56QJEv6JkAZy9zxplxbSI'
+const PRICE_YEARLY  = import.meta.env.VITE_STRIPE_PRICE_YEARLY  || 'price_1Tf58cJEv6JkAZy9kzUbPCDV'
 
 const FEATURES = [
   'Bankroll Simulator',
@@ -26,23 +26,69 @@ const FEATURES = [
   'PDF session reports',
 ]
 
-export default function PaywallScreen({ user, onSignOut, onRefreshAccess }) {
-  const [billing,  setBilling]  = useState('yearly')
-  const [loading,  setLoading]  = useState(false)
-  const [checking, setChecking] = useState(false)
-  const [error,    setError]    = useState(null)
+export default function PaywallScreen({ user, token, subStatus, onSignOut, onRefreshAccess }) {
+  const [billing,        setBilling]        = useState('yearly')
+  const [loading,        setLoading]        = useState(false)
+  const [checkoutError,  setCheckoutError]  = useState(null)
+  const [checking,       setChecking]       = useState(false)
+  const [portalLoading,  setPortalLoading]  = useState(false)
+  const [portalError,    setPortalError]    = useState(null)
+  const [checkMsg,       setCheckMsg]       = useState(null)
+  const [checkError,     setCheckError]     = useState(null)  // error from subscription check
+  const [showAltEmail,   setShowAltEmail]   = useState(false)
+  const [altEmail,       setAltEmail]       = useState('')
+  const [altChecking,    setAltChecking]    = useState(false)
 
   const isYearly = billing === 'yearly'
 
   const handleCheckAccess = async () => {
     setChecking(true)
-    await onRefreshAccess?.()
-    setTimeout(() => setChecking(false), 3000)
+    setCheckError(null)
+    setCheckMsg('Checking your subscription...')
+
+    // Retry up to 4 times with increasing delays to catch webhook lag
+    for (let i = 0; i < 4; i++) {
+      if (i > 0) {
+        setCheckMsg(`Retrying... (attempt ${i + 1}/4)`)
+        await new Promise(r => setTimeout(r, 2000 * i))
+      }
+      const result = await onRefreshAccess?.()
+      if (result?.active) return // AppRoot will re-render the dashboard
+    }
+
+    setCheckMsg(null)
+    setChecking(false)
+    setCheckError(`No active subscription found for ${user?.email}.`)
+    setShowAltEmail(true) // offer cross-email lookup
+  }
+
+  // BUG 3 fix: look up subscription by a different email (e.g. subscribed with a different account)
+  const handleAltEmailCheck = async () => {
+    if (!altEmail.trim()) return
+    setAltChecking(true)
+    setCheckError(null)
+    try {
+      const res  = await fetch('/api/sync-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email: altEmail.trim().toLowerCase() }),
+      })
+      const data = await res.json()
+      if (data.active) {
+        // Subscription found under different email — re-check access now
+        const result = await onRefreshAccess?.()
+        if (result?.active) return
+      }
+      setCheckError(`No active subscription found for ${altEmail.trim()}. Please contact support if you believe this is an error.`)
+    } catch {
+      setCheckError('Network error. Please try again.')
+    }
+    setAltChecking(false)
   }
 
   const handleCheckout = async () => {
     setLoading(true)
-    setError(null)
+    setCheckoutError(null)
 
     const priceId    = isYearly ? PRICE_YEARLY : PRICE_MONTHLY
     const userId     = user?.id
@@ -53,17 +99,17 @@ export default function PaywallScreen({ user, onSignOut, onRefreshAccess }) {
     try {
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId, userId, email, successUrl, cancelUrl, rewardfulReferral: window.Rewardful?.referral || null }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ priceId, successUrl, cancelUrl, rewardfulReferral: window.Rewardful?.referral || null }),
       })
 
       const data = await res.json()
 
       if (data.bypass) { window.location.reload(); return }
       if (data.url)    { window.location.href = data.url }
-      else { setError(data.error || 'Something went wrong. Try again.'); setLoading(false) }
+      else { setCheckoutError(data.error || 'Something went wrong. Try again.'); setLoading(false) }
     } catch {
-      setError('Network error. Please try again.')
+      setCheckoutError('Network error. Please try again.')
       setLoading(false)
     }
   }
@@ -189,9 +235,9 @@ export default function PaywallScreen({ user, onSignOut, onRefreshAccess }) {
           ))}
         </div>
 
-        {error && (
+        {checkoutError && (
           <div style={{ fontFamily: R, fontSize: '11px', color: RED, background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.25)', padding: '8px 12px', borderRadius: '2px', marginBottom: '12px' }}>
-            {error}
+            {checkoutError}
           </div>
         )}
 
@@ -211,18 +257,97 @@ export default function PaywallScreen({ user, onSignOut, onRefreshAccess }) {
         <div style={{ textAlign: 'center', marginTop: '10px', fontFamily: I, fontSize: '11px', color: 'var(--text-dim)' }}>
           Cancel anytime · Secured by Stripe
         </div>
+        <div style={{ textAlign: 'center', marginTop: '6px', fontFamily: I, fontSize: '10px', color: 'var(--muted)' }}>
+          Have a promo code? You can enter it on the next screen.
+        </div>
       </div>
 
       {/* Already subscribed */}
-      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: checkError || showAltEmail ? '12px' : '20px' }}>
+        {user?.email && (
+          <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: '6px', textTransform: 'uppercase' }}>
+            Signed in as {user.email}
+          </div>
+        )}
         <button onClick={handleCheckAccess} disabled={checking} style={{
           background: 'none', border: 'none', cursor: checking ? 'default' : 'pointer',
           fontFamily: R, fontSize: '11px', color: checking ? 'var(--text-dim)' : 'rgba(189,255,0,0.5)',
           letterSpacing: '0.08em', textDecoration: 'underline', padding: 0,
         }}>
-          {checking ? 'Checking...' : 'Already subscribed? Click here →'}
+          {checking ? (checkMsg || 'Checking...') : 'Already subscribed? Click here →'}
         </button>
       </div>
+
+      {/* Error message from subscription check */}
+      {checkError && (
+        <div style={{ width: '100%', maxWidth: '400px', fontFamily: R, fontSize: '11px', color: RED, background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.25)', padding: '10px 14px', borderRadius: '2px', marginBottom: '12px', textAlign: 'center' }}>
+          {checkError}
+        </div>
+      )}
+
+      {/* Cross-email lookup (BUG 3 fix) — shown after failed subscription check */}
+      {showAltEmail && (
+        <div style={{ width: '100%', maxWidth: '400px', background: 'var(--card)', border: '1px solid var(--border2)', padding: '16px 20px', borderRadius: '2px', marginBottom: '20px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '10px' }}>
+            Subscribed with a different email?
+          </div>
+          <div style={{ fontFamily: R, fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginBottom: '12px', lineHeight: 1.6 }}>
+            Enter the email you used during checkout and we'll link your subscription.
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="email"
+              value={altEmail}
+              onChange={e => setAltEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAltEmailCheck()}
+              placeholder="your-checkout@email.com"
+              style={{
+                flex: 1, padding: '9px 12px',
+                background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '2px',
+                color: 'var(--text)', fontFamily: R, fontSize: '12px', outline: 'none',
+              }}
+            />
+            <button onClick={handleAltEmailCheck} disabled={altChecking || !altEmail.trim()} style={{
+              background: 'rgba(189,255,0,0.1)', border: '1px solid rgba(189,255,0,0.4)',
+              borderRadius: '2px', padding: '9px 16px', cursor: 'pointer',
+              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
+              color: NEON, textTransform: 'uppercase', whiteSpace: 'nowrap',
+              opacity: altChecking || !altEmail.trim() ? 0.5 : 1,
+            }}>
+              {altChecking ? '...' : 'Check'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Manage billing — shown when user already has a Stripe customer ID (trial ended, past_due, etc.) */}
+      {subStatus?.sub?.stripe_customer_id && (
+        <div style={{ width: '100%', maxWidth: '400px', marginBottom: '16px', textAlign: 'center' }}>
+          <button
+            onClick={async () => {
+              setPortalLoading(true)
+              setPortalError(null)
+              try {
+                const res = await fetch('/api/portal', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ returnUrl: window.location.href }) })
+                const data = await res.json()
+                if (data.url) { window.location.href = data.url }
+                else { setPortalError(data.error || 'Could not open billing portal. Please try again.') }
+              } catch (e) {
+                setPortalError('Connection error. Please try again.')
+              } finally {
+                setPortalLoading(false)
+              }
+            }}
+            disabled={portalLoading}
+            style={{ background: 'none', border: '1px solid var(--border2)', cursor: portalLoading ? 'default' : 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '8px 20px', borderRadius: '2px', opacity: portalLoading ? 0.6 : 1 }}
+          >
+            {portalLoading ? 'Opening...' : 'Manage Billing →'}
+          </button>
+          {portalError && (
+            <div style={{ fontFamily: R, fontSize: '10px', color: RED, marginTop: '8px' }}>{portalError}</div>
+          )}
+        </div>
+      )}
 
       {/* Trust badges */}
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '12px' }}>

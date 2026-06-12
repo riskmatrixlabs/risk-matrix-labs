@@ -8,7 +8,7 @@ const OWNER_EMAIL = 'michaeltejeda08@gmail.com'
  * 2. If not found, calls /api/sync-subscription to look up by email in Stripe,
  *    sync the record to Supabase, and return the result.
  */
-export async function getSubscription(user) {
+export async function getSubscription(user, token) {
   if (!user) return { active: false, sub: null }
 
   // Owner always gets in
@@ -26,13 +26,17 @@ export async function getSubscription(user) {
     return { active, sub: data }
   }
 
-  // 2. Fallback — sync from Stripe by email
+  // 2. Fallback — sync from Stripe by email (8s timeout to prevent infinite loading)
   try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
     const res = await fetch('/api/sync-subscription', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, email: user.email }),
+      headers: { 'Content-Type': 'application/json', ...(token && { 'Authorization': `Bearer ${token}` }) },
+      body: JSON.stringify({ email: user.email }),
+      signal: controller.signal,
     })
+    clearTimeout(timer)
     const result = await res.json()
     return { active: result.active ?? false, sub: null }
   } catch {

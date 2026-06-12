@@ -1,12 +1,29 @@
 {
   "name": "Risk Matrix Labs",
   "short_name": "RML",
-  "description": "PHLT™ Bankroll Ladder Tracker — Operate With Discipline",
+  "description": "The Bankroll Simulator for disciplined sports bettors. Operate with discipline.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",
   "theme_color": "#0A0A0A",
   "orientation": "portrait-primary",
+  "categories": ["finance", "sports", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Open Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your Risk Matrix bankroll dashboard",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pricing",
+      "short_name": "Pricing",
+      "description": "View plans and start your free trial",
+      "url": "/pricing",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",

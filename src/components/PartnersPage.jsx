@@ -9,12 +9,12 @@ const I = 'Inter, sans-serif'
 const STATES = ['All States','AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY']
 
 const BOOKS = [
-  { id: 'draftkings', name: 'DraftKings', logo: 'DK',   logoColor: '#00C896', bonus: '$200',   bonusLabel: 'Bonus Bets',            promo: 'Bet $5, Get $200 in Bonus Bets',          desc: 'Competitive lines, same-game parlays, live betting, and fast payouts. One of the top sportsbooks in the US.', cta: 'Claim Offer', url: 'https://www.draftkings.com',                       states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
-  { id: 'fanduel',    name: 'FanDuel',    logo: 'FD',   logoColor: '#1493FF', bonus: '$150',   bonusLabel: 'Bonus Bets',            promo: 'Bet $5, Get $150 in Bonus Bets',          desc: 'Industry-leading odds boosts, no-sweat SGPs, and the best mobile betting app for disciplined operators.',    cta: 'Claim Offer', url: 'https://www.fanduel.com',                          states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
-  { id: 'betmgm',     name: 'BetMGM',     logo: 'MGM',  logoColor: '#B8960C', bonus: '$1,500', bonusLabel: 'Back in Bonus Bets',    promo: 'First Bet Offer Up to $1,500',            desc: 'If your first bet loses, BetMGM gives it back as bonus bets. Great odds on parlays and player props.',       cta: 'Claim Offer', url: 'https://www.betmgm.com',                           states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
-  { id: 'caesars',    name: 'Caesars',    logo: 'CZR',  logoColor: '#C9A84C', bonus: '$1,000', bonusLabel: 'Bonus Bet',             promo: 'First Bet on Caesars up to $1,000',       desc: 'One of the most generous welcome offers. Strong on NFL, NBA, and college sports markets.',                    cta: 'Claim Offer', url: 'https://www.caesars.com/sportsbook-and-casino', states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
-  { id: 'espnbet',    name: 'ESPN BET',   logo: 'ESPN', logoColor: '#FF4B00', bonus: '$150',   bonusLabel: 'Bonus Bets',            promo: 'Get $150 in Bonus Bets',                  desc: 'Powered by PENN Entertainment. Integrated with ESPN app, solid live betting and props markets.',             cta: 'Claim Offer', url: 'https://espnbet.com',                              states: ['AZ','CO','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY']     },
-  { id: 'hardrock',   name: 'Hard Rock',  logo: 'HR',   logoColor: '#FFD700', bonus: '$100',   bonusLabel: 'Bonus Bet',             promo: 'Bet $10, Get $100 in Bonus Bets',         desc: 'Florida-based sportsbook expanding nationally. Competitive odds and fast withdrawals.',                       cta: 'Claim Offer', url: 'https://www.hardrock.bet',                         states: ['AZ','CO','IN','IA','NJ','OH','PA','TN','VA']                                                             },
+  { id: 'draftkings', name: 'DraftKings', logo: 'DK',   logoColor: '#00C896', bonus: '$200',   bonusLabel: 'Bonus Bets',            promo: 'Bet $5, Get $200 in Bonus Bets',          desc: 'Competitive lines, same-game parlays, live betting, and fast payouts. One of the top sportsbooks in the US.', cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
+  { id: 'fanduel',    name: 'FanDuel',    logo: 'FD',   logoColor: '#1493FF', bonus: '$150',   bonusLabel: 'Bonus Bets',            promo: 'Bet $5, Get $150 in Bonus Bets',          desc: 'Industry-leading odds boosts, no-sweat SGPs, and the best mobile betting app for disciplined operators.',    cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
+  { id: 'betmgm',     name: 'BetMGM',     logo: 'MGM',  logoColor: '#B8960C', bonus: '$1,500', bonusLabel: 'Back in Bonus Bets',    promo: 'First Bet Offer Up to $1,500',            desc: 'If your first bet loses, BetMGM gives it back as bonus bets. Great odds on parlays and player props.',       cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
+  { id: 'caesars',    name: 'Caesars',    logo: 'CZR',  logoColor: '#C9A84C', bonus: '$1,000', bonusLabel: 'Bonus Bet',             promo: 'First Bet on Caesars up to $1,000',       desc: 'One of the most generous welcome offers. Strong on NFL, NBA, and college sports markets.',                    cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
+  { id: 'espnbet',    name: 'ESPN BET',   logo: 'ESPN', logoColor: '#FF4B00', bonus: '$150',   bonusLabel: 'Bonus Bets',            promo: 'Get $150 in Bonus Bets',                  desc: 'Powered by PENN Entertainment. Integrated with ESPN app, solid live betting and props markets.',             cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY']     },
+  { id: 'hardrock',   name: 'Hard Rock',  logo: 'HR',   logoColor: '#FFD700', bonus: '$100',   bonusLabel: 'Bonus Bet',             promo: 'Bet $10, Get $100 in Bonus Bets',         desc: 'Florida-based sportsbook expanding nationally. Competitive odds and fast withdrawals.',                       cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','IN','IA','NJ','OH','PA','TN','VA']                                                             },
 ]
 
 const CAPPERS = [
@@ -26,10 +26,10 @@ const CAPPERS = [
 const TOOLS = [
   { id: 'discord',    name: 'RML Discord',    icon: Users,      iconColor: '#5865F2', desc: 'Community for disciplined bettors. No picks. No hype. Strategy only.',                               cta: 'Join Free',  url: 'https://discord.gg/smHv7CHc4p' },
   { id: 'newsletter', name: 'RML Newsletter', icon: Newspaper,  iconColor: NEON,      desc: 'Weekly bankroll tips and platform updates straight to your inbox.',                                   cta: 'Subscribe',  url: 'https://riskmatrixlabs.beehiiv.com/subscribe' },
-  { id: 'oddsjam',    name: 'OddsJam',        icon: TrendingUp, iconColor: '#00C896', desc: 'Real-time odds comparison across all major books. Shopping lines is free edge.',                      cta: 'Sign Up',    url: 'https://oddsjam.com' },
-  { id: 'pikkit',     name: 'Pikkit',         icon: Star,       iconColor: '#FF8C00', desc: 'All-in-one sports betting hub with odds, promos, and a community feed.',                              cta: 'Sign Up',    url: 'https://pikkit.com' },
-  { id: 'propswap',   name: 'PropSwap',       icon: BookOpen,   iconColor: '#A855F7', desc: 'Buy and sell winning tickets. The only secondary market for sports betting.',                         cta: 'Sign Up',    url: 'https://www.propswap.com' },
-  { id: 'actionnet',  name: 'Action Network', icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and betting analytics.',                      cta: 'Sign Up',    url: 'https://www.actionnetwork.com' },
+  { id: 'oddsjam',    name: 'OddsJam',        icon: TrendingUp, iconColor: '#00C896', desc: 'Real-time odds comparison across all major books. Shopping lines is free edge.',                      cta: 'Coming Soon', url: '#', comingSoon: true },
+  { id: 'pikkit',     name: 'Pikkit',         icon: Star,       iconColor: '#FF8C00', desc: 'All-in-one sports betting hub with odds, promos, and a community feed.',                              cta: 'Coming Soon', url: '#', comingSoon: true },
+  { id: 'propswap',   name: 'PropSwap',       icon: BookOpen,   iconColor: '#A855F7', desc: 'Buy and sell winning tickets. The only secondary market for sports betting.',                         cta: 'Coming Soon', url: '#', comingSoon: true },
+  { id: 'actionnet',  name: 'Action Network', icon: TrendingUp, iconColor: '#4FC3F7', desc: 'Trusted source for line movement, sharp money tracking, and betting analytics.',                      cta: 'Coming Soon', url: '#', comingSoon: true },
 ]
 
 // ─── Book slider ──────────────────────────────────────────────────────────────
@@ -81,10 +81,16 @@ function BookSlider({ books }) {
           <div style={{ padding: '12px 16px 14px' }}>
             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>{book.promo}</div>
             <div style={{ fontFamily: I, fontSize: '11px', color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: '12px' }}>{book.desc}</div>
-            <a href={book.url} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', padding: '10px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none', boxSizing: 'border-box' }}>
-              {book.cta} <ExternalLink size={10} strokeWidth={2.5} />
-            </a>
+            {book.comingSoon ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', padding: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', boxSizing: 'border-box', cursor: 'not-allowed', border: '1px solid var(--border)' }}>
+                {book.cta}
+              </div>
+            ) : (
+              <a href={book.url} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', width: '100%', padding: '10px', background: NEON, borderRadius: '5px', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0A0A0A', textDecoration: 'none', boxSizing: 'border-box' }}>
+                {book.cta} <ExternalLink size={10} strokeWidth={2.5} />
+              </a>
+            )}
             <div style={{ fontFamily: I, fontSize: '9px', color: 'var(--muted)', marginTop: '7px', textAlign: 'center' }}>Must be 21+. Gambling problem? 1-800-GAMBLER.</div>
           </div>
         </motion.div>
@@ -120,10 +126,16 @@ function ToolRow({ tool }) {
         <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{tool.name}</div>
         <div style={{ fontFamily: I, fontSize: '10px', color: 'var(--text-dim)', marginTop: '1px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.desc}</div>
       </div>
-      <a href={tool.url} target="_blank" rel="noopener noreferrer"
-        style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 11px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--neon-accent)', textDecoration: 'none' }}>
-        {tool.cta} <ChevronRight size={10} />
-      </a>
+      {tool.comingSoon ? (
+        <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 11px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', cursor: 'not-allowed' }}>
+          {tool.cta}
+        </div>
+      ) : (
+        <a href={tool.url} target="_blank" rel="noopener noreferrer"
+          style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '6px 11px', background: 'rgba(189,255,0,0.08)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '4px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--neon-accent)', textDecoration: 'none' }}>
+          {tool.cta} <ChevronRight size={10} />
+        </a>
+      )}
     </div>
   )
 }
