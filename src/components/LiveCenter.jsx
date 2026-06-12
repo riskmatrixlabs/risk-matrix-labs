@@ -18,15 +18,24 @@ const FILTER_TABS = ['Live', 'MLB', 'WNBA', 'NHL', 'NBA', 'NFL']
 const SPREAD_LABEL = { MLB: 'Run Line', NHL: 'Puck Line', NBA: 'Spread', WNBA: 'Spread', NFL: 'Spread' }
 const DATES  = ['Yesterday', 'Today', 'Upcoming']
 
-// Sport-specific detail tabs — always shown regardless of game state
-function getDetailTabs(sport, live, final) {
-  switch (sport) {
-    case 'MLB': return ['Odds', 'Play by Play', 'Hitting', 'Pitching', 'Standings']
-    case 'NHL': return ['Odds', 'Goalies', 'Play by Play', 'Skaters', 'Standings']
-    case 'NBA':
-    case 'WNBA': return ['Odds', 'Play by Play', 'Box Score', 'Standings']
-    default: return ['Odds', 'Play by Play', 'Standings']
-  }
+// Sport-specific detail tabs. Context-layer tabs (Value/Trends/Injuries) only appear
+// when there's data for them — no dead empty tabs.
+function getDetailTabs(event, meta, live, final) {
+  const sport = event.sport
+  const hasOdds = event.odds_ml_home != null || event.odds_spread_home != null || event.odds_total != null
+  const statTabs = sport === 'MLB' ? ['Hitting', 'Pitching']
+    : sport === 'NHL' ? ['Goalies', 'Skaters']
+    : (sport === 'NBA' || sport === 'WNBA') ? ['Box Score']
+    : []
+  return [
+    'Odds',
+    hasOdds && 'Value',
+    meta.trends && 'Trends',
+    meta.injuries && 'Injuries',
+    ...statTabs,
+    'Play by Play',
+    'Standings',
+  ].filter(Boolean)
 }
 
 function fmtTime(iso) {
@@ -688,12 +697,16 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
   const awayLead = hasScore && live  && event.away_score > event.home_score
   const homeLead = hasScore && live  && event.home_score > event.away_score
 
-  const tabs = getDetailTabs(event.sport, live, final)
+  const meta       = event.metadata || {}
+  const tabs = getDetailTabs(event, meta, live, final)
   const [dtab, setDtab] = useState(tabs[0] ?? 'Odds')
   const [hitTeam,     setHitTeam]     = useState('away')
   const [pitchTeam,   setPitchTeam]   = useState('away')
   const [skatersTeam, setSkatersTeam] = useState('away')
   const [movement,    setMovement]    = useState({})
+
+  // If the active tab disappears (data loaded/changed the tab set), fall back to the first tab.
+  useEffect(() => { if (!tabs.includes(dtab)) setDtab(tabs[0] ?? 'Odds') }, [tabs, dtab])
 
   useEffect(() => {
     if (!event.external_event_id) return
@@ -702,7 +715,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
     return () => { cancelled = true }
   }, [event.external_event_id])
 
-  const meta       = event.metadata || {}
   const awayPitch  = meta.away_pitcher  || null
   const homePitch  = meta.home_pitcher  || null
   const awayHit    = meta.away_hitting  || []
@@ -937,17 +949,18 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
 
         </div>
 
-        {/* ── Sticky tab bar ── */}
+        {/* ── Sticky tab bar — horizontal scroll (Apple/Pikkit pattern); active = filled neon pill ── */}
         <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(10,10,10,0.97)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '10px 16px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {tabs.map(t => (
               <button key={t} onClick={() => setDtab(t)} style={{
-                flexShrink: 0, padding: '7px 16px', fontFamily: R, fontSize: '10px', fontWeight: 700,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-                border: `1px solid ${dtab === t ? NEON : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: '20px', cursor: 'pointer', whiteSpace: 'nowrap',
-                background: dtab === t ? 'rgba(189,255,0,0.12)' : 'transparent',
-                color: dtab === t ? NEON_T : MUTED,
+                flexShrink: 0, padding: '7px 15px', fontFamily: R, fontSize: '10px', fontWeight: 700,
+                letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                border: 'none', borderRadius: '20px', cursor: 'pointer',
+                background: dtab === t ? NEON : 'rgba(255,255,255,0.05)',
+                color: dtab === t ? '#0A0A0A' : MUTED,
+                boxShadow: dtab === t ? '0 0 10px rgba(189,255,0,0.25)' : 'none',
+                transition: 'background 0.15s, color 0.15s',
               }}>{t}</button>
             ))}
           </div>
@@ -956,10 +969,8 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
         {/* ── Tab content ── */}
         <div style={{ padding: '14px 16px 40px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-          {/* Game Info — the first thing under the tabs, on every tab */}
+          {/* Context strip — venue/coverage + weather, always visible above every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
-
-          {/* Weather chip — outdoor MLB/NFL (wind/rain matter) */}
           {meta.weather && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px', flexWrap: 'wrap', padding: '8px 14px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px' }}>
               {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
@@ -968,22 +979,77 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             </div>
           )}
 
-          {/* Trends — record splits / streak / form (collapsible, default open). Hidden on Play by Play. */}
-          {dtab !== 'Play by Play' && meta.trends && (
-            <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />
+          {/* ── Trends tab ── */}
+          {dtab === 'Trends' && (
+            <>
+              {meta.trends && <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />}
+              {(live || final) && (meta.away_team_stats || meta.home_team_stats) && (
+                <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />
+              )}
+              {!meta.trends && !(meta.away_team_stats || meta.home_team_stats) && <EmptyState label="Trends" />}
+            </>
           )}
 
-          {/* Injury report (collapsible, default open). Hidden on Play by Play. */}
-          {dtab !== 'Play by Play' && meta.injuries && (
-            <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />
+          {/* ── Injuries tab ── */}
+          {dtab === 'Injuries' && (
+            meta.injuries
+              ? <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />
+              : <EmptyState label="Injury Report" />
           )}
 
-          {/* Team Stats (collapsible, default open) — under the tabs, above the tab content.
-              Only live/final: ESPN returns SEASON totals pre-game, which aren't game stats.
-              Excluded on Play by Play; on Odds it renders at the bottom instead (see below). */}
-          {(live || final) && dtab !== 'Play by Play' && dtab !== 'Odds' && (meta.away_team_stats || meta.home_team_stats) && (
-            <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />
-          )}
+          {/* ── Value tab — No-Vig Fair Odds + Line Movement (sharp analytics) ── */}
+          {dtab === 'Value' && (() => {
+            const hasML = !!event.odds_ml_away && !!event.odds_ml_home
+            const dv = hasML ? devigTwoWay(event.odds_ml_away, event.odds_ml_home) : null
+            const fmtMv = (mkt, v) => v == null ? '—' : (mkt === 'ml' ? (v > 0 ? `+${v}` : `${v}`) : (mkt === 'spread' && v > 0 ? `+${v}` : `${v}`))
+            const labelFor = { ml_away: `${event.away_abbr} ML`, ml_home: `${event.home_abbr} ML`, spread_away: `${event.away_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, spread_home: `${event.home_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, total: 'Total' }
+            const order = ['spread_away', 'spread_home', 'total', 'ml_away', 'ml_home']
+            const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
+            const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
+            if (!dv && !moved.length) return <EmptyState label="Value & Movement" />
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {dv && (
+                  <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
+                      <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</span>
+                      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center' }}>No-Vig Fair ML</span>
+                      <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{event.home_abbr}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '12px 14px' }}>
+                      <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{fair(dv.fairAmericanA)}</span>
+                      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, textAlign: 'center' }}>{(dv.fairA * 100).toFixed(1)}% / {(dv.fairB * 100).toFixed(1)}%</span>
+                      <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T, textAlign: 'right' }}>{fair(dv.fairAmericanB)}</span>
+                    </div>
+                    <div style={{ padding: '0 14px 11px', textAlign: 'center', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>
+                      BOOK HOLD <span style={{ color: dv.holdPct > 5 ? '#FF3B3B' : NEON_T }}>{dv.holdPct.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                )}
+                {moved.length > 0 && (
+                  <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement{final && <span style={{ color: NEON_T }}> · open → close</span>}</div>
+                    {moved.map((k, i) => {
+                      const mkt = k.split('_')[0]
+                      const m = movement[k]
+                      const up = m.delta > 0
+                      return (
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontFamily: R, fontSize: '12px', color: MUTED }}>{fmtMv(mkt, m.open)}</span>
+                            <span style={{ color: MUTED, fontSize: '11px' }}>→</span>
+                            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmtMv(mkt, m.current)}</span>
+                            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: up ? NEON_T : '#FF3B3B' }}>{up ? '▲' : '▼'}{Math.abs(m.delta)}</span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* ── Odds ── */}
           {dtab === 'Odds' && (() => {
@@ -1048,60 +1114,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
                     )}
                   </div>
                 ))}
-
-                {/* No-Vig Fair Odds — moneyline de-vigged (true implied prob, juice removed) + book hold */}
-                {hasML && (() => {
-                  const dv = devigTwoWay(event.odds_ml_away, event.odds_ml_home)
-                  if (!dv) return null
-                  const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
-                  return (
-                    <div style={{ marginTop: '4px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)' }}>
-                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</span>
-                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center' }}>No-Vig Fair ML</span>
-                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, textAlign: 'right' }}>{event.home_abbr}</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '12px 14px' }}>
-                        <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{fair(dv.fairAmericanA)}</span>
-                        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, textAlign: 'center' }}>{(dv.fairA * 100).toFixed(1)}% / {(dv.fairB * 100).toFixed(1)}%</span>
-                        <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T, textAlign: 'right' }}>{fair(dv.fairAmericanB)}</span>
-                      </div>
-                      <div style={{ padding: '0 14px 11px', textAlign: 'center', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>
-                        BOOK HOLD <span style={{ color: dv.holdPct > 5 ? '#FF3B3B' : NEON_T }}>{dv.holdPct.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Line Movement — open → current per market (from odds_history snapshots) */}
-                {(() => {
-                  const fmt = (mkt, v) => v == null ? '—' : (mkt === 'ml' ? (v > 0 ? `+${v}` : `${v}`) : (mkt === 'spread' && v > 0 ? `+${v}` : `${v}`))
-                  const labelFor = { ml_away: `${event.away_abbr} ML`, ml_home: `${event.home_abbr} ML`, spread_away: `${event.away_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, spread_home: `${event.home_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, total: 'Total' }
-                  const order = ['spread_away', 'spread_home', 'total', 'ml_away', 'ml_home']
-                  const moved = order.filter(k => movement[k] && movement[k].points >= 2 && movement[k].delta !== 0)
-                  if (!moved.length) return null
-                  return (
-                    <div style={{ marginTop: '4px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.03)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement{final && <span style={{ color: NEON_T }}> · open → close</span>}</div>
-                      {moved.map((k, i) => {
-                        const mkt = k.split('_')[0]
-                        const m = movement[k]
-                        const up = m.delta > 0
-                        return (
-                          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                            <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontFamily: R, fontSize: '12px', color: MUTED }}>{fmt(mkt, m.open)}</span>
-                              <span style={{ color: MUTED, fontSize: '11px' }}>→</span>
-                              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmt(mkt, m.current)}</span>
-                              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: up ? NEON_T : '#FF3B3B' }}>{up ? '▲' : '▼'}{Math.abs(m.delta)}</span>
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })()}
               </div>
             )
           })()}
@@ -1350,10 +1362,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack }) {
             )
           })()}
 
-          {/* On the Odds tab, Team Stats sits at the bottom instead of under the tabs (live/final only) */}
-          {dtab === 'Odds' && (live || final) && (meta.away_team_stats || meta.home_team_stats) && (
-            <TeamStats sport={event.sport} awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} aStats={meta.away_team_stats} hStats={meta.home_team_stats} />
-          )}
 
         </div>
       </div>
