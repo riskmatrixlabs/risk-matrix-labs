@@ -1605,9 +1605,10 @@ export default function LiveCenter({ onLogPosition, bets = [] }) {
     const req = isLiveTab
       ? fetchLiveEvents()
       : isAllTab
-        // All-sports slate for the day — fetch every league, merge, sort by start time.
+        // All-sports slate for the day — fetch every league and keep them GROUPED by sport
+        // (in SPORTS order); each league already comes back time-sorted. League badge per card.
         ? Promise.all(SPORTS.map(s => fetchEvents(s.toLowerCase(), dateFilter.toLowerCase())))
-            .then(results => ({ data: results.flatMap(r => r.data ?? []).sort((a, b) => new Date(a.start_time) - new Date(b.start_time)) }))
+            .then(results => ({ data: results.flatMap(r => r.data ?? []) }))
         : fetchEvents(sport.toLowerCase(), dateFilter.toLowerCase())
     req
       .then(({ data }) => setEvents(data ?? []))
