@@ -72,4 +72,26 @@ describe('marketEdges', () => {
     const noSharp = GAME.filter(b => b.key !== 'pinnacle')
     expect(marketEdges(noSharp, 'h2h')).toEqual([])
   })
+  it('refuses to claim a spread edge when the sharp omits the point (no fake +EV leak)', () => {
+    // Pinnacle spreads with NO point (malformed) + DK price at -7.5. Must NOT compare
+    // a -7.5 price against the de-vigged pick'em fair — that would be a fake edge.
+    const SPREAD = [
+      { key: 'pinnacle',   markets: [{ key: 'spreads', outcomes: [{ name: 'A', price: -110 }, { name: 'B', price: -110 }] }] },
+      { key: 'draftkings', markets: [{ key: 'spreads', outcomes: [{ name: 'A', price:  120, point: -7.5 }, { name: 'B', price: -140, point: 7.5 }] }] },
+    ]
+    for (const e of marketEdges(SPREAD, 'spreads')) {
+      expect(e.best).toBeNull()
+      expect(e.plusEV).toBe(false)
+    }
+  })
+  it('crowns a real spread edge only at the SAME line as the sharp', () => {
+    const SPREAD = [
+      { key: 'pinnacle',   markets: [{ key: 'spreads', outcomes: [{ name: 'A', price: -110, point: -1.5 }, { name: 'B', price: -110, point: 1.5 }] }] },
+      { key: 'fanduel',    markets: [{ key: 'spreads', outcomes: [{ name: 'A', price:  120, point: -1.5 }, { name: 'B', price: -140, point: 1.5 }] }] },
+      { key: 'draftkings', markets: [{ key: 'spreads', outcomes: [{ name: 'A', price:  300, point: -3.5 }, { name: 'B', price: -400, point: 3.5 }] }] },
+    ]
+    const a = marketEdges(SPREAD, 'spreads').find(e => e.outcome === 'A')
+    expect(a.best.book).toBe('fanduel')   // DK +300 ignored — it's a DIFFERENT line (-3.5)
+    expect(a.point).toBe(-1.5)
+  })
 })

@@ -12,12 +12,22 @@ import { matchBetToEvent, evaluateBet } from '../lib/betMatch.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
+import { kellyStake } from '../lib/kelly.js'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
 const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
 const up = (s) => lw(s).toUpperCase()
 const isPreGame = (ev) => ev.status === 'NS' || ev.status === 'STATUS_SCHEDULED'
+
+// Format a point with sign (+1.5 / -1.5). Plain string for nulls.
+const fmtPt = (p) => p == null ? '' : (p > 0 ? `+${p}` : `${p}`)
+// Human pick label for an edge across markets: ML / spread / total.
+const pickLabel = (e) => {
+  if (e.market === 'totals') return `${/^o/i.test(e.outcome) ? 'OVER' : 'UNDER'} ${e.point}`
+  if (e.market === 'spreads') return `${up(e.outcome)} ${fmtPt(e.point)}`
+  return `${up(e.outcome)} ML`
+}
 
 const pill = (active) => ({ flexShrink: 0, padding: '6px 12px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${active ? NEON : BORDER}`, background: active ? NEON : 'transparent', color: active ? '#0A0A0A' : MUTED })
 
@@ -53,7 +63,7 @@ function TvFrame({ ch, children }) {
   )
 }
 
-export default function MatrixBot({ onLogPosition, bets = [], token = null, unitSize = 0 }) {
+export default function MatrixBot({ onLogPosition, bets = [], token = null, unitSize = 0, bankroll = 0 }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
@@ -66,7 +76,7 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
         ))}
       </div>
       <div key={channel} className="tvbot-tune">
-        {channel === 'find' && <FindChannel sport={sport} setSport={setSport} token={token} unitSize={unitSize}
+        {channel === 'find' && <FindChannel sport={sport} setSport={setSport} token={token} unitSize={unitSize} bankroll={bankroll}
           onPick={(g) => { setGame(g); setChannel('look') }} />}
         {channel === 'look' && <LookChannel game={game} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
         {channel === 'track' && <TrackChannel bets={bets} sport={sport} />}
@@ -76,18 +86,21 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
 }
 
 // ───────────────────────────── CH 1 · FIND ─────────────────────────────
-function FindChannel({ sport, setSport, token, unitSize, onPick }) {
+function FindChannel({ sport, setSport, token, unitSize, bankroll = 0, onPick }) {
   const [events, setEvents]   = useState([])
   const [minEv, setMinEv]     = useState(0)
   const [status, setStatus]   = useState('idle')   // idle | scanning | done | error
   const [scan, setScan]       = useState(null)     // { edges, creditsRemaining }
   const [err, setErr]         = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [view, setView]       = useState('tv')     // tv | board — same edges, two lenses
+  const [props, setProps]     = useState(null)     // { status, edges, scanned } — props are per-game
 
   useEffect(() => {
     let live = true
     const cached = getScan(sport, todayStr())
     setScan(cached); setStatus(cached ? 'done' : 'idle')
+    setProps(null)   // props are sport-specific — reset when the sport changes
     fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
     return () => { live = false }
   }, [sport])
@@ -123,6 +136,42 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
   const edges  = useMemo(() => applyFeedFilters(scan?.edges || [], { minEvPct: minEv }), [scan, minEv])
   const groups = useMemo(() => groupEdgesByGame(edges), [edges])
 
+  // Props are per-game (one API call each), so the board scans them on explicit tap.
+  // We loop today's pre-games, pull each game's +EV props, and tag them with their game.
+  async function scanProps() {
+    if (!token || props?.status === 'scanning' || !preGames.length) return
+    setProps({ status: 'scanning', edges: [], scanned: 0 })
+    const all = []
+    let scanned = 0
+    for (const ev of preGames) {
+      try {
+        const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (res.ok) {
+          const j = await res.json()
+          if (j?.found) for (const e of (j.edges || [])) all.push({ ...e, _game: buildGame(ev) })
+        }
+      } catch { /* skip a game that fails, keep scanning the rest */ }
+      scanned++
+      setProps({ status: 'scanning', edges: [...all], scanned })
+    }
+    setProps({ status: 'done', edges: all, scanned })
+  }
+
+  // One ranked list for the board: game-line edges + scanned prop edges, highest EV first.
+  const boardRows = useMemo(() => {
+    const gl = groups.flatMap(g => g.edges.map(e => ({
+      key: `gl:${g.key}:${e.market}:${e.outcome}:${e.point}`,
+      label: pickLabel(e), book: e.best.book, sub: `${up(g.away)}@${up(g.home)}`,
+      price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: null, group: g,
+    })))
+    const pr = (props?.edges || []).map((p, i) => ({
+      key: `pr:${i}:${p.player}:${p.point}:${p.side}`,
+      label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel,
+      price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game, group: null,
+    }))
+    return [...gl, ...pr].sort((a, b) => (b.evPct ?? 0) - (a.evPct ?? 0))
+  }, [groups, props])
+
   const sub = status === 'scanning' ? '▶ NOW SCANNING THE BOARD ◀'
     : status === 'done' ? '▶ BOARD SCANNED ◀' : '▶ READY ◀'
   const headline = status === 'scanning' ? 'SCANNING…'
@@ -132,11 +181,25 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
 
   return (
     <>
+      {/* TV / BOARD lens toggle — same edges, two ways to read them */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+        {[['tv', '📺 TV'], ['board', '☰ BOARD']].map(([k, label]) => (
+          <button key={k} onClick={() => setView(k)} style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${view === k ? NEON : BORDER}`, background: view === k ? NEON : 'transparent', color: view === k ? '#0A0A0A' : MUTED }}>{label}</button>
+        ))}
+      </div>
+
       {/* sport quick row */}
       <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
         {SPORTS.map(s => <button key={s} onClick={() => setSport(s)} style={pill(sport === s)}>{s}</button>)}
       </div>
 
+      {view === 'board' && (
+        <BoardView status={status} rows={boardRows} edgeCount={boardRows.length} bankroll={bankroll}
+          token={token} err={err} onPick={pickFromGroup} onPickGame={onPick}
+          props={props} onScanProps={scanProps} gameCount={preGames.length} />
+      )}
+
+      {view === 'tv' && (
       <TvFrame ch="21">
         <div style={{ textAlign: 'center', fontFamily: R, fontSize: '10px', letterSpacing: '0.28em', color: 'rgba(189,255,0,0.6)', marginBottom: '6px' }}>{sub}</div>
         <div className={headlineColor === NEON_T ? 'tv-glow' : ''} style={{ textAlign: 'center', fontFamily: R, fontSize: '30px', fontWeight: 700, letterSpacing: '0.06em', color: headlineColor, marginBottom: '14px' }}>{headline}</div>
@@ -147,11 +210,11 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
           return (
             <div key={g.key + i} onClick={() => pickFromGroup(g)} style={{ cursor: 'pointer', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: 'rgba(189,255,0,0.04)', borderRadius: '0 8px 8px 0', padding: '11px 13px', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{up(e.outcome)} ML</span>
+                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{pickLabel(e)}</span>
                 <span className="tv-glow" style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON_T }}>{fmtAm(e.best.price)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
-                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[e.best.book] || e.best.book} · best line{unitSize > 0 ? ` · 1u $${Math.round(unitSize)}` : ''}</span>
+                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[e.best.book] || e.best.book} · best line{bankroll > 0 ? ` · bet $${Math.round(kellyStake(e.best.price, e.fairProb, bankroll))}` : ''}</span>
                 <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: top ? NEON_T : '#5DCAA5' }}>+{e.evPct.toFixed(1)}% EDGE</span>
               </div>
             </div>
@@ -173,6 +236,7 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
           </div>
         )}
       </TvFrame>
+      )}
 
       {/* small SCAN + FILTERS controls BELOW the TV — filters pop up under */}
       {token && (
@@ -195,6 +259,55 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
         </>
       )}
     </>
+  )
+}
+
+// Dense OddsJam/Prop-Professor-style board — every +EV play (game lines AND props) on one
+// ranked table. Props scan on tap (per-game). Tap a row to drill into all books on CH 2.
+const GRID = '1fr 58px 54px'
+function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPick, onPickGame, props, onScanProps, gameCount = 0 }) {
+  const propStatus = props?.status
+  const propBtn = (
+    <button onClick={onScanProps} disabled={!gameCount || propStatus === 'scanning'}
+      style={{ width: '100%', padding: '10px', borderRadius: '0', border: 'none', borderTop: '1px solid #161616', cursor: gameCount ? 'pointer' : 'not-allowed', background: 'transparent', color: gameCount ? NEON_T : MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+      {propStatus === 'scanning' ? `⊕ SCANNING PROPS… ${props.scanned}/${gameCount}` : propStatus === 'done' ? `⊕ RE-SCAN PROPS · ${gameCount} GAMES` : `⊕ ADD PROPS · ${gameCount} GAMES`}
+    </button>
+  )
+
+  if (status === 'idle')     return <Empty text={token ? 'Hit ▶ SCAN to read the board.' : 'Log in to summon the bot.'} />
+  if (status === 'scanning') return <div style={{ textAlign: 'center', padding: '24px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: 'rgba(189,255,0,0.6)', letterSpacing: '0.1em' }}>SCANNING THE BOARD…</div>
+  if (status === 'error')    return <Empty text={`Scan failed — ${err}`} />
+  if (!rows.length) return (
+    <div style={{ background: '#0A0A0A', border: `1px solid ${BORDER}`, borderRadius: '14px', overflow: 'hidden' }}>
+      <Empty text="Market's efficient on game lines — pull props to widen the net." />
+      {token && propBtn}
+    </div>
+  )
+
+  return (
+    <div style={{ background: '#0A0A0A', border: `1px solid ${BORDER}`, borderRadius: '14px', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: GRID, padding: '9px 14px', borderBottom: '1px solid #161616', color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.1em' }}>
+        <span>PICK / BOOK</span><span style={{ textAlign: 'right' }}>ODDS</span><span style={{ textAlign: 'right' }}>EV</span>
+      </div>
+      {rows.map((r, i) => {
+        const top = i === 0
+        return (
+          <div key={r.key} onClick={() => r.isProp ? (r.game && onPickGame(r.game)) : onPick(r.group)} style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #111', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: top ? 'rgba(189,255,0,0.04)' : 'transparent' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '1px' }}>PROP</span>}
+                {r.label}
+              </div>
+              <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 ? ` · BET $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</div>
+            </div>
+            <div style={{ textAlign: 'right', fontFamily: R, fontSize: '15px', fontWeight: 700, color: top ? NEON_T : TEXT }}>{fmtAm(r.price)}</div>
+            <div style={{ textAlign: 'right', fontFamily: R, fontSize: '13px', fontWeight: 700, color: top ? NEON_T : '#5DCAA5' }}>+{r.evPct.toFixed(1)}%</div>
+          </div>
+        )
+      })}
+      <div style={{ padding: '10px 14px', color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.06em' }}>{edgeCount} EDGE{edgeCount === 1 ? '' : 'S'} · TAP A ROW FOR ALL BOOKS</div>
+      {token && propBtn}
+    </div>
   )
 }
 
@@ -428,9 +541,43 @@ function TrackChannel({ bets, sport }) {
     return out
   }, [bets, events])
 
+  // Pikkit-style scoreboard: averages across every graded bet. CLV% is the headline metric —
+  // beating the closing line over time is the truest proof you're a +EV operator.
+  const board = useMemo(() => {
+    const clv = graded.map(g => g.grade.clvPct).filter(v => v != null)
+    const ev  = graded.map(g => g.grade.evPct).filter(v => v != null)
+    const avg = (a) => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null
+    return {
+      tracked: graded.length,
+      avgClv: avg(clv),
+      avgEv:  avg(ev),
+      beatRate: clv.length ? (clv.filter(v => v > 0).length / clv.length) * 100 : null,
+    }
+  }, [graded])
+
   return (
     <TvFrame ch="33">
       <div style={{ textAlign: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, marginBottom: '12px' }}>⬡ BEAT THE CLOSE</div>
+
+      {/* scoreboard — the Pikkit Pro headline numbers */}
+      {graded.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px' }}>
+          {[
+            ['AVG CLV', board.avgClv, true],
+            ['BEAT CLOSE', board.beatRate, false],
+            ['AVG EV', board.avgEv, true],
+          ].map(([label, val, signed]) => (
+            <div key={label} style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
+              <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: val == null ? MUTED : (val >= (label === 'BEAT CLOSE' ? 50 : 0) ? NEON_T : DANGER) }}>
+                {val == null ? '—' : `${signed && val >= 0 ? '+' : ''}${val.toFixed(label === 'BEAT CLOSE' ? 0 : 1)}%`}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {graded.length > 0 && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginBottom: '10px' }}>{board.tracked} TRACKED · CLV IS THE TRUTH — BEAT THE CLOSE &gt; 50% = SHARP</div>}
+
       {!graded.length && <Empty text={`No graded ${sport} positions yet. Log a play on CH 1/2 and it grades here.`} />}
       {graded.map(({ bet, ev, grade }, i) => (
         <div key={i} style={{ padding: '11px 12px', marginBottom: '8px', borderRadius: '12px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>

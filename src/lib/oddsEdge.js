@@ -31,12 +31,15 @@ export function sharpFairProbs(bookmakers, marketKey, sharpBook = SHARP_BOOK) {
 
 // Best (most favorable to the bettor) price for one outcome across ALL books.
 // Higher decimal = better payout. Returns { book, price, decimal } or null.
-export function bestLine(bookmakers, marketKey, outcomeName) {
+// `atPoint` matters for spreads/totals: a -5.5 and a -7.5 are DIFFERENT bets, so when a
+// point is given we only compare books sitting on that same line (h2h passes null → all).
+export function bestLine(bookmakers, marketKey, outcomeName, atPoint = null) {
   let best = null
   for (const b of bookmakers || []) {
     const m = (b.markets || []).find(x => x.key === marketKey)
     const o = m?.outcomes?.find(x => x.name === outcomeName)
     if (!o) continue
+    if (atPoint != null && o.point !== atPoint) continue   // different line → not the same bet
     const dec = americanToDecimal(o.price)
     if (dec == null) continue
     if (!best || dec > best.decimal) best = { book: b.key, price: o.price, decimal: dec }
@@ -58,12 +61,22 @@ export function evPct(american, fairProb) {
 export function marketEdges(bookmakers, marketKey, sharpBook = SHARP_BOOK) {
   const fair = sharpFairProbs(bookmakers, marketKey, sharpBook)
   if (!fair) return []
+  const sharpMkt = getMarket(bookmakers, sharpBook, marketKey)
+  const isPointMarket = marketKey === 'spreads' || marketKey === 'totals'
   const names = Object.keys(fair).filter(k => k !== '_hold')
   return names.map(name => {
-    const best = bestLine(bookmakers, marketKey, name)
+    // Anchor the comparison to the SHARP's line. On a point market (spread/total) a missing
+    // point means we CANNOT honestly compare lines — refuse to claim an edge rather than
+    // let a different line leak in as a fake +EV. Moneyline legitimately has no point.
+    const point = sharpMkt?.outcomes?.find(o => o.name === name)?.point
+    if (isPointMarket && point == null) {
+      return { outcome: name, point: null, fairProb: fair[name], best: null, evPct: null, plusEV: false, sharpHoldPct: fair._hold }
+    }
+    const best = bestLine(bookmakers, marketKey, name, isPointMarket ? point : null)
     const ev = best ? evPct(best.price, fair[name]) : null
     return {
       outcome: name,
+      point: point ?? null,       // spread/total line this edge sits on; null for ML
       fairProb: fair[name],
       best,                       // { book, price, decimal }
       evPct: ev,                  // true EV of the BEST available price vs sharp fair
