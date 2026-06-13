@@ -301,6 +301,18 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
         <button onClick={() => token && runScan(false)} disabled={!token || status === 'scanning'} style={{ flex: 1.5, padding: '11px 4px', borderRadius: '8px', cursor: !token ? 'not-allowed' : status === 'scanning' ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${NEON}`, background: token ? NEON : 'transparent', color: token ? '#0A0A0A' : MUTED, opacity: status === 'scanning' ? 0.7 : 1 }}>▶ {status === 'scanning' ? 'SCANNING' : status === 'done' ? 'REFRESH' : 'GO LIVE'}</button>
         <button onClick={() => setView('board')} style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${view === 'board' ? NEON : BORDER}`, background: view === 'board' ? 'rgba(189,255,0,0.1)' : 'transparent', color: view === 'board' ? NEON_T : MUTED }}>☰ BOARD</button>
       </div>
+
+      {/* ADD PROPS — always on CH1 (both views). Scans every pre-game's player props into the feed. */}
+      {token && (
+        <button onClick={scanProps} disabled={!preGames.length || props?.status === 'scanning'}
+          style={{ width: '100%', marginTop: '8px', padding: '10px', borderRadius: '8px', cursor: !preGames.length ? 'not-allowed' : props?.status === 'scanning' ? 'wait' : 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${preGames.length ? NEON : BORDER}`, background: 'transparent', color: preGames.length ? NEON_T : MUTED }}>
+          {props?.status === 'scanning' ? `⊕ SCANNING PROPS… ${props.scanned}/${preGames.length}` : props?.status === 'done' ? `⊕ RE-SCAN PROPS · ${(props.edges || []).length} found` : `⊕ ADD PROPS · ${preGames.length} GAMES`}
+        </button>
+      )}
+      {token && props?.status === 'done' && (props.edges || []).length === 0 && (
+        <div style={{ textAlign: 'center', marginTop: '6px', fontFamily: R, fontSize: '9px', color: MUTED }}>No props returned for today's slate · try after lineups post</div>
+      )}
+
       {token && status === 'done' && feed.credits != null && (
         <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · auto-refreshing every 2 min</div>
       )}
@@ -311,24 +323,11 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
 // Dense OddsJam/Prop-Professor-style board — every +EV play (game lines AND props) on one
 // ranked table. Props scan on tap (per-game). Tap a row to drill into all books on CH 2.
 const GRID = '1fr 58px 54px'
-function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPickGame, props, onScanProps, gameCount = 0 }) {
-  const propStatus = props?.status
-  const propBtn = (
-    <button onClick={onScanProps} disabled={!gameCount || propStatus === 'scanning'}
-      style={{ width: '100%', padding: '10px', borderRadius: '0', border: 'none', borderTop: '1px solid #161616', cursor: gameCount ? 'pointer' : 'not-allowed', background: 'transparent', color: gameCount ? NEON_T : MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-      {propStatus === 'scanning' ? `⊕ SCANNING PROPS… ${props.scanned}/${gameCount}` : propStatus === 'done' ? `⊕ RE-SCAN PROPS · ${gameCount} GAMES` : `⊕ ADD PROPS · ${gameCount} GAMES`}
-    </button>
-  )
-
-  if (status === 'idle')     return <Empty text={token ? 'Hit ▶ SCAN to read the board.' : 'Log in to summon the bot.'} />
+function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPickGame }) {
+  if (status === 'idle')     return <Empty text={token ? 'Hit ▶ GO LIVE to read the board.' : 'Log in to summon the bot.'} />
   if (status === 'scanning') return <div style={{ textAlign: 'center', padding: '24px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: 'rgba(189,255,0,0.6)', letterSpacing: '0.1em' }}>SCANNING THE BOARD…</div>
   if (status === 'error')    return <Empty text={`Scan failed — ${err}`} />
-  if (!rows.length) return (
-    <div style={{ background: '#0A0A0A', border: `1px solid ${BORDER}`, borderRadius: '14px', overflow: 'hidden' }}>
-      <Empty text="Market's efficient on game lines — pull props to widen the net." />
-      {token && propBtn}
-    </div>
-  )
+  if (!rows.length) return <Empty text="Market's efficient on game lines — pull props (below) to widen the net." />
 
   return (
     <div style={{ background: '#0A0A0A', border: `1px solid ${BORDER}`, borderRadius: '14px', overflow: 'hidden' }}>
@@ -352,7 +351,6 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
         )
       })}
       <div style={{ padding: '10px 14px', color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.06em' }}>{edgeCount} EDGE{edgeCount === 1 ? '' : 'S'} · TAP A ROW FOR ALL BOOKS</div>
-      {token && propBtn}
     </div>
   )
 }
@@ -446,15 +444,24 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
 
   return (
     <Frame>
-      {/* per-market movement — each market on its OWN scale (Pikkit). honest line movement. */}
+      {/* 3-market movement summary — sparkline + % move per market (Pikkit) */}
       <MarketSummary move={move} sport={sport} />
 
-      {/* every book's current price for the moneyline (Sharp app book chips) */}
-      <BookChips cmp={mlCmp} sideName={mlSide} />
+      {/* BOOKS / LINE MOVE toggle */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+        <button onClick={() => setView('books')} style={pill(view === 'books')}>By Book</button>
+        <button onClick={() => setView('move')} style={pill(view === 'move')}>Line Move</button>
+      </div>
 
-      {/* by-book stacks for every market, no tabs */}
-      <div style={{ marginTop: '14px' }}>{gameMarkets.map(renderBooks)}</div>
-      <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>
+      {view === 'move' && (
+        <>
+          {moveRows.length ? <MoveChart moveRows={moveRows} /> : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />}
+          <BookChips cmp={mlCmp} sideName={mlSide} />
+        </>
+      )}
+
+      {view === 'books' && gameMarkets.map(renderBooks)}
+      {view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
     </Frame>
   )
 }
@@ -757,16 +764,16 @@ function TrackGameCard({ ev, items, sport, token }) {
   }, [ev, sport, token])
 
   return (
-    <div style={{ padding: '10px 11px', marginBottom: '8px', borderRadius: '10px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
-      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '2px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
+    <div style={{ padding: '8px 10px', marginBottom: '6px', borderRadius: '10px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
+      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '1px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
       {items.map(({ bet, grade }, i) => (
-        <div key={i} style={{ paddingTop: '6px' }}>
-          <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{bet.pick || bet.event}</div>
-          <div style={{ display: 'flex', gap: '16px', marginTop: '3px' }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', paddingTop: '3px' }}>
+          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.pick || bet.event}</span>
+          <span style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
             {grade.evPct != null && <Stat label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
             {grade.clvPct != null && <Stat label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
-            {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>Awaiting closing line…</span>}
-          </div>
+            {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>Awaiting close…</span>}
+          </span>
         </div>
       ))}
       {M && <ClosingLines M={M} game={{ away: ev.away_team, home: ev.home_team }} sport={sport} />}
@@ -776,9 +783,9 @@ function TrackGameCard({ ev, items, sport, token }) {
 
 function Stat({ label, value, good }) {
   return (
-    <div>
-      <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
-      <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: good ? NEON_T : DANGER }}>{value}</div>
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ fontFamily: R, fontSize: '7px', color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
+      <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: good ? NEON_T : DANGER }}>{value}</div>
     </div>
   )
 }
