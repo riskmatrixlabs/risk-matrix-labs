@@ -348,7 +348,9 @@ export default function LandingPage({ onLogin }) {
 
       {/* ══ NAVBAR ══ */}
       <header style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, height: '64px', padding: '0 40px',
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+        height: 'calc(64px + env(safe-area-inset-top, 0px))', padding: '0 40px',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         backdropFilter: scrolled ? 'blur(18px)' : 'none',
         background: scrolled ? 'rgba(10,10,10,0.9)' : 'transparent',
@@ -391,7 +393,7 @@ export default function LandingPage({ onLogin }) {
       <AnimatePresence>
         {mobileMenu && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            style={{ position: 'fixed', top: '64px', left: 0, right: 0, zIndex: 199, background: 'rgba(10,10,10,0.97)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            style={{ position: 'fixed', top: 'calc(64px + env(safe-area-inset-top, 0px))', left: 0, right: 0, zIndex: 199, background: 'rgba(10,10,10,0.97)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {NAV_LINKS.map(([id, label]) => (
               <button key={id} onClick={() => scrollTo(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '12px 0', fontFamily: R, fontSize: '15px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{label}</button>
             ))}
@@ -403,7 +405,7 @@ export default function LandingPage({ onLogin }) {
       </AnimatePresence>
 
       {/* ══ HERO ══ */}
-      <section ref={heroRef} id="hero" style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: '64px' }}>
+      <section ref={heroRef} id="hero" style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 'calc(64px + env(safe-area-inset-top, 0px))' }}>
         <HexGrid opacity={0.042} />
         <GlowOrb size={700} x="68%" y="42%" opacity={0.05} />
         <GlowOrb size={300} x="8%"  y="82%" opacity={0.035} />
