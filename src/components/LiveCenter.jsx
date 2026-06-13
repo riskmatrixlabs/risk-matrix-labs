@@ -5,6 +5,7 @@ import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
+import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 
 const NEON   = '#BDFF00'
 const NEON_T = 'var(--neon-title)'
@@ -18,7 +19,6 @@ const TEXT   = 'var(--text)'
 // are prepended dynamically in the component.
 const SPORTS = ['MLB', 'WNBA', 'NHL', 'NBA', 'NFL']
 
-const SPREAD_LABEL = { MLB: 'Run Line', NHL: 'Puck Line', NBA: 'Spread', WNBA: 'Spread', NFL: 'Spread' }
 const DATES  = ['Yesterday', 'Today', 'Upcoming']
 
 // Sport-specific detail tabs. Context-layer tabs (Value/Trends/Injuries) only appear
@@ -685,24 +685,6 @@ function SeasonSeries({ awayAbbr, homeAbbr, series }) {
   )
 }
 
-// ── Sparkline — normalizes a numeric series into a flat polyline (line-movement trend). ──
-function Sparkline({ series, color }) {
-  if (!series || series.length < 2) return null
-  const min = Math.min(...series), max = Math.max(...series)
-  const range = max - min || 1
-  const w = 120, h = 28, pad = 3
-  const pts = series.map((v, i) => {
-    const x = (i / (series.length - 1)) * w
-    const y = h - pad - ((v - min) / range) * (h - pad * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: '26px', display: 'block' }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 // Plain-English explanations for every Insights term — surfaced via the tap-ⓘ.
 const GLOSSARY = {
   winProb:  "Each side's real chance to win — the sportsbook's odds with their built-in profit margin stripped out. The honest read on who's better.",
@@ -712,30 +694,6 @@ const GLOSSARY = {
   yourBet:  "Your logged bet on this game, graded. Win Prob = its true chance. +EV = is the price worth it. CLV = did you beat the closing line.",
   ev:       "Is this bet worth it? Compares your price to the fair price. Green = you're getting paid fairly or better; red = you overpaid (a −EV bet bleeds money long-term even when it wins).",
   clv:      "Did you beat the closing line? Green = you locked a better number than where the market ended up. Pros track this above win/loss.",
-}
-
-// Tap-to-explain label: renders the (already-styled) label + a ⓘ that toggles a
-// plain-English caption underneath. Stops click-through so it works inside tappable cards.
-function InfoLabel({ label, tip, center = false }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div style={center ? { textAlign: 'center' } : undefined}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-        {label}
-        {tip && (
-          <button
-            type="button"
-            aria-label="What does this mean?"
-            onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
-            style={{ width: '15px', height: '15px', flexShrink: 0, borderRadius: '50%', border: `1px solid ${open ? NEON_T : MUTED}`, background: open ? 'rgba(189,255,0,0.12)' : 'transparent', color: open ? NEON_T : MUTED, fontSize: '10px', fontWeight: 700, lineHeight: 1, fontFamily: 'Georgia, serif', fontStyle: 'italic', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-          >i</button>
-        )}
-      </span>
-      {open && tip && (
-        <div style={{ marginTop: '7px', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '11px', lineHeight: 1.5, color: 'rgba(255,255,255,0.62)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{tip}</div>
-      )}
-    </div>
-  )
 }
 
 // ── Win Probability split — both teams' no-vig implied %, all three markets. ──
@@ -1041,12 +999,6 @@ function GameShareModal({ event, onClose }) {
 // ── +EV BOT — tap-to-scan multi-book edge finder for THIS game ──────────────
 // Calls /api/scan-edges (sharp-anchored, quality-filtered), then shows whether a
 // VALID MATRIX (real +EV edge) exists for this matchup — or honestly says it doesn't.
-const BOOK_NAMES = {
-  pinnacle: 'Pinnacle', draftkings: 'DraftKings', fanduel: 'FanDuel', betmgm: 'BetMGM',
-  caesars: 'Caesars', williamhill_us: 'Caesars', betrivers: 'BetRivers', espnbet: 'ESPN Bet',
-  fanatics: 'Fanatics', hardrockbet: 'Hard Rock', betfair_ex_us: 'Betfair', betfair_ex_eu: 'Betfair',
-}
-const fmtAm = (n) => (n > 0 ? `+${n}` : `${n}`)
 
 function EVBot({ event, token, unitSize = 0 }) {
   const [status, setStatus] = useState('idle')   // idle | scanning | done | error

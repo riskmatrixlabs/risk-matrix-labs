@@ -15,7 +15,9 @@ export const SPREAD_LABEL = { MLB: 'Run Line', NHL: 'Puck Line', NBA: 'Spread', 
 
 export const BOOK_NAMES = {
   pinnacle: 'Pinnacle', draftkings: 'DraftKings', fanduel: 'FanDuel', betmgm: 'BetMGM',
-  williamhill_us: 'Caesars', betfair_ex_uk: 'Betfair', betfair_ex_eu: 'Betfair', hardrockbet: 'Hard Rock',
+  caesars: 'Caesars', williamhill_us: 'Caesars', betrivers: 'BetRivers', espnbet: 'ESPN Bet',
+  fanatics: 'Fanatics', hardrockbet: 'Hard Rock',
+  betfair_ex_us: 'Betfair', betfair_ex_uk: 'Betfair', betfair_ex_eu: 'Betfair',
 }
 
 export const fmtAm = (n) => (n > 0 ? `+${n}` : `${n}`)
