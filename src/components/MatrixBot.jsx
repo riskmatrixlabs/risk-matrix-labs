@@ -98,7 +98,8 @@ function FindChannel({ token, bankroll = 0, onPick }) {
   const [props, setProps]     = useState(null)
   const [err, setErr]         = useState('')
   const [view, setView]       = useState('tv')        // tv | board
-  const [sportF, setSportF]   = useState('ALL')       // filter chips replace tabs
+  const [showFilters, setShowFilters] = useState(false)  // filters live behind the gear
+  const [sportF, setSportF]   = useState('ALL')       // filters replace tabs
   const [marketF, setMarketF] = useState('ALL')
   const [minEv, setMinEv]     = useState(0)
   const scanning = useRef(false)
@@ -199,25 +200,32 @@ function FindChannel({ token, bankroll = 0, onPick }) {
   const headlineColor = (status === 'done' && !rows.length) ? MUTED : NEON_T
 
   const sportChips = ['ALL', ...FEED_SPORTS]
+  const marketLabel = (MARKET_CHIPS.find(([k]) => k === marketF) || ['', 'ALL'])[1]
 
   return (
     <>
-      {/* TV / BOARD lens toggle */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-        {[['tv', '📺 TV'], ['board', '☰ BOARD']].map(([k, label]) => (
-          <button key={k} onClick={() => setView(k)} style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${view === k ? NEON : BORDER}`, background: view === k ? NEON : 'transparent', color: view === k ? '#0A0A0A' : MUTED }}>{label}</button>
-        ))}
+      {/* top bar: active-filter summary + gear (filters live behind it) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <span style={{ fontFamily: R, fontSize: '10px', letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>{sportF} · {marketLabel} · {minEv === 0 ? 'EV ANY' : `${minEv}%+`}</span>
+        <button onClick={() => setShowFilters(f => !f)} aria-label="Filters" style={{ width: '36px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${showFilters ? NEON : BORDER}`, background: showFilters ? NEON : 'transparent', color: showFilters ? '#0A0A0A' : NEON_T, fontSize: '15px', lineHeight: 1 }}>⚙</button>
       </div>
 
-      {/* FILTER chips — these ARE the navigation (no sport tabs) */}
-      <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-        {sportChips.map(s => <button key={s} onClick={() => setSportF(s)} style={pill(sportF === s)}>{s}</button>)}
-      </div>
-      <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-        {MARKET_CHIPS.map(([k, label]) => <button key={k} onClick={() => setMarketF(k)} style={pill(marketF === k)}>{label}</button>)}
-        <span style={{ width: '1px', background: BORDER, margin: '0 2px' }} />
-        {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'EV ANY' : `${v}%+`}</button>)}
-      </div>
+      {showFilters && (
+        <div style={{ marginBottom: '12px', padding: '12px 14px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD }}>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>SPORT</div>
+          <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+            {sportChips.map(s => <button key={s} onClick={() => setSportF(s)} style={pill(sportF === s)}>{s}</button>)}
+          </div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>MARKET</div>
+          <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+            {MARKET_CHIPS.map(([k, label]) => <button key={k} onClick={() => setMarketF(k)} style={pill(marketF === k)}>{label}</button>)}
+          </div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>MIN EV</div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}
+          </div>
+        </div>
+      )}
 
       {view === 'board' && (
         <BoardView status={status} rows={rows} edgeCount={rows.length} bankroll={bankroll}
@@ -250,29 +258,29 @@ function FindChannel({ token, bankroll = 0, onPick }) {
         {status === 'idle' && <Empty text={token ? 'Hit ▶ GO LIVE to read the board.' : 'Log in to summon the bot.'} />}
         {status === 'error' && <Empty text={`Scan failed — ${err}`} />}
 
-        {/* slate ticker — every pre-game across all sports, tap to tune in */}
+        {/* slate ticker — teams BIG, sliding across the screen like a broadcast crawl */}
         {preGames.length > 0 && (
-          <div className="tv-ticker" style={{ display: 'flex', gap: '14px', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: `1px solid rgba(189,255,0,0.12)` }}>
-            {preGames.map(ev => (
-              <button key={ev._sport + ev.external_event_id} onClick={() => onPick(buildGame(ev))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.75)', letterSpacing: '0.04em', whiteSpace: 'nowrap', padding: 0 }}>
-                {ev.away_abbr}@{ev.home_abbr} <span style={{ color: MUTED }}>{(ev.start_time || '').slice(11, 16)}</span>
-              </button>
-            ))}
+          <div className="tv-marquee-wrap" style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid rgba(189,255,0,0.12)` }}>
+            <div className="tv-marquee">
+              {[...preGames, ...preGames].map((ev, i) => (
+                <button key={ev._sport + ev.external_event_id + i} onClick={() => onPick(buildGame(ev))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: R, fontWeight: 700, fontSize: '17px', color: NEON_T, letterSpacing: '0.04em', whiteSpace: 'nowrap', padding: 0 }}>
+                  {ev.away_abbr}@{ev.home_abbr} <span style={{ color: MUTED, fontSize: '11px', fontFamily: 'Courier New, monospace' }}>{(ev.start_time || '').slice(11, 16)}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </TvFrame>
       )}
 
-      {/* GO LIVE control */}
-      {token && (
-        <>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '14px' }}>
-            <button onClick={() => runScan(false)} disabled={status === 'scanning'} style={{ ...pill(false), padding: '9px 22px', fontSize: '12px', borderColor: NEON, color: NEON_T, cursor: status === 'scanning' ? 'wait' : 'pointer' }}>▶ {status === 'scanning' ? 'SCANNING' : status === 'done' ? 'REFRESH' : 'GO LIVE'}</button>
-          </div>
-          {status === 'done' && feed.credits != null && (
-            <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · auto-refreshing every 2 min</div>
-          )}
-        </>
+      {/* bottom controls — TV · GO LIVE (middle) · BOARD */}
+      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+        <button onClick={() => setView('tv')} style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${view === 'tv' ? NEON : BORDER}`, background: view === 'tv' ? 'rgba(189,255,0,0.1)' : 'transparent', color: view === 'tv' ? NEON_T : MUTED }}>📺 TV</button>
+        <button onClick={() => token && runScan(false)} disabled={!token || status === 'scanning'} style={{ flex: 1.5, padding: '11px 4px', borderRadius: '8px', cursor: !token ? 'not-allowed' : status === 'scanning' ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${NEON}`, background: token ? NEON : 'transparent', color: token ? '#0A0A0A' : MUTED, opacity: status === 'scanning' ? 0.7 : 1 }}>▶ {status === 'scanning' ? 'SCANNING' : status === 'done' ? 'REFRESH' : 'GO LIVE'}</button>
+        <button onClick={() => setView('board')} style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${view === 'board' ? NEON : BORDER}`, background: view === 'board' ? 'rgba(189,255,0,0.1)' : 'transparent', color: view === 'board' ? NEON_T : MUTED }}>☰ BOARD</button>
+      </div>
+      {token && status === 'done' && feed.credits != null && (
+        <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · auto-refreshing every 2 min</div>
       )}
     </>
   )

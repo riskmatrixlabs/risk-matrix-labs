@@ -34,4 +34,10 @@
 .tv-ticker { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .tv-ticker::-webkit-scrollbar { display: none; }
 
-@media (prefers-reduced-motion: reduce) { .tvbot-screen::before, .tvbot-onair .dot, .tvbot-tune { animation: none; } }
+/* Floating game ticker — teams slide across the screen like a broadcast crawl. */
+.tv-marquee-wrap { width: 100%; overflow: hidden; }
+.tv-marquee { display: inline-flex; gap: 30px; white-space: nowrap; animation: tv-marquee 26s linear infinite; will-change: transform; }
+.tv-marquee:hover { animation-play-state: paused; }
+@keyframes tv-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+@media (prefers-reduced-motion: reduce) { .tvbot-screen::before, .tvbot-onair .dot, .tvbot-tune, .tv-marquee { animation: none; } }
