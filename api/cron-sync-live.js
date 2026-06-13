@@ -229,6 +229,7 @@ export function parseHoopsPlayers(playerGroup) {
       name: a.athlete.shortName ?? a.athlete.displayName,
       pos:  a.athlete.position?.abbreviation ?? null,
       starter: a.starter ?? false,
+      oncourt: a.active ?? false,   // ESPN flags the 5 players currently on the floor as `active`
       min:  a.stats[idx('MIN')] ?? null,
       pts:  parseInt(a.stats[idx('PTS')]) || 0,
       reb:  parseInt(a.stats[idx('REB')]) || 0,

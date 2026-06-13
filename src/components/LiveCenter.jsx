@@ -1684,7 +1684,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                 <tr><td colSpan={COLS.length + 1} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON_T, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '10px 8px 5px', background: 'rgba(189,255,0,0.05)', borderLeft: `3px solid ${NEON}` }}>{label}</td></tr>
                 {list.map((p, i) => (
                   <tr key={label + i} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
-                    <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</td>
+                    <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{live && p.oncourt && <span title="On court" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: '0 0 5px ' + NEON, marginRight: '7px', verticalAlign: 'middle' }} />}{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</td>
                     {COLS.map(([, k], j) => <td key={j} style={{ fontFamily: R, fontSize: '12px', fontWeight: k === 'pts' ? 700 : 400, color: k === 'pts' ? NEON_T : TEXT, textAlign: 'center', padding: '9px 8px' }}>{p[k] ?? '—'}</td>)}
                   </tr>
                 ))}
@@ -1708,6 +1708,12 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                     </tbody>
                   </table>
                 </div>
+                {live && rows.some(p => p.oncourt) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 10px', borderTop: `1px solid ${BORDER}` }}>
+                    <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: '0 0 5px ' + NEON }} />
+                    <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED }}>On Court</span>
+                  </div>
+                )}
               </div>
             )
           })()}
