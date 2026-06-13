@@ -14,7 +14,21 @@ vi.mock('../src/lib/supabase', () => {
   return { supabase: chain }
 })
 
-import { fetchEvents, fetchEvent } from '../src/lib/events'
+import { fetchEvents, fetchEvent, isLiveEvent } from '../src/lib/events'
+
+describe('isLiveEvent', () => {
+  const now = Date.parse('2026-06-13T20:00:00Z')
+  it('is live when IP and started recently', () => {
+    expect(isLiveEvent({ status: 'IP', start_time: '2026-06-13T19:00:00Z' }, now)).toBe(true)
+  })
+  it('is NOT live when IP but started over 7h ago (stale status row)', () => {
+    expect(isLiveEvent({ status: 'IP', start_time: '2026-06-12T20:00:00Z' }, now)).toBe(false)
+  })
+  it('is not live for finished/scheduled status', () => {
+    expect(isLiveEvent({ status: 'FT', start_time: '2026-06-13T19:00:00Z' }, now)).toBe(false)
+    expect(isLiveEvent({ status: 'NS', start_time: '2026-06-13T19:00:00Z' }, now)).toBe(false)
+  })
+})
 
 describe('fetchEvents', () => {
   it('returns empty array for unknown sport', async () => {

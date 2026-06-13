@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import html2canvas from 'html2canvas'
-import { fetchEvents, fetchLiveEvents } from '../lib/events'
+import { fetchEvents, fetchLiveEvents, isLiveEvent } from '../lib/events'
 import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
@@ -118,7 +118,7 @@ function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
 
 // ── Game card — Apple Sports horizontal layout ──────────────────────────────
 function GameCard({ event, onClick, showSport = false }) {
-  const live  = event.status === 'LIVE' || event.status === 'IP'
+  const live  = isLiveEvent(event)
   const final = event.status === 'FT'   || event.status === 'AOT'
   const isOT  = event.status === 'AOT'
   const hasScore = event.home_score != null
@@ -1227,7 +1227,7 @@ export function LineShop({ event, token, onLogPosition }) {
 
 function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null, unitSize = 0 }) {
   const event = useLiveGame(propEvent)
-  const live     = event.status === 'LIVE' || event.status === 'IP'
+  const live     = isLiveEvent(event)
   const final    = event.status === 'FT'   || event.status === 'AOT'
   const isOT     = event.status === 'AOT'
   const hasScore = event.home_score != null
@@ -2031,7 +2031,7 @@ export default function LiveCenter({ onLogPosition, bets = [], token = null, uni
   // so the cards' score, inning and bases stay current even when the cron is behind.
   useEffect(() => {
     if (!isLiveTab && dateFilter !== 'Today') return
-    const liveGames = events.filter(e => (e.status === 'IP' || e.status === 'LIVE') && e.external_event_id && e.sport)
+    const liveGames = events.filter(e => isLiveEvent(e) && e.external_event_id && e.sport)
     if (!liveGames.length) return
     const interval = setInterval(async () => {
       const results = await Promise.all(liveGames.map(async (g) => {

@@ -444,28 +444,23 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
   const mlCmp = M.h2h
   const mlSide = sidesFor(mlCmp, 'h2h')[0]?.name
 
+  // line chart = moneyline price over time (same scale → clean); fall back to non-juice series
+  const chartRows = (() => {
+    const ml = moveRows.filter(([k]) => /^(h2h|ml)/i.test(k))
+    return ml.length ? ml : moveRows.filter(([k]) => !/juice/i.test(k))
+  })()
+
   return (
     <Frame>
-      {/* 3-market movement summary — sparkline + % move per market (Pikkit) */}
+      {/* per-market movement summary (sparklines) */}
       <MarketSummary move={move} sport={sport} />
 
-      {/* BOOKS / LINE MOVE toggle */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-        <button onClick={() => setView('books')} style={pill(view === 'books')}>By Book</button>
-        <button onClick={() => setView('move')} style={pill(view === 'move')}>Line Move</button>
-      </div>
+      {/* the line chart — price movement over time */}
+      {chartRows.length
+        ? <MoveChart moveRows={chartRows} />
+        : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />}
 
-      {view === 'move' && (
-        <>
-          {moveRows.length ? <MoveChart moveRows={moveRows} /> : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />}
-          <BookChips cmp={mlCmp} sideName={mlSide} />
-        </>
-      )}
-
-      {view === 'books' && gameMarkets.map(renderBooks)}
-      {view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
-
-      {/* same Line Shop · Compare Books component used in the Live Center game card */}
+      {/* book prices = the shared Compare Books table (replaces the long by-book stacks) */}
       <div style={{ marginTop: '16px' }}>
         <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} />
       </div>

@@ -72,12 +72,24 @@ export async function fetchEvent(id) {
 }
 
 // All in-progress games across every sport (for the "Live" filter tab).
+// Freshness guard: a game can't truly be live if it started more than ~7h ago — that's a
+// stale 'IP' row the status sync never finalized. Window it so those don't show as live.
 export async function fetchLiveEvents() {
+  const sinceIso = new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
   const result = await supabase
     .from('events')
     .select('*')
     .in('status', ['IP', 'LIVE'])
+    .gte('start_time', sinceIso)
     .order('start_time', { ascending: true })
   if (result.data) result.data = result.data.map(mapRow)
   return result
+}
+
+// True only if a game is genuinely in progress (status live AND started within ~7h).
+// Use this anywhere we decide "is this live" so stale 'IP' rows never count.
+export function isLiveEvent(e, nowMs = Date.now()) {
+  if (!e || (e.status !== 'IP' && e.status !== 'LIVE')) return false
+  const t = Date.parse(e.start_time)
+  return Number.isNaN(t) ? true : t >= nowMs - 7 * 60 * 60 * 1000
 }
