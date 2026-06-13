@@ -394,76 +394,67 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
   if (!data)                return <Frame><Empty text="No book lines for this game (pre-game only)." /></Frame>
 
   const M = data.markets
-  const tabDefs = [['h2h', 'ML'], ['spreads', SPREAD_LABEL[sport] || 'Spread'], ['totals', 'Total']].filter(([k]) => M[k])
-  tabDefs.push(['props', 'PROPS'])
-  const activeKey = mkt === 'props' ? 'props' : (M[mkt] ? mkt : tabDefs[0]?.[0])
-  const isProps = activeKey === 'props'
-  const cmp = M[activeKey]
-  const isTotals = activeKey === 'totals'
   const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
   const moveRows = Object.entries(move || {}).filter(([, m]) => m && m.series && m.series.length >= 2)
+  const gameMarkets = ['h2h', 'spreads', 'totals'].filter(k => M[k])
+  const mktName = (k) => k === 'h2h' ? 'MONEYLINE' : k === 'spreads' ? (SPREAD_LABEL[sport] || 'SPREAD').toUpperCase() : 'TOTAL'
 
-  // Stacked-by-book list per side (screen-2 look): one stack per outcome, books sorted best-first.
-  const sides = !cmp ? [] : (isTotals
+  const sidesFor = (cmp, key) => !cmp ? [] : (key === 'totals'
     ? cmp.outcomes.map(n => ({ name: n, label: /^o/i.test(n) ? 'OVER' : 'UNDER' }))
     : [{ name: cmp.outcomes.find(n => lw(n) === lw(game.away)) || cmp.outcomes[0], label: up(game.away) },
        { name: cmp.outcomes.find(n => lw(n) === lw(game.home)) || cmp.outcomes[1], label: up(game.home) }])
 
+  // By-book stack for ONE market (no tabs — every market is stacked vertically).
+  const renderBooks = (key) => {
+    const cmp = M[key]; if (!cmp) return null
+    const isTot = key === 'totals'
+    return (
+      <div key={key} style={{ marginBottom: '14px' }}>
+        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: NEON_T, marginBottom: '8px' }}>{mktName(key)}</div>
+        {sidesFor(cmp, key).map(side => {
+          const rows = [...cmp.rows].filter(r => r.prices[side.name] != null).sort((a, b) => (dec(b.prices[side.name]) ?? 0) - (dec(a.prices[side.name]) ?? 0))
+          if (!rows.length) return null
+          const bestBook = cmp.best[side.name]?.book
+          return (
+            <div key={side.name} style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '10px 12px', marginBottom: '10px' }}>
+              <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>{side.label}{isTot && cmp.modalPoint?.[side.name] != null ? ` ${cmp.modalPoint[side.name]}` : ''}</div>
+              {rows.map(r => {
+                const p = r.prices[side.name], pt = r.points[side.name]
+                const best = r.book === bestBook
+                const pick = isTot ? `${/^o/i.test(side.name) ? 'Over' : 'Under'} ${pt}` : key === 'spreads' ? `${side.label} ${fmtPt(pt)}` : `${side.label} ML`
+                return (
+                  <div key={r.book} onClick={() => onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick, odds: p })}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 2px', cursor: 'pointer' }}>
+                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: best ? 700 : 500, color: best ? NEON_T : MUTED }}>{BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', color: '#5DCAA5', marginLeft: '6px' }}>SHARP</span>}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: best ? NEON_T : TEXT }}>{fmtAm(p)}{pt != null ? <span style={{ fontSize: '10px', color: MUTED }}> {isTot ? (/^o/i.test(side.name) ? 'o' : 'u') + pt : fmtPt(pt)}</span> : ''}</span>
+                      {best && <span style={{ color: NEON_T, fontSize: '13px' }}>✓</span>}
+                      {best && r.links?.[side.name] && <BetLink book={r.book} link={r.links[side.name]} />}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const mlCmp = M.h2h
+  const mlSide = sidesFor(mlCmp, 'h2h')[0]?.name
+
   return (
     <Frame>
-      <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-        {tabDefs.map(([k, label]) => <button key={k} onClick={() => setMkt(k)} style={pill(activeKey === k)}>{label}</button>)}
-      </div>
+      {/* per-market movement — each market on its OWN scale (Pikkit). honest line movement. */}
+      <MarketSummary move={move} sport={sport} />
 
-      {isProps && <PropsPanel game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}
+      {/* every book's current price for the moneyline (Sharp app book chips) */}
+      <BookChips cmp={mlCmp} sideName={mlSide} />
 
-      {/* 3-market movement summary — sparkline + % move per market (Pikkit) */}
-      {!isProps && <MarketSummary move={move} sport={sport} />}
-
-      {/* BOOKS / LINE MOVE toggle (game-line markets only) */}
-      {!isProps && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <button onClick={() => setView('books')} style={pill(view === 'books')}>By Book</button>
-          <button onClick={() => setView('move')} style={pill(view === 'move')}>Line Move</button>
-        </div>
-      )}
-
-      {!isProps && view === 'move' && (
-        <>
-          {moveRows.length ? <MoveChart moveRows={moveRows} /> : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />}
-          {/* per-book price chips for the active side (Sharp app) */}
-          <BookChips cmp={cmp} sideName={sides[0]?.name} />
-        </>
-      )}
-
-      {!isProps && view === 'books' && cmp && sides.map(side => {
-        const rows = [...cmp.rows].filter(r => r.prices[side.name] != null).sort((a, b) => (dec(b.prices[side.name]) ?? 0) - (dec(a.prices[side.name]) ?? 0))
-        if (!rows.length) return null
-        const bestBook = cmp.best[side.name]?.book
-        return (
-          <div key={side.name} style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '10px 12px', marginBottom: '10px' }}>
-            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>{side.label}{isTotals && cmp.modalPoint?.[side.name] != null ? ` ${cmp.modalPoint[side.name]}` : ''}</div>
-            {rows.map(r => {
-              const p = r.prices[side.name], pt = r.points[side.name]
-              const best = r.book === bestBook
-              const pick = isTotals ? `${/^o/i.test(side.name) ? 'Over' : 'Under'} ${pt}` : activeKey === 'spreads' ? `${side.label} ${fmtPt(pt)}` : `${side.label} ML`
-              return (
-                <div key={r.book} onClick={() => onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick, odds: p })}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 2px', cursor: 'pointer' }}>
-                  <span style={{ fontFamily: R, fontSize: '13px', fontWeight: best ? 700 : 500, color: best ? NEON_T : MUTED }}>{BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', color: '#5DCAA5', marginLeft: '6px' }}>SHARP</span>}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: best ? NEON_T : TEXT }}>{fmtAm(p)}{pt != null ? <span style={{ fontSize: '10px', color: MUTED }}> {isTotals ? (/^o/i.test(side.name) ? 'o' : 'u') + pt : fmtPt(pt)}</span> : ''}</span>
-                    {best && <span style={{ color: NEON_T, fontSize: '13px' }}>✓</span>}
-                    {best && r.links?.[side.name] && <BetLink book={r.book} link={r.links[side.name]} />}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )
-      })}
-
-      {!isProps && view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
+      {/* by-book stacks for every market, no tabs */}
+      <div style={{ marginTop: '14px' }}>{gameMarkets.map(renderBooks)}</div>
+      <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>
     </Frame>
   )
 }
@@ -595,24 +586,23 @@ function ClosingLines({ M, game, sport }) {
     return which === 'away' ? away : home
   }
   const Row = ({ which, label }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-      <span style={{ width: '54px', flexShrink: 0, fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{label}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+      <span style={{ width: '46px', flexShrink: 0, fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{label}</span>
       {markets.map(k => {
         const cmp = M[k], name = sideName(cmp, which), b = cmp?.best?.[name]
         const pt = cmp?.modalPoint?.[name], isTot = k === 'totals', over = /^o/i.test(name || '')
         return (
-          <div key={k} style={{ flex: 1, position: 'relative', background: '#15161a', borderRadius: '8px', padding: '9px 6px', textAlign: 'center', minWidth: 0 }}>
-            {k !== 'h2h' && pt != null && <div style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>{isTot ? (over ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
-            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: b ? TEXT : MUTED }}>{b ? fmtAm(b.price) : '—'}</div>
-            {b && <span style={{ position: 'absolute', right: '7px', bottom: '7px', width: '7px', height: '7px', borderRadius: '50%', background: '#1D9E75' }} />}
+          <div key={k} style={{ flex: 1, position: 'relative', background: '#15161a', borderRadius: '6px', padding: '5px 4px', textAlign: 'center', minWidth: 0 }}>
+            {k !== 'h2h' && pt != null && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{isTot ? (over ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
+            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: b ? TEXT : MUTED }}>{b ? fmtAm(b.price) : '—'}{b && <span style={{ marginLeft: '4px', display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: '#1D9E75', verticalAlign: 'middle' }} />}</div>
           </div>
         )
       })}
     </div>
   )
   return (
-    <div style={{ marginTop: '16px' }}>
-      <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: TEXT, marginBottom: '10px' }}>CLOSING LINES</div>
+    <div style={{ marginTop: '10px' }}>
+      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, marginBottom: '6px' }}>CLOSING LINES</div>
       <Row which="away" label={up(game.away)} />
       <Row which="home" label={up(game.home)} />
     </div>
@@ -767,12 +757,12 @@ function TrackGameCard({ ev, items, sport, token }) {
   }, [ev, sport, token])
 
   return (
-    <div style={{ padding: '12px', marginBottom: '10px', borderRadius: '12px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
-      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginBottom: '4px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
+    <div style={{ padding: '10px 11px', marginBottom: '8px', borderRadius: '10px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
+      <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '2px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
       {items.map(({ bet, grade }, i) => (
-        <div key={i} style={{ paddingTop: '8px' }}>
+        <div key={i} style={{ paddingTop: '6px' }}>
           <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{bet.pick || bet.event}</div>
-          <div style={{ display: 'flex', gap: '18px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '16px', marginTop: '3px' }}>
             {grade.evPct != null && <Stat label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
             {grade.clvPct != null && <Stat label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
             {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>Awaiting closing line…</span>}
