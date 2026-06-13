@@ -89,7 +89,7 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
     let live = true
     const cached = getScan(sport, todayStr())
     setFocus(null); setScan(cached); setStatus(cached ? 'done' : 'idle')
-    fetchEvents(sport, 'today').then(rows => { if (live) setEvents(rows || []) }).catch(() => {})
+    fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
     return () => { live = false }
   }, [sport])
 
@@ -308,7 +308,7 @@ function TrackChannel({ bets, sport }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
-    fetchEvents(sport, 'today').then(r => { if (live) setEvents(r || []) }).catch(() => {})
+    fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
     return () => { live = false }
   }, [sport])
 
