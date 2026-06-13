@@ -291,6 +291,12 @@ function GameCard({ event, onClick, showSport = false }) {
           <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{event.metadata.home_pitcher.name}</span>
         </div>
       )}
+
+      {/* Tap affordance — signals the card opens to full Insights */}
+      <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+        <span style={{ fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>Tap for Insights</span>
+        <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="rgba(189,255,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </div>
     </div>
   )
 }
@@ -300,37 +306,41 @@ function AtBatCard({ ab, awayAbbr, homeAbbr, resultColor, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen ?? false)
   return (
     <div style={{ background: ab.scoring ? 'rgba(189,255,0,0.04)' : CARD, border: `1px solid ${ab.scoring ? 'rgba(189,255,0,0.3)' : BORDER}`, borderLeft: `3px solid ${ab.scoring ? NEON : 'transparent'}`, borderRadius: '10px', overflow: 'hidden' }}>
-      {/* Header — always visible, click to toggle */}
+      {/* Header — batter + result + the play description, always visible. Tap for pitch detail. */}
       <div
         onClick={() => setOpen(v => !v)}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', cursor: 'pointer', userSelect: 'none' }}
+        style={{ padding: '12px 14px', cursor: 'pointer', userSelect: 'none' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-          {ab.teamAbbr && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>{ab.teamAbbr}:</span>}
-          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ab.batter ?? '—'}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            {ab.teamAbbr && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>{ab.teamAbbr}:</span>}
+            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ab.batter ?? '—'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {ab.result && (
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: resultColor(ab.result), background: 'rgba(0,0,0,0.3)', borderRadius: '4px', padding: '2px 6px' }}>
+                {ab.result}
+              </span>
+            )}
+            {ab.pitches.length > 0 && <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {ab.result && (
-            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: resultColor(ab.result), background: 'rgba(0,0,0,0.3)', borderRadius: '4px', padding: '2px 6px' }}>
-              {ab.result}
-            </span>
-          )}
-          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
-        </div>
+        {/* The play description — visible without expanding */}
+        {ab.resultText && (
+          <div style={{ marginTop: '6px', fontFamily: 'Inter, sans-serif', fontSize: '12.5px', color: ab.scoring ? TEXT : MUTED, lineHeight: 1.4 }}>
+            {ab.resultText}
+          </div>
+        )}
+        {/* Scoreboard on scoring plays — also always visible */}
+        {ab.scoring && ab.awayScore != null && (
+          <div style={{ marginTop: '5px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON }}>
+            {awayAbbr} {ab.awayScore} – {homeAbbr} {ab.homeScore}
+          </div>
+        )}
       </div>
 
       {open && (
         <>
-          {ab.resultText && (
-            <div style={{ padding: '0 14px 10px', fontFamily: 'Inter, sans-serif', fontSize: '13px', color: ab.scoring ? TEXT : MUTED, lineHeight: 1.45 }}>
-              {ab.resultText}
-            </div>
-          )}
-          {ab.scoring && ab.awayScore != null && (
-            <div style={{ padding: '0 14px 10px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON }}>
-              {awayAbbr} {ab.awayScore} – {homeAbbr} {ab.homeScore}
-            </div>
-          )}
           {ab.pitches.length > 0 && (
             <div style={{ borderTop: `1px solid ${BORDER}` }}>
               {ab.pitches.map((pitch, j) => (
@@ -1400,7 +1410,41 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
             )
           })()}
 
-          {/* ── Box Score: Hitting (MLB) ── */}
+          {/* ── Box Score: Pitching (MLB) — shown ABOVE hitting; K column lit neon ── */}
+          {dtab === 'Box Score' && event.sport === 'MLB' && (
+            awayPitch2.length > 0 || homePitch2.length > 0 ? (
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+                  {[{ key: 'away', label: `${event.away_abbr}` }, { key: 'home', label: `${event.home_abbr}` }].map((t, i) => (
+                    <button key={t.key} onClick={() => setPitchTeam(t.key)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: pitchTeam === t.key ? 'rgba(189,255,0,0.1)' : 'transparent', color: pitchTeam === t.key ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: pitchTeam === t.key ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label} Pitching</button>
+                  ))}
+                </div>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', minWidth: '380px', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(189,255,0,0.03)' }}>
+                        {['Pitcher','IP','H','R','ER','BB','K','PC-ST'].map((h, i) => (
+                          <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: h === 'K' ? NEON_T : MUTED, letterSpacing: '0.08em', padding: '8px 8px', textAlign: i === 0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(pitchTeam === 'away' ? awayPitch2 : homePitch2).map((p, i, arr) => (
+                        <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                          <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}</td>
+                          {[p.ip, p.h, p.r, p.er, p.bb, p.k, p.pc_st].map((v, j) => (
+                            <td key={j} style={{ fontFamily: R, fontSize: '12px', fontWeight: j === 5 && p.k > 0 ? 700 : 500, color: j === 5 && p.k > 0 ? NEON_T : TEXT, textAlign: 'center', padding: '9px 8px' }}>{v ?? '—'}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : <EmptyState label="Pitching" />
+          )}
+
+          {/* ── Box Score: Hitting (MLB) — under pitching ── */}
           {dtab === 'Box Score' && event.sport === 'MLB' && (
             awayHit.length > 0 || homeHit.length > 0 ? (
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
@@ -1432,40 +1476,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
                 </div>
               </div>
             ) : <EmptyState label="Hitting" />
-          )}
-
-          {/* ── Box Score: Pitching (MLB) — stacked under Hitting ── */}
-          {dtab === 'Box Score' && event.sport === 'MLB' && (
-            awayPitch2.length > 0 || homePitch2.length > 0 ? (
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
-                  {[{ key: 'away', label: `${event.away_abbr}` }, { key: 'home', label: `${event.home_abbr}` }].map((t, i) => (
-                    <button key={t.key} onClick={() => setPitchTeam(t.key)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: pitchTeam === t.key ? 'rgba(189,255,0,0.1)' : 'transparent', color: pitchTeam === t.key ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: pitchTeam === t.key ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label} Pitching</button>
-                  ))}
-                </div>
-                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                  <table style={{ width: '100%', minWidth: '380px', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(189,255,0,0.03)' }}>
-                        {['Pitcher','IP','H','R','ER','BB','K','PC-ST'].map((h, i) => (
-                          <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', padding: '8px 8px', textAlign: i === 0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(pitchTeam === 'away' ? awayPitch2 : homePitch2).map((p, i, arr) => (
-                        <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                          <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}</td>
-                          {[p.ip, p.h, p.r, p.er, p.bb, p.k, p.pc_st].map((v, j) => (
-                            <td key={j} style={{ fontFamily: R, fontSize: '12px', color: TEXT, textAlign: 'center', padding: '9px 8px' }}>{v ?? '—'}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : <EmptyState label="Pitching" />
           )}
 
           {/* ── Pitchers tab ── */}
