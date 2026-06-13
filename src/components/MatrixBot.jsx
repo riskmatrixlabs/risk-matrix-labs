@@ -67,16 +67,20 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
+  const [showFilters, setShowFilters] = useState(false)   // gear (FIND filters) lives in the tab row
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '14px 12px 90px' }}>
+    <div className="mbot-root" style={{ maxWidth: '480px', margin: '0 auto', padding: '14px 12px 90px' }}>
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+        {channel === 'find' && (
+          <button onClick={() => setShowFilters(f => !f)} aria-label="Filters" style={{ flexShrink: 0, width: '40px', borderRadius: '7px', cursor: 'pointer', fontSize: '15px', lineHeight: 1, border: `1px solid ${showFilters ? NEON : BORDER}`, background: showFilters ? NEON : 'transparent', color: showFilters ? '#0A0A0A' : NEON_T }}>⚙</button>
+        )}
         {[['find', 'CH 1 · FIND'], ['look', 'CH 2 · LOOK'], ['track', 'CH 3 · TRACK']].map(([k, label]) => (
           <button key={k} onClick={() => setChannel(k)} style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${channel === k ? NEON : BORDER}`, background: channel === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: channel === k ? NEON_T : MUTED }}>{label}</button>
         ))}
       </div>
       <div key={channel} className="tvbot-tune">
-        {channel === 'find' && <FindChannel token={token} bankroll={bankroll}
+        {channel === 'find' && <FindChannel token={token} bankroll={bankroll} showFilters={showFilters}
           onPick={(g) => { setGame(g); if (g.sport) setSport(g.sport); setChannel('look') }} />}
         {channel === 'look' && <LookChannel game={game} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
         {channel === 'track' && <TrackChannel bets={bets} sport={sport} />}
@@ -92,14 +96,13 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
 const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // sports the provider supports today
 const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
-function FindChannel({ token, bankroll = 0, onPick }) {
+function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
   const [events, setEvents]   = useState([])
   const [feed, setFeed]       = useState({ status: 'idle', edges: [], scanned: 0, credits: null })
   const [props, setProps]     = useState(null)
   const [err, setErr]         = useState('')
   const [view, setView]       = useState('tv')        // tv | board
-  const [showFilters, setShowFilters] = useState(false)  // filters live behind the gear
-  const [sportF, setSportF]   = useState('ALL')       // filters replace tabs
+  const [sportF, setSportF]   = useState('ALL')       // filters replace tabs (toggled by the gear)
   const [marketF, setMarketF] = useState('ALL')
   const [minEv, setMinEv]     = useState(0)
   const scanning = useRef(false)
@@ -200,16 +203,9 @@ function FindChannel({ token, bankroll = 0, onPick }) {
   const headlineColor = (status === 'done' && !rows.length) ? MUTED : NEON_T
 
   const sportChips = ['ALL', ...FEED_SPORTS]
-  const marketLabel = (MARKET_CHIPS.find(([k]) => k === marketF) || ['', 'ALL'])[1]
 
   return (
     <>
-      {/* top bar: active-filter summary + gear (filters live behind it) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <span style={{ fontFamily: R, fontSize: '10px', letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>{sportF} · {marketLabel} · {minEv === 0 ? 'EV ANY' : `${minEv}%+`}</span>
-        <button onClick={() => setShowFilters(f => !f)} aria-label="Filters" style={{ width: '36px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${showFilters ? NEON : BORDER}`, background: showFilters ? NEON : 'transparent', color: showFilters ? '#0A0A0A' : NEON_T, fontSize: '15px', lineHeight: 1 }}>⚙</button>
-      </div>
-
       {showFilters && (
         <div style={{ marginBottom: '12px', padding: '12px 14px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD }}>
           <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>SPORT</div>
@@ -395,6 +391,9 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
 
       {isProps && <PropsPanel game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}
 
+      {/* 3-market movement summary — sparkline + % move per market (Pikkit) */}
+      {!isProps && <MarketSummary move={move} sport={sport} />}
+
       {/* BOOKS / LINE MOVE toggle (game-line markets only) */}
       {!isProps && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
@@ -404,7 +403,11 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
       )}
 
       {!isProps && view === 'move' && (
-        moveRows.length ? <MoveChart moveRows={moveRows} /> : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />
+        <>
+          {moveRows.length ? <MoveChart moveRows={moveRows} /> : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />}
+          {/* per-book price chips for the active side (Sharp app) */}
+          <BookChips cmp={cmp} sideName={sides[0]?.name} />
+        </>
       )}
 
       {!isProps && view === 'books' && cmp && sides.map(side => {
@@ -435,6 +438,9 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
       })}
 
       {!isProps && view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
+
+      {/* closing-lines best-price grid (Pikkit) */}
+      {!isProps && <ClosingLines M={M} game={game} sport={sport} />}
     </Frame>
   )
 }
@@ -479,6 +485,113 @@ function MoveChart({ moveRows }) {
           </span>
         ))}
       </div>
+    </div>
+  )
+}
+
+// Mini sparkline for the market-movement summary (Pikkit-style row).
+function MiniSpark({ series, color }) {
+  if (!series || series.length < 2) return <div style={{ width: '110px', height: '34px' }} />
+  const W = 110, H = 34
+  const min = Math.min(...series), max = Math.max(...series), range = (max - min) || 1
+  const pts = series.map((v, i) => `${(i / (series.length - 1) * W).toFixed(1)},${(H - 4 - ((v - min) / range) * (H - 8)).toFixed(1)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '110px', height: '34px', flexShrink: 0 }}>
+      <line x1="0" y1={H - 4} x2={W} y2={H - 4} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" strokeWidth="1" />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// 3-market movement summary (Pikkit screenshot): ML / Spread / Total — sparkline + % move.
+function MarketSummary({ move, sport }) {
+  const pick = (market) => (Object.entries(move || {}).find(([k, m]) => (k === market || k.startsWith(market + '_')) && m?.series?.length >= 2) || [])[1] || null
+  const rows = [
+    { key: 'h2h', label: 'Moneyline', sub: 'Best price', odds: true },
+    { key: 'spreads', label: SPREAD_LABEL[sport] || 'Spread', sub: 'Main line', odds: false },
+    { key: 'totals', label: 'Total', sub: 'Over / Under', odds: true },
+  ].map(r => ({ ...r, m: pick(r.key) })).filter(r => r.m)
+  if (!rows.length) return null
+  return (
+    <div style={{ marginBottom: '14px' }}>
+      {rows.map(r => {
+        const pct = r.m.open ? ((r.m.current - r.m.open) / Math.abs(r.m.open)) * 100 : 0
+        const up_ = pct >= 0, col = up_ ? '#1D9E75' : '#FF3B3B'
+        return (
+          <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: `1px solid ${BORDER}` }}>
+            <div style={{ width: '70px', flexShrink: 0 }}>
+              <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{r.label}</div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{r.sub}</div>
+            </div>
+            <MiniSpark series={r.m.series} color={col} />
+            <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{r.odds ? fmtAm(r.m.current) : r.m.current}</div>
+              <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: col }}>{up_ ? '↗' : '↘'} {Math.abs(pct).toFixed(1)}%</div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Book price chips (Sharp screenshot) — each book's current price for one outcome, best lit.
+function BookChips({ cmp, sideName }) {
+  if (!cmp || !sideName) return null
+  const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
+  const rows = [...cmp.rows].filter(r => r.prices[sideName] != null).sort((a, b) => (dec(b.prices[sideName]) ?? 0) - (dec(a.prices[sideName]) ?? 0))
+  if (!rows.length) return null
+  const bestBook = cmp.best[sideName]?.book
+  return (
+    <div className="tv-ticker" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+      {rows.map(r => {
+        const best = r.book === bestBook
+        return (
+          <div key={r.book} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 11px', borderRadius: '8px', border: `1px solid ${best ? NEON : BORDER}`, background: best ? 'rgba(189,255,0,0.08)' : '#0d0d0d' }}>
+            <span style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: MUTED, textTransform: 'uppercase' }}>{(BOOK_NAMES[r.book] || r.book).slice(0, 3)}</span>
+            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: best ? NEON_T : TEXT }}>{fmtAm(r.prices[sideName])}</span>
+            {best && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON }} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Closing-lines grid (Pikkit screenshot): away/home rows × ML / Spread / Total best cells.
+function ClosingLines({ M, game, sport }) {
+  const markets = ['h2h', 'spreads', 'totals'].filter(k => M[k])
+  if (!markets.length) return null
+  const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
+  const sideName = (cmp, which) => {
+    if (!cmp) return null
+    if (cmp.outcomes.some(n => /^o/i.test(n)) && cmp.outcomes.some(n => /^u/i.test(n)))
+      return which === 'away' ? cmp.outcomes.find(n => /^o/i.test(n)) : cmp.outcomes.find(n => /^u/i.test(n))
+    const away = cmp.outcomes.find(n => lw(n) === lw(game.away)) || cmp.outcomes[0]
+    const home = cmp.outcomes.find(n => lw(n) === lw(game.home)) || cmp.outcomes[1]
+    return which === 'away' ? away : home
+  }
+  const Row = ({ which, label }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <span style={{ width: '54px', flexShrink: 0, fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{label}</span>
+      {markets.map(k => {
+        const cmp = M[k], name = sideName(cmp, which), b = cmp?.best?.[name]
+        const pt = cmp?.modalPoint?.[name], isTot = k === 'totals', over = /^o/i.test(name || '')
+        return (
+          <div key={k} style={{ flex: 1, position: 'relative', background: '#15161a', borderRadius: '8px', padding: '9px 6px', textAlign: 'center', minWidth: 0 }}>
+            {k !== 'h2h' && pt != null && <div style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>{isTot ? (over ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
+            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: b ? TEXT : MUTED }}>{b ? fmtAm(b.price) : '—'}</div>
+            {b && <span style={{ position: 'absolute', right: '7px', bottom: '7px', width: '7px', height: '7px', borderRadius: '50%', background: '#1D9E75' }} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: TEXT, marginBottom: '10px' }}>CLOSING LINES</div>
+      <Row which="away" label={up(game.away)} />
+      <Row which="home" label={up(game.home)} />
     </div>
   )
 }
