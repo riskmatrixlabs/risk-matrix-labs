@@ -634,6 +634,46 @@ function Injuries({ awayAbbr, homeAbbr, injuries }) {
   )
 }
 
+// ── Season Series — head-to-head meetings this season + each score (collapsible). ──
+function SeasonSeries({ awayAbbr, homeAbbr, series }) {
+  const [open, setOpen] = useState(true)
+  if (!series) return null
+  const meetings = series.meetings ?? []
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Season Series</span>
+        {meetings.length > 0 && (
+          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.06em' }}>
+            {awayAbbr} {series.awayWins}<span style={{ color: MUTED }}>–</span>{series.homeWins} {homeAbbr}
+          </span>
+        )}
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+      {open && (
+        meetings.length === 0 ? (
+          <div style={{ padding: '14px 16px', textAlign: 'center', fontFamily: R, fontSize: '11px', fontWeight: 600, color: MUTED, letterSpacing: '0.04em' }}>First meeting of the season</div>
+        ) : (
+          meetings.map((m, i) => {
+            const winAbbr = m.away.win ? m.away.abbr : m.home.abbr
+            return (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '10px', padding: '11px 16px', borderBottom: i < meetings.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 600, color: MUTED, minWidth: '52px' }}>{m.date?.slice(5)}</span>
+                <span style={{ textAlign: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>
+                  <span style={{ color: m.away.win ? NEON_T : TEXT }}>{m.away.abbr} {m.away.score}</span>
+                  <span style={{ color: MUTED, fontWeight: 500 }}> @ </span>
+                  <span style={{ color: m.home.win ? NEON_T : TEXT }}>{m.home.abbr} {m.home.score}</span>
+                </span>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON_T, letterSpacing: '0.08em', textTransform: 'uppercase', minWidth: '34px', textAlign: 'right' }}>{winAbbr} W</span>
+              </div>
+            )
+          })
+        )
+      )}
+    </div>
+  )
+}
+
 // ── Sparkline — normalizes a numeric series into a flat polyline (line-movement trend). ──
 function Sparkline({ series, color }) {
   if (!series || series.length < 2) return null
@@ -1190,7 +1230,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
               </div>
             )
 
-            const anything = myBets.length || hasAnyOdds || dv || moved.length || meta.trends || meta.injuries
+            const anything = myBets.length || hasAnyOdds || dv || moved.length || meta.trends || meta.season_series || meta.injuries
             if (!anything) return <EmptyState label="Insights" />
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1321,6 +1361,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
                 )}
 
                 {meta.trends && <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />}
+                {meta.season_series && <SeasonSeries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} series={meta.season_series} />}
                 {meta.injuries && <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />}
                 {/* Team Stats intentionally NOT here — it's game stats, lives with the box score */}
 

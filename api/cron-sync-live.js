@@ -318,6 +318,32 @@ export function parseInjuries(s, away, home) {
   return (a.length || h.length) ? { away: a, home: h } : null
 }
 
+// Head-to-head — this season's completed meetings + each score, tallied for THIS matchup.
+// From the ESPN summary `seasonseries` (already fetched — no extra call). Works pregame.
+export function parseSeasonSeries(s, awayAbbr, homeAbbr) {
+  const ss = s?.seasonseries?.[0]
+  if (!ss) return null
+  const meetings = (ss.events ?? [])
+    .filter(e => e.statusType?.completed)
+    .map(e => {
+      const comps = e.competitors ?? []
+      const aw = comps.find(c => c.homeAway === 'away') ?? {}
+      const hm = comps.find(c => c.homeAway === 'home') ?? {}
+      return {
+        date: e.date?.slice(0, 10) ?? null,
+        away: { abbr: aw.team?.abbreviation ?? null, score: aw.score != null ? Number(aw.score) : null, win: !!aw.winner },
+        home: { abbr: hm.team?.abbreviation ?? null, score: hm.score != null ? Number(hm.score) : null, win: !!hm.winner },
+      }
+    })
+  let awayWins = 0, homeWins = 0
+  for (const m of meetings) {
+    const winAbbr = m.away.win ? m.away.abbr : m.home.win ? m.home.abbr : null
+    if (winAbbr === awayAbbr) awayWins++
+    else if (winAbbr === homeAbbr) homeWins++
+  }
+  return { awayWins, homeWins, meetings }
+}
+
 // Parse the live-changing slice of metadata for one in-progress game's summary.
 export function buildLiveMeta(s, comp, away, home, key) {
   const meta = {}
