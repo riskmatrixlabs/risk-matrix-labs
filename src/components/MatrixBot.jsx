@@ -96,6 +96,7 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
   const [status, setStatus]  = useState('idle')    // idle | scanning | done | error
   const [scan, setScan]      = useState(null)      // { edges, creditsRemaining }
   const [err, setErr]        = useState('')
+  const [showFilters, setShowFilters] = useState(false)
 
   // Game slider from Supabase (free). Reset focus + reuse cached scan when sport changes.
   useEffect(() => {
@@ -147,20 +148,23 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
         })}
       </div>
 
-      {/* filter pills */}
-      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
-        <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>MIN EV</span>
-        {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}
-      </div>
-      <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', marginBottom: '10px' }}>Player props live inside each game → tap a game → PROPS tab.</div>
-
-      {/* scan control + feed */}
-      {!token && <Empty text="Log in to summon the bot — scans use credits." />}
-      {token && status === 'idle' && (
-        <button onClick={runScan} disabled={preGames.length === 0} style={{ width: '100%', padding: '12px', borderRadius: '8px', cursor: preGames.length ? 'pointer' : 'not-allowed', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', border: `1px solid ${preGames.length ? NEON : BORDER}`, background: 'transparent', color: preGames.length ? NEON_T : MUTED }}>
-          {preGames.length ? 'RUN SCAN' : 'NO PRE-GAME GAMES RIGHT NOW'}
-        </button>
+      {/* small SCAN + FILTERS controls — filters pop up under */}
+      {token && (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button onClick={runScan} disabled={preGames.length === 0 || status === 'scanning'} style={{ ...pill(false), padding: '7px 14px', fontSize: '11px', borderColor: preGames.length ? NEON : BORDER, color: preGames.length ? NEON_T : MUTED, cursor: preGames.length ? 'pointer' : 'not-allowed' }}>▶ {status === 'scanning' ? 'SCANNING' : 'SCAN'}</button>
+            <button onClick={() => setShowFilters(f => !f)} style={{ ...pill(showFilters), padding: '7px 14px', fontSize: '11px' }}>FILTERS</button>
+            {!preGames.length && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>no pre-game games</span>}
+          </div>
+          {showFilters && (
+            <div style={{ marginTop: '8px', padding: '10px 12px', border: `1px solid ${BORDER}`, borderRadius: '8px', background: CARD }}>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em', marginBottom: '6px' }}>MIN EV</div>
+              <div style={{ display: 'flex', gap: '6px' }}>{[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}</div>
+            </div>
+          )}
+        </div>
       )}
+      {!token && <Empty text="Log in to summon the bot — scans use credits." />}
       {token && status === 'scanning' && <div style={{ textAlign: 'center', padding: '24px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: NEON_T, letterSpacing: '0.1em' }}>SCANNING EVERY BOOK…</div>}
       {token && status === 'error' && (
         <div style={{ textAlign: 'center', padding: '16px', color: DANGER, fontFamily: R, fontSize: '11px' }}>
