@@ -1110,7 +1110,7 @@ function EVBot({ event, token, unitSize = 0 }) {
 }
 
 // ── LINE SHOP — multi-book odds comparison for THIS game (the Pikkit book-chips view) ──
-function LineShop({ event, token, onLogPosition }) {
+export function LineShop({ event, token, onLogPosition }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [credits, setCredits] = useState(null)

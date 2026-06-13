@@ -63,13 +63,13 @@ describe('MatrixBot — real render', () => {
     expect(screen.getAllByText(/BET \$\d+/).length).toBe(3)
   })
 
-  it('pulls props onto the board, PROP-tagged and ranked', async () => {
+  it('pulls props via the PROPS filter (gear), PROP-tagged and ranked', async () => {
     render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
     fireEvent.click(await screen.findByRole('button', { name: '▶ GO LIVE' }))
+    await screen.findByText('CUBS ML')                                  // game-line scan done
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))    // open the gear
+    fireEvent.click(screen.getByRole('button', { name: 'PROPS' }))      // select PROPS → auto-scan
     fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
-    await screen.findByText('CUBS ML')
-
-    fireEvent.click(screen.getByRole('button', { name: /ADD PROPS/ }))
     expect(await screen.findByText('Spencer Strider O5.5')).toBeTruthy()
     expect(screen.getAllByText('PROP').length).toBeGreaterThan(0)
   })
@@ -77,9 +77,10 @@ describe('MatrixBot — real render', () => {
   it('shows line-shop props (no sharp anchor) tagged SHOP — the "nothing showing" fix', async () => {
     render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
     fireEvent.click(await screen.findByRole('button', { name: '▶ GO LIVE' }))
-    fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
     await screen.findByText('CUBS ML')
-    fireEvent.click(screen.getByRole('button', { name: /ADD PROPS/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.click(screen.getByRole('button', { name: 'PROPS' }))
+    fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
     expect(await screen.findByText('Aaron Judge O1.5')).toBeTruthy()   // line-shop prop is visible
     expect(screen.getAllByText('SHOP').length).toBeGreaterThan(0)      // tagged, no fake EV
   })

@@ -14,6 +14,7 @@ import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
 import { labelFor } from '../lib/propMarkets.js'
+import { LineShop } from './LiveCenter.jsx'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -170,6 +171,11 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
     return () => clearInterval(id)
   }, [token, feed.status])
 
+  // Selecting PROPS in the gear IS the trigger — scan props once when it's first chosen.
+  useEffect(() => {
+    if (marketF === 'props' && token && preGames.length && props == null) scanProps()
+  }, [marketF, token, preGames.length])
+
   // Props are per-game (one call each) — pulled on tap, merged into the same feed.
   async function scanProps() {
     if (!token || props?.status === 'scanning' || !preGames.length) return
@@ -249,6 +255,13 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
         </div>
       )}
 
+      {marketF === 'props' && props?.status === 'scanning' && (
+        <div style={{ textAlign: 'center', padding: '6px', marginBottom: '8px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>SCANNING PROPS… {props.scanned}/{preGames.length}</div>
+      )}
+      {marketF === 'props' && props?.status === 'done' && (props.edges || []).length === 0 && (
+        <div style={{ textAlign: 'center', padding: '6px', marginBottom: '8px', fontFamily: R, fontSize: '10px', color: MUTED }}>No props for today's slate · try after lineups post</div>
+      )}
+
       {view === 'board' && (
         <BoardView status={status} rows={rows} edgeCount={rows.length} bankroll={bankroll}
           token={token} err={err} onPickGame={onPick}
@@ -301,17 +314,6 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
         <button onClick={() => token && runScan(false)} disabled={!token || status === 'scanning'} style={{ flex: 1.5, padding: '11px 4px', borderRadius: '8px', cursor: !token ? 'not-allowed' : status === 'scanning' ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${NEON}`, background: token ? NEON : 'transparent', color: token ? '#0A0A0A' : MUTED, opacity: status === 'scanning' ? 0.7 : 1 }}>▶ {status === 'scanning' ? 'SCANNING' : status === 'done' ? 'REFRESH' : 'GO LIVE'}</button>
         <button onClick={() => setView('board')} style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${view === 'board' ? NEON : BORDER}`, background: view === 'board' ? 'rgba(189,255,0,0.1)' : 'transparent', color: view === 'board' ? NEON_T : MUTED }}>☰ BOARD</button>
       </div>
-
-      {/* ADD PROPS — always on CH1 (both views). Scans every pre-game's player props into the feed. */}
-      {token && (
-        <button onClick={scanProps} disabled={!preGames.length || props?.status === 'scanning'}
-          style={{ width: '100%', marginTop: '8px', padding: '10px', borderRadius: '8px', cursor: !preGames.length ? 'not-allowed' : props?.status === 'scanning' ? 'wait' : 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${preGames.length ? NEON : BORDER}`, background: 'transparent', color: preGames.length ? NEON_T : MUTED }}>
-          {props?.status === 'scanning' ? `⊕ SCANNING PROPS… ${props.scanned}/${preGames.length}` : props?.status === 'done' ? `⊕ RE-SCAN PROPS · ${(props.edges || []).length} found` : `⊕ ADD PROPS · ${preGames.length} GAMES`}
-        </button>
-      )}
-      {token && props?.status === 'done' && (props.edges || []).length === 0 && (
-        <div style={{ textAlign: 'center', marginTop: '6px', fontFamily: R, fontSize: '9px', color: MUTED }}>No props returned for today's slate · try after lineups post</div>
-      )}
 
       {token && status === 'done' && feed.credits != null && (
         <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · auto-refreshing every 2 min</div>
@@ -462,6 +464,11 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
 
       {view === 'books' && gameMarkets.map(renderBooks)}
       {view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
+
+      {/* same Line Shop · Compare Books component used in the Live Center game card */}
+      <div style={{ marginTop: '16px' }}>
+        <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} />
+      </div>
     </Frame>
   )
 }
