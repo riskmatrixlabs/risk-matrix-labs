@@ -1038,6 +1038,123 @@ function GameShareModal({ event, onClose }) {
   )
 }
 
+// ── +EV BOT — tap-to-scan multi-book edge finder for THIS game ──────────────
+// Calls /api/scan-edges (sharp-anchored, quality-filtered), then shows whether a
+// VALID MATRIX (real +EV edge) exists for this matchup — or honestly says it doesn't.
+const BOOK_NAMES = {
+  pinnacle: 'Pinnacle', draftkings: 'DraftKings', fanduel: 'FanDuel', betmgm: 'BetMGM',
+  caesars: 'Caesars', williamhill_us: 'Caesars', betrivers: 'BetRivers', espnbet: 'ESPN Bet',
+  fanatics: 'Fanatics', hardrockbet: 'Hard Rock', betfair_ex_us: 'Betfair', betfair_ex_eu: 'Betfair',
+}
+const fmtAm = (n) => (n > 0 ? `+${n}` : `${n}`)
+
+function EVBot({ event, token }) {
+  const [status, setStatus] = useState('idle')   // idle | scanning | done | error
+  const [edge, setEdge]     = useState(null)
+  const [credits, setCredits] = useState(null)
+  const [errMsg, setErrMsg] = useState('')
+
+  const lastWord = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
+  const matchesGame = (e) =>
+    lastWord(e.home) === lastWord(event.home_team) && lastWord(e.away) === lastWord(event.away_team)
+
+  async function runScan() {
+    if (!token || status === 'scanning') return
+    setStatus('scanning'); setEdge(null); setErrMsg('')
+    try {
+      const res = await fetch(`/api/scan-edges?sport=${encodeURIComponent(event.sport)}`,
+        { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `scan ${res.status}`)
+      const data = await res.json()
+      setCredits(data.creditsRemaining)
+      const mine = (data.edges || []).filter(matchesGame)
+      setEdge(mine.length ? mine[0] : null)   // highest-EV edge for this game (already sorted)
+      setStatus('done')
+    } catch (e) {
+      setErrMsg(e.message); setStatus('error')
+    }
+  }
+
+  if (!token) return null   // logged-in only (scans cost credits)
+
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.05)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: status === 'scanning' ? NEON : (status === 'done' && !edge ? '#FF3B3B' : NEON), display: 'inline-block', animation: status === 'scanning' ? 'pulseDot 1s infinite' : 'none' }} />
+        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T }}>RISK MATRIX · EV BOT</span>
+      </div>
+      {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.08em' }}>{credits} scans left</span>}
+    </div>
+  )
+
+  return (
+    <div style={{ background: '#0A0A0A', border: `1px solid ${edge ? NEON : BORDER}`, borderRadius: '12px', overflow: 'hidden' }}>
+      {header}
+
+      {status === 'idle' && (
+        <div style={{ padding: '16px 14px', textAlign: 'center' }}>
+          <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.04em', marginBottom: '12px' }}>Scan every book against the sharp line for a real edge.</div>
+          <button onClick={runScan} style={{ width: '100%', padding: '11px', background: 'transparent', border: `1px solid ${NEON}`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>Run Scan</button>
+        </div>
+      )}
+
+      {status === 'scanning' && (
+        <div style={{ padding: '22px 14px', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Courier New, monospace', fontSize: '12px', letterSpacing: '0.1em', color: NEON_T }}>SCANNING MARKETS…</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '4px', letterSpacing: '0.08em' }}>de-vigging the sharp line</div>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div style={{ padding: '16px 14px', textAlign: 'center' }}>
+          <div style={{ fontFamily: R, fontSize: '11px', color: '#FF3B3B', marginBottom: '10px' }}>Scan failed — {errMsg}</div>
+          <button onClick={runScan} style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED }}>RETRY</button>
+        </div>
+      )}
+
+      {status === 'done' && edge && (
+        <div style={{ padding: '14px' }}>
+          <div style={{ textAlign: 'center', borderBottom: `1px solid ${BORDER}`, paddingBottom: '12px', marginBottom: '12px' }}>
+            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.2em', color: NEON_T }}>⬡ VALID MATRIX FOUND</div>
+            <div style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: MUTED, marginTop: '4px' }}>sharp-anchored · pinnacle de-vig</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{edge.outcome}</span>
+            <span style={{ fontFamily: R, fontSize: '21px', fontWeight: 700, color: NEON_T }}>{fmtAm(edge.best.price)}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+            <span style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>{BOOK_NAMES[edge.best.book] || edge.best.book} · best line</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <div style={{ flex: 1, background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.1em', color: MUTED }}>TRUE EV</div>
+              <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: NEON_T }}>+{edge.evPct.toFixed(1)}%</div>
+            </div>
+            <div style={{ flex: 1, background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.1em', color: MUTED }}>SHARP HOLD</div>
+              <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT }}>{edge.sharpHoldPct.toFixed(1)}%</div>
+            </div>
+          </div>
+          <div style={{ marginTop: '10px', padding: '8px 10px', background: 'rgba(189,255,0,0.04)', borderLeft: `2px solid ${NEON}`, fontFamily: R, fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
+            Size it in your unit — disciplined, within your risk caps.
+          </div>
+        </div>
+      )}
+
+      {status === 'done' && !edge && (
+        <div style={{ padding: '16px 14px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#FF3B3B', display: 'inline-block' }} />
+            <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED }}>NO VALID MATRIX</span>
+          </div>
+          <div style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: 'rgba(255,255,255,0.3)', marginTop: '6px' }}>fair price right now · we won't fake an edge</div>
+          <button onClick={runScan} style={{ marginTop: '12px', padding: '7px 16px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED }}>RE-SCAN</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null }) {
   const event = useLiveGame(propEvent)
   const live     = event.status === 'LIVE' || event.status === 'IP'
@@ -1398,6 +1515,8 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                   <span style={{ width: '14px', height: '14px', borderRadius: '50%', border: `1px solid ${NEON_T}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>i</span>
                   How to read this
                 </a>
+
+                <EVBot event={event} token={token} />
 
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
 
