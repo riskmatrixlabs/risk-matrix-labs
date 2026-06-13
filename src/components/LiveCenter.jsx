@@ -1158,7 +1158,7 @@ function EVBot({ event, token, unitSize = 0 }) {
 }
 
 // ── LINE SHOP — multi-book odds comparison for THIS game (the Pikkit book-chips view) ──
-function LineShop({ event, token }) {
+function LineShop({ event, token, onLogPosition }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [credits, setCredits] = useState(null)
@@ -1225,8 +1225,17 @@ function LineShop({ event, token }) {
         const p = row.prices[name]
         const isBest = cmp.best[name] && cmp.best[name].book === row.book
         const pt = row.points[name]
+        const label = cols.find(c => c.name === name)?.label
+        const canLog = onLogPosition && p != null
+        const onTap = () => {
+          if (!canLog) return
+          const pick = isTotals ? `${/^o/i.test(name) ? 'Over' : 'Under'} ${pt}`
+            : activeKey === 'spreads' ? `${label} ${fmtPt(pt)}`
+            : `${label} ML`
+          onLogPosition(event, { pick, odds: p })
+        }
         return (
-          <td key={name} style={{ textAlign: 'center', padding: '7px 6px' }}>
+          <td key={name} onClick={onTap} style={{ textAlign: 'center', padding: '7px 6px', cursor: canLog ? 'pointer' : 'default' }}>
             <div style={{ display: 'inline-block', padding: isBest ? '2px 7px' : '2px 0', borderRadius: '5px', background: isBest ? NEON : 'transparent' }}>
               <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT }}>{p == null ? '—' : fmtAm(p)}</div>
               {pt != null && <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isBest ? 'rgba(10,10,10,0.6)' : MUTED }}>{isTotals ? (/^o/i.test(name) ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
@@ -1626,7 +1635,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                 </a>
 
                 <EVBot event={event} token={token} unitSize={unitSize} />
-                <LineShop event={event} token={token} />
+                <LineShop event={event} token={token} onLogPosition={onLogPosition} />
 
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
 
