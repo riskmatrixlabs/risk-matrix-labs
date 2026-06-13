@@ -25,9 +25,10 @@ import {
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
   PieChart, Pie, RadialBarChart, RadialBar, Legend,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio, Tv } from 'lucide-react'
 import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
+import MatrixBot    from './components/MatrixBot'
 import ShareCardModal from './components/ShareCardModal'
 
 const getKeys = (userId) => ({
@@ -3719,22 +3720,30 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           </>}
 
           {/* ── MOBILE NAV ── */}
+          {/* ── MOBILE: utility buttons (share · ?) then the two DOORS (Game Center · Matrix Bot) ── */}
           {isMobile && (
-            <button onClick={() => setShowShare(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', cursor: 'pointer' }}>
+            <button onClick={() => setShowShare(true)} title="Share session stats" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.08)', cursor: 'pointer', flexShrink: 0 }}>
               <Share2 size={13} color={NEON_T} strokeWidth={2} />
             </button>
           )}
           {isMobile && (
-            <button onClick={() => setTab('live')} title="Live Center"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 10px', borderRadius: '2px', border: tab === 'live' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'live' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, display: 'inline-block', boxShadow: '0 0 6px rgba(189,255,0,0.8)', animation: 'pulseDot 2s infinite', flexShrink: 0 }} />
-              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: tab === 'live' ? NEON_T : 'var(--text-dim)' }}>Live</span>
+            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON_T : 'var(--text-dim)' }}>?</span>
             </button>
           )}
           {isMobile && (
-            <button data-help-btn onClick={() => setShowHelp(h => !h)} title="Help & Guide"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', borderRadius: '2px', border: showHelp ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: showHelp ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer' }}>
-              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: showHelp ? NEON_T : 'var(--text-dim)' }}>?</span>
+            <button onClick={() => setTab('live')} title="Game Center"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 9px', borderRadius: '2px', border: tab === 'live' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'live' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, display: 'inline-block', boxShadow: '0 0 6px rgba(189,255,0,0.8)', animation: 'pulseDot 2s infinite', flexShrink: 0 }} />
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tab === 'live' ? NEON_T : 'var(--text-dim)', whiteSpace: 'nowrap' }}>Game Center</span>
+            </button>
+          )}
+          {isMobile && (
+            <button onClick={() => setTab('bot')} title="Matrix EV Bot"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 9px', borderRadius: '2px', border: tab === 'bot' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'bot' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              <Tv size={12} color={tab === 'bot' ? NEON_T : 'var(--text-dim)'} strokeWidth={2} />
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tab === 'bot' ? NEON_T : 'var(--text-dim)', whiteSpace: 'nowrap' }}>Matrix Bot</span>
             </button>
           )}
         </div>
@@ -3743,7 +3752,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['live','Live'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
+          {[['live','Game Center'],['bot','Matrix Bot'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -4654,6 +4663,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
+        {tab === 'bot'  && <MatrixBot onLogPosition={handleLogPosition} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
 
       </div>
 
@@ -4674,7 +4684,6 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               animation: 'slideUp 0.18s ease',
             }}>
               {[
-                { id: 'live',      label: 'Live',      icon: Radio      },
                 { id: 'analytics', label: 'Analytics', icon: TrendingUp },
                 { id: 'session',   label: 'Session',   icon: Sliders    },
               ].map(({ id, label, icon: Icon }) => (

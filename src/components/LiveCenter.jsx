@@ -2116,7 +2116,7 @@ export default function LiveCenter({ onLogPosition, bets = [], token = null, uni
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.08em', color: TEXT }}>LIVE CENTER™</div>
+          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.08em', color: TEXT }}>GAME CENTER™</div>
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>Game → Position → Settlement</div>
         </div>
         {lastUpdated && (
