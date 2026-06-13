@@ -151,8 +151,8 @@ function FindChannel({ sport, setSport, token, unitSize, onPick }) {
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
         <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>MIN EV</span>
         {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}
-        <span style={{ ...pill(false), opacity: 0.5, cursor: 'not-allowed' }} title="Player props — coming in Pro">PROPS <b style={{ color: NEON_T }}>PRO</b></span>
       </div>
+      <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', marginBottom: '10px' }}>Player props live inside each game → tap a game → PROPS tab.</div>
 
       {/* scan control + feed */}
       {!token && <Empty text="Log in to summon the bot — scans use credits." />}
