@@ -486,6 +486,14 @@ export default async function handler(req, res) {
       if (!isRichMeta(row.metadata) && isRichMeta(prev.metadata)) {
         row.metadata = { ...prev.metadata, ...row.metadata }
       }
+      // Preserve PREGAME context that ESPN drops once a game is live (it removes
+      // lastFiveGames → trends, season_series, etc. from the live summary). Carry
+      // them forward from the last good sync so the cards don't vanish mid-game.
+      if (row.metadata && prev.metadata) {
+        for (const k of ['trends', 'season_series', 'away_last5', 'home_last5']) {
+          if (row.metadata[k] == null && prev.metadata[k] != null) row.metadata[k] = prev.metadata[k]
+        }
+      }
     }
   }
 
