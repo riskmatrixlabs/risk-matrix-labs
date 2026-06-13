@@ -9,6 +9,7 @@ import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_
 import { fetchEvents } from '../lib/events.js'
 import { fetchLineMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch.js'
+import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
 
@@ -23,6 +24,18 @@ const chip = (active) => ({ flexShrink: 0, padding: '6px 10px', borderRadius: '7
 
 function Empty({ text }) {
   return <div style={{ textAlign: 'center', padding: '22px 12px', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.04em', position: 'relative', zIndex: 1 }}>{text}</div>
+}
+
+// "Bet at <book> →" deep-link. Opens the sportsbook to the game; stops card-click bubbling.
+function BetLink({ book, link }) {
+  const url = decorate(book, link)
+  if (!url) return null
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+      style={{ flexShrink: 0, padding: '6px 10px', borderRadius: '6px', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textDecoration: 'none', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+      Bet at {BOOK_NAMES[book] || book} →
+    </a>
+  )
 }
 
 export default function MatrixBot({ onLogPosition, bets = [], token = null, unitSize = 0 }) {
@@ -184,9 +197,10 @@ function FeedRow({ game, edge, unitSize, onClick }) {
         <div style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>{game.away} @ {game.home} · {BOOK_NAMES[edge.best.book] || edge.best.book}</div>
         {unitSize > 0 && <div style={{ fontFamily: R, fontSize: '10px', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>Size 1u · ${Math.round(unitSize)}</div>}
       </div>
-      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+      <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
         <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: NEON_T }}>{fmtAm(edge.best.price)}</div>
         <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>+{edge.evPct.toFixed(1)}% EV</div>
+        {edge.best.link && <BetLink book={edge.best.book} link={edge.best.link} />}
       </div>
     </div>
   )
@@ -224,7 +238,9 @@ function LookChannel({ focused, sport, token, onLogPosition, onBack }) {
 
   const M = data.markets
   const tabDefs = [['h2h', 'ML'], ['spreads', SPREAD_LABEL[sport] || 'Spread'], ['totals', 'Total']].filter(([k]) => M[k])
-  const activeKey = M[mkt] ? mkt : tabDefs[0]?.[0]
+  tabDefs.push(['props', 'PROPS'])
+  const activeKey = mkt === 'props' ? 'props' : (M[mkt] ? mkt : tabDefs[0]?.[0])
+  const isProps = activeKey === 'props'
   const cmp = M[activeKey]
   const isTotals = activeKey === 'totals'
   const cols = !cmp ? [] : isTotals
@@ -247,7 +263,9 @@ function LookChannel({ focused, sport, token, onLogPosition, onBack }) {
         {tabDefs.map(([k, label]) => <button key={k} onClick={() => setMkt(k)} style={pill(activeKey === k)}>{label}</button>)}
       </div>
 
-      {cmp && (
+      {isProps && <PropsPanel game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}
+
+      {!isProps && cmp && (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr>
             <th style={{ textAlign: 'left', padding: '6px', fontFamily: R, fontSize: '9px', color: MUTED }}>BOOK</th>
@@ -285,7 +303,7 @@ function LookChannel({ focused, sport, token, onLogPosition, onBack }) {
         </table>
       )}
 
-      {moveRows.length > 0 && (
+      {!isProps && moveRows.length > 0 && (
         <div style={{ marginTop: '14px' }}>
           <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.12em', marginBottom: '6px' }}>LINE MOVEMENT</div>
           {moveRows.map(([key, m]) => (
@@ -298,7 +316,74 @@ function LookChannel({ focused, sport, token, onLogPosition, onBack }) {
         </div>
       )}
 
-      <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '10px' }}>Green = best price on the main line · tap a book to log the bet</div>
+      {!isProps && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '10px' }}>Green = best price on the main line · tap a book to log the bet</div>}
+    </div>
+  )
+}
+
+// Props sub-panel inside CH2 LOOK — per-game on-demand prop scan (credit-disciplined).
+function PropsPanel({ game, sport, token, onLogPosition }) {
+  const [status, setStatus] = useState('idle')   // idle | scanning | done | error
+  const [data, setData]     = useState(null)     // { edges, lineShopOnly, creditsRemaining }
+  const [err, setErr]       = useState('')
+
+  async function scan() {
+    if (!token || status === 'scanning') return
+    setStatus('scanning'); setErr('')
+    try {
+      const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `props ${res.status}`)
+      const j = await res.json()
+      setData(j.found ? j : { edges: [], lineShopOnly: [], creditsRemaining: j.creditsRemaining })
+      setStatus('done')
+    } catch (e) { setErr(e.message); setStatus('error') }
+  }
+
+  const logProp = (p) => onLogPosition && onLogPosition(
+    { sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime },
+    { pick: `${p.player} ${p.side} ${p.point} ${p.marketLabel}`, odds: p.best.price })
+
+  if (!token) return <Empty text="Log in to scan props — scans use credits." />
+  if (status === 'idle') return (
+    <button onClick={scan} style={{ width: '100%', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T }}>SCAN PROPS</button>
+  )
+  if (status === 'scanning') return <div style={{ textAlign: 'center', padding: '24px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: NEON_T, letterSpacing: '0.1em' }}>SCANNING PROPS…</div>
+  if (status === 'error') return <div style={{ textAlign: 'center', padding: '16px', color: DANGER, fontFamily: R, fontSize: '11px' }}>Failed — {err} <button onClick={scan} style={{ ...pill(false), marginLeft: '8px' }}>RETRY</button></div>
+
+  const edges = data?.edges || [], ls = data?.lineShopOnly || []
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 10px' }}>
+        <span style={{ fontFamily: R, fontSize: '10px', color: edges.length ? NEON_T : MUTED, letterSpacing: '0.12em' }}>{edges.length ? `${edges.length} VALID PROP MATRIX${edges.length > 1 ? 'ES' : ''}` : 'NO VALID PROP MATRIX'}</span>
+        <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} left · ` : ''}<button onClick={scan} style={{ background: 'none', border: 'none', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px', padding: 0 }}>RE-SCAN</button></span>
+      </div>
+      {edges.length === 0 && <Empty text="No +EV props right now — we won't fake an edge." />}
+      {edges.map((p, i) => (
+        <div key={i} onClick={() => logProp(p)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 12px', marginBottom: '8px', borderRadius: '10px', cursor: 'pointer', background: CARD, border: `1px solid ${NEON}` }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{p.player} {p.side} {p.point}</div>
+            <div style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>{p.marketLabel} · {BOOK_NAMES[p.best.book] || p.best.book} · +{p.evPct.toFixed(1)}% EV</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: NEON_T }}>{fmtAm(p.best.price)}</div>
+            {p.best.link && <BetLink book={p.best.book} link={p.best.link} />}
+          </div>
+        </div>
+      ))}
+      {ls.length > 0 && (
+        <>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.12em', margin: '12px 0 6px' }}>LINE SHOP · NO SHARP ANCHOR</div>
+          {ls.map((p, i) => (
+            <div key={i} onClick={() => logProp(p)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '9px 12px', marginBottom: '6px', borderRadius: '10px', cursor: 'pointer', background: CARD, border: `1px solid ${BORDER}` }}>
+              <div style={{ fontFamily: R, fontSize: '12px', color: TEXT }}>{p.player} {p.side} {p.point} <span style={{ color: MUTED, fontSize: '10px' }}>· {p.marketLabel}</span></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtAm(p.best.price)}</span>
+                {p.best.link && <BetLink book={p.best.book} link={p.best.link} />}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }

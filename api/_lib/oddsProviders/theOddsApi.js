@@ -31,7 +31,7 @@ function normalizeGame(g) {
       last_update: b.last_update,
       markets: (b.markets || []).map(m => ({
         key: m.key,
-        outcomes: (m.outcomes || []).map(o => ({ name: o.name, price: o.price, point: o.point })),
+        outcomes: (m.outcomes || []).map(o => ({ name: o.name, price: o.price, point: o.point, description: o.description, link: o.link })),
       })),
     })),
   }
@@ -41,7 +41,7 @@ export async function fetchOdds({ sport, markets = ['h2h'], regions = ['us', 'eu
   if (!apiKey) throw new Error('ODDS_API_KEY missing')
   const sportKey = SPORT_KEYS[sport] || sport
   const url = `${BASE}/sports/${sportKey}/odds/?apiKey=${apiKey}`
-    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american`
+    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true`
 
   const res = await fetch(url)
   if (!res.ok) {
@@ -56,5 +56,33 @@ export async function fetchOdds({ sport, markets = ['h2h'], regions = ['us', 'eu
       used: Number(res.headers.get('x-requests-used')),
       last: Number(res.headers.get('x-requests-last')),
     },
+  }
+}
+
+// Free events list (0 credits) → map our game to The Odds API's event id by team names.
+export async function fetchSportEvents({ sport, apiKey = process.env.ODDS_API_KEY }) {
+  if (!apiKey) throw new Error('ODDS_API_KEY missing')
+  const sportKey = SPORT_KEYS[sport] || sport
+  const res = await fetch(`${BASE}/sports/${sportKey}/events/?apiKey=${apiKey}`)
+  if (!res.ok) throw new Error(`theOddsApi events ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  const data = await res.json()
+  return {
+    events: (Array.isArray(data) ? data : []).map(e => ({ id: e.id, home_team: e.home_team, away_team: e.away_team, commence_time: e.commence_time })),
+    credits: { remaining: Number(res.headers.get('x-requests-remaining')), used: Number(res.headers.get('x-requests-used')), last: Number(res.headers.get('x-requests-last')) },
+  }
+}
+
+// Paid per-event odds (props live here). Returns one normalized game + credits.
+export async function fetchEventOdds({ sport, eventId, markets, regions = ['us', 'eu'], apiKey = process.env.ODDS_API_KEY }) {
+  if (!apiKey) throw new Error('ODDS_API_KEY missing')
+  const sportKey = SPORT_KEYS[sport] || sport
+  const url = `${BASE}/sports/${sportKey}/events/${eventId}/odds/?apiKey=${apiKey}`
+    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`theOddsApi event-odds ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  const data = await res.json()
+  return {
+    game: data && data.id ? normalizeGame(data) : null,
+    credits: { remaining: Number(res.headers.get('x-requests-remaining')), used: Number(res.headers.get('x-requests-used')), last: Number(res.headers.get('x-requests-last')) },
   }
 }
