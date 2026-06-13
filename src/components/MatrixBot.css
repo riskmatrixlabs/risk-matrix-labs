@@ -1,0 +1,49 @@
+/* Retro broadcast-TV skin for the Matrix EV Bot tab. Inline styles handle layout/colors;
+   this file carries the effects inline styles can't: scanlines, flicker, channel tune. */
+
+.tvbot-bezel {
+  position: relative;
+  border-radius: 16px;
+  background: #060606;
+  border: 1px solid var(--border2);
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(189,255,0,0.06);
+  overflow: hidden;
+}
+
+/* Faint moving scanlines over the screen content. */
+.tvbot-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,0.18) 3px
+  );
+  z-index: 2;
+  animation: tvbot-scan 8s linear infinite;
+}
+
+@keyframes tvbot-scan { from { background-position-y: 0; } to { background-position-y: 100px; } }
+
+/* "ON AIR" dot. */
+.tvbot-onair { display: inline-flex; align-items: center; gap: 6px; }
+.tvbot-onair .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #FF3B3B; box-shadow: 0 0 8px #FF3B3B;
+  animation: tvbot-blink 1.4s steps(1) infinite;
+}
+@keyframes tvbot-blink { 0%,60% { opacity: 1; } 61%,100% { opacity: 0.25; } }
+
+/* Channel-change flash when switching FIND/LOOK/TRACK. */
+.tvbot-tune { animation: tvbot-tune 0.28s ease; }
+@keyframes tvbot-tune {
+  0% { opacity: 0.2; filter: brightness(2) blur(1px); transform: scale(1.01); }
+  100% { opacity: 1; filter: none; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tvbot-screen::before, .tvbot-onair .dot, .tvbot-tune { animation: none; }
+}
