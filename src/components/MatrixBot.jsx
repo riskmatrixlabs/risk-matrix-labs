@@ -204,13 +204,14 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
   const [data, setData]     = useState(null)
   const [mkt, setMkt]       = useState('h2h')
   const [move, setMove]     = useState({})
+  const [view, setView]     = useState('books')  // books | move
   const [err, setErr]       = useState('')
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
 
   useEffect(() => {
     if (!game || !token) return
     let live = true
-    setStatus('loading'); setErr(''); setMove({}); setMkt('h2h')
+    setStatus('loading'); setErr(''); setMove({}); setMkt('h2h'); setView('books')
     fetch(`/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => { if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`); return res.json() })
       .then(j => { if (live) { setData(j.found && j.markets ? j : null); setStatus('done') } })
@@ -257,7 +258,19 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
 
       {isProps && <PropsPanel game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}
 
-      {!isProps && cmp && sides.map(side => {
+      {/* BOOKS / LINE MOVE toggle (game-line markets only) */}
+      {!isProps && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <button onClick={() => setView('books')} style={pill(view === 'books')}>By Book</button>
+          <button onClick={() => setView('move')} style={pill(view === 'move')}>Line Move</button>
+        </div>
+      )}
+
+      {!isProps && view === 'move' && (
+        moveRows.length ? <MoveChart moveRows={moveRows} /> : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />
+      )}
+
+      {!isProps && view === 'books' && cmp && sides.map(side => {
         const rows = [...cmp.rows].filter(r => r.prices[side.name] != null).sort((a, b) => (dec(b.prices[side.name]) ?? 0) - (dec(a.prices[side.name]) ?? 0))
         if (!rows.length) return null
         const bestBook = cmp.best[side.name]?.book
@@ -284,20 +297,52 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
         )
       })}
 
-      {!isProps && moveRows.length > 0 && (
-        <div style={{ marginTop: '6px' }}>
-          <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, letterSpacing: '0.12em', marginBottom: '6px' }}>LINE MOVEMENT</div>
-          {moveRows.map(([key, m]) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <span style={{ fontFamily: R, fontSize: '10px', color: TEXT, width: '96px', textTransform: 'uppercase' }}>{key.replace(/_/g, ' ')}</span>
-              <div style={{ flex: 1 }}><Sparkline series={m.series} color={m.delta >= 0 ? NEON : DANGER} /></div>
-              <span style={{ fontFamily: R, fontSize: '10px', color: m.delta >= 0 ? NEON_T : DANGER, width: '54px', textAlign: 'right' }}>{m.open} → {m.current}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {!isProps && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
+      {!isProps && view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
     </Frame>
+  )
+}
+
+// Multi-series line-move chart (screen 5) — plots each market/side's price over the
+// snapshots we've stored, on a shared axis, with a legend of current values.
+const MOVE_COLORS = ['#BDFF00', '#378ADD', '#1D9E75', '#FF3B3B', '#EF9F27']
+function MoveChart({ moveRows }) {
+  const W = 320, H = 150, padL = 30, padR = 8, padT = 12, padB = 20
+  const all = moveRows.flatMap(([, m]) => m.series)
+  const min = Math.min(...all), max = Math.max(...all), range = (max - min) || 1
+  const maxLen = Math.max(...moveRows.map(([, m]) => m.series.length))
+  const x = (i, n) => padL + (n <= 1 ? 0 : (i / (n - 1)) * (W - padL - padR))
+  const y = (v) => padT + (1 - (v - min) / range) * (H - padT - padB)
+  const lab = (k) => k.replace(/_/g, ' ').toUpperCase()
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
+        <text x="2" y={y(max) + 3} fill={MUTED} fontSize="8" fontFamily="Rajdhani">{Math.round(max)}</text>
+        <text x="2" y={y(min) + 3} fill={MUTED} fontSize="8" fontFamily="Rajdhani">{Math.round(min)}</text>
+        <line x1={padL} y1={padT} x2={padL} y2={H - padB} stroke="rgba(189,255,0,0.12)" strokeWidth="1" />
+        <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="rgba(189,255,0,0.12)" strokeWidth="1" />
+        <text x={padL} y={H - 6} fill={MUTED} fontSize="8" fontFamily="Courier New">open</text>
+        <text x={W - padR} y={H - 6} fill={MUTED} fontSize="8" fontFamily="Courier New" textAnchor="end">now</text>
+        {moveRows.map(([key, m], idx) => {
+          const c = MOVE_COLORS[idx % MOVE_COLORS.length], n = m.series.length
+          const pts = m.series.map((v, i) => `${x(i, n).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+          const last = m.series[n - 1]
+          return (
+            <g key={key}>
+              <polyline points={pts} fill="none" stroke={c} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+              <circle cx={x(n - 1, n)} cy={y(last)} r="3" fill={c} />
+            </g>
+          )
+        })}
+      </svg>
+      <div className="tv-ticker" style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+        {moveRows.map(([key, m], idx) => (
+          <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 9px', borderRadius: '6px', border: `1px solid ${BORDER}`, fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: MOVE_COLORS[idx % MOVE_COLORS.length] }} />
+            {lab(key)} <span style={{ color: MUTED }}>{m.open}→{m.current}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }
 
