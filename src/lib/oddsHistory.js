@@ -30,6 +30,25 @@ export async function fetchLineMovement(externalEventId) {
   return out
 }
 
+// Per-BOOK movement for one event's market/side — powers the "By Sportsbook" chart.
+// Returns { [book]: { open, current, series } } for every book we've captured snapshots for.
+export async function fetchBookMovement(externalEventId, market = 'ml', side = 'away') {
+  let q = supabase
+    .from('odds_history')
+    .select('book, value, captured_at')
+    .eq('external_event_id', String(externalEventId))
+    .eq('market', market)
+    .not('book', 'is', null)
+  q = side == null ? q.is('side', null) : q.eq('side', side)
+  const { data, error } = await q.order('captured_at', { ascending: true })
+  if (error || !data?.length) return {}
+  const byBook = {}
+  for (const r of data) { (byBook[r.book] ??= []).push(r.value) }
+  const out = {}
+  for (const [book, series] of Object.entries(byBook)) out[book] = { open: series[0], current: series[series.length - 1], series }
+  return out
+}
+
 // The closing line = the most recent snapshot for a market/side.
 export async function closingLine(externalEventId, market, side) {
   let q = supabase

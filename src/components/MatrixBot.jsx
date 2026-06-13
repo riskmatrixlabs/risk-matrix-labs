@@ -7,7 +7,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import './MatrixBot.css'
 import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_LABEL, fmtAm, Sparkline } from './botShared.jsx'
 import { fetchEvents } from '../lib/events.js'
-import { fetchLineMovement } from '../lib/oddsHistory.js'
+import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
@@ -15,6 +15,7 @@ import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
 import { labelFor } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
+import { BookMoveChart } from './BookMoveChart.jsx'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -363,9 +364,18 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
   const [data, setData]     = useState(null)
   const [mkt, setMkt]       = useState('h2h')
   const [move, setMove]     = useState({})
+  const [bookMove, setBookMove] = useState({})   // per-book ML movement (By Sportsbook chart)
+  const [bookSide, setBookSide] = useState('away')
   const [view, setView]     = useState('books')  // books | move
   const [err, setErr]       = useState('')
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
+
+  useEffect(() => {
+    if (!game?.external_event_id) { setBookMove({}); return }
+    let live = true
+    fetchBookMovement(game.external_event_id, 'ml', bookSide).then(m => { if (live) setBookMove(m || {}) }).catch(() => {})
+    return () => { live = false }
+  }, [game, bookSide])
 
   useEffect(() => {
     if (!game || !token) return
@@ -455,10 +465,13 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
       {/* per-market movement summary (sparklines) */}
       <MarketSummary move={move} sport={sport} />
 
-      {/* the line chart — price movement over time */}
-      {chartRows.length
-        ? <MoveChart moveRows={chartRows} />
-        : <Empty text="Line-movement history builds as the price moves — check back as the game nears." />}
+      {/* line chart — one line per BOOK (By Sportsbook); falls back to the single line until
+          per-book history accrues, then to a "building" note */}
+      {Object.keys(bookMove).length > 0
+        ? <BookMoveChart byBook={bookMove} game={game} side={bookSide} onSide={setBookSide} />
+        : chartRows.length
+          ? <MoveChart moveRows={chartRows} />
+          : <Empty text="By-sportsbook history is building — book lines fill in as prices move." />}
 
       {/* book prices = the shared Compare Books table (replaces the long by-book stacks) */}
       <div style={{ marginTop: '16px' }}>

@@ -6,6 +6,7 @@ import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
+import { BookLineMovement } from './BookMoveChart.jsx'
 
 const NEON   = '#BDFF00'
 const NEON_T = 'var(--neon-title)'
@@ -1588,6 +1589,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
 
                 <EVBot event={event} token={token} unitSize={unitSize} />
                 <LineShop event={event} token={token} onLogPosition={onLogPosition} />
+                <BookLineMovement event={event} />
 
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
 

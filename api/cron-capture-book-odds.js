@@ -1,0 +1,74 @@
+// Per-book odds capture — the data behind the "By Sportsbook" line-movement chart.
+// Every run we pull moneyline odds for each sport ONCE (cheap: regions×markets credits per
+// sport, not per game), match each provider game to our events row by team name, and append
+// one odds_history snapshot PER BOOK per side. Over time these rows become each book's line
+// over time — exactly what the chart plots.
+//
+// Credit budget: 4 sports × (h2h market) × (us+eu regions) = ~8 credits/run. At every 30 min
+// across game hours that's ~6–7k/month, inside the 20k plan.
+import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'
+import { getProvider } from './_lib/oddsProviders/index.js'
+import { SPORT_KEYS } from './_lib/oddsProviders/theOddsApi.js'
+
+export const config = { maxDuration: 30 }
+
+const lastWord = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
+const WINDOW_MS = 6 * 60 * 60 * 1000   // only capture games starting within the next 6h
+
+function db() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
+}
+
+export default async function handler(req, res) {
+  const supabase = db()
+  const nowMs = Date.now()
+  const nowIso = new Date(nowMs).toISOString()
+  const tilIso = new Date(nowMs + WINDOW_MS).toISOString()
+  const capturedAt = nowIso
+
+  // upcoming events in the window, grouped by sport
+  const { data: events, error } = await supabase
+    .from('events')
+    .select('external_event_id, sport, away_team, home_team, start_time')
+    .gte('start_time', nowIso)
+    .lte('start_time', tilIso)
+  if (error) return res.status(500).json({ error: error.message })
+  if (!events?.length) return res.status(200).json({ captured: 0, reason: 'no upcoming games in window' })
+
+  const bySport = {}
+  for (const e of events) { (bySport[e.sport] ??= []).push(e) }
+
+  const provider = getProvider()
+  const snapshots = []
+  let creditsRemaining = null
+
+  for (const [sport, evs] of Object.entries(bySport)) {
+    if (!SPORT_KEYS[sport]) continue
+    let games
+    try {
+      const r = await provider.fetchOdds({ sport, markets: ['h2h'], regions: ['us', 'eu'] })
+      games = r.games; creditsRemaining = r.credits?.remaining ?? creditsRemaining
+    } catch (e) { console.warn(`capture ${sport} failed:`, e.message); continue }
+
+    for (const ev of evs) {
+      const g = games.find(x => lastWord(x.home_team) === lastWord(ev.home_team) && lastWord(x.away_team) === lastWord(ev.away_team))
+      if (!g) continue
+      for (const b of g.bookmakers || []) {
+        const m = (b.markets || []).find(x => x.key === 'h2h')
+        if (!m) continue
+        for (const o of m.outcomes || []) {
+          const side = lastWord(o.name) === lastWord(ev.away_team) ? 'away' : lastWord(o.name) === lastWord(ev.home_team) ? 'home' : null
+          if (!side || o.price == null) continue
+          snapshots.push({ external_event_id: ev.external_event_id, provider: 'oddsapi', sport, captured_at: capturedAt, market: 'ml', side, value: o.price, book: b.key })
+        }
+      }
+    }
+  }
+
+  if (snapshots.length) {
+    const { error: insErr } = await supabase.from('odds_history').insert(snapshots)
+    if (insErr) return res.status(500).json({ error: insErr.message, attempted: snapshots.length })
+  }
+  return res.status(200).json({ captured: snapshots.length, games: events.length, creditsRemaining })
+}
