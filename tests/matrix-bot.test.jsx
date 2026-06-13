@@ -7,11 +7,12 @@ import MatrixBot from '../src/components/MatrixBot.jsx'
 
 afterEach(cleanup)
 
+// all-sports feed: events come per sport; only MLB has games in this fixture
 vi.mock('../src/lib/events.js', () => ({
-  fetchEvents: vi.fn(async () => ({ data: [
+  fetchEvents: vi.fn(async (sport) => ({ data: sport === 'MLB' ? [
     { away_team: 'Chicago Cubs', home_team: 'San Francisco Giants', away_abbr: 'CHC', home_abbr: 'SF', external_event_id: 'evt1', start_time: '2099-12-31T23:00:00Z', status: 'STATUS_SCHEDULED' },
     { away_team: 'Los Angeles Dodgers', home_team: 'San Diego Padres', away_abbr: 'LAD', home_abbr: 'SD', external_event_id: 'evt2', start_time: '2099-12-31T23:30:00Z', status: 'STATUS_SCHEDULED' },
-  ] })),
+  ] : [] })),
 }))
 vi.mock('../src/lib/oddsHistory.js', () => ({ fetchLineMovement: vi.fn(async () => ({})) }))
 
@@ -26,7 +27,10 @@ const jsonRes = (obj) => ({ ok: true, status: 200, json: async () => obj })
 
 beforeEach(() => {
   global.fetch = vi.fn(async (url) => {
-    if (url.includes('/api/scan-edges')) return jsonRes({ edges: EDGES, creditsRemaining: 1900 })
+    if (url.includes('/api/scan-edges')) {
+      // all-sports scan hits every sport; only MLB has edges in this fixture
+      return jsonRes({ edges: url.includes('sport=MLB') ? EDGES : [], creditsRemaining: 1900 })
+    }
     if (url.includes('/api/scan-props')) {
       return url.includes('Cubs')
         ? jsonRes({ found: true, edges: [PROP], lineShopOnly: [], creditsRemaining: 1800 })
@@ -41,7 +45,7 @@ describe('MatrixBot — real render', () => {
     render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
 
     // events load → SCAN enabled
-    const scanBtn = await screen.findByRole('button', { name: '▶ SCAN' })
+    const scanBtn = await screen.findByRole('button', { name: '▶ GO LIVE' })
     fireEvent.click(scanBtn)
 
     // flip to the dense board
@@ -59,7 +63,7 @@ describe('MatrixBot — real render', () => {
 
   it('pulls props onto the board, PROP-tagged and ranked', async () => {
     render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
-    fireEvent.click(await screen.findByRole('button', { name: '▶ SCAN' }))
+    fireEvent.click(await screen.findByRole('button', { name: '▶ GO LIVE' }))
     fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
     await screen.findByText('CUBS ML')
 

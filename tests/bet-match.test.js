@@ -57,4 +57,13 @@ describe('evaluateBet', () => {
   it('unparseable pick → null', () => {
     expect(evaluateBet({ pick: '???', odds: -110 }, event, dvs)).toBeNull()
   })
+  it('does NOT crash when dvs is null (the bot TRACK channel passes null)', () => {
+    // Regression: fairForSide used to destructure null → "Cannot destructure 'dv' of null"
+    // crashed the whole bot when grading any logged bet on CH3 TRACK.
+    expect(() => evaluateBet({ pick: 'MIA ML', odds: -135 }, event, null)).not.toThrow()
+    const g = evaluateBet({ pick: 'MIA ML', odds: -135 }, event, null)
+    expect(g).not.toBeNull()
+    expect(g.evPct).toBeNull()              // no devig data → no EV, but still grades CLV
+    expect(g.clvPct).toBeCloseTo(0, 5)
+  })
 })

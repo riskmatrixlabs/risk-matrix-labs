@@ -3,7 +3,7 @@
 //   CH2 LOOK  — a game's books (best highlighted) + props + line movement, bet links
 //   CH3 TRACK — your logged bets graded for EV / CLV
 // Heavy lifting reuses the already-built engine, endpoints and discipline libs.
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import './MatrixBot.css'
 import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_LABEL, fmtAm, Sparkline } from './botShared.jsx'
 import { fetchEvents } from '../lib/events.js'
@@ -76,8 +76,8 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
         ))}
       </div>
       <div key={channel} className="tvbot-tune">
-        {channel === 'find' && <FindChannel sport={sport} setSport={setSport} token={token} unitSize={unitSize} bankroll={bankroll}
-          onPick={(g) => { setGame(g); setChannel('look') }} />}
+        {channel === 'find' && <FindChannel token={token} bankroll={bankroll}
+          onPick={(g) => { setGame(g); if (g.sport) setSport(g.sport); setChannel('look') }} />}
         {channel === 'look' && <LookChannel game={game} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
         {channel === 'track' && <TrackChannel bets={bets} sport={sport} />}
       </div>
@@ -86,58 +86,80 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
 }
 
 // ───────────────────────────── CH 1 · FIND ─────────────────────────────
-function FindChannel({ sport, setSport, token, unitSize, bankroll = 0, onPick }) {
-  const [events, setEvents]   = useState([])
-  const [minEv, setMinEv]     = useState(0)
-  const [status, setStatus]   = useState('idle')   // idle | scanning | done | error
-  const [scan, setScan]       = useState(null)     // { edges, creditsRemaining }
-  const [err, setErr]         = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [view, setView]       = useState('tv')     // tv | board — same edges, two lenses
-  const [props, setProps]     = useState(null)     // { status, edges, scanned } — props are per-game
+// One LIVE feed across all sports (the SharpMoney/OddsJam model): scan every sport,
+// merge into a single ranked list, slice it with FILTER chips (no per-sport tabs),
+// auto-refresh on a timer. The TV and the dense board both just display this feed.
+const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // sports the provider supports today
+const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
+function FindChannel({ token, bankroll = 0, onPick }) {
+  const [events, setEvents]   = useState([])
+  const [feed, setFeed]       = useState({ status: 'idle', edges: [], scanned: 0, credits: null })
+  const [props, setProps]     = useState(null)
+  const [err, setErr]         = useState('')
+  const [view, setView]       = useState('tv')        // tv | board
+  const [sportF, setSportF]   = useState('ALL')       // filter chips replace tabs
+  const [marketF, setMarketF] = useState('ALL')
+  const [minEv, setMinEv]     = useState(0)
+  const scanning = useRef(false)
+
+  // pull pre-games for every sport once (Supabase, no API credits) — for props + ticker
   useEffect(() => {
     let live = true
-    const cached = getScan(sport, todayStr())
-    setScan(cached); setStatus(cached ? 'done' : 'idle')
-    setProps(null)   // props are sport-specific — reset when the sport changes
-    fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
+    Promise.all(FEED_SPORTS.map(s =>
+      fetchEvents(s, 'today').then(r => (r?.data || []).map(e => ({ ...e, _sport: s }))).catch(() => [])
+    )).then(arr => { if (live) setEvents(arr.flat()) })
     return () => { live = false }
-  }, [sport])
+  }, [])
 
-  const preGames = events.filter(isPreGame)
+  const preGames = useMemo(() => events.filter(isPreGame), [events])
   const evByKey = useMemo(() => {
     const m = {}
     for (const ev of preGames) m[gameKey(ev.away_team, ev.home_team)] = ev
     return m
-  }, [events])
+  }, [preGames])
 
-  const buildGame = (ev) => ({ away: ev.away_team, home: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, external_event_id: ev.external_event_id, commenceTime: ev.start_time })
-  const pickFromGroup = (g) => {
-    const ev = evByKey[g.key]
-    onPick(ev ? buildGame(ev) : { away: g.away, home: g.home, external_event_id: '', commenceTime: g.commenceTime })
+  const buildGame = (ev) => ({ away: ev.away_team, home: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, sport: ev._sport, external_event_id: ev.external_event_id, commenceTime: ev.start_time })
+  const resolveGame = (e) => {
+    const ev = evByKey[gameKey(e.away, e.home)]
+    return ev ? buildGame(ev) : { away: e.away, home: e.home, sport: e._sport, external_event_id: '', commenceTime: e.commenceTime }
   }
 
-  async function runScan() {
-    if (!token || status === 'scanning') return
-    const cached = getScan(sport, todayStr())
-    if (cached) { setScan(cached); setStatus('done'); return }
-    setStatus('scanning'); setErr('')
-    try {
-      const res = await fetch(`/api/scan-edges?sport=${encodeURIComponent(sport)}`, { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `scan ${res.status}`)
-      const data = await res.json()
-      const payload = { edges: data.edges || [], creditsRemaining: data.creditsRemaining }
-      putScan(sport, todayStr(), payload)
-      setScan(payload); setStatus('done')
-    } catch (e) { setErr(e.message); setStatus('error') }
+  // Scan EVERY sport and merge into one feed. force=true re-fetches (server cache makes
+  // repeats ~free) for the live auto-refresh; otherwise we reuse the per-day client cache.
+  async function runScan(force = false) {
+    if (!token || scanning.current) return
+    scanning.current = true
+    if (!force) setFeed(f => ({ ...f, status: 'scanning', scanned: 0 }))
+    setErr('')
+    const all = []
+    let scanned = 0, credits = null, anyError = ''
+    for (const s of FEED_SPORTS) {
+      try {
+        let payload = force ? null : getScan(s, todayStr())
+        if (!payload) {
+          const res = await fetch(`/api/scan-edges?sport=${encodeURIComponent(s)}`, { headers: { Authorization: `Bearer ${token}` } })
+          if (res.ok) { const d = await res.json(); payload = { edges: d.edges || [], creditsRemaining: d.creditsRemaining }; putScan(s, todayStr(), payload) }
+          else anyError = (await res.json().catch(() => ({}))).error || `scan ${res.status}`
+        }
+        if (payload) { for (const e of payload.edges) all.push({ ...e, _sport: s }); if (payload.creditsRemaining != null) credits = payload.creditsRemaining }
+      } catch (e) { anyError = e.message }
+      scanned++
+      if (!force) setFeed({ status: 'scanning', edges: [...all], scanned, credits })
+    }
+    scanning.current = false
+    setFeed({ status: all.length || !anyError ? 'done' : 'error', edges: all, scanned, credits })
+    if (anyError && !all.length) setErr(anyError)
   }
 
-  const edges  = useMemo(() => applyFeedFilters(scan?.edges || [], { minEvPct: minEv }), [scan, minEv])
-  const groups = useMemo(() => groupEdgesByGame(edges), [edges])
+  // LIVE: auto-refresh the feed every 2 min once we've scanned (server cache = cheap).
+  useEffect(() => {
+    if (!token) return
+    const id = setInterval(() => { if (feed.status === 'done') runScan(true) }, 120000)
+    return () => clearInterval(id)
+  }, [token, feed.status])
 
-  // Props are per-game (one API call each), so the board scans them on explicit tap.
-  // We loop today's pre-games, pull each game's +EV props, and tag them with their game.
+  // Props are per-game (one call each) — pulled on tap, merged into the same feed.
   async function scanProps() {
     if (!token || props?.status === 'scanning' || !preGames.length) return
     setProps({ status: 'scanning', edges: [], scanned: 0 })
@@ -145,57 +167,61 @@ function FindChannel({ sport, setSport, token, unitSize, bankroll = 0, onPick })
     let scanned = 0
     for (const ev of preGames) {
       try {
-        const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
-        if (res.ok) {
-          const j = await res.json()
-          if (j?.found) for (const e of (j.edges || [])) all.push({ ...e, _game: buildGame(ev) })
-        }
-      } catch { /* skip a game that fails, keep scanning the rest */ }
+        const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(ev._sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (res.ok) { const j = await res.json(); if (j?.found) for (const e of (j.edges || [])) all.push({ ...e, _sport: ev._sport, _game: buildGame(ev) }) }
+      } catch { /* skip a game that fails, keep scanning */ }
       scanned++
       setProps({ status: 'scanning', edges: [...all], scanned })
     }
     setProps({ status: 'done', edges: all, scanned })
   }
 
-  // One ranked list for the board: game-line edges + scanned prop edges, highest EV first.
-  const boardRows = useMemo(() => {
-    const gl = groups.flatMap(g => g.edges.map(e => ({
-      key: `gl:${g.key}:${e.market}:${e.outcome}:${e.point}`,
-      label: pickLabel(e), book: e.best.book, sub: `${up(g.away)}@${up(g.home)}`,
-      price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: null, group: g,
-    })))
-    const pr = (props?.edges || []).map((p, i) => ({
-      key: `pr:${i}:${p.player}:${p.point}:${p.side}`,
-      label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel,
-      price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game, group: null,
-    }))
+  // The single ranked feed, after filter chips: game lines + props, highest EV first.
+  const rows = useMemo(() => {
+    const inSport = (sp) => sportF === 'ALL' || sp === sportF
+    const showGL = marketF !== 'props'
+    const showProps = marketF === 'ALL' || marketF === 'props'
+    const gl = !showGL ? [] : (feed.edges || [])
+      .filter(e => inSport(e._sport) && (marketF === 'ALL' || e.market === marketF) && (e.evPct ?? 0) >= minEv)
+      .map(e => ({ key: `gl:${e._sport}:${gameKey(e)}:${e.market}:${e.outcome}:${e.point}`, label: pickLabel(e), book: e.best.book, sub: `${up(e.away)}@${up(e.home)}`, price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: resolveGame(e) }))
+    const pr = !showProps ? [] : (props?.edges || [])
+      .filter(p => inSport(p._sport) && (p.evPct ?? 0) >= minEv)
+      .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game }))
     return [...gl, ...pr].sort((a, b) => (b.evPct ?? 0) - (a.evPct ?? 0))
-  }, [groups, props])
+  }, [feed, props, sportF, marketF, minEv, evByKey])
 
-  const sub = status === 'scanning' ? '▶ NOW SCANNING THE BOARD ◀'
-    : status === 'done' ? '▶ BOARD SCANNED ◀' : '▶ READY ◀'
+  const status = feed.status
+  const sub = status === 'scanning' ? `▶ SCANNING ${feed.scanned}/${FEED_SPORTS.length} SPORTS ◀`
+    : status === 'done' ? '▶ LIVE · ALL SPORTS ◀' : '▶ READY ◀'
   const headline = status === 'scanning' ? 'SCANNING…'
-    : status === 'done' ? (edges.length ? '⬡ VALID MATRIX' : 'NO VALID MATRIX')
+    : status === 'done' ? (rows.length ? '⬡ VALID MATRIX' : 'NO VALID MATRIX')
     : '⬡ TAP SCAN'
-  const headlineColor = (status === 'done' && !edges.length) ? MUTED : NEON_T
+  const headlineColor = (status === 'done' && !rows.length) ? MUTED : NEON_T
+
+  const sportChips = ['ALL', ...FEED_SPORTS]
 
   return (
     <>
-      {/* TV / BOARD lens toggle — same edges, two ways to read them */}
+      {/* TV / BOARD lens toggle */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
         {[['tv', '📺 TV'], ['board', '☰ BOARD']].map(([k, label]) => (
           <button key={k} onClick={() => setView(k)} style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${view === k ? NEON : BORDER}`, background: view === k ? NEON : 'transparent', color: view === k ? '#0A0A0A' : MUTED }}>{label}</button>
         ))}
       </div>
 
-      {/* sport quick row */}
+      {/* FILTER chips — these ARE the navigation (no sport tabs) */}
+      <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+        {sportChips.map(s => <button key={s} onClick={() => setSportF(s)} style={pill(sportF === s)}>{s}</button>)}
+      </div>
       <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-        {SPORTS.map(s => <button key={s} onClick={() => setSport(s)} style={pill(sport === s)}>{s}</button>)}
+        {MARKET_CHIPS.map(([k, label]) => <button key={k} onClick={() => setMarketF(k)} style={pill(marketF === k)}>{label}</button>)}
+        <span style={{ width: '1px', background: BORDER, margin: '0 2px' }} />
+        {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'EV ANY' : `${v}%+`}</button>)}
       </div>
 
       {view === 'board' && (
-        <BoardView status={status} rows={boardRows} edgeCount={boardRows.length} bankroll={bankroll}
-          token={token} err={err} onPick={pickFromGroup} onPickGame={onPick}
+        <BoardView status={status} rows={rows} edgeCount={rows.length} bankroll={bankroll}
+          token={token} err={err} onPickGame={onPick}
           props={props} onScanProps={scanProps} gameCount={preGames.length} />
       )}
 
@@ -204,32 +230,31 @@ function FindChannel({ sport, setSport, token, unitSize, bankroll = 0, onPick })
         <div style={{ textAlign: 'center', fontFamily: R, fontSize: '10px', letterSpacing: '0.28em', color: 'rgba(189,255,0,0.6)', marginBottom: '6px' }}>{sub}</div>
         <div className={headlineColor === NEON_T ? 'tv-glow' : ''} style={{ textAlign: 'center', fontFamily: R, fontSize: '30px', fontWeight: 700, letterSpacing: '0.06em', color: headlineColor, marginBottom: '14px' }}>{headline}</div>
 
-        {/* edge board */}
-        {status === 'done' && groups.map((g, gi) => g.edges.map((e, i) => {
-          const top = gi === 0 && i === 0
+        {status === 'done' && rows.map((r, i) => {
+          const top = i === 0
           return (
-            <div key={g.key + i} onClick={() => pickFromGroup(g)} style={{ cursor: 'pointer', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: 'rgba(189,255,0,0.04)', borderRadius: '0 8px 8px 0', padding: '11px 13px', marginBottom: '8px' }}>
+            <div key={r.key} onClick={() => r.game && onPick(r.game)} style={{ cursor: 'pointer', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: 'rgba(189,255,0,0.04)', borderRadius: '0 8px 8px 0', padding: '11px 13px', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{pickLabel(e)}</span>
-                <span className="tv-glow" style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON_T }}>{fmtAm(e.best.price)}</span>
+                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '2px' }}>PROP</span>}{r.label}</span>
+                <span className="tv-glow" style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON_T }}>{fmtAm(r.price)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
-                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[e.best.book] || e.best.book} · best line{bankroll > 0 ? ` · bet $${Math.round(kellyStake(e.best.price, e.fairProb, bankroll))}` : ''}</span>
-                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: top ? NEON_T : '#5DCAA5' }}>+{e.evPct.toFixed(1)}% EDGE</span>
+                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 ? ` · bet $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</span>
+                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: top ? NEON_T : '#5DCAA5' }}>+{r.evPct.toFixed(1)}% EDGE</span>
               </div>
             </div>
           )
-        }))}
-        {status === 'done' && !edges.length && <Empty text="Market's efficient right now — we won't fake an edge." />}
+        })}
+        {status === 'done' && !rows.length && <Empty text="Market's efficient right now — we won't fake an edge." />}
         {status === 'scanning' && <div style={{ textAlign: 'center', padding: '8px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>de-vigging the sharp line…</div>}
-        {status === 'idle' && <Empty text={token ? 'Hit ▶ SCAN to read the board.' : 'Log in to summon the bot.'} />}
+        {status === 'idle' && <Empty text={token ? 'Hit ▶ GO LIVE to read the board.' : 'Log in to summon the bot.'} />}
         {status === 'error' && <Empty text={`Scan failed — ${err}`} />}
 
-        {/* slate ticker — every pre-game game, tap to tune in */}
+        {/* slate ticker — every pre-game across all sports, tap to tune in */}
         {preGames.length > 0 && (
           <div className="tv-ticker" style={{ display: 'flex', gap: '14px', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: `1px solid rgba(189,255,0,0.12)` }}>
             {preGames.map(ev => (
-              <button key={ev.external_event_id} onClick={() => onPick(buildGame(ev))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.75)', letterSpacing: '0.04em', whiteSpace: 'nowrap', padding: 0 }}>
+              <button key={ev._sport + ev.external_event_id} onClick={() => onPick(buildGame(ev))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.75)', letterSpacing: '0.04em', whiteSpace: 'nowrap', padding: 0 }}>
                 {ev.away_abbr}@{ev.home_abbr} <span style={{ color: MUTED }}>{(ev.start_time || '').slice(11, 16)}</span>
               </button>
             ))}
@@ -238,23 +263,14 @@ function FindChannel({ sport, setSport, token, unitSize, bankroll = 0, onPick })
       </TvFrame>
       )}
 
-      {/* small SCAN + FILTERS controls BELOW the TV — filters pop up under */}
+      {/* GO LIVE control */}
       {token && (
         <>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '14px' }}>
-            <button onClick={runScan} disabled={!preGames.length || status === 'scanning'} style={{ ...pill(false), padding: '9px 22px', fontSize: '12px', borderColor: preGames.length ? NEON : BORDER, color: preGames.length ? NEON_T : MUTED, cursor: preGames.length ? 'pointer' : 'not-allowed' }}>▶ {status === 'scanning' ? 'SCANNING' : 'SCAN'}</button>
-            <button onClick={() => setShowFilters(f => !f)} style={{ ...pill(showFilters), padding: '9px 22px', fontSize: '12px' }}>FILTERS</button>
+            <button onClick={() => runScan(false)} disabled={status === 'scanning'} style={{ ...pill(false), padding: '9px 22px', fontSize: '12px', borderColor: NEON, color: NEON_T, cursor: status === 'scanning' ? 'wait' : 'pointer' }}>▶ {status === 'scanning' ? 'SCANNING' : status === 'done' ? 'REFRESH' : 'GO LIVE'}</button>
           </div>
-          {showFilters && (
-            <div style={{ maxWidth: '300px', margin: '10px auto 0', padding: '12px 14px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD }}>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>MINIMUM EV</div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>{[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}</div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>SPORT</div>
-              <div className="tv-ticker" style={{ display: 'flex', gap: '6px' }}>{SPORTS.map(s => <button key={s} onClick={() => setSport(s)} style={pill(sport === s)}>{s}</button>)}</div>
-            </div>
-          )}
-          {status === 'done' && scan?.creditsRemaining != null && (
-            <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{scan.creditsRemaining} scans left · tap ▶ SCAN to refresh</div>
+          {status === 'done' && feed.credits != null && (
+            <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · auto-refreshing every 2 min</div>
           )}
         </>
       )}
@@ -265,7 +281,7 @@ function FindChannel({ sport, setSport, token, unitSize, bankroll = 0, onPick })
 // Dense OddsJam/Prop-Professor-style board — every +EV play (game lines AND props) on one
 // ranked table. Props scan on tap (per-game). Tap a row to drill into all books on CH 2.
 const GRID = '1fr 58px 54px'
-function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPick, onPickGame, props, onScanProps, gameCount = 0 }) {
+function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPickGame, props, onScanProps, gameCount = 0 }) {
   const propStatus = props?.status
   const propBtn = (
     <button onClick={onScanProps} disabled={!gameCount || propStatus === 'scanning'}
@@ -292,7 +308,7 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
       {rows.map((r, i) => {
         const top = i === 0
         return (
-          <div key={r.key} onClick={() => r.isProp ? (r.game && onPickGame(r.game)) : onPick(r.group)} style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #111', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: top ? 'rgba(189,255,0,0.04)' : 'transparent' }}>
+          <div key={r.key} onClick={() => r.game && onPickGame(r.game)} style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #111', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: top ? 'rgba(189,255,0,0.04)' : 'transparent' }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '1px' }}>PROP</span>}

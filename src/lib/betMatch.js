@@ -80,7 +80,7 @@ function currentOdds(parsed, event, meta) {
 
 // No-vig fair probability for the picked side, from the relevant two-way devig.
 function fairForSide(parsed, dvs) {
-  const { dv, dvSpread, dvTotal } = dvs
+  const { dv, dvSpread, dvTotal } = dvs || {}   // null dvs (no devig data) → no fair, never crash
   if (parsed.market === 'ml' && dv)        return { p: parsed.side === 'away' ? dv.fairA : dv.fairB,             fairAmerican: parsed.side === 'away' ? dv.fairAmericanA : dv.fairAmericanB }
   if (parsed.market === 'spread' && dvSpread) return { p: parsed.side === 'away' ? dvSpread.fairA : dvSpread.fairB, fairAmerican: parsed.side === 'away' ? dvSpread.fairAmericanA : dvSpread.fairAmericanB }
   if (parsed.market === 'total' && dvTotal)   return { p: parsed.side === 'over' ? dvTotal.fairA : dvTotal.fairB,   fairAmerican: parsed.side === 'over' ? dvTotal.fairAmericanA : dvTotal.fairAmericanB }
