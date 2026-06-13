@@ -73,26 +73,39 @@ export function compareBooks(bookmakers, marketKey, opts = {}) {
 
   const rows = books.map(b => {
     const m = b.markets.find(x => x.key === marketKey)
-    const prices = {}
+    const prices = {}, points = {}
     for (const name of outcomes) {
       const o = m.outcomes.find(x => x.name === name)
       prices[name] = o ? o.price : null
+      points[name] = (o && o.point != null) ? o.point : null   // spread/total line; null for moneyline
     }
-    return { book: b.key, sharp: b.key === sharpBook, prices }
+    return { book: b.key, sharp: b.key === sharpBook, prices, points }
   })
+
+  // Most common line per outcome — comparing prices across DIFFERENT points is invalid,
+  // so "best" is only crowned among books sitting on this modal line.
+  const modalPoint = {}
+  for (const name of outcomes) {
+    const counts = {}
+    for (const r of rows) { const p = r.points[name]; if (p != null) counts[p] = (counts[p] || 0) + 1 }
+    const keys = Object.keys(counts)
+    modalPoint[name] = keys.length ? Number(keys.reduce((a, b) => counts[b] > counts[a] ? b : a)) : null
+  }
 
   const best = {}
   for (const name of outcomes) {
     let bb = null
     for (const r of rows) {
       const p = r.prices[name]
+      if (p == null) continue
+      if (modalPoint[name] != null && r.points[name] !== modalPoint[name]) continue  // off the main line → not eligible
       const d = americanToDecimal(p)
       if (d == null) continue
       if (!bb || d > bb.decimal) bb = { book: r.book, price: p, decimal: d }
     }
     best[name] = bb
   }
-  return { outcomes, rows, best }
+  return { outcomes, rows, modalPoint, best }
 }
 
 // Scan many games → all credible edges, highest EV first.

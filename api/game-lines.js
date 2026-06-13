@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   try {
     const provider = getProvider()
-    const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h'], regions: ['us', 'eu'] })
+    const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'eu'] })
     const game = games.find(g => lastWord(g.home_team) === lastWord(home) && lastWord(g.away_team) === lastWord(away))
     if (!game) return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
 
@@ -31,7 +31,11 @@ export default async function handler(req, res) {
       found: true,
       away: game.away_team,
       home: game.home_team,
-      comparison: compareBooks(game.bookmakers, 'h2h'),   // { outcomes, rows, best }
+      markets: {                                  // each: { outcomes, rows, modalPoint, best } or null
+        h2h:     compareBooks(game.bookmakers, 'h2h'),
+        spreads: compareBooks(game.bookmakers, 'spreads'),
+        totals:  compareBooks(game.bookmakers, 'totals'),
+      },
       creditsRemaining: credits.remaining,
       fetchedAt: new Date().toISOString(),
     })

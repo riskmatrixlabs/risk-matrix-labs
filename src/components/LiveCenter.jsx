@@ -1163,6 +1163,7 @@ function LineShop({ event, token }) {
   const [data, setData]     = useState(null)
   const [credits, setCredits] = useState(null)
   const [err, setErr]       = useState('')
+  const [mkt, setMkt]       = useState('h2h')    // h2h | spreads | totals
   const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
 
@@ -1175,7 +1176,7 @@ function LineShop({ event, token }) {
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`)
       const j = await res.json()
       setCredits(j.creditsRemaining)
-      setData(j.found && j.comparison ? j : null)
+      setData(j.found && j.markets ? j : null)
       setStatus('done')
     } catch (e) { setErr(e.message); setStatus('error') }
   }
@@ -1195,38 +1196,69 @@ function LineShop({ event, token }) {
   else if (status === 'error')   body = <div style={{ padding: '16px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: '#FF3B3B' }}>Failed — {err}</div>
   else if (!data)                body = <div style={{ padding: '16px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: MUTED }}>No book lines for this game (pre-game only).</div>
   else {
-    const cmp = data.comparison
-    const aName = cmp.outcomes.find(n => lw(n) === lw(event.away_team)) || cmp.outcomes[0]
-    const hName = cmp.outcomes.find(n => lw(n) === lw(event.home_team)) || cmp.outcomes[1]
-    const rows = [...cmp.rows].sort((x, y) => (dec(y.prices[aName]) ?? 0) - (dec(x.prices[aName]) ?? 0))
-    const cell = (row, name) => {
-      const p = row.prices[name]
-      const isBest = cmp.best[name] && cmp.best[name].book === row.book
-      return <td style={{ textAlign: 'center', padding: '8px 6px', fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT, background: isBest ? NEON : 'transparent', borderRadius: isBest ? '5px' : 0 }}>{p == null ? '—' : fmtAm(p)}</td>
-    }
-    body = (
-      <div style={{ padding: '6px 10px 12px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr>
-            <th style={{ textAlign: 'left', padding: '8px 6px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>BOOK</th>
-            <th style={{ textAlign: 'center', padding: '8px 6px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.away_abbr}</th>
-            <th style={{ textAlign: 'center', padding: '8px 6px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.home_abbr}</th>
-          </tr></thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.book} style={{ borderTop: `1px solid ${BORDER}` }}>
-                <td style={{ padding: '8px 6px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
-                  {BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', fontWeight: 700, color: NEON_T, marginLeft: '5px', letterSpacing: '0.06em' }}>SHARP</span>}
-                </td>
-                {cell(r, aName)}
-                {cell(r, hName)}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>Highlighted = best available price · tap a book to bet there</div>
+    const M = data.markets
+    const tabDefs = [['h2h', 'ML'], ['spreads', SPREAD_LABEL[event.sport] || 'Spread'], ['totals', 'Total']].filter(([k]) => M[k])
+    const activeKey = M[mkt] ? mkt : (tabDefs[0]?.[0])
+    const cmp = M[activeKey]
+
+    const tabBar = (
+      <div style={{ display: 'flex', gap: '6px', padding: '10px 10px 4px' }}>
+        {tabDefs.map(([k, label]) => (
+          <button key={k} onClick={() => setMkt(k)} style={{ flex: 1, padding: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '6px', border: 'none', cursor: 'pointer', background: activeKey === k ? NEON : 'rgba(255,255,255,0.05)', color: activeKey === k ? '#0A0A0A' : MUTED }}>{label}</button>
+        ))}
       </div>
     )
+
+    if (!cmp) { body = <>{tabBar}<div style={{ padding: '14px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: MUTED }}>No lines for this market.</div></>; }
+    else {
+      const isTotals = activeKey === 'totals'
+      const cols = isTotals
+        ? cmp.outcomes.map(n => ({ name: n, label: /^o/i.test(n) ? 'OVER' : 'UNDER' }))
+        : [
+            { name: cmp.outcomes.find(n => lw(n) === lw(event.away_team)) || cmp.outcomes[0], label: event.away_abbr },
+            { name: cmp.outcomes.find(n => lw(n) === lw(event.home_team)) || cmp.outcomes[1], label: event.home_abbr },
+          ]
+      const sortName = cols[0].name
+      const rows = [...cmp.rows].sort((x, y) => (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0))
+      const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
+      const cell = (row, name) => {
+        const p = row.prices[name]
+        const isBest = cmp.best[name] && cmp.best[name].book === row.book
+        const pt = row.points[name]
+        return (
+          <td key={name} style={{ textAlign: 'center', padding: '7px 6px' }}>
+            <div style={{ display: 'inline-block', padding: isBest ? '2px 7px' : '2px 0', borderRadius: '5px', background: isBest ? NEON : 'transparent' }}>
+              <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT }}>{p == null ? '—' : fmtAm(p)}</div>
+              {pt != null && <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isBest ? 'rgba(10,10,10,0.6)' : MUTED }}>{isTotals ? (/^o/i.test(name) ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
+            </div>
+          </td>
+        )
+      }
+      body = (
+        <>
+          {tabBar}
+          <div style={{ padding: '2px 10px 12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>
+                <th style={{ textAlign: 'left', padding: '6px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>BOOK</th>
+                {cols.map(c => <th key={c.name} style={{ textAlign: 'center', padding: '6px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{c.label}</th>)}
+              </tr></thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.book} style={{ borderTop: `1px solid ${BORDER}` }}>
+                    <td style={{ padding: '7px 6px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
+                      {BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', fontWeight: 700, color: NEON_T, marginLeft: '5px', letterSpacing: '0.06em' }}>SHARP</span>}
+                    </td>
+                    {cols.map(c => cell(r, c.name))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>Green = best price on the main line · tap a book to bet there</div>
+          </div>
+        </>
+      )
+    }
   }
 
   return <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>

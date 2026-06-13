@@ -89,6 +89,17 @@ describe('compareBooks', () => {
     const junkOnly = { bookmakers: [{ key: 'betsson', markets: [{ key: 'h2h', outcomes: [{ name: 'A', price: 100 }, { name: 'B', price: -120 }] }] }] }
     expect(compareBooks(junkOnly.bookmakers, 'h2h')).toBeNull()
   })
+  it('totals: best is crowned only on the main line, off-line prices ignored', () => {
+    const tot = [
+      { key: 'pinnacle',   markets: [{ key: 'totals', outcomes: [{ name: 'Over', price: -105, point: 8.5 }, { name: 'Under', price: -105, point: 8.5 }] }] },
+      { key: 'draftkings', markets: [{ key: 'totals', outcomes: [{ name: 'Over', price: -110, point: 8.5 }, { name: 'Under', price: -110, point: 8.5 }] }] },
+      { key: 'fanduel',    markets: [{ key: 'totals', outcomes: [{ name: 'Over', price:  140, point: 9.5 }, { name: 'Under', price: -160, point: 9.5 }] }] }, // off the main 8.5 line
+    ]
+    const c = compareBooks(tot, 'totals')
+    expect(c.modalPoint.Over).toBe(8.5)
+    expect(c.best.Over.book).toBe('pinnacle')  // -105 on 8.5 beats DK -110; FanDuel +140 ignored (it's a 9.5)
+    expect(c.best.Over.price).toBe(-105)
+  })
 })
 
 describe('REPUTABLE_BOOKS', () => {
