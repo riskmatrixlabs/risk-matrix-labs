@@ -5,8 +5,53 @@
 // so nothing static (logos, pitchers, last5, standings) is ever lost.
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
+import webpush from 'web-push'
 
 export const config = { maxDuration: 30 }
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails('mailto:hello@riskmatrixlabs.com', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY)
+}
+
+// When a watched game's score goes up, push "TEAM scored — A x, H y" to everyone opted in.
+async function notifyScoreChanges(supabase, changes) {
+  if (!changes.length) return 0
+  const ids = changes.map(c => c.external_event_id)
+  const { data: subs } = await supabase
+    .from('game_notifications')
+    .select('user_id, external_event_id')
+    .in('external_event_id', ids)
+  if (!subs?.length) return 0
+
+  const userIds = [...new Set(subs.map(s => s.user_id))]
+  const { data: pushes } = await supabase
+    .from('push_subscriptions')
+    .select('user_id, subscription')
+    .in('user_id', userIds)
+  const pushByUser = Object.fromEntries((pushes ?? []).map(p => [p.user_id, p.subscription]))
+  const changeById = Object.fromEntries(changes.map(c => [c.external_event_id, c]))
+
+  let sent = 0
+  for (const sub of subs) {
+    const c = changeById[sub.external_event_id]
+    const subscription = pushByUser[sub.user_id]
+    if (!c || !subscription) continue
+    const payload = JSON.stringify({
+      title: `${c.scorerAbbr} scored ⚾`,
+      body: `${c.awayAbbr} ${c.awayScore} – ${c.homeAbbr} ${c.homeScore}`,
+      url: 'https://app.riskmatrixlabs.com',
+    })
+    try {
+      await webpush.sendNotification(subscription, payload)
+      sent++
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        await supabase.from('push_subscriptions').delete().eq('user_id', sub.user_id)
+      }
+    }
+  }
+  return sent
+}
 
 export const SPORTS = [
   { key: 'MLB',  sport: 'baseball',   league: 'mlb'  },
@@ -566,9 +611,23 @@ export default async function handler(req, res) {
   const ids = updates.map(u => u.external_event_id)
   const { data: existing } = await supabase
     .from('events')
-    .select('external_event_id, metadata')
+    .select('external_event_id, metadata, home_score, away_score, home_abbr, away_abbr')
     .in('external_event_id', ids)
   const existingMap = Object.fromEntries((existing ?? []).map(r => [r.external_event_id, r.metadata ?? {}]))
+  const prevById = Object.fromEntries((existing ?? []).map(r => [r.external_event_id, r]))
+
+  // Detect score increases vs the last sync → who to notify (which team just scored).
+  const scoreChanges = []
+  for (const u of updates) {
+    const prev = prevById[u.external_event_id]
+    if (!prev) continue
+    const oldA = prev.away_score ?? 0, oldH = prev.home_score ?? 0
+    const newA = u.away_score ?? 0, newH = u.home_score ?? 0
+    if (newA + newH > oldA + oldH) {
+      const scorerAbbr = newA > oldA ? prev.away_abbr : prev.home_abbr
+      scoreChanges.push({ external_event_id: u.external_event_id, scorerAbbr: scorerAbbr ?? 'A team', awayAbbr: prev.away_abbr ?? 'Away', homeAbbr: prev.home_abbr ?? 'Home', awayScore: newA, homeScore: newH })
+    }
+  }
 
   const rows = updates.map(u => ({
     external_event_id: u.external_event_id,
@@ -594,5 +653,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message })
   }
 
-  return res.status(200).json({ live: rows.length, games: rows.map(r => r.external_event_id) })
+  // Fire score notifications AFTER the new scores are persisted (so a 2nd run won't re-fire).
+  let notified = 0
+  try { notified = await notifyScoreChanges(supabase, scoreChanges) } catch (e) { console.warn('notify error:', e.message) }
+
+  return res.status(200).json({ live: rows.length, games: rows.map(r => r.external_event_id), scoreChanges: scoreChanges.length, notified })
 }

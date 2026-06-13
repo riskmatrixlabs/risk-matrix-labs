@@ -899,6 +899,59 @@ function useLiveGame(propEvent) {
 }
 
 // ── Game detail — full-screen overlay ──────────────────────────────────────
+// ── Notify bell — opt in to a web push when this game scores (logged-in users). ──
+function NotifyBell({ event, token }) {
+  const [on, setOn] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const eid = event.external_event_id
+
+  useEffect(() => {
+    if (!token || !eid) return
+    let cancelled = false
+    fetch(`/api/game-notify?external_event_id=${encodeURIComponent(eid)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && !cancelled) setOn(!!d.subscribed) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [eid, token])
+
+  const toggle = async () => {
+    if (!token || loading) return
+    setLoading(true)
+    try {
+      if (on) {
+        await fetch('/api/game-notify', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ external_event_id: eid }) })
+        setOn(false)
+      } else {
+        let subscription = null
+        try {
+          const perm = await Notification.requestPermission()
+          if (perm === 'granted') {
+            const reg = await navigator.serviceWorker.ready
+            let sub = await reg.pushManager.getSubscription()
+            if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY })
+            subscription = sub.toJSON()
+          }
+        } catch { /* permission denied / unsupported — opt-in still recorded */ }
+        await fetch('/api/game-notify', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ external_event_id: eid, subscription }) })
+        setOn(true)
+      }
+    } catch { /* network — leave state as-is */ }
+    setLoading(false)
+  }
+
+  if (!token || !eid) return null
+  return (
+    <button onClick={toggle} disabled={loading} aria-label={on ? 'Stop score alerts' : 'Notify me on scores'} title={on ? 'Score alerts on' : 'Notify me on scores'}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', opacity: loading ? 0.5 : 1 }}>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill={on ? NEON_T : 'none'}>
+        <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke={on ? NEON_T : MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke={on ? NEON_T : MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  )
+}
+
 // ── Shareable game card — branded matchup + no-vig win prob + fair value image. ──
 function GameShareModal({ event, onClose }) {
   const cardRef = useRef(null)
@@ -985,7 +1038,7 @@ function GameShareModal({ event, onClose }) {
   )
 }
 
-function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
+function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null }) {
   const event = useLiveGame(propEvent)
   const live     = event.status === 'LIVE' || event.status === 'IP'
   const final    = event.status === 'FT'   || event.status === 'AOT'
@@ -1106,10 +1159,13 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
           <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>Back</span>
         </button>
         <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>{event.league} · {fmtTime(event.start_time)}</span>
-        <button onClick={() => setShareOpen(true)} aria-label="Share game" style={{ width: '60px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 8a3 3 0 1 0-2.83-4M6 12a3 3 0 1 0 0 .01M18 16a3 3 0 1 0-2.83 4M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" stroke={NEON_T} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T, textTransform: 'uppercase' }}>Share</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', minWidth: '60px' }}>
+          <NotifyBell event={event} token={token} />
+          <button onClick={() => setShareOpen(true)} aria-label="Share game" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 8a3 3 0 1 0-2.83-4M6 12a3 3 0 1 0 0 .01M18 16a3 3 0 1 0-2.83 4M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" stroke={NEON_T} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T, textTransform: 'uppercase' }}>Share</span>
+          </button>
+        </div>
       </div>
       </div>
       {shareOpen && <GameShareModal event={event} onClose={() => setShareOpen(false)} />}
@@ -1731,7 +1787,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-export default function LiveCenter({ onLogPosition, bets = [] }) {
+export default function LiveCenter({ onLogPosition, bets = [], token = null }) {
   const [sport,       setSport]      = useState('All')
   const [dateFilter,  setDateFilter] = useState('Today')
   const [events,      setEvents]     = useState([])
@@ -1874,7 +1930,7 @@ export default function LiveCenter({ onLogPosition, bets = [] }) {
           LOADING SLATE...
         </div>
       ) : selected ? (
-        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} bets={bets} />
+        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} bets={bets} token={token} />
       ) : events.length === 0 ? (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
           {isLiveTab ? 'NO LIVE GAMES RIGHT NOW' : 'NO GAMES FOUND'}
