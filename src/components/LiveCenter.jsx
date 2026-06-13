@@ -1587,7 +1587,6 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                   How to read this
                 </a>
 
-                <EVBot event={event} token={token} unitSize={unitSize} />
                 <LineShop event={event} token={token} onLogPosition={onLogPosition} />
                 <BookLineMovement event={event} />
 
