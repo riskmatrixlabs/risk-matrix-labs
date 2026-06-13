@@ -1155,6 +1155,81 @@ function EVBot({ event, token }) {
   )
 }
 
+// ── LINE SHOP — multi-book odds comparison for THIS game (the Pikkit book-chips view) ──
+function LineShop({ event, token }) {
+  const [status, setStatus] = useState('idle')   // idle | loading | done | error
+  const [data, setData]     = useState(null)
+  const [credits, setCredits] = useState(null)
+  const [err, setErr]       = useState('')
+  const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
+  const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
+
+  async function load() {
+    if (!token || status === 'loading') return
+    setStatus('loading'); setErr('')
+    try {
+      const res = await fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}`,
+        { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`)
+      const j = await res.json()
+      setCredits(j.creditsRemaining)
+      setData(j.found && j.comparison ? j : null)
+      setStatus('done')
+    } catch (e) { setErr(e.message); setStatus('error') }
+  }
+
+  if (!token) return null
+
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.05)' }}>
+      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Line Shop · Best Price</span>
+      {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits} left</span>}
+    </div>
+  )
+
+  let body
+  if (status === 'idle')        body = <div style={{ padding: '16px 14px', textAlign: 'center' }}><button onClick={load} style={{ width: '100%', padding: '11px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', color: NEON_T, textTransform: 'uppercase' }}>Compare Books</button></div>
+  else if (status === 'loading') body = <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'Courier New, monospace', fontSize: '11px', color: MUTED }}>PULLING BOOKS…</div>
+  else if (status === 'error')   body = <div style={{ padding: '16px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: '#FF3B3B' }}>Failed — {err}</div>
+  else if (!data)                body = <div style={{ padding: '16px', textAlign: 'center', fontFamily: R, fontSize: '11px', color: MUTED }}>No book lines for this game (pre-game only).</div>
+  else {
+    const cmp = data.comparison
+    const aName = cmp.outcomes.find(n => lw(n) === lw(event.away_team)) || cmp.outcomes[0]
+    const hName = cmp.outcomes.find(n => lw(n) === lw(event.home_team)) || cmp.outcomes[1]
+    const rows = [...cmp.rows].sort((x, y) => (dec(y.prices[aName]) ?? 0) - (dec(x.prices[aName]) ?? 0))
+    const cell = (row, name) => {
+      const p = row.prices[name]
+      const isBest = cmp.best[name] && cmp.best[name].book === row.book
+      return <td style={{ textAlign: 'center', padding: '8px 6px', fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT, background: isBest ? NEON : 'transparent', borderRadius: isBest ? '5px' : 0 }}>{p == null ? '—' : fmtAm(p)}</td>
+    }
+    body = (
+      <div style={{ padding: '6px 10px 12px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            <th style={{ textAlign: 'left', padding: '8px 6px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED }}>BOOK</th>
+            <th style={{ textAlign: 'center', padding: '8px 6px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.away_abbr}</th>
+            <th style={{ textAlign: 'center', padding: '8px 6px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.home_abbr}</th>
+          </tr></thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.book} style={{ borderTop: `1px solid ${BORDER}` }}>
+                <td style={{ padding: '8px 6px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
+                  {BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', fontWeight: 700, color: NEON_T, marginLeft: '5px', letterSpacing: '0.06em' }}>SHARP</span>}
+                </td>
+                {cell(r, aName)}
+                {cell(r, hName)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>Highlighted = best available price · tap a book to bet there</div>
+      </div>
+    )
+  }
+
+  return <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>
+}
+
 function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null }) {
   const event = useLiveGame(propEvent)
   const live     = event.status === 'LIVE' || event.status === 'IP'
@@ -1517,6 +1592,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                 </a>
 
                 <EVBot event={event} token={token} />
+                <LineShop event={event} token={token} />
 
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
 

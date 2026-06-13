@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterBooks, isCredibleEdge, gameEdges, scanEdges, REPUTABLE_BOOKS } from '../src/lib/edgeFilter.js'
+import { filterBooks, isCredibleEdge, gameEdges, scanEdges, compareBooks, REPUTABLE_BOOKS } from '../src/lib/edgeFilter.js'
 
 const NOW   = Date.parse('2026-06-13T02:00:00Z')
 const FRESH = '2026-06-13T01:55:00Z'   // 5 min ago — within 10
@@ -72,6 +72,22 @@ describe('scanEdges', () => {
     expect(out).toHaveLength(2)
     expect(out[0].away).toBe('Reds')   // +14% sorts above +10%
     expect(out[0].evPct).toBeGreaterThan(out[1].evPct)
+  })
+})
+
+describe('compareBooks', () => {
+  it('lists reputable books with best price per side + sharp flag', () => {
+    const c = compareBooks(GAME.bookmakers, 'h2h')
+    expect(c.outcomes).toEqual(['A', 'B'])
+    expect(c.rows.map(r => r.book).sort()).toEqual(['draftkings', 'fanduel', 'pinnacle']) // betsson excluded
+    expect(c.rows.find(r => r.book === 'pinnacle').sharp).toBe(true)
+    expect(c.best.A.book).toBe('draftkings')  // +125 beats FD +120 and Pinny -110
+    expect(c.best.A.price).toBe(125)
+    expect(c.best.B.book).toBe('pinnacle')     // -110 is the best of the three on B
+  })
+  it('null when no reputable book has the market', () => {
+    const junkOnly = { bookmakers: [{ key: 'betsson', markets: [{ key: 'h2h', outcomes: [{ name: 'A', price: 100 }, { name: 'B', price: -120 }] }] }] }
+    expect(compareBooks(junkOnly.bookmakers, 'h2h')).toBeNull()
   })
 })
 

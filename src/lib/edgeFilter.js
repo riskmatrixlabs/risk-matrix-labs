@@ -5,6 +5,7 @@
 //
 // Everything here is pure: pass `nowMs` in so it's deterministic and testable.
 import { marketEdges, SHARP_BOOK } from './oddsEdge.js'
+import { americanToDecimal } from './devig.js'
 
 // Books we trust to price honestly + settle. Pinnacle stays (it's the sharp ANCHOR,
 // even though we rarely bet it). Hard Rock included — the owner bets there.
@@ -58,6 +59,40 @@ export function gameEdges(game, marketKey, nowMs, opts = {}) {
       commenceTime: game.commence_time,
       market: marketKey,
     }))
+}
+
+// Line-shopping comparison: every reputable book's price for one market of one game,
+// with the best price per outcome flagged and the sharp book marked. Powers the
+// "Odds Comparison" card (the Pikkit book-chips view).
+export function compareBooks(bookmakers, marketKey, opts = {}) {
+  const { whitelist = REPUTABLE_BOOKS, sharpBook = SHARP_BOOK } = opts
+  const books = (bookmakers || []).filter(b => whitelist.has(b.key) && (b.markets || []).some(m => m.key === marketKey))
+  if (!books.length) return null
+  const ref = (books.find(b => b.key === sharpBook) || books[0]).markets.find(m => m.key === marketKey)
+  const outcomes = ref.outcomes.map(o => o.name)
+
+  const rows = books.map(b => {
+    const m = b.markets.find(x => x.key === marketKey)
+    const prices = {}
+    for (const name of outcomes) {
+      const o = m.outcomes.find(x => x.name === name)
+      prices[name] = o ? o.price : null
+    }
+    return { book: b.key, sharp: b.key === sharpBook, prices }
+  })
+
+  const best = {}
+  for (const name of outcomes) {
+    let bb = null
+    for (const r of rows) {
+      const p = r.prices[name]
+      const d = americanToDecimal(p)
+      if (d == null) continue
+      if (!bb || d > bb.decimal) bb = { book: r.book, price: p, decimal: d }
+    }
+    best[name] = bb
+  }
+  return { outcomes, rows, best }
 }
 
 // Scan many games → all credible edges, highest EV first.
