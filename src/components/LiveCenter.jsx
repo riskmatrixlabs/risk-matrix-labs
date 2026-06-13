@@ -1048,7 +1048,7 @@ const BOOK_NAMES = {
 }
 const fmtAm = (n) => (n > 0 ? `+${n}` : `${n}`)
 
-function EVBot({ event, token }) {
+function EVBot({ event, token, unitSize = 0 }) {
   const [status, setStatus] = useState('idle')   // idle | scanning | done | error
   const [edge, setEdge]     = useState(null)
   const [credits, setCredits] = useState(null)
@@ -1135,8 +1135,10 @@ function EVBot({ event, token }) {
               <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT }}>{edge.sharpHoldPct.toFixed(1)}%</div>
             </div>
           </div>
-          <div style={{ marginTop: '10px', padding: '8px 10px', background: 'rgba(189,255,0,0.04)', borderLeft: `2px solid ${NEON}`, fontFamily: R, fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
-            Size it in your unit — disciplined, within your risk caps.
+          <div style={{ marginTop: '10px', padding: '8px 10px', background: 'rgba(189,255,0,0.04)', borderLeft: `2px solid ${NEON}`, fontFamily: R, fontSize: '11px', color: 'rgba(255,255,255,0.65)' }}>
+            {unitSize > 0
+              ? <>Size: <span style={{ color: NEON_T, fontWeight: 700 }}>1u · ${Math.round(unitSize)}</span> — within your risk caps. Disciplined.</>
+              : <>Size it in your unit — disciplined, within your risk caps.</>}
           </div>
         </div>
       )}
@@ -1230,7 +1232,7 @@ function LineShop({ event, token }) {
   return <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>
 }
 
-function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null }) {
+function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null, unitSize = 0 }) {
   const event = useLiveGame(propEvent)
   const live     = event.status === 'LIVE' || event.status === 'IP'
   const final    = event.status === 'FT'   || event.status === 'AOT'
@@ -1591,7 +1593,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                   How to read this
                 </a>
 
-                <EVBot event={event} token={token} />
+                <EVBot event={event} token={token} unitSize={unitSize} />
                 <LineShop event={event} token={token} />
 
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
@@ -1988,7 +1990,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-export default function LiveCenter({ onLogPosition, bets = [], token = null }) {
+export default function LiveCenter({ onLogPosition, bets = [], token = null, unitSize = 0 }) {
   const [sport,       setSport]      = useState('All')
   const [dateFilter,  setDateFilter] = useState('Today')
   const [events,      setEvents]     = useState([])
@@ -2131,7 +2133,7 @@ export default function LiveCenter({ onLogPosition, bets = [], token = null }) {
           LOADING SLATE...
         </div>
       ) : selected ? (
-        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} bets={bets} token={token} />
+        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} bets={bets} token={token} unitSize={unitSize} />
       ) : events.length === 0 ? (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
           {isLiveTab ? 'NO LIVE GAMES RIGHT NOW' : 'NO GAMES FOUND'}
