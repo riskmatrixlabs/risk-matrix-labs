@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import html2canvas from 'html2canvas'
 import { fetchEvents, fetchLiveEvents } from '../lib/events'
 import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
@@ -898,6 +899,92 @@ function useLiveGame(propEvent) {
 }
 
 // ── Game detail — full-screen overlay ──────────────────────────────────────
+// ── Shareable game card — branded matchup + no-vig win prob + fair value image. ──
+function GameShareModal({ event, onClose }) {
+  const cardRef = useRef(null)
+  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState('')
+  const dv = (event.odds_ml_away != null && event.odds_ml_home != null) ? devigTwoWay(event.odds_ml_away, event.odds_ml_home) : null
+  const aPct = dv ? Math.round(dv.fairA * 100) : null
+  const hPct = dv ? Math.round(dv.fairB * 100) : null
+  const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
+  const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+
+  const handleShare = async () => {
+    if (!cardRef.current) return
+    setLoading(true); setStatus('')
+    try {
+      const canvas = await html2canvas(cardRef.current, { backgroundColor: '#0A0A0A', scale: 3, useCORS: true, logging: false, allowTaint: true })
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
+      if (!blob) throw new Error('no blob')
+      const file = new File([blob], 'rml-game.png', { type: 'image/png' })
+      if (canNativeShare && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Risk Matrix Labs', text: `${event.away_abbr} @ ${event.home_abbr} — Operate With Discipline 🛡️ riskmatrixlabs.com` })
+      } else {
+        const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'rml-game.png'; a.click(); URL.revokeObjectURL(url)
+      }
+      setStatus('done')
+    } catch (e) { if (e.name !== 'AbortError') setStatus('error') }
+    finally { setLoading(false) }
+  }
+
+  const lbl = { fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 400, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? '0' : '20px' }}>
+      <div style={{ background: CARD, borderRadius: isMobile ? '16px 16px 0 0' : '16px', padding: '18px', maxWidth: '380px', width: '100%' }}>
+        {/* The shareable card */}
+        <div ref={cardRef} style={{ background: '#0A0A0A', borderRadius: '14px', overflow: 'hidden', border: '1px solid rgba(189,255,0,0.25)' }}>
+          <div style={{ padding: '16px 18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T }}>RISK MATRIX LABS</span>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED }}>{event.league} · {fmtTime(event.start_time)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ fontFamily: R, fontSize: '30px', fontWeight: 700, color: TEXT, letterSpacing: '0.02em' }}>{event.away_abbr}</div>
+                <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{event.away_record}</div>
+              </div>
+              <span style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>@</span>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ fontFamily: R, fontSize: '30px', fontWeight: 700, color: TEXT, letterSpacing: '0.02em' }}>{event.home_abbr}</div>
+                <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{event.home_record}</div>
+              </div>
+            </div>
+            {dv ? (
+              <>
+                <div style={{ ...lbl, textAlign: 'center', letterSpacing: '0.14em', marginBottom: '7px' }}>Win Probability · no-vig</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: aPct >= hPct ? NEON_T : TEXT }}>{event.away_abbr} {aPct}%</span>
+                  <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: hPct > aPct ? NEON_T : TEXT }}>{hPct}% {event.home_abbr}</span>
+                </div>
+                <div style={{ display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)', marginBottom: '14px' }}>
+                  <div style={{ width: `${aPct}%`, background: aPct >= hPct ? NEON : 'rgba(255,255,255,0.3)' }} />
+                  <div style={{ width: `${hPct}%`, background: hPct > aPct ? NEON : 'rgba(255,255,255,0.3)' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div><div style={lbl}>Fair {event.away_abbr}</div><div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: NEON_T }}>{fair(dv.fairAmericanA)}</div></div>
+                  <div style={{ textAlign: 'right' }}><div style={lbl}>Fair {event.home_abbr}</div><div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: NEON_T }}>{fair(dv.fairAmericanB)}</div></div>
+                </div>
+              </>
+            ) : (
+              <div style={{ ...lbl, textAlign: 'center', padding: '8px 0' }}>Matchup</div>
+            )}
+          </div>
+          <div style={{ borderTop: '1px solid rgba(189,255,0,0.15)', padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(189,255,0,0.04)' }}>
+            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>Operate With Discipline</span>
+            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, color: MUTED }}>riskmatrixlabs.com</span>
+          </div>
+        </div>
+        <button onClick={handleShare} disabled={loading} style={{ width: '100%', marginTop: '14px', padding: '13px', background: NEON, color: '#0A0A0A', border: 'none', borderRadius: '10px', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+          {loading ? 'Generating…' : status === 'done' ? 'Done ✓' : status === 'error' ? 'Try again' : (canNativeShare ? 'Share' : 'Download')}
+        </button>
+        <button onClick={onClose} style={{ width: '100%', marginTop: '8px', padding: '10px', background: 'transparent', color: MUTED, border: 'none', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>Close</button>
+      </div>
+    </div>
+  )
+}
+
 function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
   const event = useLiveGame(propEvent)
   const live     = event.status === 'LIVE' || event.status === 'IP'
@@ -916,6 +1003,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
   const [pitchTeam,   setPitchTeam]   = useState('away')
   const [skatersTeam, setSkatersTeam] = useState('away')
   const [movement,    setMovement]    = useState({})
+  const [shareOpen,   setShareOpen]   = useState(false)
 
   // If the active tab disappears (data loaded/changed the tab set), fall back to the first tab.
   useEffect(() => { if (!tabs.includes(dtab)) setDtab(tabs[0] ?? 'Odds') }, [tabs, dtab])
@@ -1018,9 +1106,13 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [] }) {
           <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>Back</span>
         </button>
         <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>{event.league} · {fmtTime(event.start_time)}</span>
-        <div style={{ width: '60px' }} />
+        <button onClick={() => setShareOpen(true)} aria-label="Share game" style={{ width: '60px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M18 8a3 3 0 1 0-2.83-4M6 12a3 3 0 1 0 0 .01M18 16a3 3 0 1 0-2.83 4M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" stroke={NEON_T} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T, textTransform: 'uppercase' }}>Share</span>
+        </button>
       </div>
       </div>
+      {shareOpen && <GameShareModal event={event} onClose={() => setShareOpen(false)} />}
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
