@@ -13,6 +13,7 @@ import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
+import { labelFor } from '../lib/propMarkets.js'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -79,12 +80,17 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
           <button key={k} onClick={() => setChannel(k)} style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${channel === k ? NEON : BORDER}`, background: channel === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: channel === k ? NEON_T : MUTED }}>{label}</button>
         ))}
       </div>
-      <div key={channel} className="tvbot-tune">
-        {channel === 'find' && <FindChannel token={token} bankroll={bankroll} showFilters={showFilters}
-          onPick={(g) => { setGame(g); if (g.sport) setSport(g.sport); setChannel('look') }} />}
-        {channel === 'look' && <LookChannel game={game} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
-        {channel === 'track' && <TrackChannel bets={bets} sport={sport} />}
+      {/* FIND stays mounted (just hidden) so a scan survives channel switches — no re-scan */}
+      <div style={{ display: channel === 'find' ? 'block' : 'none' }}>
+        <FindChannel token={token} bankroll={bankroll} showFilters={showFilters}
+          onPick={(g) => { setGame(g); if (g.sport) setSport(g.sport); setChannel('look') }} />
       </div>
+      {channel !== 'find' && (
+        <div key={channel} className="tvbot-tune">
+          {channel === 'look' && <LookChannel game={game} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
+          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
+        </div>
+      )}
     </div>
   )
 }
@@ -104,6 +110,7 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
   const [view, setView]       = useState('tv')        // tv | board
   const [sportF, setSportF]   = useState('ALL')       // filters replace tabs (toggled by the gear)
   const [marketF, setMarketF] = useState('ALL')
+  const [propCat, setPropCat] = useState('ALL')   // prop category filter (strikeouts, points…)
   const [minEv, setMinEv]     = useState(0)
   const scanning = useRef(false)
 
@@ -172,7 +179,14 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
     for (const ev of preGames) {
       try {
         const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(ev._sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
-        if (res.ok) { const j = await res.json(); if (j?.found) for (const e of (j.edges || [])) all.push({ ...e, _sport: ev._sport, _game: buildGame(ev) }) }
+        if (res.ok) {
+          const j = await res.json()
+          if (j?.found) {
+            for (const e of (j.edges || [])) all.push({ ...e, _sport: ev._sport, _game: buildGame(ev) })
+            // line-shop props (no sharp anchor) still show — best price, no EV claim
+            for (const e of (j.lineShopOnly || [])) all.push({ ...e, _sport: ev._sport, _game: buildGame(ev), evPct: null, fairProb: null })
+          }
+        }
       } catch { /* skip a game that fails, keep scanning */ }
       scanned++
       setProps({ status: 'scanning', edges: [...all], scanned })
@@ -189,10 +203,13 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
       .filter(e => inSport(e._sport) && (marketF === 'ALL' || e.market === marketF) && (e.evPct ?? 0) >= minEv)
       .map(e => ({ key: `gl:${e._sport}:${gameKey(e)}:${e.market}:${e.outcome}:${e.point}`, label: pickLabel(e), book: e.best.book, sub: `${up(e.away)}@${up(e.home)}`, price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: resolveGame(e) }))
     const pr = !showProps ? [] : (props?.edges || [])
-      .filter(p => inSport(p._sport) && (p.evPct ?? 0) >= minEv)
+      .filter(p => inSport(p._sport) && (propCat === 'ALL' || p.market === propCat) && (p.evPct == null ? minEv === 0 : p.evPct >= minEv))
       .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game }))
-    return [...gl, ...pr].sort((a, b) => (b.evPct ?? 0) - (a.evPct ?? 0))
-  }, [feed, props, sportF, marketF, minEv, evByKey])
+    return [...gl, ...pr].sort((a, b) => (b.evPct ?? -1) - (a.evPct ?? -1))
+  }, [feed, props, sportF, marketF, propCat, minEv, evByKey])
+
+  // prop categories that actually came out of the scan (Strikeouts, Points, …) for the filter
+  const propCats = useMemo(() => [...new Set((props?.edges || []).map(p => p.market))], [props])
 
   const status = feed.status
   const sub = status === 'scanning' ? `▶ SCANNING ${feed.scanned}/${FEED_SPORTS.length} SPORTS ◀`
@@ -216,6 +233,15 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
           <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
             {MARKET_CHIPS.map(([k, label]) => <button key={k} onClick={() => setMarketF(k)} style={pill(marketF === k)}>{label}</button>)}
           </div>
+          {marketF === 'props' && propCats.length > 0 && (
+            <>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>PROP CATEGORY</div>
+              <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                <button onClick={() => setPropCat('ALL')} style={pill(propCat === 'ALL')}>ALL</button>
+                {propCats.map(c => <button key={c} onClick={() => setPropCat(c)} style={pill(propCat === c)}>{labelFor(c)}</button>)}
+              </div>
+            </>
+          )}
           <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>MIN EV</div>
           <div style={{ display: 'flex', gap: '6px' }}>
             {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}
@@ -243,8 +269,8 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
                 <span className="tv-glow" style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON_T }}>{fmtAm(r.price)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
-                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 ? ` · bet $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</span>
-                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: top ? NEON_T : '#5DCAA5' }}>+{r.evPct.toFixed(1)}% EDGE</span>
+                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · bet $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</span>
+                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}% EDGE` : 'LINE SHOP'}</span>
               </div>
             </div>
           )
@@ -318,10 +344,10 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
                 {r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '1px' }}>PROP</span>}
                 {r.label}
               </div>
-              <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 ? ` · BET $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</div>
+              <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · BET $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</div>
             </div>
             <div style={{ textAlign: 'right', fontFamily: R, fontSize: '15px', fontWeight: 700, color: top ? NEON_T : TEXT }}>{fmtAm(r.price)}</div>
-            <div style={{ textAlign: 'right', fontFamily: R, fontSize: '13px', fontWeight: 700, color: top ? NEON_T : '#5DCAA5' }}>+{r.evPct.toFixed(1)}%</div>
+            <div style={{ textAlign: 'right', fontFamily: R, fontSize: '13px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}%` : 'SHOP'}</div>
           </div>
         )
       })}
@@ -438,9 +464,6 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
       })}
 
       {!isProps && view === 'books' && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px' }}>✓ = best price · tap any book to log it</div>}
-
-      {/* closing-lines best-price grid (Pikkit) */}
-      {!isProps && <ClosingLines M={M} game={game} sport={sport} />}
     </Frame>
   )
 }
@@ -661,7 +684,7 @@ function PropsPanel({ game, sport, token, onLogPosition }) {
 }
 
 // ───────────────────────────── CH 3 · TRACK ─────────────────────────────
-function TrackChannel({ bets, sport }) {
+function TrackChannel({ bets, sport, token }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
@@ -677,6 +700,17 @@ function TrackChannel({ bets, sport }) {
     }
     return out
   }, [bets, events])
+
+  // group tracked bets by game → one card per game (closing lines live inside each card)
+  const games = useMemo(() => {
+    const m = new Map()
+    for (const g of graded) {
+      const key = `${lw(g.ev.away_team)}@${lw(g.ev.home_team)}`
+      if (!m.has(key)) m.set(key, { ev: g.ev, items: [] })
+      m.get(key).items.push(g)
+    }
+    return [...m.values()]
+  }, [graded])
 
   // Pikkit-style scoreboard: averages across every graded bet. CLV% is the headline metric —
   // beating the closing line over time is the truest proof you're a +EV operator.
@@ -716,18 +750,37 @@ function TrackChannel({ bets, sport }) {
       {graded.length > 0 && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginBottom: '10px' }}>{board.tracked} TRACKED · CLV IS THE TRUTH — BEAT THE CLOSE &gt; 50% = SHARP</div>}
 
       {!graded.length && <Empty text={`No graded ${sport} positions yet. Log a play on CH 1/2 and it grades here.`} />}
-      {graded.map(({ bet, ev, grade }, i) => (
-        <div key={i} style={{ padding: '11px 12px', marginBottom: '8px', borderRadius: '12px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
+      {games.map((g, i) => <TrackGameCard key={i} ev={g.ev} items={g.items} sport={sport} token={token} />)}
+    </TvFrame>
+  )
+}
+
+// One game card on TRACK: the graded bets for this game + its closing-lines grid.
+function TrackGameCard({ ev, items, sport, token }) {
+  const [M, setM] = useState(null)
+  useEffect(() => {
+    if (!token || !ev) return
+    let live = true
+    fetch(`/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (live) setM(j?.markets || null) }).catch(() => {})
+    return () => { live = false }
+  }, [ev, sport, token])
+
+  return (
+    <div style={{ padding: '12px', marginBottom: '10px', borderRadius: '12px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
+      <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, marginBottom: '4px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
+      {items.map(({ bet, grade }, i) => (
+        <div key={i} style={{ paddingTop: '8px' }}>
           <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{bet.pick || bet.event}</div>
-          <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
-          <div style={{ display: 'flex', gap: '18px', marginTop: '6px' }}>
+          <div style={{ display: 'flex', gap: '18px', marginTop: '4px' }}>
             {grade.evPct != null && <Stat label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
             {grade.clvPct != null && <Stat label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
             {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>Awaiting closing line…</span>}
           </div>
         </div>
       ))}
-    </TvFrame>
+      {M && <ClosingLines M={M} game={{ away: ev.away_team, home: ev.home_team }} sport={sport} />}
+    </div>
   )
 }
 

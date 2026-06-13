@@ -21,7 +21,9 @@ const EDGES = [
   { market: 'spreads', outcome: 'Los Angeles Dodgers', point: -1.5, best: { book: 'betmgm',         price: 155, decimal: 2.55 }, evPct: 4.1, fairProb: 0.42, away: 'Los Angeles Dodgers', home: 'San Diego Padres',      commenceTime: '2099-12-31T23:30:00Z' },
   { market: 'totals',  outcome: 'Over',                point: 8.5,  best: { book: 'fanduel',        price: -105, decimal: 1.95 }, evPct: 3.0, fairProb: 0.53, away: 'Chicago Cubs',        home: 'San Francisco Giants', commenceTime: '2099-12-31T23:00:00Z' },
 ]
-const PROP = { player: 'Spencer Strider', side: 'Over', point: 5.5, marketLabel: 'Strikeouts', best: { book: 'fanduel', price: -110, link: null }, fairProb: 0.55, evPct: 2.8 }
+const PROP = { player: 'Spencer Strider', side: 'Over', point: 5.5, market: 'pitcher_strikeouts', marketLabel: 'Strikeouts', best: { book: 'fanduel', price: -110, link: null }, fairProb: 0.55, evPct: 2.8 }
+// line-shop prop: no Pinnacle anchor, so no EV — must STILL show (the "nothing showing" fix)
+const LSPROP = { player: 'Aaron Judge', side: 'Over', point: 1.5, market: 'batter_total_bases', marketLabel: 'Total Bases', best: { book: 'betmgm', price: 120, link: null } }
 
 const jsonRes = (obj) => ({ ok: true, status: 200, json: async () => obj })
 
@@ -33,7 +35,7 @@ beforeEach(() => {
     }
     if (url.includes('/api/scan-props')) {
       return url.includes('Cubs')
-        ? jsonRes({ found: true, edges: [PROP], lineShopOnly: [], creditsRemaining: 1800 })
+        ? jsonRes({ found: true, edges: [PROP], lineShopOnly: [LSPROP], creditsRemaining: 1800 })
         : jsonRes({ found: false })
     }
     return jsonRes({})
@@ -69,6 +71,16 @@ describe('MatrixBot — real render', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /ADD PROPS/ }))
     expect(await screen.findByText('Spencer Strider O5.5')).toBeTruthy()
-    expect(screen.getByText('PROP')).toBeTruthy()
+    expect(screen.getAllByText('PROP').length).toBeGreaterThan(0)
+  })
+
+  it('shows line-shop props (no sharp anchor) tagged SHOP — the "nothing showing" fix', async () => {
+    render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
+    fireEvent.click(await screen.findByRole('button', { name: '▶ GO LIVE' }))
+    fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
+    await screen.findByText('CUBS ML')
+    fireEvent.click(screen.getByRole('button', { name: /ADD PROPS/ }))
+    expect(await screen.findByText('Aaron Judge O1.5')).toBeTruthy()   // line-shop prop is visible
+    expect(screen.getAllByText('SHOP').length).toBeGreaterThan(0)      // tagged, no fake EV
   })
 })
