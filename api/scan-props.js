@@ -42,10 +42,21 @@ export default async function handler(req, res) {
     const match = events.find(e => lastWord(e.home_team) === lastWord(home) && lastWord(e.away_team) === lastWord(away))
     if (!match) return res.status(200).json({ found: false })
 
-    const { game, credits } = await fetchEventOdds({ sport, eventId: match.id, markets })
-    if (!game) return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
+    // Try the requested market set (timeboxed). If it fails (e.g. a market the plan rejects → 422,
+    // or a slow call) AND we asked for the full set, degrade to the base set so props never blank.
+    let game = null, credits = { remaining: undefined }, usedMarkets = markets
+    const tiers = (full && markets !== PROP_MARKETS[sport]) ? [markets, PROP_MARKETS[sport]] : [markets]
+    let lastErr = null
+    for (const mk of tiers) {
+      try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2'], timeoutMs: 8000 }); game = r.game; credits = r.credits; usedMarkets = mk; break }
+      catch (e) { lastErr = e }
+    }
+    if (!game) {
+      if (lastErr) throw lastErr
+      return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
+    }
 
-    const { edges, lineShopOnly } = propEdges(game, markets, Date.now())
+    const { edges, lineShopOnly } = propEdges(game, usedMarkets, Date.now())
     const payload = {
       found: true, away: game.away_team, home: game.home_team,
       edges, lineShopOnly,

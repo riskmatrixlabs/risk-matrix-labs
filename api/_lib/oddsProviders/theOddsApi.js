@@ -95,12 +95,20 @@ export async function fetchHistoricalOdds({ sport, date, markets = ['h2h'], regi
 }
 
 // Paid per-event odds (props live here). Returns one normalized game + credits.
-export async function fetchEventOdds({ sport, eventId, markets, regions = ['us', 'eu'], apiKey = process.env.ODDS_API_KEY }) {
+export async function fetchEventOdds({ sport, eventId, markets, regions = ['us', 'eu'], apiKey = process.env.ODDS_API_KEY, timeoutMs = 0 }) {
   if (!apiKey) throw new Error('ODDS_API_KEY missing')
   const sportKey = SPORT_KEYS[sport] || sport
   const url = `${BASE}/sports/${sportKey}/events/${eventId}/odds/?apiKey=${apiKey}`
     + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true`
-  const res = await fetch(url)
+  // Optional hard timeout so a slow/hung call can't blow the serverless function's budget.
+  const ctrl = timeoutMs > 0 ? new AbortController() : null
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null
+  let res
+  try {
+    res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
   if (!res.ok) throw new Error(`theOddsApi event-odds ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
   const data = await res.json()
   return {

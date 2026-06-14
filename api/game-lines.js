@@ -122,57 +122,57 @@ export default async function handler(req, res) {
 
   if (full) {
     try {
-      // ALWAYS resolve the Odds API event id by matching team names — our external_event_id
-      // (the passed `eventId`) is NOT the Odds API id, so the per-event endpoint needs this
-      // lookup (same approach scan-props uses). The per-event endpoint is where segment markets live.
-      const { events } = await fetchSportEvents({ sport })
-      const match = events.find(e => lastWord(e.home_team) === lastWord(home) && lastWord(e.away_team) === lastWord(away))
-      if (!match) return res.status(200).json({ found: false })
-      const evId = match.id
+      // (1) BASE LINES via the fast, reliable bulk endpoint — same call cheap mode uses (~1s).
+      //     This guarantees the page always gets game lines; segments are a bonus layered on top.
+      const provider = getProvider()
+      const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
+      const baseGame = games.find(g => lastWord(g.home_team) === lastWord(home) && lastWord(g.away_team) === lastWord(away))
+      if (!baseGame) return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
 
-      // Try the full per-sport market list; degrade on unsupported-market rejections.
-      let game = null, credits = { remaining: undefined }
-      const ladder = [FULL_MARKETS[sport] || BASE_FULL, BASE_FULL, BASE_THREE]
-      let lastErr = null
-      for (const mk of ladder) {
-        try {
-          const r = await fetchEventOdds({ sport, eventId: evId, markets: mk, regions: ['us', 'us2'] })
-          game = r.game; credits = r.credits
-          break
-        } catch (e) { lastErr = e }
-      }
-      if (!game) {
-        if (lastErr) throw lastErr
-        return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
-      }
-
-      const bk = game.bookmakers
       const markets = {
-        h2h:     compareBooks(bk, 'h2h'),
-        spreads: compareBooks(bk, 'spreads'),
-        totals:  compareBooks(bk, 'totals'),
+        h2h:     compareBooks(baseGame.bookmakers, 'h2h'),
+        spreads: compareBooks(baseGame.bookmakers, 'spreads'),
+        totals:  compareBooks(baseGame.bookmakers, 'totals'),
       }
 
-      const segments = {}
-      const s1 = buildSegment(bk, { h2h: 'h2h_1st_1_innings', totals: 'totals_1st_1_innings', spreads: 'spreads_1st_1_innings' })
-      const s5 = buildSegment(bk, { h2h: 'h2h_1st_5_innings', totals: 'totals_1st_5_innings', spreads: 'spreads_1st_5_innings' })
-      const s7 = buildSegment(bk, { h2h: 'h2h_1st_7_innings', totals: 'totals_1st_7_innings' })
-      if (s1) segments['1st_1'] = s1
-      if (s5) segments['1st_5'] = s5
-      if (s7) segments['1st_7'] = s7
+      // (2) SEGMENTS + TEAM TOTALS via the per-event endpoint — BEST-EFFORT, hard-timeboxed so it
+      //     can never blow the function budget. Any failure/timeout just leaves these empty.
+      let segments = {}, teamTotals = null, segCredits
+      try {
+        const { events } = await fetchSportEvents({ sport })
+        const match = events.find(e => lastWord(e.home_team) === lastWord(home) && lastWord(e.away_team) === lastWord(away))
+        if (match) {
+          const tiers = sport === 'MLB' ? [FULL_MARKETS.MLB, BASE_FULL] : [BASE_FULL]
+          let evGame = null
+          for (const mk of tiers) {
+            try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2'], timeoutMs: 7000 }); evGame = r.game; segCredits = r.credits?.remaining; break }
+            catch (e) { /* unsupported markets / slow — try next tier */ }
+          }
+          if (evGame) {
+            const bk = evGame.bookmakers
+            const s1 = buildSegment(bk, { h2h: 'h2h_1st_1_innings', totals: 'totals_1st_1_innings', spreads: 'spreads_1st_1_innings' })
+            const s5 = buildSegment(bk, { h2h: 'h2h_1st_5_innings', totals: 'totals_1st_5_innings', spreads: 'spreads_1st_5_innings' })
+            const s7 = buildSegment(bk, { h2h: 'h2h_1st_7_innings', totals: 'totals_1st_7_innings' })
+            if (s1) segments['1st_1'] = s1
+            if (s5) segments['1st_5'] = s5
+            if (s7) segments['1st_7'] = s7
+            teamTotals = parseTeamTotals(bk)
+          }
+        }
+      } catch (e) { console.error('game-lines segments best-effort failed:', e.message) }
 
       const payload = {
         found: true,
-        away: game.away_team,
-        home: game.home_team,
+        away: baseGame.away_team,
+        home: baseGame.home_team,
         markets,
         segments,
-        teamTotals: parseTeamTotals(bk),
-        creditsRemaining: credits.remaining,
+        teamTotals,
+        creditsRemaining: segCredits ?? credits.remaining,
         fetchedAt: new Date().toISOString(),
       }
-      await writeScan(ckSport, ckGame, payload, credits.remaining)
-      await persistSnapshots({ eventId: eventId || evId, sport, away: game.away_team, home: game.home_team, markets })
+      await writeScan(ckSport, ckGame, payload, payload.creditsRemaining)
+      await persistSnapshots({ eventId, sport, away: baseGame.away_team, home: baseGame.home_team, markets })
       return res.status(200).json(payload)
     } catch (e) {
       console.error('game-lines full failed:', e.message)
