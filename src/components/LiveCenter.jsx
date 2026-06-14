@@ -6,7 +6,7 @@ import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { liveConsensus } from '../lib/liveConsensus'
-import { decorate, SIGNUP_LINKS, SIGNUP_NAMES } from '../lib/betLinks'
+import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES } from '../lib/betLinks'
 import { booksForState, OFFSHORE, US_STATES, guessState } from '../lib/geoBooks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
@@ -1210,13 +1210,17 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
         const p = row.prices[name]
         const isBest = cmp.best[name] && cmp.best[name].book === row.book
         const pt = row.points[name]
-        // ONE-TAP ADD: tapping any price adds a leg at the BEST book for that outcome (line-shopped).
-        const bestForOutcome = cmp.best[name]
+        // ONE-TAP ADD: add a leg at the best book that's actually PLACEABLE (has a deep link),
+        // else the overall best book (with its homepage as the Place fallback).
         const tappable = onAddToSlip && p != null
         const onTap = () => {
           if (!tappable) return
-          const b = bestForOutcome || { book: row.book, price: p, link: row.links?.[name] }
-          onAddToSlip({ pick: pickFor(name, pt), odds: b.price ?? p, book: b.book, link: decorate(b.book, b.link) || null, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` })
+          const linkable = cmp.rows
+            .map(r => ({ book: r.book, price: r.prices[name], deep: r.links?.[name] }))
+            .filter(x => x.price != null && decorate(x.book, x.deep))
+            .sort((a, b) => (dec(b.price) ?? 0) - (dec(a.price) ?? 0))[0]
+          const b = linkable || cmp.best[name] || { book: row.book, price: p, deep: row.links?.[name] }
+          onAddToSlip({ pick: pickFor(name, pt), odds: b.price ?? p, book: b.book, link: placeLink(b.book, b.deep ?? b.link), sport: event.sport, event: `${event.away_team} vs ${event.home_team}` })
         }
         return (
           <td key={name} onClick={onTap} style={{ textAlign: 'center', padding: '7px 6px', cursor: tappable ? 'pointer' : 'default' }}>

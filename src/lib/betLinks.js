@@ -30,3 +30,17 @@ export const SIGNUP_NAMES = {
 export function signupLink(book) {
   return SIGNUP_LINKS[book] || null
 }
+
+// Book homepages — fallback "Place" target when a book has no deep bet-slip link.
+export const BOOK_HOME = {
+  draftkings: 'https://sportsbook.draftkings.com/', fanduel: 'https://sportsbook.fanduel.com/',
+  betmgm: 'https://sports.betmgm.com/', caesars: 'https://www.caesars.com/sportsbook-and-casino',
+  williamhill_us: 'https://www.caesars.com/sportsbook-and-casino', espnbet: 'https://espnbet.com/',
+  fanatics: 'https://sportsbook.fanatics.com/', betrivers: 'https://betrivers.com/',
+  hardrockbet: 'https://app.hardrock.bet/', ballybet: 'https://play.ballybet.com/',
+  betparx: 'https://www.betparx.com/', fliff: 'https://www.getfliff.com/', pinnacle: 'https://www.pinnacle.com/',
+}
+// Best place-link for a book: its decorated deep link if present, else its homepage.
+export function placeLink(book, deepLink) {
+  return decorate(book, deepLink) || BOOK_HOME[book] || null
+}
