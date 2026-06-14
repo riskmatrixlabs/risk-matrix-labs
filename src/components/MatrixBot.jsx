@@ -117,7 +117,7 @@ function PlayerSearch({ token, onSelect, onClose }) {
   )
 }
 
-export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0 }) {
+export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv' }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
@@ -136,7 +136,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       </div>
       {/* FIND stays mounted (just hidden) so a scan survives channel switches — no re-scan */}
       <div style={{ display: channel === 'find' ? 'block' : 'none' }}>
-        <FindChannel token={token} bankroll={bankroll}
+        <FindChannel token={token} bankroll={bankroll} initialView={initialView}
           showFilters={showFilters} setShowFilters={setShowFilters}
           showSearch={showSearch} setShowSearch={setShowSearch}
           onPick={(g) => tuneTo(g)}
@@ -159,12 +159,12 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
 const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // sports the provider supports today
 const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
-function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = false, setShowFilters, showSearch = false, setShowSearch }) {
+function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = false, setShowFilters, showSearch = false, setShowSearch, initialView = 'tv' }) {
   const [events, setEvents]   = useState([])
   const [feed, setFeed]       = useState({ status: 'idle', edges: [], scanned: 0, credits: null })
   const [props, setProps]     = useState(null)
   const [err, setErr]         = useState('')
-  const [view, setView]       = useState('tv')        // tv | board
+  const [view, setView]       = useState(initialView) // tv | board (board = via Analyze Bet door)
   const [sportF, setSportF]   = useState('ALL')       // filters replace tabs (toggled by the gear)
   const [marketF, setMarketF] = useState('ALL')
   const [propCat, setPropCat] = useState('ALL')   // prop category filter (strikeouts, points…)

@@ -2337,6 +2337,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [shareCardBet, setShareCardBet] = useState(null)   // null = closed, 'session' = session card, bet obj = bet card
   const [editingBet,   setEditingBet]   = useState(null)
   const [tab,          setTab]          = useState(isDemo ? 'overview' : (saved.current?.tab ?? 'overview'))
+  const [botView,      setBotView]      = useState('tv')   // which view the Matrix Bot opens on: 'tv' (default) | 'board' (via Analyze Bet door)
   const [initialBet,   setInitialBet]   = useState(null)
   const [riskSettings, setRiskSettings] = useState(saved.current?.riskSettings ?? {
     maxRiskPerBetPct: 3,
@@ -2460,6 +2461,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     const payload = { bets, username, ladderStarting, ladderSessionKey, bankroll, masterBrOverride, riskSettings, darkMode, tab }
     try { localStorage.setItem(LS_KEY, JSON.stringify(payload)) } catch {}
   }, [bets, bankroll, masterBrOverride, username, ladderStarting, ladderSessionKey, riskSettings, darkMode, tab])
+
+  // ── Reset the Matrix Bot to its default TV view whenever we leave the Bot tab,
+  //    so only the "Analyze Bet" door lands it on the board. ──
+  useEffect(() => { if (tab !== 'bot') setBotView('tv') }, [tab])
 
   // ── On first load: pull data from Supabase if user is logged in ──
   useEffect(() => {
@@ -3058,7 +3063,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: '480px', margin: '0 10px 10px', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
               <div onClick={() => setSlipOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', cursor: 'pointer', background: 'rgba(189,255,0,0.06)' }}>
                 <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase' }}>🎟 Bet Matrix{slip.length ? ` · ${slip.length} ${slip.length === 1 ? 'leg' : 'legs'}` : ''}</span>
-                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '11px' }}>{slipOpen ? '▾' : '▸'}</span></span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                  <button onClick={(e) => { e.stopPropagation(); setBotView('board'); setTab('bot') }} title="Analyze a play in Channel 2 — your slip stays parked"
+                    style={{ padding: '5px 10px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>📊 Analyze</button>
+                  <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '11px' }}>{slipOpen ? '▾' : '▸'}</span></span>
+                </span>
               </div>
               {slipOpen && (
                 <div style={{ padding: '10px 14px 14px' }}>
@@ -4830,7 +4839,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
-        {tab === 'bot'  && <MatrixBot onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll} />}
+        {tab === 'bot'  && <MatrixBot initialView={botView} onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll} />}
 
       </div>
 
