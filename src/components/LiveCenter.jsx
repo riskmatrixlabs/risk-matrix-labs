@@ -7,6 +7,7 @@ import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { liveConsensus } from '../lib/liveConsensus'
 import { decorate, SIGNUP_LINKS, SIGNUP_NAMES } from '../lib/betLinks'
+import { booksForState, OFFSHORE, US_STATES, guessState } from '../lib/geoBooks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
 
@@ -1120,6 +1121,9 @@ export function LineShop({ event, token, onLogPosition, focus = null }) {
   const [err, setErr]       = useState('')
   const [mkt, setMkt]       = useState('h2h')    // h2h | spreads | totals
   const [confirm, setConfirm] = useState(null)   // { book, name, pick, odds, url } — tap-to-bet confirm
+  const [userState, setUserState] = useState(() => { try { return localStorage.getItem('rml_state') || guessState() || '' } catch { return '' } })
+  const [showAllBooks, setShowAllBooks] = useState(false)
+  const pickState = (s) => { setUserState(s); try { s ? localStorage.setItem('rml_state', s) : localStorage.removeItem('rml_state') } catch {} }
   const rootRef = useRef(null)
   const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
@@ -1151,7 +1155,15 @@ export function LineShop({ event, token, onLogPosition, focus = null }) {
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.05)' }}>
       <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Line Shop · Best Price</span>
-      {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits} left</span>}
+      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '10px' }}>📍</span>
+        <select value={userState} onChange={e => pickState(e.target.value)} title="Your state — shows books you can use"
+          style={{ background: '#0d0d0d', color: userState ? NEON_T : MUTED, border: `1px solid ${BORDER}`, borderRadius: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, padding: '3px 5px', outline: 'none' }}>
+          <option value="">All states</option>
+          {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits} left</span>}
+      </span>
     </div>
   )
 
@@ -1184,7 +1196,12 @@ export function LineShop({ event, token, onLogPosition, focus = null }) {
             { name: cmp.outcomes.find(n => lw(n) === lw(event.home_team)) || cmp.outcomes[1], label: event.home_abbr },
           ]
       const sortName = cols[0].name
-      const rows = [...cmp.rows].sort((x, y) => (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0))
+      // Geo filter: show only books usable in the operator's state (+ offshore), unless "show all".
+      const allowed = booksForState(userState)
+      const allowSet = allowed ? new Set([...allowed, ...OFFSHORE]) : null
+      const allRows = [...cmp.rows].sort((x, y) => (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0))
+      const rows = (allowSet && !showAllBooks) ? allRows.filter(r => allowSet.has(r.book)) : allRows
+      const hiddenCount = allRows.length - rows.length
       const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
       const pickFor = (name, pt) => isTotals ? `${/^o/i.test(name) ? 'Over' : 'Under'} ${pt}`
         : activeKey === 'spreads' ? `${cols.find(c => c.name === name)?.label} ${fmtPt(pt)}`
@@ -1247,7 +1264,17 @@ export function LineShop({ event, token, onLogPosition, focus = null }) {
                 ))}
               </tbody>
             </table>
-            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>↗ = log &amp; bet at that book · green = best price on the main line</div>
+            {allowSet && hiddenCount > 0 && (
+              <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                <button onClick={() => setShowAllBooks(v => !v)} style={{ background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '6px 12px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T, textTransform: 'uppercase' }}>
+                  {showAllBooks ? `Showing all · filter to ${userState}` : `+${hiddenCount} more books (show all)`}
+                </button>
+              </div>
+            )}
+            {allowSet && rows.length === 0 && (
+              <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, textAlign: 'center', marginTop: '10px' }}>No regulated books in {userState} — use the sign-up options below (DFS / Novig / Hard Rock).</div>
+            )}
+            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>↗ = log &amp; bet at that book · green = best price on the main line{userState ? ` · 📍 ${userState}` : ''}</div>
           </div>
         </>
       )
