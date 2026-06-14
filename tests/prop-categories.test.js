@@ -18,6 +18,15 @@ describe('categoryOf', () => {
     expect(categoryOf('pitcher_strikeouts', 'MLB')).toBe('Strikeouts')
     expect(categoryOf('batter_home_runs', 'MLB')).toBe('Home Runs')
     expect(categoryOf('batter_hits', 'MLB')).toBe('Batter Props')
+    expect(categoryOf('pitcher_outs', 'MLB')).toBe('Pitcher Props')
+    expect(categoryOf('batter_singles', 'MLB')).toBe('Batter Props')
+    expect(categoryOf('batter_hits_runs_rbis', 'MLB')).toBe('Batter Props')
+  })
+  it('maps new NBA/NHL combo keys to their categories', () => {
+    expect(categoryOf('player_points_assists', 'NBA')).toBe('Points')
+    expect(categoryOf('player_rebounds_assists', 'NBA')).toBe('Rebounds')
+    expect(categoryOf('player_blocked_shots', 'NHL')).toBe('Shots')
+    expect(categoryOf('player_power_play_points', 'NHL')).toBe('Points')
   })
   it('maps NHL market keys to their categories', () => {
     expect(categoryOf('player_shots_on_goal', 'NHL')).toBe('Shots')

@@ -4,7 +4,7 @@
 import { requireAuth } from './_lib/auth.js'
 import { fetchSportEvents, fetchEventOdds, SPORT_KEYS } from './_lib/oddsProviders/theOddsApi.js'
 import { propEdges } from '../src/lib/propEdges.js'
-import { PROP_MARKETS } from '../src/lib/propMarkets.js'
+import { PROP_MARKETS, PROP_MARKETS_FULL } from '../src/lib/propMarkets.js'
 import { readScan, writeScan, isFresh } from './_lib/scanStore.js'
 
 export const config = { maxDuration: 20 }
@@ -23,13 +23,14 @@ export default async function handler(req, res) {
   const home = String(req.query.home ?? '')
   if (!SPORT_KEYS[sport]) return res.status(400).json({ error: `unsupported sport "${sport}"` })
   if (!away || !home) return res.status(400).json({ error: 'missing away/home team' })
-  const markets = PROP_MARKETS[sport]
+  const full = String(req.query.full ?? '') === '1'
+  const markets = (full ? PROP_MARKETS_FULL[sport] : PROP_MARKETS[sport])
   if (!markets?.length) return res.status(200).json({ found: false, reason: 'no prop markets for sport' })
 
   res.setHeader('Cache-Control', 'no-store')
 
   // Per-game props cache — protects credits across the bot board + player-prop views.
-  const ckSport = `PROPS:${sport}`
+  const ckSport = `PROPS:${sport}${full ? ':FULL' : ''}`
   const ckGame = `${lastWord(away)}@${lastWord(home)}`
   const cached = await readScan(ckSport, ckGame)
   if (cached && isFresh(cached.scanned_at, Date.now(), PROPS_TTL_MS) && cached.payload) {
