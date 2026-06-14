@@ -232,39 +232,40 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
 
   const renderProps = () => {
     const rows = groupedProps[tab] || []
-    if (!rows.length) return <Empty>No {tab.toLowerCase()} props available.</Empty>
-    // Group by market + '__' + point into Over/Under pairs.
+    if (!rows.length) return <Empty>No {tab} props posted yet.</Empty>
+    // Group by player+market+point into Over/Under pairs.
     const pairs = {}
     for (const r of rows) {
       const k = `${r.player}__${r.market}__${r.point}`
       ;(pairs[k] = pairs[k] || { player: r.player, marketLabel: r.marketLabel || r.market, point: r.point, sides: {} })
       pairs[k].sides[r.side === 'Under' ? 'Under' : 'Over'] = r
     }
-    return Object.values(pairs).map((p, i) => (
+    // Same player's lines group together, stable order.
+    const cards = Object.values(pairs).sort((a, b) =>
+      String(a.player || '').localeCompare(String(b.player || '')) ||
+      String(a.marketLabel || '').localeCompare(String(b.marketLabel || ''))
+    )
+    const sideBtn = (p, sideName) => {
+      const r = p.sides[sideName]
+      if (!r?.best) return (
+        <div key={sideName} style={{ flex: 1, textAlign: 'center', padding: '8px', borderRadius: '8px', background: CARD, border: `1px solid ${BORDER}`, fontSize: '12px', color: MUTED, fontFamily: R }}>—</div>
+      )
+      const pickLabel = `${p.player} ${sideName} ${p.point} ${p.marketLabel}`.trim()
+      return (
+        <button key={sideName}
+          onClick={() => openConfirm({ pick: pickLabel, odds: r.best.price, book: r.best.book, link: r.best.link, byBook: r.byBook })}
+          style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: '8px', borderRadius: '8px', background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, fontFamily: R }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{sideName.toUpperCase()} {p.point}</div>
+          <div style={{ fontSize: '15px', fontWeight: 700, color: NEON_T, marginTop: '2px' }}>{fmtAm(Number(r.best.price))}</div>
+          <div style={{ fontSize: '9px', color: MUTED, marginTop: '1px' }}>{bookLabel(r.best.book)}</div>
+        </button>
+      )
+    }
+    return cards.map((p, i) => (
       <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '11px 12px', marginBottom: '8px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: TEXT, letterSpacing: '0.03em', marginBottom: '2px' }}>{p.player}</div>
+        <div style={{ fontSize: '14px', fontWeight: 700, color: TEXT, letterSpacing: '0.03em' }}>{p.player}</div>
         <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '8px' }}>{p.marketLabel} {p.point}</div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['Over', 'Under'].map(sideName => {
-            const r = p.sides[sideName]
-            if (!r?.best) return <div key={sideName} style={{ flex: 1, fontSize: '11px', color: MUTED, padding: '8px', textAlign: 'center' }}>—</div>
-            const pickLabel = `${p.player} ${sideName} ${p.point} ${p.marketLabel}`.trim()
-            return (
-              <button
-                key={sideName}
-                onClick={() => openConfirm({ pick: pickLabel, odds: r.best.price, book: r.best.book, link: r.best.link, byBook: r.byBook })}
-                style={{
-                  flex: 1, cursor: 'pointer', textAlign: 'center', padding: '8px',
-                  borderRadius: '8px', background: 'rgba(189,255,0,0.06)',
-                  border: `1px solid ${NEON}`, fontFamily: R,
-                }}
-              >
-                <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{sideName} · {bookLabel(r.best.book)}</div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: NEON_T, marginTop: '2px' }}>{fmtAm(Number(r.best.price))}</div>
-              </button>
-            )
-          })}
-        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>{sideBtn(p, 'Over')}{sideBtn(p, 'Under')}</div>
       </div>
     ))
   }
@@ -433,6 +434,11 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
           <span>{(game?.away_abbr || game?.away)} @ {(game?.home_abbr || game?.home)}</span>
           <span style={{ color: NEON_T, fontSize: '13px' }}>{switcherOpen ? '▴' : '▾'}</span>
         </button>
+      </div>
+
+      {/* matchup subtitle: sport + start time */}
+      <div style={{ fontSize: '11px', color: MUTED, fontFamily: R, letterSpacing: '0.04em', marginBottom: '12px' }}>
+        {sport}{game?.commenceTime ? ` · Today, ${new Date(game.commenceTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}
       </div>
 
       {switcherOpen && (
