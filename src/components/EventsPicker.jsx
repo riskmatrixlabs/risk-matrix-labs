@@ -28,9 +28,31 @@ const buildGame = (ev) => ({
   commenceTime: ev.start_time,
 })
 
+// Build the visual-only date strip labels: yesterday, Today, +3 days.
+// date strip is visual-only for now — real multi-day fetch is a later step
+const buildDateStrip = () => {
+  const out = []
+  const fmt = (d) => d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
+  for (let off = -1; off <= 3; off++) {
+    const d = new Date()
+    d.setDate(d.getDate() + off)
+    out.push({ off, label: off === 0 ? 'Today' : fmt(d) })
+  }
+  return out
+}
+
 export default function EventsPicker({ sport, onPickSport, onPickGame, token }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const dateStrip = buildDateStrip()
+
+  // Case-insensitive substring filter on away/home name + abbr.
+  const q = query.trim().toLowerCase()
+  const filtered = !q ? events : events.filter(ev =>
+    [ev.away_team, ev.home_team, ev.away_abbr, ev.home_abbr]
+      .some(v => v && String(v).toLowerCase().includes(q))
+  )
 
   useEffect(() => {
     let live = true
@@ -53,6 +75,19 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
       <div style={{ fontSize: '13px', fontWeight: 700, color: NEON_T, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
         Events
       </div>
+
+      {/* Search — filters today's slate by team name/abbr. */}
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search teams…"
+        style={{
+          width: '100%', boxSizing: 'border-box', marginBottom: '14px',
+          background: CARD, border: `1px solid ${BORDER}`, borderRadius: '999px',
+          padding: '9px 14px', fontFamily: R, fontSize: '13px', fontWeight: 600,
+          color: TEXT, letterSpacing: '0.03em', caretColor: NEON, outline: 'none',
+        }}
+      />
 
       {/* Sport circles — horizontal scrollable row. */}
       <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
@@ -79,6 +114,26 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
         })}
       </div>
 
+      {/* Date strip — visual-only for now (real multi-day fetch is a later step). */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
+        {dateStrip.map(d => {
+          const active = d.off === 0
+          return (
+            <span
+              key={d.off}
+              style={{
+                flexShrink: 0, whiteSpace: 'nowrap',
+                padding: '6px 13px', borderRadius: '999px',
+                fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em',
+                background: active ? 'rgba(189,255,0,0.1)' : CARD,
+                border: `1px solid ${active ? NEON : BORDER}`,
+                color: active ? NEON : MUTED,
+              }}
+            >{d.label}</span>
+          )
+        })}
+      </div>
+
       {/* Today slate. */}
       <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
         Today
@@ -88,12 +143,12 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
         <div style={{ textAlign: 'center', padding: '20px 12px', fontSize: '11px', color: MUTED, letterSpacing: '0.04em' }}>
           Loading games…
         </div>
-      ) : events.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '20px 12px', fontSize: '11px', color: MUTED, letterSpacing: '0.04em' }}>
-          No games today
+          {events.length === 0 ? 'No games today' : 'No matching games'}
         </div>
       ) : (
-        events.map((ev, i) => (
+        filtered.map((ev, i) => (
           <button
             key={(ev.external_event_id || '') + i}
             onClick={() => onPickGame && onPickGame(buildGame(ev))}

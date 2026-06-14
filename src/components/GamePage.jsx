@@ -133,6 +133,14 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
   const isPropTab = cats.includes(tab)
   const eventStr = `${game?.away} vs ${game?.home}`
 
+  // Footer: local start time + best-effort market/prop count.
+  const startClock = (() => {
+    try { return new Date(game?.commenceTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) }
+    catch { return '' }
+  })()
+  const marketCount = ['h2h', 'spreads', 'totals'].filter(k => lines?.[k]).length
+  const propCount = (props || []).length
+
   // ---- confirm flow callbacks ----
   const openConfirm = (payload) => setConfirm(payload)
 
@@ -263,17 +271,137 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
 
   const hasAnyLines = lines && (lines.h2h || lines.spreads || lines.totals)
 
+  // Tiny rounded NEON glyph standing in for a sportsbook icon (reference look).
+  const BookGlyph = () => (
+    <span style={{
+      position: 'absolute', right: '4px', bottom: '4px',
+      width: '10px', height: '10px', borderRadius: '3px',
+      background: NEON, opacity: 0.85,
+    }} />
+  )
+
+  // One compact market cell (ML / Spread / Total) for a given team row.
+  // `which` is 'away' | 'home' (drives Over vs Under on totals).
+  const GridCell = ({ marketKey, which }) => {
+    const cmp = lines?.[marketKey]
+    // Resolve the outcome name + best price for this team's side of the market.
+    let outcomeName = null
+    let pt = null
+    let label = '' // top text inside the cell
+    let pickLabel = ''
+    const teamName = which === 'away' ? game?.away : game?.home
+
+    if (cmp) {
+      if (marketKey === 'h2h') {
+        outcomeName = teamName
+        const sides = sidesFor(cmp, 'h2h', game)
+        const hit = sides.find(s => String(s.name).toLowerCase() === String(teamName).toLowerCase())
+        if (hit) outcomeName = hit.name
+        pickLabel = `${teamName} ML`
+      } else if (marketKey === 'spreads') {
+        outcomeName = teamName
+        const sides = sidesFor(cmp, 'spreads', game)
+        const hit = sides.find(s => String(s.name).toLowerCase() === String(teamName).toLowerCase())
+        if (hit) outcomeName = hit.name
+      } else if (marketKey === 'totals') {
+        const sides = sidesFor(cmp, 'totals', game)
+        const want = which === 'away' ? 'Over' : 'Under'
+        const hit = sides.find(s => s.label === want) || sides[which === 'away' ? 0 : 1]
+        outcomeName = hit?.name
+      }
+    }
+
+    const best = (cmp && outcomeName) ? bestRowFor(cmp, outcomeName) : null
+    if (cmp && outcomeName && marketKey !== 'h2h') {
+      pt = cmp.modalPoint?.[outcomeName] ?? best?.points?.[outcomeName]
+    }
+
+    if (marketKey === 'spreads' && best) {
+      label = signedPt(pt)
+      pickLabel = `${teamName} ${signedPt(pt)}`.trim()
+    } else if (marketKey === 'totals' && best) {
+      const prefix = which === 'away' ? 'o' : 'u'
+      label = `${prefix}${pt ?? ''}`
+      pickLabel = `${which === 'away' ? 'Over' : 'Under'} ${pt ?? ''}`.trim()
+    }
+
+    const am = best ? best.prices?.[outcomeName] : null
+    const empty = am == null
+
+    const cellStyle = {
+      position: 'relative', width: '64px', flexShrink: 0,
+      padding: '7px 6px', borderRadius: '8px',
+      background: CARD, border: `1px solid ${BORDER}`,
+      fontFamily: R, textAlign: 'center',
+      cursor: empty ? 'default' : 'pointer',
+      opacity: empty ? 0.5 : 1,
+    }
+
+    if (empty) {
+      return (
+        <div style={cellStyle}>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div>
+        </div>
+      )
+    }
+
+    const link = best.links?.[outcomeName]
+    return (
+      <button
+        onClick={() => openConfirm({ pick: pickLabel, odds: am, book: best.book, link, byBook: null })}
+        style={cellStyle}
+      >
+        {label ? (
+          <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.02em', marginBottom: '1px' }}>{label}</div>
+        ) : null}
+        <div style={{ fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmtAm(Number(am))}</div>
+        <BookGlyph />
+      </button>
+    )
+  }
+
+  // Compact OddsJam-style two-row grid: AWAY then HOME, each with ML/Spread/Total cells.
+  const renderGameLinesGrid = () => {
+    const rows = [
+      { which: 'away', team: game?.away_abbr || game?.away, name: game?.away },
+      { which: 'home', team: game?.home_abbr || game?.home, name: game?.home },
+    ]
+    const initial = (s) => (s ? String(s).trim().charAt(0).toUpperCase() : '?')
+    return (
+      <div style={{ marginBottom: '4px' }}>
+        {/* column headers */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', paddingLeft: '2px' }}>
+          <div style={{ flex: 1 }} />
+          {['ML', spreadLabel, 'Total'].map(h => (
+            <div key={h} style={{ width: '64px', flexShrink: 0, textAlign: 'center', fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</div>
+          ))}
+        </div>
+        {rows.map(row => (
+          <div key={row.which} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            {/* team identity */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+              <span style={{
+                flexShrink: 0, width: '26px', height: '26px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(189,255,0,0.1)', border: `1px solid ${NEON}`,
+                color: NEON_T, fontSize: '12px', fontWeight: 700,
+              }}>{initial(row.name)}</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: TEXT, letterSpacing: '0.03em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.team}</span>
+            </div>
+            <GridCell marketKey="h2h" which={row.which} />
+            <GridCell marketKey="spreads" which={row.which} />
+            <GridCell marketKey="totals" which={row.which} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const renderLines = () => {
     if (linesLoading) return <Empty>Loading lines…</Empty>
     if (!hasAnyLines) return <Empty>{linesErr ? `Could not load lines (${linesErr}).` : 'No game lines available.'}</Empty>
     if (tab === 'gamelines') {
-      return (
-        <>
-          {renderMarket('h2h', 'Moneyline')}
-          {renderMarket('spreads', spreadLabel)}
-          {renderMarket('totals', 'Totals')}
-        </>
-      )
+      return renderGameLinesGrid()
     }
     if (tab === 'ml') return renderMarket('h2h', 'Moneyline') || <Empty>No moneyline.</Empty>
     if (tab === 'totals') return renderMarket('totals', 'Totals') || <Empty>No totals.</Empty>
@@ -350,6 +478,16 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
 
       {/* Body */}
       {renderBody()}
+
+      {/* Footer */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginTop: '14px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`,
+        fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED,
+      }}>
+        <span>{startClock ? `Today, ${startClock}` : 'Today'}</span>
+        <span>{marketCount + propCount} markets</span>
+      </div>
     </div>
   )
 }
