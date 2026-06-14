@@ -14,7 +14,16 @@ const BOOKS = [
   { id: 'betmgm',     name: 'BetMGM',     logo: 'MGM',  logoColor: '#B8960C', bonus: '$1,500', bonusLabel: 'Back in Bonus Bets',    promo: 'First Bet Offer Up to $1,500',            desc: 'If your first bet loses, BetMGM gives it back as bonus bets. Great odds on parlays and player props.',       cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
   { id: 'caesars',    name: 'Caesars',    logo: 'CZR',  logoColor: '#C9A84C', bonus: '$1,000', bonusLabel: 'Bonus Bet',             promo: 'First Bet on Caesars up to $1,000',       desc: 'One of the most generous welcome offers. Strong on NFL, NBA, and college sports markets.',                    cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','CT','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY'] },
   { id: 'espnbet',    name: 'ESPN BET',   logo: 'ESPN', logoColor: '#FF4B00', bonus: '$150',   bonusLabel: 'Bonus Bets',            promo: 'Get $150 in Bonus Bets',                  desc: 'Powered by PENN Entertainment. Integrated with ESPN app, solid live betting and props markets.',             cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','IL','IN','IA','KS','KY','LA','MD','MA','MI','NJ','NY','NC','OH','PA','TN','VA','WV','WY']     },
-  { id: 'hardrock',   name: 'Hard Rock',  logo: 'HR',   logoColor: '#FFD700', bonus: '$100',   bonusLabel: 'Bonus Bet',             promo: 'Bet $10, Get $100 in Bonus Bets',         desc: 'Florida-based sportsbook expanding nationally. Competitive odds and fast withdrawals.',                       cta: 'Coming Soon', url: '#', comingSoon: true, states: ['AZ','CO','IN','IA','NJ','OH','PA','TN','VA']                                                             },
+  { id: 'hardrock',   name: 'Hard Rock',  logo: 'HR',   logoColor: '#FFD700', bonus: '$100',   bonusLabel: 'Bonus Bet',             promo: 'Bet $10, Get $100 in Bonus Bets',         desc: 'Florida-based sportsbook expanding nationally. Competitive odds and fast withdrawals.',                       cta: 'Claim Bonus', url: 'https://hrb.onelink.me/aSsa/wivdtm1p', comingSoon: false, states: ['FL','AZ','CO','IN','IA','NJ','OH','PA','TN','VA']                                              },
+]
+
+// DFS / pick'em + exchange — available in most states (incl. FL & no-online-sportsbook states).
+const DFS_APPS = [
+  { id: 'prizepicks', name: 'PrizePicks',       bonus: '$50 after first lineup',     url: 'https://prizepicks.onelink.me/FjtC/zc8vfibx' },
+  { id: 'underdog',   name: 'Underdog',         bonus: 'Sign-up deposit bonus',      url: 'https://play.underdogsports.com/vgwg/zmkci4hi' },
+  { id: 'dabble',     name: 'Dabble',           bonus: '$10 bonus cash',             url: 'https://click.dabble.com/GaFA/dkhs5uxp' },
+  { id: 'novig',      name: 'Novig (exchange)', bonus: 'No-vig betting · code 10DE9E', url: 'https://novig.onelink.me/JHQQ/gbyrfj1h' },
+  { id: 'onyx',       name: 'Onyx Odds',        bonus: 'Promo code KK762673',        url: 'https://onyxodds.com/?promo_code=KK762673' },
 ]
 
 const CAPPERS = [
@@ -215,6 +224,22 @@ export default function PartnersPage({ isMobile }) {
             </div>
           </div>
           <BookSlider books={filteredBooks} />
+
+          {/* DFS / pick'em + exchange — work in most states (incl. FL) */}
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: 'var(--neon-accent)', textTransform: 'uppercase', margin: '20px 0 10px' }}>DFS &amp; Pick'em</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {DFS_APPS.map(a => (
+              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '13px 14px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--card)', textDecoration: 'none' }}>
+                <span>
+                  <span style={{ display: 'block', fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{a.name}</span>
+                  <span style={{ display: 'block', fontFamily: I, fontSize: '11px', color: 'var(--text-dim)' }}>{a.bonus}</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: R, fontSize: '11px', fontWeight: 700, color: '#0A0A0A', background: NEON, borderRadius: '7px', padding: '8px 13px', whiteSpace: 'nowrap' }}>Claim <ExternalLink size={12} /></span>
+              </a>
+            ))}
+          </div>
+
           <p style={{ fontFamily: I, fontSize: '9px', color: 'var(--muted)', marginTop: '16px', lineHeight: 1.6 }}>
             Affiliate links — RML may earn a commission. Must be 21+. Problem gambling? 1-800-GAMBLER.
           </p>

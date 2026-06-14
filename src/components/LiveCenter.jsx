@@ -1284,6 +1284,46 @@ export function LineShop({ event, token, onLogPosition, focus = null }) {
   return <div ref={rootRef} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>
 }
 
+// Small CTA → nice pop-up of sign-up bonuses (most are DFS). Same links live on the Partners page.
+function BonusButton() {
+  const [open, setOpen] = useState(false)
+  const order = ['hardrockbet', 'prizepicks', 'underdog', 'dabble', 'novig', 'onyx', 'draftkings', 'fanduel']
+  const blurb = {
+    hardrockbet: 'Bet $10, get $100', prizepicks: '$50 after first lineup', underdog: 'Deposit bonus',
+    dabble: '$10 bonus cash', novig: 'No-vig exchange · code 10DE9E', onyx: 'Promo KK762673',
+    draftkings: 'New-user offer', fanduel: 'New-user offer',
+  }
+  return (
+    <>
+      <button onClick={() => setOpen(true)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', width: '100%', padding: '11px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: CARD, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T }}>
+        🎁 Sign-up bonuses
+      </button>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '460px', background: CARD, borderTop: `2px solid ${NEON}`, borderRadius: '16px 16px 0 0', padding: '16px 16px 28px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>Sign-up Bonuses</span>
+              <button onClick={() => setOpen(false)} style={{ background: 'transparent', border: 'none', color: MUTED, fontSize: '18px', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginBottom: '12px', letterSpacing: '0.04em' }}>Don't have a book? Grab a bonus (most are DFS). More on the Partners tab.</div>
+            {order.map(b => (
+              <a key={b} href={SIGNUP_LINKS[b]} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '12px 13px', marginBottom: '8px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: '#0d0d0d', textDecoration: 'none' }}>
+                <span>
+                  <span style={{ display: 'block', fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{SIGNUP_NAMES[b]}</span>
+                  <span style={{ display: 'block', fontFamily: R, fontSize: '11px', color: MUTED }}>{blurb[b]}</span>
+                </span>
+                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: '#0A0A0A', background: NEON, borderRadius: '7px', padding: '7px 12px', whiteSpace: 'nowrap' }}>Claim →</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null, unitSize = 0 }) {
   const event = useLiveGame(propEvent)
   const live     = isLiveEvent(event)
@@ -1798,18 +1838,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                 {/* 5) Line Shop — Compare Books / best price */}
                 <LineShop event={event} token={token} onLogPosition={onLogPosition} focus={shopFocus} />
 
-                {/* Don't have a book? Sign-up / referral links (incl. Novig + DFS apps not in the odds feed) */}
-                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '11px 12px' }}>
-                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, marginBottom: '8px' }}>Don't have a book? Sign up &amp; bet</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {['hardrockbet', 'novig', 'prizepicks', 'underdog', 'dabble', 'draftkings', 'fanduel', 'onyx'].map(b => (
-                      <a key={b} href={SIGNUP_LINKS[b]} target="_blank" rel="noopener noreferrer"
-                        style={{ padding: '6px 10px', borderRadius: '7px', border: `1px solid ${BORDER}`, background: '#0d0d0d', fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                        {SIGNUP_NAMES[b]} →
-                      </a>
-                    ))}
-                  </div>
-                </div>
+                <BonusButton />
 
                 {/* 6) Line Movement — simple sparklines + CLV */}
                 {moved.length > 0 && (
