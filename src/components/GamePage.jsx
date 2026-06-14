@@ -76,8 +76,10 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
   const spreadLabel = SPREAD_LABEL[sport] || 'Spread'
 
   const [switcherOpen, setSwitcherOpen] = useState(false)
-  // market tab: 'gamelines' | 'ml' | 'totals' | 'spread'  OR category name for props
+  // market tab: 'gamelines' | 'ml' | 'totals' | 'spread' | 'teamtotal'  OR category name for props
   const [tab, setTab] = useState('gamelines')
+  // prop subtype filter (a marketLabel within the active category, e.g. "Hits"); null = all
+  const [subtab, setSubtab] = useState(null)
 
   const [lines, setLines] = useState(null)
   const [linesLoading, setLinesLoading] = useState(true)
@@ -92,6 +94,8 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
   const eid = game?.external_event_id
 
   useEffect(() => { setTab('gamelines'); setConfirm(null) }, [eid])
+  // reset the prop subtype filter whenever the top tab changes
+  useEffect(() => { setSubtab(null) }, [tab])
 
   // Fetch game lines.
   useEffect(() => {
@@ -112,7 +116,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     if (!game?.away || !game?.home) return
     let live = true
     setPropsLoading(true); setPropsErr(null)
-    const url = `/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`
+    const url = `/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&full=1`
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(j => {
@@ -167,10 +171,21 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     setConfirm(null)
   }
 
+  // Distinct subtype labels (marketLabels) within the active prop category, for the sub-tab row.
+  const subtypesForActive = () => {
+    if (!isPropTab) return []
+    const rows = groupedProps[tab] || []
+    const seen = []
+    for (const r of rows) { const l = r.marketLabel || r.market; if (l && !seen.includes(l)) seen.push(l) }
+    return seen
+  }
+
   // ---- render helpers ----
   const renderProps = () => {
-    const rows = groupedProps[tab] || []
-    if (!rows.length) return <Empty>No {tab} props posted yet.</Empty>
+    let rows = groupedProps[tab] || []
+    // filter to the selected subtype (marketLabel) when one is active
+    if (subtab) rows = rows.filter(r => (r.marketLabel || r.market) === subtab)
+    if (!rows.length) return <Empty>No {subtab || tab} props posted yet.</Empty>
     // Group by player+market+point into Over/Under pairs.
     const pairs = {}
     for (const r of rows) {
@@ -613,13 +628,23 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
       </div>
 
       {/* Market tabs */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: isPropTab ? '8px' : '14px' }}>
         <Pill active={tab === 'gamelines'} onClick={() => setTab('gamelines')}>Game Lines</Pill>
         <Pill active={tab === 'ml'} onClick={() => setTab('ml')}>Moneyline</Pill>
         <Pill active={tab === 'totals'} onClick={() => setTab('totals')}>Totals</Pill>
         <Pill active={tab === 'spread'} onClick={() => setTab('spread')}>{spreadLabel}</Pill>
         <Pill active={tab === 'teamtotal'} onClick={() => setTab('teamtotal')}>Team Total</Pill>
       </div>
+
+      {/* Prop subtype tabs (e.g. Hits / Bases / Outs / Earned Runs) — derived from the markets returned */}
+      {isPropTab && subtypesForActive().length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
+          <Pill active={!subtab} onClick={() => setSubtab(null)}>All</Pill>
+          {subtypesForActive().map(s => (
+            <Pill key={s} active={subtab === s} onClick={() => setSubtab(s)}>{s}</Pill>
+          ))}
+        </div>
+      )}
 
       {/* Confirm bar */}
       {confirm && (
