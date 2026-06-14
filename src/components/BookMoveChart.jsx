@@ -9,18 +9,18 @@ import { REPUTABLE_BOOKS } from '../lib/edgeFilter.js'
 const up = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop().toUpperCase()
 const BOOK_LINE_COLORS = ['#378ADD', '#1D9E75', '#BDFF00', '#FF3B3B', '#EF9F27', '#A78BFA', '#5DCAA5', '#F472B6', '#38BDF8', '#FB923C']
 
-// US RETAIL books people actually bet — shown first, in this order. Sharp/exchange books
-// (Pinnacle, Betfair) are EXCLUDED from the chart — they're not books a user bets at.
-const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'ballybet', 'betparx', 'fliff']
+// US RETAIL books people bet, shown first; PINNACLE last as the SHARP reference line.
+// Betfair (exchange) stays OUT — not a book you bet at.
+const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'ballybet', 'betparx', 'fliff', 'pinnacle']
 // Clean, DISTINCT chip labels (slice(0,3) collided: FanDuel/Fanatics both → "Fan", BetMGM/
 // BetRivers/Betfair all → "Bet"). Map each book to a unique short tag.
 const BOOK_ABBR = {
   draftkings: 'DK', fanduel: 'FD', betmgm: 'MGM', caesars: 'CZR', williamhill_us: 'CZR',
   espnbet: 'ESPN', fanatics: 'FAN', betrivers: 'BR', hardrockbet: 'HR',
-  ballybet: 'BALLY', betparx: 'PARX', fliff: 'FLIFF',
+  ballybet: 'BALLY', betparx: 'PARX', fliff: 'FLIFF', pinnacle: 'PIN',
 }
 const bookTag = (book) => BOOK_ABBR[book] || (BOOK_NAMES[book] || book).slice(0, 4).toUpperCase()
-const MAX_BOOK_LINES = 7
+const MAX_BOOK_LINES = 8
 // Keep only US-retail books (no Pinnacle/Betfair), ordered by what bettors care about, capped.
 export function curateBooks(byBook) {
   const entries = Object.entries(byBook || {}).filter(([book]) => BOOK_PRIORITY.includes(book))

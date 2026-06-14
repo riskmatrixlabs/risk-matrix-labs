@@ -18,14 +18,14 @@ describe('curateBooks — Pikkit-style book filter for the line chart', () => {
   it('caps the number of lines so the chart stays readable', () => {
     const wide = {}
     for (const b of ['draftkings', 'fanduel', 'betmgm', 'caesars', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'pinnacle', 'betfair_ex_us', 'betfair_ex_eu']) wide[b] = m(-110)
-    expect(Object.keys(curateBooks(wide)).length).toBeLessThanOrEqual(7)
+    expect(Object.keys(curateBooks(wide)).length).toBeLessThanOrEqual(8)
   })
 
-  it('excludes sharp/exchange books (Pinnacle, Betfair) and orders US retail by priority', () => {
+  it('excludes Betfair (exchange) but keeps Pinnacle LAST as the sharp reference', () => {
     const keys = Object.keys(curateBooks({ pinnacle: m(-105), betfair_ex_us: m(-104), betmgm: m(-110), draftkings: m(-108), fanduel: m(-107) }))
-    expect(keys).not.toContain('pinnacle')
     expect(keys).not.toContain('betfair_ex_us')
-    expect(keys).toEqual(['draftkings', 'fanduel', 'betmgm'])  // priority order
+    expect(keys[keys.length - 1]).toBe('pinnacle')          // sharp line shown last
+    expect(keys.slice(0, 3)).toEqual(['draftkings', 'fanduel', 'betmgm'])  // US retail first
   })
 
   it('handles empty / all-junk input without throwing', () => {
