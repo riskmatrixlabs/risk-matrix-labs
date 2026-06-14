@@ -92,6 +92,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
   const [propsErr, setPropsErr] = useState(null)
 
   const [confirm, setConfirm] = useState(null) // { pick, odds, book, link, byBook }
+  const [diag, setDiag] = useState({})           // temporary: visible fetch-status readout
 
   const eid = game?.external_event_id
 
@@ -106,9 +107,16 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     setLinesLoading(true); setLinesErr(null)
     const url = `/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(eid || '')}&full=1`
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(j => { if (live) { setLines(j?.markets || {}); setSegments(j?.segments || null); setTeamTotals(j?.teamTotals || null) } })
-      .catch(e => { if (live) { setLines({}); setSegments(null); setTeamTotals(null); setLinesErr(e.message || 'Failed to load') } })
+      .then(async r => { const txt = await r.text(); let j = {}; try { j = JSON.parse(txt) } catch {} ; return { status: r.status, ok: r.ok, j, txt } })
+      .then(({ status, ok, j, txt }) => {
+        if (!live) return
+        setLines(j?.markets || {}); setSegments(j?.segments || null); setTeamTotals(j?.teamTotals || null)
+        const mk = Object.keys(j?.markets || {}).filter(k => j.markets[k]).join(',') || '∅'
+        const seg = Object.keys(j?.segments || {}).join(',') || '∅'
+        setDiag(d => ({ ...d, lines: ok ? `lines ${status} found=${j?.found} mk=[${mk}] seg=[${seg}] tt=${j?.teamTotals ? 'y' : 'n'}` : `lines ${status} ERR ${String(txt).slice(0, 140)}` }))
+        if (!ok) setLinesErr(`HTTP ${status}`)
+      })
+      .catch(e => { if (live) { setLines({}); setSegments(null); setTeamTotals(null); setLinesErr(e.message || 'Failed to load'); setDiag(d => ({ ...d, lines: `lines FETCH-FAIL ${e.message}` })) } })
       .finally(() => { if (live) setLinesLoading(false) })
     return () => { live = false }
   }, [eid, sport, token])
@@ -120,13 +128,15 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     setPropsLoading(true); setPropsErr(null)
     const url = `/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&full=1`
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(j => {
+      .then(async r => { const txt = await r.text(); let j = {}; try { j = JSON.parse(txt) } catch {} ; return { status: r.status, ok: r.ok, j, txt } })
+      .then(({ status, ok, j, txt }) => {
         if (!live) return
         const merged = [...(j?.edges || []), ...(j?.lineShopOnly || [])]
         setProps(merged)
+        setDiag(d => ({ ...d, props: ok ? `props ${status} found=${j?.found} rows=${merged.length}` : `props ${status} ERR ${String(txt).slice(0, 140)}` }))
+        if (!ok) setPropsErr(`HTTP ${status}`)
       })
-      .catch(e => { if (live) { setProps([]); setPropsErr(e.message || 'Failed to load') } })
+      .catch(e => { if (live) { setProps([]); setPropsErr(e.message || 'Failed to load'); setDiag(d => ({ ...d, props: `props FETCH-FAIL ${e.message}` })) } })
       .finally(() => { if (live) setPropsLoading(false) })
     return () => { live = false }
   }, [eid, sport, token])
@@ -706,6 +716,13 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
       {/* matchup subtitle: sport + start time */}
       <div style={{ fontSize: '11px', color: MUTED, fontFamily: R, letterSpacing: '0.04em', marginBottom: '12px' }}>
         {sport}{game?.commenceTime ? ` · Today, ${new Date(game.commenceTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}
+      </div>
+
+      {/* TEMP diagnostic readout — surfaces the live fetch status so we can see where it breaks. Remove once resolved. */}
+      <div style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', lineHeight: 1.4, color: NEON_T, background: 'rgba(189,255,0,0.05)', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '6px 8px', marginBottom: '12px', wordBreak: 'break-word' }}>
+        <div>token={token ? 'yes' : 'NO'} · game={game?.away || '∅'}@{game?.home || '∅'} · eid={eid ? 'y' : 'n'}</div>
+        <div>{diag.lines || (linesLoading ? 'lines …loading' : 'lines —')}</div>
+        <div>{diag.props || (propsLoading ? 'props …loading' : 'props —')}</div>
       </div>
 
       {switcherOpen && (
