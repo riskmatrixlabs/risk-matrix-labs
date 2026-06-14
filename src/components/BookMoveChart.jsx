@@ -9,18 +9,22 @@ import { REPUTABLE_BOOKS } from '../lib/edgeFilter.js'
 const up = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop().toUpperCase()
 const BOOK_LINE_COLORS = ['#378ADD', '#1D9E75', '#BDFF00', '#FF3B3B', '#EF9F27', '#A78BFA', '#5DCAA5', '#F472B6', '#38BDF8', '#FB923C']
 
-// Major US books people actually bet — shown first, in this order (Sharp/Pikkit look).
-// Pinnacle is the sharp ANCHOR; betfair exchanges round it out. Obscure offshore/EU
-// books captured for the sharp consensus are filtered OUT of the chart.
-const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'pinnacle', 'betfair_ex_us', 'betfair_ex_eu']
+// US RETAIL books people actually bet — shown first, in this order. Sharp/exchange books
+// (Pinnacle, Betfair) are EXCLUDED from the chart — they're not books a user bets at.
+const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'ballybet', 'betparx', 'fliff']
+// Clean, DISTINCT chip labels (slice(0,3) collided: FanDuel/Fanatics both → "Fan", BetMGM/
+// BetRivers/Betfair all → "Bet"). Map each book to a unique short tag.
+const BOOK_ABBR = {
+  draftkings: 'DK', fanduel: 'FD', betmgm: 'MGM', caesars: 'CZR', williamhill_us: 'CZR',
+  espnbet: 'ESPN', fanatics: 'FAN', betrivers: 'BR', hardrockbet: 'HR',
+  ballybet: 'BALLY', betparx: 'PARX', fliff: 'FLIFF',
+}
+const bookTag = (book) => BOOK_ABBR[book] || (BOOK_NAMES[book] || book).slice(0, 4).toUpperCase()
 const MAX_BOOK_LINES = 7
-// Keep only reputable books, ordered by what bettors care about, capped so the chart stays readable.
+// Keep only US-retail books (no Pinnacle/Betfair), ordered by what bettors care about, capped.
 export function curateBooks(byBook) {
-  const entries = Object.entries(byBook || {}).filter(([book]) => REPUTABLE_BOOKS.has(book))
-  entries.sort((a, b) => {
-    const ia = BOOK_PRIORITY.indexOf(a[0]), ib = BOOK_PRIORITY.indexOf(b[0])
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-  })
+  const entries = Object.entries(byBook || {}).filter(([book]) => BOOK_PRIORITY.includes(book))
+  entries.sort((a, b) => BOOK_PRIORITY.indexOf(a[0]) - BOOK_PRIORITY.indexOf(b[0]))
   return Object.fromEntries(entries.slice(0, MAX_BOOK_LINES))
 }
 
@@ -169,7 +173,7 @@ export function BookMoveChart({ byBook: rawByBook, game, side, onSide }) {
           {chips.map(({ book, m, color }) => (
             <span key={book} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 9px', borderRadius: '7px', border: `1px solid ${book === bestBook ? NEON : BORDER}`, background: book === bestBook ? 'rgba(189,255,0,0.08)' : '#0d0d0d' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
-              <span style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: MUTED, textTransform: 'uppercase' }}>{(BOOK_NAMES[book] || book).slice(0, 3)}</span>
+              <span style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: MUTED, textTransform: 'uppercase' }}>{bookTag(book)}</span>
               <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: book === bestBook ? NEON_T : TEXT }}>{fmtAm(m.current)}</span>
             </span>
           ))}

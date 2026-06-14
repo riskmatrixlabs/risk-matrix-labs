@@ -21,10 +21,11 @@ describe('curateBooks — Pikkit-style book filter for the line chart', () => {
     expect(Object.keys(curateBooks(wide)).length).toBeLessThanOrEqual(7)
   })
 
-  it('orders major US books first (draftkings/fanduel/betmgm before pinnacle)', () => {
-    const keys = Object.keys(curateBooks({ pinnacle: m(-105), betmgm: m(-110), draftkings: m(-108), fanduel: m(-107) }))
-    expect(keys.indexOf('draftkings')).toBeLessThan(keys.indexOf('pinnacle'))
-    expect(keys.indexOf('fanduel')).toBeLessThan(keys.indexOf('pinnacle'))
+  it('excludes sharp/exchange books (Pinnacle, Betfair) and orders US retail by priority', () => {
+    const keys = Object.keys(curateBooks({ pinnacle: m(-105), betfair_ex_us: m(-104), betmgm: m(-110), draftkings: m(-108), fanduel: m(-107) }))
+    expect(keys).not.toContain('pinnacle')
+    expect(keys).not.toContain('betfair_ex_us')
+    expect(keys).toEqual(['draftkings', 'fanduel', 'betmgm'])  // priority order
   })
 
   it('handles empty / all-junk input without throwing', () => {
