@@ -469,7 +469,7 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
 
 // Player-prop card shown atop CH2 when you arrive via player search (PrizePicks-style):
 // that player's prop markets, each side with best book price + tap → confirm → log + open.
-function PlayerProps({ player, game, sport, token, onLogPosition }) {
+function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip }) {
   const [status, setStatus] = useState('loading')
   const [rows, setRows] = useState([])
   const [confirm, setConfirm] = useState(null)
@@ -503,10 +503,10 @@ function PlayerProps({ player, game, sport, token, onLogPosition }) {
     const r = g.sides[side]; if (!r) return <span style={{ flex: 1 }} />
     const url = decorate(r.best.book, r.best.link)
     return (
-      <button onClick={() => url && setConfirm({ pick: `${player.name} ${side} ${g.point} ${g.marketLabel}`, odds: r.best.price, book: r.best.book, url })}
-        style={{ flex: 1, padding: '8px 6px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: url ? 'pointer' : 'default', textAlign: 'center' }}>
+      <button onClick={() => setConfirm({ pick: `${player.name} ${side} ${g.point} ${g.marketLabel}`, odds: r.best.price, book: r.best.book, url, byBook: r.byBook })}
+        style={{ flex: 1, padding: '8px 6px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: 'pointer', textAlign: 'center' }}>
         <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, textTransform: 'uppercase' }}>{side} {g.point}</div>
-        <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtAm(r.best.price)}{url && <span style={{ fontSize: '9px', color: NEON_T, marginLeft: '2px' }}>↗</span>}</div>
+        <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtAm(r.best.price)}<span style={{ fontSize: '9px', color: NEON_T, marginLeft: '2px' }}>+</span></div>
         <div style={{ fontFamily: 'Courier New, monospace', fontSize: '8px', color: MUTED }}>{(BOOK_NAMES[r.best.book] || r.best.book).slice(0, 8)}</div>
       </button>
     )
@@ -535,8 +535,12 @@ function PlayerProps({ player, game, sport, token, onLogPosition }) {
         <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '9px', padding: '11px 12px', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?</span>
           <span style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => { onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
-              style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
+            {onAddToSlip && (
+              <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
+                style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
+            )}
+            <button onClick={() => { onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
+              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
             <button onClick={() => setConfirm(null)} style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
           </span>
         </div>
@@ -596,7 +600,7 @@ function LookChannel({ game, player = null, sport, token, onLogPosition, onAddTo
   if (!game) return <LookFrame game={game} onBack={onBack}><Empty text="Pick a game on CH 1 to tune in." /></LookFrame>
   if (status === 'loading') return <LookFrame game={game} onBack={onBack}><div style={{ textAlign: 'center', padding: '20px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>TUNING IN…</div></LookFrame>
   if (status === 'error')   return <LookFrame game={game} onBack={onBack}><Empty text={`Failed — ${err}`} /></LookFrame>
-  if (!data)                return <LookFrame game={game} onBack={onBack}>{player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}<Empty text="No book lines for this game (pre-game only)." /></LookFrame>
+  if (!data)                return <LookFrame game={game} onBack={onBack}>{player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}<Empty text="No book lines for this game (pre-game only)." /></LookFrame>
 
   const M = data.markets
   const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
@@ -658,7 +662,7 @@ function LookChannel({ game, player = null, sport, token, onLogPosition, onAddTo
   return (
     <LookFrame game={game} onBack={onBack}>
       {/* player mode (arrived via search) → that player's props on top */}
-      {player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}
+      {player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}
       {/* per-market movement summary (sparklines) */}
       <MarketSummary move={move} sport={sport} />
 

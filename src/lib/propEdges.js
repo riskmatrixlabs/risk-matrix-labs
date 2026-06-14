@@ -57,18 +57,20 @@ export function propEdges(event, marketKeys, nowMs, opts = {}) {
       const pinUnder = sides.Under.find(q => q.book === SHARP_BOOK)
       const dv = (pinOver && pinUnder) ? devigTwoWay(pinOver.price, pinUnder.price) : null
       const base = { player, market: marketKey, marketLabel: labelFor(marketKey), point }
+      // every book's price for a side → powers the Bet Matrix line-shop page for props
+      const bb = (s) => Object.fromEntries((sides[s] || []).filter(q => q.price != null).map(q => [q.book, q.price]))
       if (dv) {
         const sharpHoldPct = dv.holdPct
         for (const [side, best, fairProb] of [['Over', bestOver, dv.fairA], ['Under', bestUnder, dv.fairB]]) {
           if (!best) continue
           const ev = evPct(best.price, fairProb)
-          const edge = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, fairProb, sharpHoldPct, evPct: ev }
+          const edge = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side), fairProb, sharpHoldPct, evPct: ev }
           if (isCredibleEdge({ evPct: ev }, o)) edges.push(edge)
         }
       } else {
         for (const [side, best] of [['Over', bestOver], ['Under', bestUnder]]) {
           if (!best) continue
-          lineShopOnly.push({ ...base, side, best: { book: best.book, price: best.price, link: best.link } })
+          lineShopOnly.push({ ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side) })
         }
       }
     }
