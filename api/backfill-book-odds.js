@@ -30,13 +30,15 @@ export default async function handler(req, res) {
   const hours = Math.min(48, Math.max(1, Number(req.query.hours) || 12))
   const stepMin = Math.min(60, Math.max(5, Number(req.query.stepMin) || 20))
   const regions = (req.query.regions || 'us,us2').split(',').map(s => s.trim()).filter(Boolean)
+  const markets = (req.query.markets || 'h2h').split(',').map(s => s.trim()).filter(Boolean)  // h2h,spreads,totals
+  const MK = { h2h: 'ml', spreads: 'spread', totals: 'total' }
 
   const supabase = db()
   const nowMs = Date.now()
 
   // Events we care about: anything starting from (hours ago) to 6h out — covers today's slate.
   const fromIso = new Date(nowMs - hours * 3600e3).toISOString()
-  const tilIso = new Date(nowMs + 6 * 3600e3).toISOString()
+  const tilIso = new Date(nowMs + 24 * 3600e3).toISOString()   // include upcoming games (not just <6h)
   const { data: events, error } = await supabase
     .from('events')
     .select('external_event_id, sport, away_team, home_team, start_time')
@@ -60,7 +62,7 @@ export default async function handler(req, res) {
       const date = new Date(nowMs - i * stepMin * 60e3).toISOString()
       let snap
       try {
-        snap = await provider.fetchHistoricalOdds({ sport, date, markets: ['h2h'], regions })
+        snap = await provider.fetchHistoricalOdds({ sport, date, markets, regions })
         calls++; creditsRemaining = snap.credits?.remaining ?? creditsRemaining
       } catch (e) { errors.push(`${sport}@${date}: ${e.message}`); continue }
 
@@ -69,12 +71,16 @@ export default async function handler(req, res) {
         const g = snap.games.find(x => lastWord(x.home_team) === lastWord(ev.home_team) && lastWord(x.away_team) === lastWord(ev.away_team))
         if (!g) continue
         for (const b of g.bookmakers || []) {
-          const m = (b.markets || []).find(x => x.key === 'h2h')
-          if (!m) continue
-          for (const o of m.outcomes || []) {
-            const side = lastWord(o.name) === lastWord(ev.away_team) ? 'away' : lastWord(o.name) === lastWord(ev.home_team) ? 'home' : null
-            if (!side || o.price == null) continue
-            snapshots.push({ external_event_id: ev.external_event_id, provider: 'oddsapi', sport, captured_at: capturedAt, market: 'ml', side, value: o.price, book: b.key })
+          for (const m of b.markets || []) {
+            const mkt = MK[m.key]; if (!mkt) continue
+            for (const o of m.outcomes || []) {
+              if (o.price == null) continue
+              const side = m.key === 'totals'
+                ? (/^o/i.test(o.name) ? 'over' : 'under')
+                : (lastWord(o.name) === lastWord(ev.away_team) ? 'away' : lastWord(o.name) === lastWord(ev.home_team) ? 'home' : null)
+              if (!side) continue
+              snapshots.push({ external_event_id: ev.external_event_id, provider: 'oddsapi', sport, captured_at: capturedAt, market: mkt, side, value: o.price, book: b.key })
+            }
           }
         }
       }
