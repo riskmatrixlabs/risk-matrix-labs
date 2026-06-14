@@ -111,6 +111,7 @@ export function betToRow(bet, userId) {
     pull:           bet.pull           ?? false,
     pull_note:    bet.pullNote     || null,
     notes:        bet.notes        || null,
+    legs:         bet.legs         ?? null,   // parlay legs [{pick,odds,...}] — null for straight bets
     updated_at:   new Date().toISOString(),
   }
 }
@@ -135,5 +136,6 @@ export function rowToBet(row) {
     pull:          row.pull,
     pullNote: row.pull_note,
     notes:    row.notes,
+    legs:     row.legs ?? null,
   }
 }

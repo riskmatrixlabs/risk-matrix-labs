@@ -1114,7 +1114,7 @@ function EVBot({ event, token, unitSize = 0 }) {
 }
 
 // ── LINE SHOP — multi-book odds comparison for THIS game (the Pikkit book-chips view) ──
-export function LineShop({ event, token, onLogPosition, focus = null }) {
+export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = null }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [credits, setCredits] = useState(null)
@@ -1253,6 +1253,10 @@ export function LineShop({ event, token, onLogPosition, focus = null }) {
                             <span style={{ display: 'flex', gap: '8px' }}>
                               <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
                                 style={{ padding: '7px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log &amp; Open</button>
+                              {onAddToSlip && (
+                                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setConfirm(null) }}
+                                  style={{ padding: '7px 12px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>+ Slip</button>
+                              )}
                               <button onClick={() => setConfirm(null)}
                                 style={{ padding: '7px 12px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cancel</button>
                             </span>
@@ -1324,7 +1328,7 @@ function BonusButton() {
   )
 }
 
-function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null, unitSize = 0 }) {
+function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, bets = [], token = null, unitSize = 0 }) {
   const event = useLiveGame(propEvent)
   const live     = isLiveEvent(event)
   const final    = event.status === 'FT'   || event.status === 'AOT'
@@ -1836,7 +1840,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                 })()}
 
                 {/* 5) Line Shop — Compare Books / best price */}
-                <LineShop event={event} token={token} onLogPosition={onLogPosition} focus={shopFocus} />
+                <LineShop event={event} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} focus={shopFocus} />
 
                 <BonusButton />
 
@@ -2163,7 +2167,7 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
 }
 
 // ── Main component ──────────────────────────────────────────────────────────
-export default function LiveCenter({ onLogPosition, bets = [], token = null, unitSize = 0 }) {
+export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0 }) {
   const [sport,       setSport]      = useState('All')
   const [dateFilter,  setDateFilter] = useState('Today')
   const [events,      setEvents]     = useState([])
@@ -2311,7 +2315,7 @@ export default function LiveCenter({ onLogPosition, bets = [], token = null, uni
           LOADING SLATE...
         </div>
       ) : selected ? (
-        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} bets={bets} token={token} unitSize={unitSize} />
+        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} bets={bets} token={token} unitSize={unitSize} />
       ) : events.length === 0 ? (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
           {isLiveTab ? 'NO LIVE GAMES RIGHT NOW' : 'NO GAMES FOUND'}

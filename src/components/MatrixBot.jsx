@@ -117,7 +117,7 @@ function PlayerSearch({ token, onSelect, onClose }) {
   )
 }
 
-export default function MatrixBot({ onLogPosition, bets = [], token = null, unitSize = 0, bankroll = 0 }) {
+export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0 }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
@@ -144,7 +144,7 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
+          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} />}
           {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
         </div>
       )}
@@ -560,7 +560,7 @@ function LookFrame({ game, onBack, children }) {
   )
 }
 
-function LookChannel({ game, player = null, sport, token, onLogPosition, onBack }) {
+function LookChannel({ game, player = null, sport, token, onLogPosition, onAddToSlip, onBack }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [mkt, setMkt]       = useState('h2h')
@@ -675,7 +675,7 @@ function LookChannel({ game, player = null, sport, token, onLogPosition, onBack 
 
       {/* book prices = the shared Compare Books table (replaces the long by-book stacks) */}
       <div style={{ marginTop: '16px' }}>
-        <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} />
+        <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
       </div>
     </LookFrame>
   )

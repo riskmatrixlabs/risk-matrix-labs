@@ -718,6 +718,20 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
     <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color, background: bg, border: `1px solid ${border}`, padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>{txt}</span>
   )
 
+  // Parlay: show "N-Leg Parlay" as the headline + each leg listed (sportsbook-slip style).
+  const isParlay = Array.isArray(bet.legs) && bet.legs.length > 0
+  const pickText = isParlay ? `${bet.legs.length}-Leg Parlay` : (bet.pick || '—')
+  const ParlayLegs = isParlay ? (
+    <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      {bet.legs.map((l, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontFamily: R, fontSize: '10px' }}>
+          <span style={{ color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>• {l.pick}</span>
+          <span style={{ flexShrink: 0, color: NEON_T, fontWeight: 700 }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
+        </div>
+      ))}
+    </div>
+  ) : null
+
   // ── Open Ladder Card (special layout) ──────────────────────────────────────
   if (isOpen && isLadder) {
     const rungLabel = `RUNG ${bet.ladderId} · ${bet.pick || 'TBD'}`
@@ -818,8 +832,9 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
         <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 0', gap: '8px' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: YELLOW, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {bet.pick || '—'}
+              {pickText}
             </div>
+            {ParlayLegs}
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, lineHeight: 1, color: YELLOW }}>
@@ -877,8 +892,9 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
       <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {bet.pick || '—'}
+            {pickText}
           </div>
+          {ParlayLegs}
           <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{bet.date}</div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -2954,6 +2970,49 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     setShowAdd(true)
   }
 
+  // ── In-app BET SLIP (parlay builder) — additive; straight logging is untouched ──
+  const [slip, setSlip] = useState([])           // legs: [{ pick, odds, book?, sport?, event? }]
+  const [slipOpen, setSlipOpen] = useState(false)
+  const [slipStake, setSlipStake] = useState('')
+  const addToSlip = (leg) => {
+    if (!leg?.pick) return
+    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, sport: leg.sport || null, event: leg.event || null }])
+    setSlipOpen(true)
+  }
+  const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
+  const amToDec = (a) => a == null ? 1 : (a > 0 ? 1 + a / 100 : 1 + 100 / -a)
+  const decToAm = (d) => d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1))
+  const slipComboOdds = () => decToAm(slip.reduce((acc, l) => acc * amToDec(Number(l.odds) || 0), 1))
+  const commitBet = (b) => {
+    setBets(p => [...p, b])
+    if (userId && cloudSyncedRef.current) {
+      realtimeIgnoreUntil.current = Date.now() + 5000
+      upsertBet(b, userId, tokenRef.current).then(({ error }) => { if (error) console.error('[RML] parlay upsert error:', error) }).catch(e => console.error('[RML] parlay upsert threw:', e))
+    }
+  }
+  const logParlay = (stake) => {
+    if (slip.length < 2) return
+    const odds = slipComboOdds()
+    const stk = Number(stake) || 0
+    commitBet({
+      id: Date.now(),
+      date: new Date().toISOString().slice(0, 10),
+      sport: slip[0]?.sport || '',
+      book: '',
+      betType: 'Parlay',
+      event: `${slip.length}-Leg Parlay`,
+      pick: slip.map(l => l.pick).join('  +  '),
+      odds,
+      units: stats.unitSize ? stk / stats.unitSize : 0,
+      stake: stk,
+      result: 'Open',
+      pnl: 0,
+      legs: slip.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })),
+      notes: 'In-app bet slip',
+    })
+    setSlip([]); setSlipOpen(false)
+  }
+
   const TH = ({ col, label, right }) => (
     <th onClick={() => toggleSort(col)} style={{
       fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em',
@@ -2970,6 +3029,45 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   return (
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '960px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
+      {/* ── In-app BET SLIP (parlay builder) — floats bottom when legs are added ── */}
+      {slip.length > 0 && (() => {
+        const combo = slipComboOdds()
+        const stk = Number(slipStake) || 0
+        const payout = stk > 0 ? stk * amToDec(combo) : 0
+        return (
+          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 200, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+            <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: '480px', margin: '0 10px 10px', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
+              <div onClick={() => setSlipOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', cursor: 'pointer', background: 'rgba(189,255,0,0.06)' }}>
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase' }}>🎟 Bet Slip · {slip.length} {slip.length === 1 ? 'leg' : 'legs'}</span>
+                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '11px' }}>{slipOpen ? '▾' : '▸'}</span></span>
+              </div>
+              {slipOpen && (
+                <div style={{ padding: '10px 14px 14px' }}>
+                  {slip.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '7px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                      <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
+                        <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '14px', fontWeight: 700 }}>✕</button>
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+                    <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder="Stake $"
+                      style={{ flex: 1, padding: '9px 11px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '13px', outline: 'none' }} />
+                    <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, whiteSpace: 'nowrap' }}>{payout > 0 ? `→ $${payout.toFixed(2)}` : ''}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    <button onClick={() => { setSlip([]); setSlipStake('') }} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
+                    <button disabled={slip.length < 2} onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: slip.length < 2 ? 'not-allowed' : 'pointer', background: slip.length < 2 ? 'var(--border)' : NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: slip.length < 2 ? 0.6 : 1 }}>{slip.length < 2 ? 'Add 2+ legs' : `Log ${slip.length}-Leg Parlay`}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       {showAdd && <AddBetModal initial={initialBet} onAdd={b => {
         setBets(p => {
           // GA4: fire bet_logged on first real bet only
@@ -4669,8 +4767,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
-        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
-        {tab === 'bot'  && <MatrixBot onLogPosition={handleLogPosition} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll} />}
+        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
+        {tab === 'bot'  && <MatrixBot onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll} />}
 
       </div>
 
