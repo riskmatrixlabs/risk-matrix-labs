@@ -30,6 +30,9 @@ import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
 import MatrixBot    from './components/MatrixBot'
 import ShareCardModal from './components/ShareCardModal'
+import { BOOK_NAMES } from './components/botShared.jsx'
+import { booksForState, OFFSHORE } from './lib/geoBooks'
+import { placeLink } from './lib/betLinks'
 
 const getKeys = (userId) => ({
   LS_KEY:   `rml_session_v1_${userId}`,
@@ -2990,7 +2993,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }
   const addToSlip = (leg) => {
     if (!leg?.pick) return
-    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, sport: leg.sport || null, event: leg.event || null }])
+    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, sport: leg.sport || null, event: leg.event || null }])
     setSlipOpen(true)
   }
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
@@ -3077,6 +3080,38 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                       </div>
                     </div>
                   ))}
+                  {/* ── Line-shop "link page": which books have your legs, combined odds, place links ── */}
+                  {(() => {
+                    const shop = slip.filter(l => l.byBook && Object.keys(l.byBook).length)
+                    if (!shop.length) return null
+                    const total = shop.length
+                    let userState = ''; try { userState = localStorage.getItem('rml_state') || '' } catch {}
+                    const allowed = booksForState(userState)
+                    const inRegion = (bk) => !allowed || allowed.includes(bk) || OFFSHORE.includes(bk)
+                    const books = [...new Set(shop.flatMap(l => Object.keys(l.byBook)))]
+                    const rows = books.map(bk => {
+                      const covered = shop.filter(l => l.byBook[bk] != null)
+                      const comboDec = covered.reduce((a, l) => a * amToDec(l.byBook[bk]), 1)
+                      return { book: bk, n: covered.length, odds: covered.length === total ? decToAm(comboDec) : null, region: inRegion(bk) }
+                    })
+                    const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
+                    const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
+                    const region = rows.filter(r => !r.region && r.n > 0)
+                    const lbl = { fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED, marginTop: '12px', marginBottom: '2px' }
+                    const bookRow = (r, faded) => (
+                      <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: '1px solid var(--border)', textDecoration: 'none', opacity: faded ? 0.5 : 1 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}{r.odds != null && <span style={{ color: NEON_T, marginLeft: '6px' }}>{r.odds > 0 ? '+' : ''}{r.odds}</span>}</span>
+                        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
+                      </a>
+                    )
+                    return (
+                      <div>
+                        {avail.length > 0 && <><div style={lbl}>All props available</div>{avail.map(r => bookRow(r))}</>}
+                        {missing.length > 0 && <><div style={lbl}>Missing props</div>{missing.map(r => bookRow(r))}</>}
+                        {region.length > 0 && <><div style={lbl}>Not available in your region</div>{region.map(r => bookRow(r, true))}</>}
+                      </div>
+                    )
+                  })()}
                   {slip.length > 0 && (<>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
                     <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder="Stake $"

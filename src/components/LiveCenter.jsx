@@ -1219,7 +1219,9 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
             .filter(x => x.price != null && decorate(x.book, x.deep))
             .sort((a, b) => (dec(b.price) ?? 0) - (dec(a.price) ?? 0))[0]
           const b = linkable || cmp.best[name] || { book: row.book, price: p, deep: row.links?.[name] }
-          setConfirm({ pick: pickFor(name, pt), odds: b.price ?? p, book: b.book, url: placeLink(b.book, b.deep ?? b.link) })
+          const byBook = {}
+          for (const r of cmp.rows) { const pr = r.prices[name]; if (pr != null) byBook[r.book] = pr }   // every book's price for this pick → line-shop page
+          setConfirm({ pick: pickFor(name, pt), odds: b.price ?? p, book: b.book, url: placeLink(b.book, b.deep ?? b.link), byBook })
         }
         return (
           <td key={name} onClick={onTap} style={{ textAlign: 'center', padding: '7px 6px', cursor: tappable ? 'pointer' : 'default' }}>
@@ -1259,7 +1261,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
                             </span>
                             <span style={{ display: 'flex', gap: '8px' }}>
                               {onAddToSlip && (
-                                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setConfirm(null) }}
+                                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setConfirm(null) }}
                                   style={{ padding: '7px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>+ Slip</button>
                               )}
                               <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
