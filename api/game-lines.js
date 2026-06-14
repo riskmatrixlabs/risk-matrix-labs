@@ -122,14 +122,13 @@ export default async function handler(req, res) {
 
   if (full) {
     try {
-      // Resolve eventId: use the passed one, else map team names via the free events list.
-      let evId = eventId
-      if (!evId) {
-        const { events } = await fetchSportEvents({ sport })
-        const match = events.find(e => lastWord(e.home_team) === lastWord(home) && lastWord(e.away_team) === lastWord(away))
-        if (!match) return res.status(200).json({ found: false })
-        evId = match.id
-      }
+      // ALWAYS resolve the Odds API event id by matching team names — our external_event_id
+      // (the passed `eventId`) is NOT the Odds API id, so the per-event endpoint needs this
+      // lookup (same approach scan-props uses). The per-event endpoint is where segment markets live.
+      const { events } = await fetchSportEvents({ sport })
+      const match = events.find(e => lastWord(e.home_team) === lastWord(home) && lastWord(e.away_team) === lastWord(away))
+      if (!match) return res.status(200).json({ found: false })
+      const evId = match.id
 
       // Try the full per-sport market list; degrade on unsupported-market rejections.
       let game = null, credits = { remaining: undefined }
@@ -173,7 +172,7 @@ export default async function handler(req, res) {
         fetchedAt: new Date().toISOString(),
       }
       await writeScan(ckSport, ckGame, payload, credits.remaining)
-      await persistSnapshots({ eventId: evId, sport, away: game.away_team, home: game.home_team, markets })
+      await persistSnapshots({ eventId: eventId || evId, sport, away: game.away_team, home: game.home_team, markets })
       return res.status(200).json(payload)
     } catch (e) {
       console.error('game-lines full failed:', e.message)
