@@ -2974,6 +2974,20 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slip, setSlip] = useState([])           // legs: [{ pick, odds, book?, sport?, event? }]
   const [slipOpen, setSlipOpen] = useState(false)
   const [slipStake, setSlipStake] = useState('')
+  const [ocrBusy, setOcrBusy] = useState(false)
+  const photoRef = useRef(null)
+  const onBetSlipPhoto = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = ''
+    if (!f) return
+    setOcrBusy(true); setSlipOpen(true)
+    try {
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f) })
+      const resp = await fetch('/api/parse-betslip', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenRef.current}` }, body: JSON.stringify({ imageBase64: b64, mediaType: f.type || 'image/jpeg' }) })
+      const j = await resp.json().catch(() => ({}))
+      if (!resp.ok) { alert(j.error || 'Could not read slip'); return }
+      ;(j.legs || []).forEach(l => addToSlip({ pick: l.pick, odds: l.odds }))
+    } catch { alert('Could not read photo') } finally { setOcrBusy(false) }
+  }
   const addToSlip = (leg) => {
     if (!leg?.pick) return
     setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, sport: leg.sport || null, event: leg.event || null }])
@@ -3030,20 +3044,24 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   return (
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '960px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
-      {/* ── In-app BET SLIP (parlay builder) — floats bottom when legs are added ── */}
-      {slip.length > 0 && (() => {
+      {/* ── BET MATRIX (slip + line shopper) — persistent launcher on Game Center / Matrix Bot ── */}
+      {(tab === 'live' || tab === 'bot') && (() => {
         const combo = slipComboOdds()
         const stk = Number(slipStake) || 0
         const payout = stk > 0 ? stk * amToDec(combo) : 0
         return (
           <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 200, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+            <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBetSlipPhoto} />
             <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: '480px', margin: '0 10px 10px', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
               <div onClick={() => setSlipOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', cursor: 'pointer', background: 'rgba(189,255,0,0.06)' }}>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase' }}>🎟 Bet Slip · {slip.length} {slip.length === 1 ? 'leg' : 'legs'}</span>
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase' }}>🎟 Bet Matrix{slip.length ? ` · ${slip.length} ${slip.length === 1 ? 'leg' : 'legs'}` : ''}</span>
                 <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '11px' }}>{slipOpen ? '▾' : '▸'}</span></span>
               </div>
               {slipOpen && (
                 <div style={{ padding: '10px 14px 14px' }}>
+                  {/* Upload Pic — OCR a bet-slip photo into legs */}
+                  <button onClick={() => photoRef.current?.click()} disabled={ocrBusy} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: ocrBusy ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{ocrBusy ? 'Reading slip…' : '📷 Upload Pic (read a bet slip)'}</button>
+                  {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No picks yet — tap a price to add one, or upload a slip photo.</div>}
                   {slip.map((l, i) => (
                     <div key={i} style={{ padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
@@ -3059,6 +3077,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                       </div>
                     </div>
                   ))}
+                  {slip.length > 0 && (<>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
                     <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder="Stake $"
                       style={{ flex: 1, padding: '9px 11px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '13px', outline: 'none' }} />
@@ -3068,6 +3087,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     <button onClick={() => { setSlip([]); setSlipStake('') }} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
                     <button onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{slip.length >= 2 ? `Log ${slip.length}-Leg Parlay` : 'Log Bet'}</button>
                   </div>
+                  </>)}
                 </div>
               )}
             </div>
