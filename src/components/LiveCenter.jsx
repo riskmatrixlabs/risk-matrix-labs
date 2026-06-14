@@ -1210,15 +1210,19 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
         const p = row.prices[name]
         const isBest = cmp.best[name] && cmp.best[name].book === row.book
         const pt = row.points[name]
-        // Tappable only when this book has a real bet-slip link for this side.
-        const url = (onLogPosition && p != null) ? decorate(row.book, row.links?.[name]) : null
-        const tappable = !!url
-        const onTap = () => { if (tappable) setConfirm({ book: row.book, name, pick: pickFor(name, pt), odds: p, url }) }
+        // ONE-TAP ADD: tapping any price adds a leg at the BEST book for that outcome (line-shopped).
+        const bestForOutcome = cmp.best[name]
+        const tappable = onAddToSlip && p != null
+        const onTap = () => {
+          if (!tappable) return
+          const b = bestForOutcome || { book: row.book, price: p, link: row.links?.[name] }
+          onAddToSlip({ pick: pickFor(name, pt), odds: b.price ?? p, book: b.book, link: decorate(b.book, b.link) || null, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` })
+        }
         return (
           <td key={name} onClick={onTap} style={{ textAlign: 'center', padding: '7px 6px', cursor: tappable ? 'pointer' : 'default' }}>
             <div style={{ display: 'inline-block', padding: isBest ? '2px 7px' : '2px 0', borderRadius: '5px', background: isBest ? NEON : 'transparent' }}>
               <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT }}>
-                {p == null ? '—' : fmtAm(p)}{tappable && <span style={{ fontSize: '9px', color: isBest ? '#0A0A0A' : NEON_T, marginLeft: '2px' }}>↗</span>}
+                {p == null ? '—' : fmtAm(p)}{tappable && <span style={{ fontSize: '9px', color: isBest ? '#0A0A0A' : NEON_T, marginLeft: '2px' }}>+</span>}
               </div>
               {pt != null && <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isBest ? 'rgba(10,10,10,0.6)' : MUTED }}>{isTotals ? (/^o/i.test(name) ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
             </div>
@@ -1278,7 +1282,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
             {allowSet && rows.length === 0 && (
               <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, textAlign: 'center', marginTop: '10px' }}>No regulated books in {userState} — use the sign-up options below (DFS / Novig / Hard Rock).</div>
             )}
-            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>↗ = log &amp; bet at that book · green = best price on the main line{userState ? ` · 📍 ${userState}` : ''}</div>
+            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>tap a price to add it to your slip (auto-picks the best book) · green = best price{userState ? ` · 📍 ${userState}` : ''}</div>
           </div>
         </>
       )

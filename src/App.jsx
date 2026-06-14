@@ -2976,7 +2976,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slipStake, setSlipStake] = useState('')
   const addToSlip = (leg) => {
     if (!leg?.pick) return
-    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, sport: leg.sport || null, event: leg.event || null }])
+    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, sport: leg.sport || null, event: leg.event || null }])
     setSlipOpen(true)
   }
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
@@ -2991,23 +2991,24 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }
   }
   const logParlay = (stake) => {
-    if (slip.length < 2) return
-    const odds = slipComboOdds()
+    if (slip.length < 1) return
     const stk = Number(stake) || 0
+    const isP = slip.length >= 2
+    const odds = isP ? slipComboOdds() : (Number(slip[0].odds) || 0)
     commitBet({
       id: Date.now(),
       date: new Date().toISOString().slice(0, 10),
       sport: slip[0]?.sport || '',
-      book: '',
-      betType: 'Parlay',
-      event: `${slip.length}-Leg Parlay`,
-      pick: slip.map(l => l.pick).join('  +  '),
+      book: isP ? '' : (slip[0].book || ''),
+      betType: isP ? 'Parlay' : 'Straight',
+      event: isP ? `${slip.length}-Leg Parlay` : (slip[0].event || ''),
+      pick: isP ? slip.map(l => l.pick).join('  +  ') : slip[0].pick,
       odds,
       units: stats.unitSize ? stk / stats.unitSize : 0,
       stake: stk,
       result: 'Open',
       pnl: 0,
-      legs: slip.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })),
+      legs: isP ? slip.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })) : null,
       notes: 'In-app bet slip',
     })
     setSlip([]); setSlipOpen(false)
@@ -3044,12 +3045,18 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               {slipOpen && (
                 <div style={{ padding: '10px 14px 14px' }}>
                   {slip.map((l, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '7px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-                      <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
-                        <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '14px', fontWeight: 700 }}>✕</button>
-                      </span>
+                    <div key={i} style={{ padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
+                          <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '14px', fontWeight: 700 }}>✕</button>
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
+                        <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
+                        {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
+                      </div>
                     </div>
                   ))}
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
@@ -3059,7 +3066,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   </div>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                     <button onClick={() => { setSlip([]); setSlipStake('') }} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
-                    <button disabled={slip.length < 2} onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: slip.length < 2 ? 'not-allowed' : 'pointer', background: slip.length < 2 ? 'var(--border)' : NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: slip.length < 2 ? 0.6 : 1 }}>{slip.length < 2 ? 'Add 2+ legs' : `Log ${slip.length}-Leg Parlay`}</button>
+                    <button onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{slip.length >= 2 ? `Log ${slip.length}-Leg Parlay` : 'Log Bet'}</button>
                   </div>
                 </div>
               )}
