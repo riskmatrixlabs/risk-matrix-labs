@@ -16,6 +16,7 @@ import { kellyStake } from '../lib/kelly.js'
 import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
+import GameBrowser from './GameBrowser.jsx'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -144,7 +145,10 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} />}
+          {/* CH2 landing: no game tuned → the game browser (pick sport/game). Tuned game → the existing line-shop/chart/props, untouched. */}
+          {channel === 'look' && (game
+            ? <LookChannel game={game} player={player} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} />
+            : <GameBrowser token={token} onAddToSlip={onAddToSlip} onLogPosition={onLogPosition} />)}
           {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
         </div>
       )}

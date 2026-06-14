@@ -105,7 +105,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     if (!game?.away || !game?.home) return
     let live = true
     setLinesLoading(true); setLinesErr(null)
-    const url = `/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(eid || '')}&full=1`
+    const url = `/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(eid || '')}`
     fetch(url + '&_=' + Date.now(), { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       .then(async r => { const txt = await r.text(); let j = {}; try { j = JSON.parse(txt) } catch {} ; return { status: r.status, ok: r.ok, j, txt } })
       .then(({ status, ok, j, txt }) => {
@@ -126,7 +126,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     if (!game?.away || !game?.home) return
     let live = true
     setPropsLoading(true); setPropsErr(null)
-    const url = `/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&full=1`
+    const url = `/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`
     fetch(url + '&_=' + Date.now(), { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       .then(async r => { const txt = await r.text(); let j = {}; try { j = JSON.parse(txt) } catch {} ; return { status: r.status, ok: r.ok, j, txt } })
       .then(({ status, ok, j, txt }) => {
@@ -718,12 +718,6 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
         {sport}{game?.commenceTime ? ` · Today, ${new Date(game.commenceTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}
       </div>
 
-      {/* TEMP diagnostic readout — surfaces the live fetch status so we can see where it breaks. Remove once resolved. */}
-      <div style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', lineHeight: 1.4, color: NEON_T, background: 'rgba(189,255,0,0.05)', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '6px 8px', marginBottom: '12px', wordBreak: 'break-word' }}>
-        <div>token={token ? 'yes' : 'NO'} · game={game?.away || '∅'}@{game?.home || '∅'} · eid={eid ? 'y' : 'n'}</div>
-        <div>{diag.lines || (linesLoading ? 'lines …loading' : 'lines —')}</div>
-        <div>{diag.props || (propsLoading ? 'props …loading' : 'props —')}</div>
-      </div>
 
       {switcherOpen && (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px', marginBottom: '14px' }}>

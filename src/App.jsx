@@ -29,7 +29,6 @@ import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Mo
 import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
 import MatrixBot    from './components/MatrixBot'
-import GameBrowser  from './components/GameBrowser'
 import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE } from './lib/geoBooks'
@@ -3923,20 +3922,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tab === 'bot' ? NEON_T : 'var(--text-dim)', whiteSpace: 'nowrap' }}>Matrix Bot</span>
             </button>
           )}
-          {isMobile && subStatus?.owner && (
-            <button onClick={() => setTab('lab')} title="Lab — Game Browser (owner only)"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 9px', borderRadius: '2px', border: tab === 'lab' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'lab' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
-              <span style={{ fontSize: '12px', lineHeight: 1 }}>🧪</span>
-              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tab === 'lab' ? NEON_T : 'var(--text-dim)', whiteSpace: 'nowrap' }}>Lab</span>
-            </button>
-          )}
         </div>
       </header>
 
       {/* TABS — desktop only */}
       {!isMobile && (
         <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', justifyContent: 'center', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {[['live','Game Center'],['bot','Matrix Bot'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners'],...(subStatus?.owner ? [['lab','🧪 Lab']] : [])].map(([t, label]) => (
+          {[['live','Game Center'],['bot','Matrix Bot'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
               textTransform: 'uppercase', padding: '11px 20px',
@@ -4848,7 +4840,6 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
         {tab === 'bot'  && <MatrixBot initialView={botView} onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll} />}
-        {tab === 'lab' && subStatus?.owner && <GameBrowser token={token} onAddToSlip={addToSlip} onLogPosition={handleLogPosition} />}
 
       </div>
 
