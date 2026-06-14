@@ -40,10 +40,25 @@ window.CRISP_WEBSITE_ID = '470f77af-d0cb-4f5c-a540-44cbf5d7465c'
 })()
 
 // ── Service Worker ───────────────────────────────────────────────────────────
+// One-time reset: service workers installed before sw.js learned to skip /api could cache
+// API responses (serving a stale index.html for /api/* calls). Unregister + purge caches
+// once per browser, then reload, so the current /api-skipping worker takes control cleanly.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
-  })
+  const RESET_KEY = 'rml_sw_reset_v145'
+  let didReset = false
+  try { didReset = localStorage.getItem(RESET_KEY) === '1' } catch {}
+  if (!didReset) {
+    try { localStorage.setItem(RESET_KEY, '1') } catch {}
+    Promise.resolve()
+      .then(() => navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))))
+      .then(() => (self.caches ? caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))) : null))
+      .then(() => location.reload())
+      .catch(() => {})
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    })
+  }
 }
 
 createRoot(document.getElementById('root')).render(
