@@ -565,24 +565,27 @@ function LookChannel({ game, player = null, sport, token, onLogPosition, onBack 
   const [data, setData]     = useState(null)
   const [mkt, setMkt]       = useState('h2h')
   const [move, setMove]     = useState({})
-  const [bookMove, setBookMove] = useState({})   // per-book ML movement (By Sportsbook chart)
+  const [bookMove, setBookMove] = useState({})   // per-book movement (By Sportsbook chart)
+  const [chartMkt, setChartMkt] = useState('ml') // ml | spread | total — CH2 chart only
   const [bookSide, setBookSide] = useState('away')
   const [view, setView]     = useState('books')  // books | move
   const [err, setErr]       = useState('')
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
+  // switching market resets the side toggle to a valid side for that market
+  const setMarket = (m) => { setChartMkt(m); setBookSide(m === 'total' ? 'over' : 'away') }
 
   useEffect(() => {
     if (!game?.external_event_id) { setBookMove({}); return }
     let live = true
-    fetchBookMovement(game.external_event_id, 'ml', bookSide).then(m => { if (live) setBookMove(m || {}) }).catch(() => {})
+    fetchBookMovement(game.external_event_id, chartMkt, bookSide).then(m => { if (live) setBookMove(m || {}) }).catch(() => {})
     return () => { live = false }
-  }, [game, bookSide])
+  }, [game, chartMkt, bookSide])
 
   useEffect(() => {
     if (!game || !token) return
     let live = true
     setStatus('loading'); setErr(''); setMove({}); setMkt('h2h'); setView('books')
-    fetch(`/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(game.external_event_id || '')}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => { if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`); return res.json() })
       .then(j => { if (live) { setData(j.found && j.markets ? j : null); setStatus('done') } })
       .catch(e => { if (live) { setErr(e.message); setStatus('error') } })
@@ -659,13 +662,16 @@ function LookChannel({ game, player = null, sport, token, onLogPosition, onBack 
       {/* per-market movement summary (sparklines) */}
       <MarketSummary move={move} sport={sport} />
 
-      {/* line chart — one line per BOOK (By Sportsbook); falls back to the single line until
-          per-book history accrues, then to a "building" note */}
+      {/* CH2-only: market tabs for the By-Sportsbook chart (ML / Run Line / Total) */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+        {[['ml', 'ML'], ['spread', (SPREAD_LABEL[sport] || 'Spread')], ['total', 'Total']].map(([k, label]) => (
+          <button key={k} onClick={() => setMarket(k)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${chartMkt === k ? NEON : BORDER}`, background: chartMkt === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: chartMkt === k ? NEON_T : MUTED }}>{label}</button>
+        ))}
+      </div>
+      {/* line chart — one line per BOOK (By Sportsbook) for the selected market */}
       {Object.keys(bookMove).length > 0
-        ? <BookMoveChart byBook={bookMove} game={game} side={bookSide} onSide={setBookSide} />
-        : chartRows.length
-          ? <MoveChart moveRows={chartRows} />
-          : <Empty text="By-sportsbook history is building — book lines fill in as prices move." />}
+        ? <BookMoveChart byBook={bookMove} game={game} market={chartMkt} side={bookSide} onSide={setBookSide} />
+        : <Empty text={`${chartMkt === 'ml' ? 'ML' : chartMkt === 'total' ? 'Total' : (SPREAD_LABEL[sport] || 'Spread')} by-sportsbook history is building — fills in as the game's viewed.`} />}
 
       {/* book prices = the shared Compare Books table (replaces the long by-book stacks) */}
       <div style={{ marginTop: '16px' }}>

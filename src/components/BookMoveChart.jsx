@@ -105,7 +105,7 @@ export function BookLineMovement({ event, title = true, collapsible = false }) {
   )
 }
 
-export function BookMoveChart({ byBook: rawByBook, game, side, onSide }) {
+export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, onSide }) {
   const [mode, setMode] = useState('books')           // 'books' = By Sportsbook | 'best' = Best Available
   const decT = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
   const byBook = curateBooks(rawByBook)              // reputable US books only, capped & ordered
@@ -131,9 +131,14 @@ export function BookMoveChart({ byBook: rawByBook, game, side, onSide }) {
       </div>
       {game && onSide && (
         <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-          {['away', 'home'].map(s => (
-            <button key={s} onClick={() => onSide(s)} style={{ flex: 1, padding: '7px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, border: `1px solid ${side === s ? NEON : BORDER}`, background: side === s ? 'rgba(189,255,0,0.1)' : 'transparent', color: side === s ? NEON_T : MUTED }}>{up(s === 'away' ? game.away : game.home)} ML</button>
-          ))}
+          {(market === 'total' ? ['over', 'under'] : ['away', 'home']).map(s => {
+            const label = market === 'total'
+              ? (s === 'over' ? 'OVER' : 'UNDER')
+              : `${up(s === 'away' ? game.away : game.home)}${market === 'ml' ? ' ML' : ''}`
+            return (
+              <button key={s} onClick={() => onSide(s)} style={{ flex: 1, padding: '7px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, border: `1px solid ${side === s ? NEON : BORDER}`, background: side === s ? 'rgba(189,255,0,0.1)' : 'transparent', color: side === s ? NEON_T : MUTED }}>{label}</button>
+            )
+          })}
         </div>
       )}
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
