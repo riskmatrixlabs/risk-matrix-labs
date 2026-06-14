@@ -4,7 +4,9 @@
 // one odds_history snapshot PER BOOK per side. Over time these rows become each book's line
 // over time — exactly what the chart plots.
 //
-// Credit budget: 4 sports × (h2h market) × (us+eu regions) = ~8 credits/run. At every 30 min
+// Credit budget: 4 sports × (h2h market) × (us+us2 regions) = ~8 credits/run. US books ONLY
+// (us+us2) — no EU region: euro books were captured then thrown away = wasted credits, and us2
+// adds the US books us-region misses (ESPN BET, Hard Rock, etc.). At every 30 min
 // across game hours that's ~6–7k/month, inside the 20k plan.
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
@@ -47,7 +49,7 @@ export default async function handler(req, res) {
     if (!SPORT_KEYS[sport]) continue
     let games
     try {
-      const r = await provider.fetchOdds({ sport, markets: ['h2h'], regions: ['us', 'eu'] })
+      const r = await provider.fetchOdds({ sport, markets: ['h2h'], regions: ['us', 'us2'] })
       games = r.games; creditsRemaining = r.credits?.remaining ?? creditsRemaining
     } catch (e) { console.warn(`capture ${sport} failed:`, e.message); continue }
 

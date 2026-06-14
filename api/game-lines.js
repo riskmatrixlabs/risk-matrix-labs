@@ -36,7 +36,7 @@ export default async function handler(req, res) {
 
   try {
     const provider = getProvider()
-    const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'eu'] })
+    const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
     const game = games.find(g => lastWord(g.home_team) === lastWord(home) && lastWord(g.away_team) === lastWord(away))
     if (!game) return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
 

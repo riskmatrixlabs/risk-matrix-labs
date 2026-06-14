@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   const sports = (req.query.sport ? [req.query.sport] : Object.keys(SPORT_KEYS)).filter(s => SPORT_KEYS[s])
   const hours = Math.min(48, Math.max(1, Number(req.query.hours) || 12))
   const stepMin = Math.min(60, Math.max(5, Number(req.query.stepMin) || 20))
-  const regions = (req.query.regions || 'us,eu').split(',').map(s => s.trim()).filter(Boolean)
+  const regions = (req.query.regions || 'us,us2').split(',').map(s => s.trim()).filter(Boolean)
 
   const supabase = db()
   const nowMs = Date.now()

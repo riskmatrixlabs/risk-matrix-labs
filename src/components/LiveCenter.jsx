@@ -6,7 +6,7 @@ import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { liveConsensus } from '../lib/liveConsensus'
-import { decorate } from '../lib/betLinks'
+import { decorate, SIGNUP_LINKS, SIGNUP_NAMES } from '../lib/betLinks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
 
@@ -1770,6 +1770,19 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
 
                 {/* 5) Line Shop — Compare Books / best price */}
                 <LineShop event={event} token={token} onLogPosition={onLogPosition} focus={shopFocus} />
+
+                {/* Don't have a book? Sign-up / referral links (incl. Novig + DFS apps not in the odds feed) */}
+                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '11px 12px' }}>
+                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, marginBottom: '8px' }}>Don't have a book? Sign up &amp; bet</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {['hardrockbet', 'novig', 'prizepicks', 'underdog', 'dabble', 'draftkings', 'fanduel', 'onyx'].map(b => (
+                      <a key={b} href={SIGNUP_LINKS[b]} target="_blank" rel="noopener noreferrer"
+                        style={{ padding: '6px 10px', borderRadius: '7px', border: `1px solid ${BORDER}`, background: '#0d0d0d', fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                        {SIGNUP_NAMES[b]} →
+                      </a>
+                    ))}
+                  </div>
+                </div>
 
                 {/* 6) Line Movement — simple sparklines + CLV */}
                 {moved.length > 0 && (
