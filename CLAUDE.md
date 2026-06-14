@@ -145,3 +145,23 @@ workflow/
 ## PRICING (DO NOT CHANGE WITHOUT SESSION)
 - $29/mo or $149/yr (annual default on paywall)
 - 3-day free trial — no charge until day 4
+
+## SESSION 50 ADDITIONS (Jun 14 2026 · SW rml-v144 · commit b7c55a3)
+**New API files:**
+| File | Purpose |
+|---|---|
+| `api/player-search.js` | typed name → today's game via FREE ESPN rosters (0 Odds-API credits), cached `PLAYERS:<sport>:<date>` |
+| `api/parse-betslip.js` | **OCR**: bet-slip photo → legs via Claude vision. **NEEDS `ANTHROPIC_API_KEY`** |
+| `api/backfill-book-odds.js` | one-time per-book history seed, guarded `?confirm=SEED&sport=&hours=&stepMin=&regions=&markets=` |
+| `api/cron-capture-book-odds.js` | per-book ML snapshots */30 (regions us,us2,eu — eu only for Pinnacle); registered in vercel.json |
+- `api/game-lines.js` + `api/scan-props.js` now per-game CACHED (90s / 2min) via scanStore; game-lines persists per-book ML/spread/total snapshots to `odds_history` on view.
+
+**Keys / env:**
+- ⚠️ **PENDING: `ANTHROPIC_API_KEY`** — owner is creating it; add to Vercel env, then Upload Pic OCR works. (Model in code: `claude-haiku-4-5-20251001`.)
+- `ODDS_API_KEY` = paid plan (~11.7k credits left as of session end).
+
+**Supabase changes:**
+- `bets` table: added `legs jsonb` (parlay legs `[{pick,odds,book,sport,event}]`, null = straight) + `ladder_session text`.
+- `odds_history` table: `book` column = per-book snapshots (powers By-Sportsbook chart + Bet Matrix line-shop).
+
+**Resume point:** Bet Matrix (slip + parlay + per-book line-shop "link page" for game lines AND props) is fully wired. Only OCR is dark — drop in ANTHROPIC_API_KEY to finish. Full backlog: `docs/superpowers/specs/2026-06-13-rml-backlog.md`.
