@@ -106,7 +106,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     let live = true
     setLinesLoading(true); setLinesErr(null)
     const url = `/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(eid || '')}&full=1`
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(url + '&_=' + Date.now(), { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       .then(async r => { const txt = await r.text(); let j = {}; try { j = JSON.parse(txt) } catch {} ; return { status: r.status, ok: r.ok, j, txt } })
       .then(({ status, ok, j, txt }) => {
         if (!live) return
@@ -127,7 +127,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     let live = true
     setPropsLoading(true); setPropsErr(null)
     const url = `/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&full=1`
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(url + '&_=' + Date.now(), { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       .then(async r => { const txt = await r.text(); let j = {}; try { j = JSON.parse(txt) } catch {} ; return { status: r.status, ok: r.ok, j, txt } })
       .then(({ status, ok, j, txt }) => {
         if (!live) return
