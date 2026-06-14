@@ -165,3 +165,10 @@ workflow/
 - `odds_history` table: `book` column = per-book snapshots (powers By-Sportsbook chart + Bet Matrix line-shop).
 
 **Resume point:** Bet Matrix (slip + parlay + per-book line-shop "link page" for game lines AND props) is fully wired. Only OCR is dark — drop in ANTHROPIC_API_KEY to finish. Full backlog: `docs/superpowers/specs/2026-06-13-rml-backlog.md`.
+
+## SESSION 52 (Jun 14 2026 · branch `feat/game-browser-lab`, NOT merged to main · prod deployed from this branch)
+**Game browser added to CH2 as a free game-picker.** Read `docs/superpowers/HANDOFF-game-browser.md` FIRST — it has full state, invariants, gotchas.
+- **CH1/CH3 untouched. CH2 LookChannel detail (chart/line-shop/movement/props) untouched.** Only change: CH2's no-game landing now shows `EventsPicker` (free sport circles + search + today's slate w/ team logos, 0 Odds-API credits). Tapping a game → `tuneTo(g)` → the SAME existing LookChannel renders. Two doors now feed `tuneTo`: CH1 scan/search + the CH2 browser.
+- **Parked / unused:** `GameBrowser.jsx` + `GamePage.jsx` (Lab's standalone market-tab UI — duplicated LookChannel, removed from flow; decide delete vs salvage). `?full=1` path on `game-lines.js`/`scan-props.js` (segments, team totals, 16 prop markets) is DORMANT — it timed out in serverless (returned HTML), so the Lab uses the cheap proven endpoints. Revisit deeper markets via precompute/cron, NOT on-demand.
+- **⚠️ NEXT = design the end-to-end UX flows for all 3 channels BEFORE coding** (owner says current flows aren't right). Then build CH3. Don't guess flows.
+- Gotchas: `vite preview` doesn't run `/api`; preview `*.vercel.app` URLs serve HTML for `/api` (always test on app.riskmatrixlabs.com); `ODDS_API_KEY`/`VITE_SUPABASE_*` are Production-scoped only.
