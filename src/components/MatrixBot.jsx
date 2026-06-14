@@ -16,7 +16,7 @@ import { kellyStake } from '../lib/kelly.js'
 import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
-import GameBrowser from './GameBrowser.jsx'
+import EventsPicker from './EventsPicker.jsx'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -145,7 +145,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} />}
+          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onTune={(g) => tuneTo(g)} />}
           {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
         </div>
       )}
@@ -565,7 +565,7 @@ function LookFrame({ game, onBack, children }) {
   )
 }
 
-function LookChannel({ game, player = null, sport, token, onLogPosition, onAddToSlip, onBack }) {
+function LookChannel({ game, player = null, sport, setSport, token, onLogPosition, onAddToSlip, onBack, onTune }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [mkt, setMkt]       = useState('h2h')
@@ -598,7 +598,9 @@ function LookChannel({ game, player = null, sport, token, onLogPosition, onAddTo
     return () => { live = false }
   }, [game, sport, token])
 
-  if (!game) return <LookFrame game={game} onBack={onBack}><GameBrowser token={token} onAddToSlip={onAddToSlip} onLogPosition={onLogPosition} /></LookFrame>
+  // CH2 landing (no game tuned): the free game browser. Picking a game tunes it into THIS same
+  // LookChannel below — so the chart / line-shop / props all show, identical to arriving from CH1.
+  if (!game) return <LookFrame game={game} onBack={onBack}><EventsPicker sport={sport} onPickSport={setSport} onPickGame={onTune} token={token} /></LookFrame>
   if (status === 'loading') return <LookFrame game={game} onBack={onBack}><div style={{ textAlign: 'center', padding: '20px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>TUNING IN…</div></LookFrame>
   if (status === 'error')   return <LookFrame game={game} onBack={onBack}><Empty text={`Failed — ${err}`} /></LookFrame>
   if (!data)                return <LookFrame game={game} onBack={onBack}>{player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}<Empty text="No book lines for this game (pre-game only)." /></LookFrame>

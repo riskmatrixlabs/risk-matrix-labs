@@ -161,8 +161,12 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
               fontFamily: R,
             }}
           >
-            <span style={{ fontSize: '15px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>
-              {(ev.away_abbr || ev.away_team)} @ {(ev.home_abbr || ev.home_team)}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+              {ev.away_logo ? <img src={ev.away_logo} alt="" width="22" height="22" style={{ objectFit: 'contain', flexShrink: 0 }} /> : null}
+              <span style={{ fontSize: '15px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                {(ev.away_abbr || ev.away_team)} <span style={{ color: MUTED }}>@</span> {(ev.home_abbr || ev.home_team)}
+              </span>
+              {ev.home_logo ? <img src={ev.home_logo} alt="" width="22" height="22" style={{ objectFit: 'contain', flexShrink: 0 }} /> : null}
             </span>
             <span style={{ fontSize: '11px', fontWeight: 700, color: NEON_T, letterSpacing: '0.04em', flexShrink: 0 }}>
               {localClock(ev.start_time)}
