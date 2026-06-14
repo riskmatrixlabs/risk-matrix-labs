@@ -82,6 +82,8 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
   const [subtab, setSubtab] = useState(null)
 
   const [lines, setLines] = useState(null)
+  const [segments, setSegments] = useState(null)
+  const [teamTotals, setTeamTotals] = useState(null)
   const [linesLoading, setLinesLoading] = useState(true)
   const [linesErr, setLinesErr] = useState(null)
 
@@ -102,11 +104,11 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     if (!game?.away || !game?.home) return
     let live = true
     setLinesLoading(true); setLinesErr(null)
-    const url = `/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(eid || '')}`
+    const url = `/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(eid || '')}&full=1`
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(j => { if (live) setLines(j?.markets || {}) })
-      .catch(e => { if (live) { setLines({}); setLinesErr(e.message || 'Failed to load') } })
+      .then(j => { if (live) { setLines(j?.markets || {}); setSegments(j?.segments || null); setTeamTotals(j?.teamTotals || null) } })
+      .catch(e => { if (live) { setLines({}); setSegments(null); setTeamTotals(null); setLinesErr(e.message || 'Failed to load') } })
       .finally(() => { if (live) setLinesLoading(false) })
     return () => { live = false }
   }, [eid, sport, token])
@@ -487,34 +489,27 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     )
   }
 
-  // TEAM TOTAL tab — Over/Under per team. Our feed has no per-team totals market in `lines`,
-  // so unless a `team_totals`-style key exists, this renders the data-gated Empty state.
+  // TEAM TOTAL tab — Over/Under per team, sourced from the ?full=1 `teamTotals` payload:
+  //   { [teamName]: { over:{point,best:{book,price}}, under:{point,best:{book,price}} } }
   const renderTeamTotal = () => {
-    // Look for any team-totals-shaped market key; almost always absent in our feed.
-    const cmp = lines?.team_totals || lines?.teamTotals || lines?.team_total
-    if (!cmp) return <Empty>Team totals not posted yet.</Empty>
+    if (!teamTotals || !Object.keys(teamTotals).length) return <Empty>Team totals not posted yet.</Empty>
     const section = (teamName, teamLbl) => {
-      const sides = (cmp[teamName] || cmp[teamLbl]) ? sidesFor(cmp[teamName] || cmp[teamLbl], 'totals', game) : []
-      const c = cmp[teamName] || cmp[teamLbl]
-      if (!c || !sides.length) return <Empty>Team total not posted for {teamLbl}.</Empty>
-      const over = sides.find(s => s.label === 'Over') || sides[0]
-      const under = sides.find(s => s.label === 'Under') || sides[1]
-      const cellFor = (s, prefix, label) => {
-        if (!s?.name) return <BigCell disabled top={label} mid="—" />
-        const best = bestRowFor(c, s.name)
-        const pt = c.modalPoint?.[s.name] ?? best?.points?.[s.name]
-        const am = best ? best.prices?.[s.name] : null
+      const tt = teamTotals[teamName]
+      if (!tt || (!tt.over && !tt.under)) return <Empty>Team total not posted for {teamLbl}.</Empty>
+      const cellFor = (side, prefix, label) => {
+        const pt = side?.point
+        const am = side?.best?.price
         if (am == null) return <BigCell disabled top={`${prefix}${pt ?? ''}`} mid="—" />
         return (
-          <BigCell top={`${prefix}${pt ?? ''}`} mid={fmtAm(Number(am))} book={best.book}
-            onClick={() => openConfirm({ pick: `${teamLbl} ${label} ${pt ?? ''}`.trim(), odds: am, book: best.book, link: best.links?.[s.name], byBook: null })}
+          <BigCell top={`${prefix}${pt ?? ''}`} mid={fmtAm(Number(am))} book={side.best.book}
+            onClick={() => openConfirm({ pick: `${teamLbl} Team Total ${label} ${pt ?? ''}`.trim(), odds: am, book: side.best.book, link: null, byBook: null })}
           />
         )
       }
       return (
         <div style={{ display: 'flex', gap: '10px' }}>
-          {cellFor(over, 'o', 'Over')}
-          {cellFor(under, 'u', 'Under')}
+          {cellFor(tt.over, 'o', 'Over')}
+          {cellFor(tt.under, 'u', 'Under')}
         </div>
       )
     }
@@ -526,6 +521,109 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
         {section(game?.home, game?.home_abbr || game?.home)}
       </div>
     )
+  }
+
+  // SEGMENT tabs (1st Inning / First 5 / First 7) — render whichever sub-markets the
+  // segment payload carries (h2h / spreads / totals), reusing the base visual treatment.
+  const SEG_NAMES = { '1st_1': '1st Inning', '1st_5': 'First 5', '1st_7': 'First 7' }
+  const renderSegment = (segKey) => {
+    const seg = segments?.[segKey]
+    const segName = SEG_NAMES[segKey] || segKey
+    if (!seg || (!seg.h2h && !seg.spreads && !seg.totals)) return <Empty>Not posted yet.</Empty>
+
+    const blocks = []
+
+    // h2h → two-cell Moneyline-style (away | home best price).
+    if (seg.h2h) {
+      const cmp = seg.h2h
+      const sides = sidesFor(cmp, 'h2h', game)
+      const order = ['away', 'home'].map(which => {
+        const team = which === 'away' ? game?.away : game?.home
+        const teamLbl = which === 'away' ? (game?.away_abbr || game?.away) : (game?.home_abbr || game?.home)
+        const hit = sides.find(s => String(s.name).toLowerCase() === String(team).toLowerCase())
+        return { which, teamLbl, name: hit?.name || team }
+      })
+      blocks.push(
+        <div key="h2h" style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Moneyline</div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {order.map(o => {
+              const best = bestRowFor(cmp, o.name)
+              const am = best ? best.prices?.[o.name] : null
+              const empty = am == null
+              return (
+                <BigCell key={o.which} disabled={empty}
+                  top={o.teamLbl} mid={empty ? '—' : fmtAm(Number(am))} book={best?.book}
+                  onClick={() => openConfirm({ pick: `${o.teamLbl} ML (${segName})`, odds: am, book: best.book, link: best.links?.[o.name], byBook: null })}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )
+    }
+
+    // spreads → away/home signed-point cells.
+    if (seg.spreads) {
+      const cmp = seg.spreads
+      const sides = sidesFor(cmp, 'spreads', game)
+      const order = ['away', 'home'].map(which => {
+        const team = which === 'away' ? game?.away : game?.home
+        const teamLbl = which === 'away' ? (game?.away_abbr || game?.away) : (game?.home_abbr || game?.home)
+        const hit = sides.find(s => String(s.name).toLowerCase() === String(team).toLowerCase())
+        return { which, teamLbl, name: hit?.name || team }
+      })
+      blocks.push(
+        <div key="spreads" style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>{spreadLabel}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {order.map(o => {
+              const best = bestRowFor(cmp, o.name)
+              const pt = cmp.modalPoint?.[o.name] ?? best?.points?.[o.name]
+              const am = best ? best.prices?.[o.name] : null
+              const empty = am == null
+              return (
+                <BigCell key={o.which} disabled={empty}
+                  top={`${o.teamLbl} ${signedPt(pt)}`} mid={empty ? '—' : fmtAm(Number(am))} book={best?.book}
+                  onClick={() => openConfirm({ pick: `${o.teamLbl} ${signedPt(pt)} (${segName})`.trim(), odds: am, book: best.book, link: best.links?.[o.name], byBook: null })}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )
+    }
+
+    // totals → Over/Under cells.
+    if (seg.totals) {
+      const cmp = seg.totals
+      const sides = sidesFor(cmp, 'totals', game)
+      const over = sides.find(s => s.label === 'Over') || sides[0]
+      const under = sides.find(s => s.label === 'Under') || sides[1]
+      const cellFor = (s, prefix, label) => {
+        if (!s?.name) return <BigCell disabled top={label} mid="—" />
+        const best = bestRowFor(cmp, s.name)
+        const pt = cmp.modalPoint?.[s.name] ?? best?.points?.[s.name]
+        const am = best ? best.prices?.[s.name] : null
+        if (am == null) return <BigCell disabled top={`${prefix}${pt ?? ''}`} mid="—" />
+        return (
+          <BigCell top={`${prefix}${pt ?? ''}`} mid={fmtAm(Number(am))} book={best.book}
+            onClick={() => openConfirm({ pick: `${label} ${pt ?? ''} (${segName})`.trim(), odds: am, book: best.book, link: best.links?.[s.name], byBook: null })}
+          />
+        )
+      }
+      blocks.push(
+        <div key="totals" style={{ marginBottom: '4px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Total</div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {cellFor(over, 'o', 'Over')}
+            {cellFor(under, 'u', 'Under')}
+          </div>
+        </div>
+      )
+    }
+
+    return <div>{blocks}</div>
   }
 
   // Compact OddsJam-style two-row grid: AWAY then HOME, each with ML/Spread/Total cells.
@@ -567,6 +665,8 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
 
   const renderLines = () => {
     if (linesLoading) return <Empty>Loading lines…</Empty>
+    if (tab.startsWith('seg_')) return renderSegment(tab.slice(4))
+    if (tab === 'teamtotal') return renderTeamTotal()
     if (!hasAnyLines) return <Empty>{linesErr ? `Could not load lines (${linesErr}).` : 'No game lines available.'}</Empty>
     if (tab === 'gamelines') {
       return renderGameLinesGrid()
@@ -574,7 +674,6 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     if (tab === 'ml') return renderMoneylineTwoCell()
     if (tab === 'totals') return renderTotalsTwoCell()
     if (tab === 'spread') return renderSpreadCells()
-    if (tab === 'teamtotal') return renderTeamTotal()
     return null
   }
 
@@ -634,6 +733,9 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
         <Pill active={tab === 'totals'} onClick={() => setTab('totals')}>Totals</Pill>
         <Pill active={tab === 'spread'} onClick={() => setTab('spread')}>{spreadLabel}</Pill>
         <Pill active={tab === 'teamtotal'} onClick={() => setTab('teamtotal')}>Team Total</Pill>
+        {segments?.['1st_1'] && <Pill active={tab === 'seg_1st_1'} onClick={() => setTab('seg_1st_1')}>1st Inning</Pill>}
+        {segments?.['1st_5'] && <Pill active={tab === 'seg_1st_5'} onClick={() => setTab('seg_1st_5')}>First 5</Pill>}
+        {segments?.['1st_7'] && <Pill active={tab === 'seg_1st_7'} onClick={() => setTab('seg_1st_7')}>First 7</Pill>}
       </div>
 
       {/* Prop subtype tabs (e.g. Hits / Bases / Outs / Earned Runs) — derived from the markets returned */}
