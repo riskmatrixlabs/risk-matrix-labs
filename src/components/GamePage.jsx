@@ -113,7 +113,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
         setLines(j?.markets || {}); setSegments(j?.segments || null); setTeamTotals(j?.teamTotals || null)
         const mk = Object.keys(j?.markets || {}).filter(k => j.markets[k]).join(',') || '∅'
         const seg = Object.keys(j?.segments || {}).join(',') || '∅'
-        setDiag(d => ({ ...d, lines: ok ? `lines ${status} found=${j?.found} mk=[${mk}] seg=[${seg}] tt=${j?.teamTotals ? 'y' : 'n'}` : `lines ${status} ERR ${String(txt).slice(0, 140)}` }))
+        setDiag(d => ({ ...d, lines: `lines ${status} found=${j?.found} mk=[${mk}] seg=[${seg}] tt=${j?.teamTotals ? 'y' : 'n'} body«${String(txt).slice(0, 60)}»` }))
         if (!ok) setLinesErr(`HTTP ${status}`)
       })
       .catch(e => { if (live) { setLines({}); setSegments(null); setTeamTotals(null); setLinesErr(e.message || 'Failed to load'); setDiag(d => ({ ...d, lines: `lines FETCH-FAIL ${e.message}` })) } })
@@ -133,7 +133,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
         if (!live) return
         const merged = [...(j?.edges || []), ...(j?.lineShopOnly || [])]
         setProps(merged)
-        setDiag(d => ({ ...d, props: ok ? `props ${status} found=${j?.found} rows=${merged.length}` : `props ${status} ERR ${String(txt).slice(0, 140)}` }))
+        setDiag(d => ({ ...d, props: `props ${status} found=${j?.found} rows=${merged.length} body«${String(txt).slice(0, 60)}»` }))
         if (!ok) setPropsErr(`HTTP ${status}`)
       })
       .catch(e => { if (live) { setProps([]); setPropsErr(e.message || 'Failed to load'); setDiag(d => ({ ...d, props: `props FETCH-FAIL ${e.message}` })) } })
