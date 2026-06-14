@@ -71,19 +71,28 @@ export function BookLineMovement({ event, title = true, collapsible = false }) {
     fetchBookMovement(event.external_event_id, 'ml', side).then(m => { if (live) setByBook(m || {}) }).catch(() => {})
     return () => { live = false }
   }, [event?.external_event_id, side])
-  if (!event?.external_event_id || !Object.keys(curateBooks(byBook)).length) return null
+  if (!event?.external_event_id) return null
+  const hasData = Object.keys(curateBooks(byBook)).length > 0
   if (collapsible) {
     // Matches the Fair Value / Line Movement section-header card style in Insights.
+    // ALWAYS render the header (even with no data yet) so the section never "disappears".
     return (
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
         <button onClick={() => setOpen(o => !o)} style={{ width: '100%', padding: '10px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement <span style={{ color: 'rgba(255,255,255,0.3)' }}>· by sportsbook</span></span>
           <span style={{ position: 'absolute', right: '14px', color: open ? NEON_T : MUTED, fontSize: '10px' }}>{open ? '▾' : '▸'}</span>
         </button>
-        {open && <div style={{ padding: '12px 14px' }}><BookMoveChart byBook={byBook} game={{ away: event.away_team, home: event.home_team }} side={side} onSide={setSide} /></div>}
+        {open && (
+          <div style={{ padding: '12px 14px' }}>
+            {hasData
+              ? <BookMoveChart byBook={byBook} game={{ away: event.away_team, home: event.home_team }} side={side} onSide={setSide} />
+              : <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, textAlign: 'center', padding: '6px 0' }}>By-sportsbook history is building — fills in as prices are captured.</div>}
+          </div>
+        )}
       </div>
     )
   }
+  if (!hasData) return null
   return (
     <div>
       {title && <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>Line Movement · By Sportsbook</div>}
