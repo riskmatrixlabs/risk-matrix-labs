@@ -18,6 +18,7 @@ export async function fetchLineMovement(externalEventId) {
     .from('odds_history')
     .select('*')
     .eq('external_event_id', String(externalEventId))
+    .is('book', null)              // market-level consensus only — per-book rows feed the By-Sportsbook chart, not this
     .order('captured_at', { ascending: true })
   if (error || !data?.length) return {}
   const groups = {}
@@ -43,9 +44,13 @@ export async function fetchBookMovement(externalEventId, market = 'ml', side = '
   const { data, error } = await q.order('captured_at', { ascending: true })
   if (error || !data?.length) return {}
   const byBook = {}
-  for (const r of data) { (byBook[r.book] ??= []).push(r.value) }
+  for (const r of data) { (byBook[r.book] ??= []).push({ t: r.captured_at, v: r.value }) }
   const out = {}
-  for (const [book, series] of Object.entries(byBook)) out[book] = { open: series[0], current: series[series.length - 1], series }
+  for (const [book, pts] of Object.entries(byBook)) {
+    const series = pts.map(p => p.v)
+    const times = pts.map(p => p.t)
+    out[book] = { open: series[0], current: series[series.length - 1], series, times }
+  }
   return out
 }
 

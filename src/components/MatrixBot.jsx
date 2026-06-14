@@ -6,14 +6,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import './MatrixBot.css'
 import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_LABEL, fmtAm, Sparkline } from './botShared.jsx'
-import { fetchEvents } from '../lib/events.js'
+import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
-import { labelFor } from '../lib/propMarkets.js'
+import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
 
@@ -22,6 +22,8 @@ const todayStr = () => new Date().toISOString().slice(0, 10)
 const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
 const up = (s) => lw(s).toUpperCase()
 const isPreGame = (ev) => ev.status === 'NS' || ev.status === 'STATUS_SCHEDULED'
+// Game time in the USER'S local timezone (the device tz) — not raw UTC off the timestamp.
+const localClock = (iso) => { try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) } catch { return '' } }
 
 // Format a point with sign (+1.5 / -1.5). Plain string for nulls.
 const fmtPt = (p) => p == null ? '' : (p > 0 ? `+${p}` : `${p}`)
@@ -66,30 +68,83 @@ function TvFrame({ ch, children }) {
   )
 }
 
+// Player search (the CH1 "knob") — type a player → their game; tap → tune to Channel 2.
+// Uses FREE ESPN rosters server-side (zero Odds-API credits).
+function PlayerSearch({ token, onSelect, onClose }) {
+  const [q, setQ] = useState('')
+  const [matches, setMatches] = useState([])
+  const [status, setStatus] = useState('idle')   // idle | loading | done
+  const [anyGames, setAnyGames] = useState(true)
+  useEffect(() => {
+    if (q.trim().length < 2) { setMatches([]); setStatus('idle'); return }
+    let live = true
+    setStatus('loading')
+    const id = setTimeout(() => {
+      fetch(`/api/player-search?q=${encodeURIComponent(q.trim())}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : { matches: [] })
+        .then(j => { if (live) { setMatches(j.matches || []); setAnyGames(j.anyGames !== false); setStatus('done') } })
+        .catch(() => { if (live) setStatus('done') })
+    }, 300)
+    return () => { live = false; clearTimeout(id) }
+  }, [q, token])
+
+  const fmtT = (iso) => { try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) } catch { return '' } }
+  return (
+    <div style={{ background: CARD, border: `1px solid ${NEON}`, borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Search a player…"
+          style={{ flex: 1, padding: '9px 11px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', color: TEXT, fontFamily: R, fontSize: '13px', outline: 'none' }} />
+        <button onClick={onClose} style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700 }}>✕</button>
+      </div>
+      {status === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '8px 2px' }}>SEARCHING…</div>}
+      {status === 'done' && !matches.length && (
+        <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, padding: '8px 2px' }}>{anyGames ? 'No player found in today’s games.' : 'No events today.'}</div>
+      )}
+      {matches.map((m, i) => (
+        <button key={`${m.player}-${i}`} onClick={() => onSelect(m)}
+          style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginTop: '6px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {m.headshot
+            ? <img src={m.headshot} alt="" width="38" height="38" style={{ borderRadius: '50%', background: '#1a1a1a', objectFit: 'cover', flexShrink: 0 }} />
+            : <span style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{(m.player[0] || '?')}</span>}
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.player}</span>
+            <span style={{ display: 'block', fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{[m.pos, m.team].filter(Boolean).join(' · ')}</span>
+          </span>
+          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, letterSpacing: '0.04em', textAlign: 'right', flexShrink: 0 }}>{up(m.game.away_abbr || m.game.away)} @ {up(m.game.home_abbr || m.game.home)}<br />{fmtT(m.game.commenceTime)}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function MatrixBot({ onLogPosition, bets = [], token = null, unitSize = 0, bankroll = 0 }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
   const [showFilters, setShowFilters] = useState(false)   // gear (FIND filters) lives in the tab row
+  const [showSearch, setShowSearch]   = useState(false)   // the CH1 "knob" → player search
+  const [player, setPlayer]           = useState(null)    // when arriving via player search → CH2 player mode
+  const tuneTo = (g, p = null) => { setGame(g); setPlayer(p); if (g.sport) setSport(g.sport); setChannel('look') }
 
   return (
     <div className="mbot-root" style={{ maxWidth: '480px', margin: '0 auto', padding: '14px 12px 90px' }}>
+      {/* channel dial */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-        {channel === 'find' && (
-          <button onClick={() => setShowFilters(f => !f)} aria-label="Filters" style={{ flexShrink: 0, width: '40px', borderRadius: '7px', cursor: 'pointer', fontSize: '15px', lineHeight: 1, border: `1px solid ${showFilters ? NEON : BORDER}`, background: showFilters ? NEON : 'transparent', color: showFilters ? '#0A0A0A' : NEON_T }}>⚙</button>
-        )}
         {[['find', 'CH 1 · FIND'], ['look', 'CH 2 · LOOK'], ['track', 'CH 3 · TRACK']].map(([k, label]) => (
           <button key={k} onClick={() => setChannel(k)} style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${channel === k ? NEON : BORDER}`, background: channel === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: channel === k ? NEON_T : MUTED }}>{label}</button>
         ))}
       </div>
       {/* FIND stays mounted (just hidden) so a scan survives channel switches — no re-scan */}
       <div style={{ display: channel === 'find' ? 'block' : 'none' }}>
-        <FindChannel token={token} bankroll={bankroll} showFilters={showFilters}
-          onPick={(g) => { setGame(g); if (g.sport) setSport(g.sport); setChannel('look') }} />
+        <FindChannel token={token} bankroll={bankroll}
+          showFilters={showFilters} setShowFilters={setShowFilters}
+          showSearch={showSearch} setShowSearch={setShowSearch}
+          onPick={(g) => tuneTo(g)}
+          onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot })} />
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
+          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} token={token} onLogPosition={onLogPosition} onBack={() => setChannel('find')} />}
           {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
         </div>
       )}
@@ -104,7 +159,7 @@ export default function MatrixBot({ onLogPosition, bets = [], token = null, unit
 const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // sports the provider supports today
 const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
-function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
+function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = false, setShowFilters, showSearch = false, setShowSearch }) {
   const [events, setEvents]   = useState([])
   const [feed, setFeed]       = useState({ status: 'idle', edges: [], scanned: 0, credits: null })
   const [props, setProps]     = useState(null)
@@ -113,6 +168,7 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
   const [sportF, setSportF]   = useState('ALL')       // filters replace tabs (toggled by the gear)
   const [marketF, setMarketF] = useState('ALL')
   const [propCat, setPropCat] = useState('ALL')   // prop category filter (strikeouts, points…)
+  const [bookF, setBookF]     = useState('ALL')   // filter board to a specific sportsbook's best price
   const [minEv, setMinEv]     = useState(0)
   const scanning = useRef(false)
 
@@ -126,6 +182,8 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
   }, [])
 
   const preGames = useMemo(() => events.filter(isPreGame), [events])
+  // Ticker = LIVE games first (tagged), then the upcoming pre-game slate. Finals drop off.
+  const tickerGames = useMemo(() => [...events.filter(e => isLiveEvent(e)), ...preGames], [events, preGames])
   const evByKey = useMemo(() => {
     const m = {}
     for (const ev of preGames) m[gameKey(ev.away_team, ev.home_team)] = ev
@@ -212,8 +270,10 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
     const pr = !showProps ? [] : (props?.edges || [])
       .filter(p => inSport(p._sport) && (propCat === 'ALL' || p.market === propCat) && (p.evPct == null ? minEv === 0 : p.evPct >= minEv))
       .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game }))
-    return [...gl, ...pr].sort((a, b) => (b.evPct ?? -1) - (a.evPct ?? -1))
-  }, [feed, props, sportF, marketF, propCat, minEv, evByKey])
+    return [...gl, ...pr]
+      .filter(r => bookF === 'ALL' || r.book === bookF)
+      .sort((a, b) => (b.evPct ?? -1) - (a.evPct ?? -1))
+  }, [feed, props, sportF, marketF, propCat, bookF, minEv, evByKey])
 
   // prop categories that actually came out of the scan (Strikeouts, Points, …) for the filter
   const propCats = useMemo(() => [...new Set((props?.edges || []).map(p => p.market))], [props])
@@ -230,25 +290,60 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
 
   return (
     <>
+      {showSearch && setShowSearch && (
+        <PlayerSearch token={token} onClose={() => setShowSearch(false)}
+          onSelect={(m) => { setShowSearch(false); onPickPlayer && onPickPlayer(m) }} />
+      )}
       {showFilters && (
         <div style={{ marginBottom: '12px', padding: '12px 14px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD }}>
           <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>SPORT</div>
           <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
             {sportChips.map(s => <button key={s} onClick={() => setSportF(s)} style={pill(sportF === s)}>{s}</button>)}
           </div>
+          {/* TEAM — tap menu of today's teams (scoped to the selected sport) → jump to its game */}
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>TEAM</div>
+          {(() => {
+            const teams = preGames
+              .filter(ev => sportF === 'ALL' || ev._sport === sportF)
+              .flatMap(ev => [{ name: ev.away_team, abbr: ev.away_abbr, ev }, { name: ev.home_team, abbr: ev.home_abbr, ev }])
+              .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+            return (
+              <select value="" onChange={e => { const t = teams[Number(e.target.value)]; if (t) onPick(buildGame(t.ev)) }}
+                style={{ width: '100%', padding: '9px 10px', marginBottom: '12px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', color: TEXT, fontFamily: R, fontSize: '12px', fontWeight: 700, outline: 'none' }}>
+                <option value="">{teams.length ? 'Jump to a team…' : 'No games today'}</option>
+                {teams.map((t, i) => <option key={t.abbr + i} value={i}>{t.abbr} — {t.name}</option>)}
+              </select>
+            )
+          })()}
+
           <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>MARKET</div>
           <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
             {MARKET_CHIPS.map(([k, label]) => <button key={k} onClick={() => setMarketF(k)} style={pill(marketF === k)}>{label}</button>)}
           </div>
-          {marketF === 'props' && propCats.length > 0 && (
-            <>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>PROP CATEGORY</div>
-              <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                <button onClick={() => setPropCat('ALL')} style={pill(propCat === 'ALL')}>ALL</button>
-                {propCats.map(c => <button key={c} onClick={() => setPropCat(c)} style={pill(propCat === c)}>{labelFor(c)}</button>)}
-              </div>
-            </>
-          )}
+
+          {/* PROP — tap menu, sport-correlated (the right props per sport); picks the exact prop */}
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>PROP</div>
+          <select value={marketF === 'props' ? propCat : 'NONE'} disabled={sportF === 'ALL'}
+            onChange={e => { setMarketF('props'); setPropCat(e.target.value === 'NONE' ? 'ALL' : e.target.value) }}
+            style={{ width: '100%', padding: '9px 10px', marginBottom: '12px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', color: sportF === 'ALL' ? MUTED : TEXT, fontFamily: R, fontSize: '12px', fontWeight: 700, outline: 'none', opacity: sportF === 'ALL' ? 0.6 : 1 }}>
+            {sportF === 'ALL'
+              ? <option value="NONE">Pick a sport first</option>
+              : <>
+                  <option value="NONE">Choose a prop…</option>
+                  <option value="ALL">All props</option>
+                  {(PROP_MARKETS[sportF] || []).map(k => <option key={k} value={k}>{labelFor(k)}</option>)}
+                </>}
+          </select>
+          {/* BOOK — filter the board to one sportsbook's best price */}
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>BOOK</div>
+          <select value={bookF} onChange={e => setBookF(e.target.value)}
+            style={{ width: '100%', padding: '9px 10px', marginBottom: '12px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', color: TEXT, fontFamily: R, fontSize: '12px', fontWeight: 700, outline: 'none' }}>
+            <option value="ALL">All books</option>
+            {['draftkings', 'fanduel', 'betmgm', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'pinnacle'].map(b => (
+              <option key={b} value={b}>{BOOK_NAMES[b] || b}</option>
+            ))}
+          </select>
+
           <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '8px' }}>MIN EV</div>
           <div style={{ display: 'flex', gap: '6px' }}>
             {[0, 2, 5].map(v => <button key={v} onClick={() => setMinEv(v)} style={pill(minEv === v)}>{v === 0 ? 'ANY' : `${v}%+`}</button>)}
@@ -295,14 +390,20 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
         {status === 'error' && <Empty text={`Scan failed — ${err}`} />}
 
         {/* slate ticker — teams BIG, sliding across the screen like a broadcast crawl */}
-        {preGames.length > 0 && (
+        {tickerGames.length > 0 && (
           <div className="tv-marquee-wrap" style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid rgba(189,255,0,0.12)` }}>
             <div className="tv-marquee">
-              {[...preGames, ...preGames].map((ev, i) => (
-                <button key={ev._sport + ev.external_event_id + i} onClick={() => onPick(buildGame(ev))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: R, fontWeight: 700, fontSize: '17px', color: NEON_T, letterSpacing: '0.04em', whiteSpace: 'nowrap', padding: 0 }}>
-                  {ev.away_abbr}@{ev.home_abbr} <span style={{ color: MUTED, fontSize: '11px', fontFamily: 'Courier New, monospace' }}>{(ev.start_time || '').slice(11, 16)}</span>
-                </button>
-              ))}
+              {[...tickerGames, ...tickerGames].map((ev, i) => {
+                const live = isLiveEvent(ev)
+                return (
+                  <button key={ev._sport + ev.external_event_id + i} onClick={() => onPick(buildGame(ev))} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: R, fontWeight: 700, fontSize: '17px', color: NEON_T, letterSpacing: '0.04em', whiteSpace: 'nowrap', padding: 0 }}>
+                    {ev.away_abbr}@{ev.home_abbr}{' '}
+                    {live
+                      ? <span style={{ color: DANGER, fontSize: '11px', fontFamily: 'Courier New, monospace', fontWeight: 700 }}>● LIVE{(ev.away_score != null && ev.home_score != null) ? ` ${ev.away_score}-${ev.home_score}` : ''}</span>
+                      : <span style={{ color: MUTED, fontSize: '11px', fontFamily: 'Courier New, monospace' }}>{localClock(ev.start_time)}</span>}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -314,6 +415,14 @@ function FindChannel({ token, bankroll = 0, onPick, showFilters = false }) {
         <button onClick={() => setView('tv')} style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${view === 'tv' ? NEON : BORDER}`, background: view === 'tv' ? 'rgba(189,255,0,0.1)' : 'transparent', color: view === 'tv' ? NEON_T : MUTED }}>📺 TV</button>
         <button onClick={() => token && runScan(false)} disabled={!token || status === 'scanning'} style={{ flex: 1.5, padding: '11px 4px', borderRadius: '8px', cursor: !token ? 'not-allowed' : status === 'scanning' ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${NEON}`, background: token ? NEON : 'transparent', color: token ? '#0A0A0A' : MUTED, opacity: status === 'scanning' ? 0.7 : 1 }}>▶ {status === 'scanning' ? 'SCANNING' : status === 'done' ? 'REFRESH' : 'GO LIVE'}</button>
         <button onClick={() => setView('board')} style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${view === 'board' ? NEON : BORDER}`, background: view === 'board' ? 'rgba(189,255,0,0.1)' : 'transparent', color: view === 'board' ? NEON_T : MUTED }}>☰ BOARD</button>
+      </div>
+
+      {/* TV buttons — search (left) · settings/gear (right); open their panel inside the screen */}
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <button onClick={() => { setShowSearch && setShowSearch(s => !s); setShowFilters && setShowFilters(false) }}
+          style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${showSearch ? NEON : BORDER}`, background: showSearch ? 'rgba(189,255,0,0.1)' : 'transparent', color: showSearch ? NEON_T : MUTED }}>🔍 SEARCH</button>
+        <button onClick={() => { setShowFilters && setShowFilters(s => !s); setShowSearch && setShowSearch(false) }}
+          style={{ flex: 1, padding: '11px 4px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${showFilters ? NEON : BORDER}`, background: showFilters ? 'rgba(189,255,0,0.1)' : 'transparent', color: showFilters ? NEON_T : MUTED }}>⚙ SETTINGS</button>
       </div>
 
       {token && status === 'done' && feed.credits != null && (
@@ -358,8 +467,100 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
   )
 }
 
+// Player-prop card shown atop CH2 when you arrive via player search (PrizePicks-style):
+// that player's prop markets, each side with best book price + tap → confirm → log + open.
+function PlayerProps({ player, game, sport, token, onLogPosition }) {
+  const [status, setStatus] = useState('loading')
+  const [rows, setRows] = useState([])
+  const [confirm, setConfirm] = useState(null)
+  useEffect(() => {
+    if (!player?.name || !game?.away || !token) return
+    let live = true; setStatus('loading')
+    fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (!live) return
+        const nm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        const all = [...(j?.edges || []), ...(j?.lineShopOnly || [])]
+        const target = nm(player.name)
+        setRows(all.filter(e => { const p = nm(e.player); return p.includes(target) || target.includes(p) }))
+        setStatus('done')
+      }).catch(() => { if (live) setStatus('done') })
+    return () => { live = false }
+  }, [player?.name, game?.external_event_id, token])
+
+  // group by market+line → { Over, Under }
+  const groups = []
+  const idx = {}
+  for (const r of rows) {
+    const k = `${r.market}__${r.point}`
+    if (!(k in idx)) { idx[k] = groups.length; groups.push({ marketLabel: r.marketLabel, point: r.point, sides: {} }) }
+    groups[idx[k]].sides[r.side] = r
+  }
+
+  const fmtPt = (p) => p == null ? '' : (p > 0 ? `+${p}` : `${p}`)
+  const sideBtn = (g, side) => {
+    const r = g.sides[side]; if (!r) return <span style={{ flex: 1 }} />
+    const url = decorate(r.best.book, r.best.link)
+    return (
+      <button onClick={() => url && setConfirm({ pick: `${player.name} ${side} ${g.point} ${g.marketLabel}`, odds: r.best.price, book: r.best.book, url })}
+        style={{ flex: 1, padding: '8px 6px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: url ? 'pointer' : 'default', textAlign: 'center' }}>
+        <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, textTransform: 'uppercase' }}>{side} {g.point}</div>
+        <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtAm(r.best.price)}{url && <span style={{ fontSize: '9px', color: NEON_T, marginLeft: '2px' }}>↗</span>}</div>
+        <div style={{ fontFamily: 'Courier New, monospace', fontSize: '8px', color: MUTED }}>{(BOOK_NAMES[r.best.book] || r.best.book).slice(0, 8)}</div>
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ background: CARD, border: `1px solid ${NEON}`, borderRadius: '12px', padding: '12px', marginBottom: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+        {player.headshot
+          ? <img src={player.headshot} alt="" width="40" height="40" style={{ borderRadius: '50%', background: '#1a1a1a', objectFit: 'cover' }} />
+          : <span style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontWeight: 700, color: MUTED }}>{player.name[0]}</span>}
+        <div>
+          <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{player.name}</div>
+          <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>{[player.pos, player.team].filter(Boolean).join(' · ')} · PROPS</div>
+        </div>
+      </div>
+      {status === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '6px 2px' }}>PULLING PROPS…</div>}
+      {status === 'done' && !groups.length && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, padding: '6px 2px' }}>No props posted for {player.name} yet (try after lineups).</div>}
+      {groups.map((g, i) => (
+        <div key={i} style={{ marginBottom: '8px' }}>
+          <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T, letterSpacing: '0.06em', marginBottom: '4px' }}>{g.marketLabel}</div>
+          <div style={{ display: 'flex', gap: '8px' }}>{sideBtn(g, 'Over')}{sideBtn(g, 'Under')}</div>
+        </div>
+      ))}
+      {confirm && (
+        <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '9px', padding: '11px 12px', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?</span>
+          <span style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => { onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
+              style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
+            <button onClick={() => setConfirm(null)} style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ───────────────────────────── CH 2 · LOOK ─────────────────────────────
-function LookChannel({ game, sport, token, onLogPosition, onBack }) {
+// Module-level so its component identity is CONSTANT across LookChannel re-renders.
+// (Defined inline it remounted the whole CH2 subtree on every render — collapsing the
+//  Compare Books table — because the parent passes a fresh onBack each render.)
+function LookFrame({ game, onBack, children }) {
+  return (
+    <TvFrame ch="07">
+      <button onClick={onBack} style={{ ...pill(false), marginBottom: '12px', fontSize: '10px', padding: '5px 12px' }}>← CH 1</button>
+      {game && <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT, marginBottom: '2px' }}>{up(game.away)} @ {up(game.home)}</div>}
+      <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.1em', marginBottom: '12px' }}>BY BOOK · BEST AVAILABLE</div>
+      {children}
+    </TvFrame>
+  )
+}
+
+function LookChannel({ game, player = null, sport, token, onLogPosition, onBack }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [mkt, setMkt]       = useState('h2h')
@@ -389,19 +590,10 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
     return () => { live = false }
   }, [game, sport, token])
 
-  const Frame = ({ children }) => (
-    <TvFrame ch="07">
-      <button onClick={onBack} style={{ ...pill(false), marginBottom: '12px', fontSize: '10px', padding: '5px 12px' }}>← CH 1</button>
-      {game && <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT, marginBottom: '2px' }}>{up(game.away)} @ {up(game.home)}</div>}
-      <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.1em', marginBottom: '12px' }}>BY BOOK · BEST AVAILABLE</div>
-      {children}
-    </TvFrame>
-  )
-
-  if (!game) return <Frame><Empty text="Pick a game on CH 1 to tune in." /></Frame>
-  if (status === 'loading') return <Frame><div style={{ textAlign: 'center', padding: '20px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>TUNING IN…</div></Frame>
-  if (status === 'error')   return <Frame><Empty text={`Failed — ${err}`} /></Frame>
-  if (!data)                return <Frame><Empty text="No book lines for this game (pre-game only)." /></Frame>
+  if (!game) return <LookFrame game={game} onBack={onBack}><Empty text="Pick a game on CH 1 to tune in." /></LookFrame>
+  if (status === 'loading') return <LookFrame game={game} onBack={onBack}><div style={{ textAlign: 'center', padding: '20px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>TUNING IN…</div></LookFrame>
+  if (status === 'error')   return <LookFrame game={game} onBack={onBack}><Empty text={`Failed — ${err}`} /></LookFrame>
+  if (!data)                return <LookFrame game={game} onBack={onBack}>{player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}<Empty text="No book lines for this game (pre-game only)." /></LookFrame>
 
   const M = data.markets
   const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
@@ -461,7 +653,9 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
   })()
 
   return (
-    <Frame>
+    <LookFrame game={game} onBack={onBack}>
+      {/* player mode (arrived via search) → that player's props on top */}
+      {player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} />}
       {/* per-market movement summary (sparklines) */}
       <MarketSummary move={move} sport={sport} />
 
@@ -477,7 +671,7 @@ function LookChannel({ game, sport, token, onLogPosition, onBack }) {
       <div style={{ marginTop: '16px' }}>
         <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} />
       </div>
-    </Frame>
+    </LookFrame>
   )
 }
 
@@ -770,6 +964,7 @@ function TrackChannel({ bets, sport, token }) {
 // One game card on TRACK: the graded bets for this game + its closing-lines grid.
 function TrackGameCard({ ev, items, sport, token }) {
   const [M, setM] = useState(null)
+  const [showClose, setShowClose] = useState(false)   // closing-lines grid collapsed by default
   useEffect(() => {
     if (!token || !ev) return
     let live = true
@@ -779,28 +974,41 @@ function TrackGameCard({ ev, items, sport, token }) {
   }, [ev, sport, token])
 
   return (
-    <div style={{ padding: '8px 10px', marginBottom: '6px', borderRadius: '10px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
-      <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '1px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
+    <div style={{ padding: '14px', marginBottom: '10px', borderRadius: '12px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
+      {/* game title — secondary */}
+      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
+
+      {/* bets — the pick + EV/CLV are the hero */}
       {items.map(({ bet, grade }, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', paddingTop: '3px' }}>
-          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.pick || bet.event}</span>
-          <span style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
+          <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, minWidth: 0, lineHeight: 1.2 }}>{bet.pick || bet.event}</span>
+          <span style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
             {grade.evPct != null && <Stat label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
             {grade.clvPct != null && <Stat label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
-            {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>Awaiting close…</span>}
+            {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, alignSelf: 'center' }}>Awaiting close…</span>}
           </span>
         </div>
       ))}
-      {M && <ClosingLines M={M} game={{ away: ev.away_team, home: ev.home_team }} sport={sport} />}
+
+      {/* closing lines — collapsible, default hidden so it stops dominating the card */}
+      {M && (
+        <>
+          <button onClick={() => setShowClose(s => !s)} style={{ width: '100%', marginTop: '10px', padding: '8px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase' }}>
+            {showClose ? '▾ Hide closing lines' : '▸ Closing lines'}
+          </button>
+          {showClose && <div style={{ marginTop: '10px' }}><ClosingLines M={M} game={{ away: ev.away_team, home: ev.home_team }} sport={sport} /></div>}
+        </>
+      )}
     </div>
   )
 }
 
+// EV / CLV chip — boxed and bold so the grade reads at a glance (the hero metric on TRACK).
 function Stat({ label, value, good }) {
   return (
-    <div style={{ textAlign: 'right' }}>
-      <div style={{ fontFamily: R, fontSize: '7px', color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
-      <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: good ? NEON_T : DANGER }}>{value}</div>
+    <div style={{ textAlign: 'center', minWidth: '54px', padding: '5px 8px', borderRadius: '8px', background: good ? 'rgba(189,255,0,0.08)' : 'rgba(255,59,59,0.08)', border: `1px solid ${good ? 'rgba(189,255,0,0.3)' : 'rgba(255,59,59,0.3)'}` }}>
+      <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.12em' }}>{label}</div>
+      <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: good ? NEON_T : DANGER }}>{value}</div>
     </div>
   )
 }

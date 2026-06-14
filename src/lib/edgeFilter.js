@@ -73,13 +73,14 @@ export function compareBooks(bookmakers, marketKey, opts = {}) {
 
   const rows = books.map(b => {
     const m = b.markets.find(x => x.key === marketKey)
-    const prices = {}, points = {}
+    const prices = {}, points = {}, links = {}
     for (const name of outcomes) {
       const o = m.outcomes.find(x => x.name === name)
       prices[name] = o ? o.price : null
       points[name] = (o && o.point != null) ? o.point : null   // spread/total line; null for moneyline
+      links[name]  = (o && o.link) ? o.link : null             // deep bet-slip link (some books only)
     }
-    return { book: b.key, sharp: b.key === sharpBook, prices, points }
+    return { book: b.key, sharp: b.key === sharpBook, prices, points, links }
   })
 
   // Most common line per outcome — comparing prices across DIFFERENT points is invalid,
@@ -101,7 +102,7 @@ export function compareBooks(bookmakers, marketKey, opts = {}) {
       if (modalPoint[name] != null && r.points[name] !== modalPoint[name]) continue  // off the main line → not eligible
       const d = americanToDecimal(p)
       if (d == null) continue
-      if (!bb || d > bb.decimal) bb = { book: r.book, price: p, decimal: d }
+      if (!bb || d > bb.decimal) bb = { book: r.book, price: p, decimal: d, link: r.links[name] }
     }
     best[name] = bb
   }

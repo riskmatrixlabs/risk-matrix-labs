@@ -72,6 +72,28 @@ export async function fetchSportEvents({ sport, apiKey = process.env.ODDS_API_KE
   }
 }
 
+// Historical odds snapshot at a point in time (10 credits / market / region).
+// Powers the line-movement backfill so the chart is full the moment you open it.
+// Returns the games as they stood at `date`, plus the API's adjacent-snapshot pointers.
+export async function fetchHistoricalOdds({ sport, date, markets = ['h2h'], regions = ['us', 'eu'], apiKey = process.env.ODDS_API_KEY }) {
+  if (!apiKey) throw new Error('ODDS_API_KEY missing')
+  const sportKey = SPORT_KEYS[sport] || sport
+  // The Odds API rejects millisecond precision — normalize to ISO8601 seconds (…SSZ).
+  const isoSec = String(date).replace(/\.\d{3}(Z|$)/, '$1').replace(/(\dT\d\d:\d\d:\d\d)$/, '$1Z')
+  const url = `${BASE}/historical/sports/${sportKey}/odds/?apiKey=${apiKey}`
+    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&date=${encodeURIComponent(isoSec)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`theOddsApi historical ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  const body = await res.json()
+  return {
+    snapshotTime: body?.timestamp || date,
+    prevTimestamp: body?.previous_timestamp || null,
+    nextTimestamp: body?.next_timestamp || null,
+    games: (Array.isArray(body?.data) ? body.data : []).map(normalizeGame),
+    credits: { remaining: Number(res.headers.get('x-requests-remaining')), used: Number(res.headers.get('x-requests-used')), last: Number(res.headers.get('x-requests-last')) },
+  }
+}
+
 // Paid per-event odds (props live here). Returns one normalized game + credits.
 export async function fetchEventOdds({ sport, eventId, markets, regions = ['us', 'eu'], apiKey = process.env.ODDS_API_KEY }) {
   if (!apiKey) throw new Error('ODDS_API_KEY missing')

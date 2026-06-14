@@ -1,4 +1,4 @@
-const CACHE = 'rml-v107';
+const CACHE = 'rml-v128';
 const PRECACHE = [
   '/',
   '/manifest.json',
@@ -23,14 +23,29 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('/api/') || e.request.url.includes('supabase') || e.request.url.includes('stripe')) {
+  const req = e.request;
+  if (req.url.includes('/api/') || req.url.includes('supabase') || req.url.includes('stripe')) {
     return;
   }
+  // NETWORK-FIRST for the app shell (navigations / HTML): always load the freshest deploy when
+  // online, fall back to cache only offline. This is what makes new versions show up on reload
+  // instead of being stuck behind a cached index.html.
+  const isHtml = req.mode === 'navigate' || (req.method === 'GET' && (req.headers.get('accept') || '').includes('text/html'));
+  if (isHtml) {
+    e.respondWith(
+      fetch(req).then(res => {
+        if (res.ok) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(req, clone)); }
+        return res;
+      }).catch(() => caches.match(req).then(m => m || caches.match('/')))
+    );
+    return;
+  }
+  // CACHE-FIRST for hashed assets (immutable by filename) — fast, offline-safe.
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
-      if (res.ok && e.request.method === 'GET') {
+    caches.match(req).then(cached => cached || fetch(req).then(res => {
+      if (res.ok && req.method === 'GET') {
         const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        caches.open(CACHE).then(c => c.put(req, clone));
       }
       return res;
     }))

@@ -89,6 +89,17 @@ describe('compareBooks', () => {
     const junkOnly = { bookmakers: [{ key: 'betsson', markets: [{ key: 'h2h', outcomes: [{ name: 'A', price: 100 }, { name: 'B', price: -120 }] }] }] }
     expect(compareBooks(junkOnly.bookmakers, 'h2h')).toBeNull()
   })
+  it('carries deep bet-slip links through to rows and best', () => {
+    const withLinks = [
+      { key: 'draftkings', markets: [{ key: 'h2h', outcomes: [{ name: 'A', price: 125, link: 'https://dk/betslip/A' }, { name: 'B', price: -140, link: 'https://dk/betslip/B' }] }] },
+      { key: 'pinnacle',   markets: [{ key: 'h2h', outcomes: [{ name: 'A', price: -110 }, { name: 'B', price: -110 }] }] }, // no links
+    ]
+    const c = compareBooks(withLinks, 'h2h')
+    const dk = c.rows.find(r => r.book === 'draftkings')
+    expect(dk.links.A).toBe('https://dk/betslip/A')
+    expect(c.rows.find(r => r.book === 'pinnacle').links.A).toBeNull()
+    expect(c.best.A.link).toBe('https://dk/betslip/A')   // best A is DK +125, link rides along
+  })
   it('totals: best is crowned only on the main line, off-line prices ignored', () => {
     const tot = [
       { key: 'pinnacle',   markets: [{ key: 'totals', outcomes: [{ name: 'Over', price: -105, point: 8.5 }, { name: 'Under', price: -105, point: 8.5 }] }] },

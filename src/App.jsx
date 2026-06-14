@@ -3740,6 +3740,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             </button>
           )}
           {isMobile && (
+            <button onClick={() => setTab('overview')} title="Dashboard"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 9px', borderRadius: '2px', border: tab === 'overview' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'overview' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
+              <span style={{ fontSize: '12px', lineHeight: 1 }}>📊</span>
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tab === 'overview' ? NEON_T : 'var(--text-dim)', whiteSpace: 'nowrap' }}>Dashboard</span>
+            </button>
+          )}
+          {isMobile && (
             <button onClick={() => setTab('bot')} title="Matrix EV Bot"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '34px', padding: '0 9px', borderRadius: '2px', border: tab === 'bot' ? `1px solid rgba(189,255,0,0.6)` : `1px solid var(--border2)`, background: tab === 'bot' ? 'rgba(189,255,0,0.1)' : 'var(--card)', cursor: 'pointer', flexShrink: 0 }}>
               <Tv size={12} color={tab === 'bot' ? NEON_T : 'var(--text-dim)'} strokeWidth={2} />
@@ -3751,7 +3758,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
       {/* TABS — desktop only */}
       {!isMobile && (
-        <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', justifyContent: 'center', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {[['live','Game Center'],['bot','Matrix Bot'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
               fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',

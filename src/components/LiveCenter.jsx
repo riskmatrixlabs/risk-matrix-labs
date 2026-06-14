@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import html2canvas from 'html2canvas'
 import { fetchEvents, fetchLiveEvents, isLiveEvent } from '../lib/events'
 import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
+import { liveConsensus } from '../lib/liveConsensus'
+import { decorate } from '../lib/betLinks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
 
@@ -1111,12 +1113,14 @@ function EVBot({ event, token, unitSize = 0 }) {
 }
 
 // ── LINE SHOP — multi-book odds comparison for THIS game (the Pikkit book-chips view) ──
-export function LineShop({ event, token, onLogPosition }) {
+export function LineShop({ event, token, onLogPosition, focus = null }) {
   const [status, setStatus] = useState('idle')   // idle | loading | done | error
   const [data, setData]     = useState(null)
   const [credits, setCredits] = useState(null)
   const [err, setErr]       = useState('')
   const [mkt, setMkt]       = useState('h2h')    // h2h | spreads | totals
+  const [confirm, setConfirm] = useState(null)   // { book, name, pick, odds, url } — tap-to-bet confirm
+  const rootRef = useRef(null)
   const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
 
@@ -1133,6 +1137,14 @@ export function LineShop({ event, token, onLogPosition }) {
       setStatus('done')
     } catch (e) { setErr(e.message); setStatus('error') }
   }
+
+  // "Compare Books" from an Odds card → open this market, load if needed, scroll into view.
+  useEffect(() => {
+    if (!focus) return
+    if (focus.mkt) setMkt(focus.mkt)
+    if (status === 'idle') load()
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focus?.n])
 
   if (!token) return null
 
@@ -1157,7 +1169,7 @@ export function LineShop({ event, token, onLogPosition }) {
     const tabBar = (
       <div style={{ display: 'flex', gap: '6px', padding: '10px 10px 4px' }}>
         {tabDefs.map(([k, label]) => (
-          <button key={k} onClick={() => setMkt(k)} style={{ flex: 1, padding: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '6px', border: 'none', cursor: 'pointer', background: activeKey === k ? NEON : 'rgba(255,255,255,0.05)', color: activeKey === k ? '#0A0A0A' : MUTED }}>{label}</button>
+          <button key={k} onClick={() => { setMkt(k); setConfirm(null) }} style={{ flex: 1, padding: '6px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '6px', border: 'none', cursor: 'pointer', background: activeKey === k ? NEON : 'rgba(255,255,255,0.05)', color: activeKey === k ? '#0A0A0A' : MUTED }}>{label}</button>
         ))}
       </div>
     )
@@ -1174,23 +1186,23 @@ export function LineShop({ event, token, onLogPosition }) {
       const sortName = cols[0].name
       const rows = [...cmp.rows].sort((x, y) => (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0))
       const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
+      const pickFor = (name, pt) => isTotals ? `${/^o/i.test(name) ? 'Over' : 'Under'} ${pt}`
+        : activeKey === 'spreads' ? `${cols.find(c => c.name === name)?.label} ${fmtPt(pt)}`
+        : `${cols.find(c => c.name === name)?.label} ML`
       const cell = (row, name) => {
         const p = row.prices[name]
         const isBest = cmp.best[name] && cmp.best[name].book === row.book
         const pt = row.points[name]
-        const label = cols.find(c => c.name === name)?.label
-        const canLog = onLogPosition && p != null
-        const onTap = () => {
-          if (!canLog) return
-          const pick = isTotals ? `${/^o/i.test(name) ? 'Over' : 'Under'} ${pt}`
-            : activeKey === 'spreads' ? `${label} ${fmtPt(pt)}`
-            : `${label} ML`
-          onLogPosition(event, { pick, odds: p })
-        }
+        // Tappable only when this book has a real bet-slip link for this side.
+        const url = (onLogPosition && p != null) ? decorate(row.book, row.links?.[name]) : null
+        const tappable = !!url
+        const onTap = () => { if (tappable) setConfirm({ book: row.book, name, pick: pickFor(name, pt), odds: p, url }) }
         return (
-          <td key={name} onClick={onTap} style={{ textAlign: 'center', padding: '7px 6px', cursor: canLog ? 'pointer' : 'default' }}>
+          <td key={name} onClick={onTap} style={{ textAlign: 'center', padding: '7px 6px', cursor: tappable ? 'pointer' : 'default' }}>
             <div style={{ display: 'inline-block', padding: isBest ? '2px 7px' : '2px 0', borderRadius: '5px', background: isBest ? NEON : 'transparent' }}>
-              <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT }}>{p == null ? '—' : fmtAm(p)}</div>
+              <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isBest ? '#0A0A0A' : TEXT }}>
+                {p == null ? '—' : fmtAm(p)}{tappable && <span style={{ fontSize: '9px', color: isBest ? '#0A0A0A' : NEON_T, marginLeft: '2px' }}>↗</span>}
+              </div>
               {pt != null && <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isBest ? 'rgba(10,10,10,0.6)' : MUTED }}>{isTotals ? (/^o/i.test(name) ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
             </div>
           </td>
@@ -1207,23 +1219,42 @@ export function LineShop({ event, token, onLogPosition }) {
               </tr></thead>
               <tbody>
                 {rows.map(r => (
-                  <tr key={r.book} style={{ borderTop: `1px solid ${BORDER}` }}>
-                    <td style={{ padding: '7px 6px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
-                      {BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', fontWeight: 700, color: NEON_T, marginLeft: '5px', letterSpacing: '0.06em' }}>SHARP</span>}
-                    </td>
-                    {cols.map(c => cell(r, c.name))}
-                  </tr>
+                  <Fragment key={r.book}>
+                    <tr style={{ borderTop: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: '7px 6px', fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
+                        {BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', fontWeight: 700, color: NEON_T, marginLeft: '5px', letterSpacing: '0.06em' }}>SHARP</span>}
+                      </td>
+                      {cols.map(c => cell(r, c.name))}
+                    </tr>
+                    {confirm && confirm.book === r.book && (
+                      <tr>
+                        <td colSpan={cols.length + 1} style={{ padding: '0 6px 10px' }}>
+                          <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '9px', padding: '11px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>
+                              Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?
+                            </span>
+                            <span style={{ display: 'flex', gap: '8px' }}>
+                              <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
+                                style={{ padding: '7px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log &amp; Open</button>
+                              <button onClick={() => setConfirm(null)}
+                                style={{ padding: '7px 12px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cancel</button>
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
-            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>Green = best price on the main line · tap a book to bet there</div>
+            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>↗ = log &amp; bet at that book · green = best price on the main line</div>
           </div>
         </>
       )
     }
   }
 
-  return <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>
+  return <div ref={rootRef} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>
 }
 
 function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token = null, unitSize = 0 }) {
@@ -1255,6 +1286,23 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
     fetchLineMovement(event.external_event_id).then(m => { if (!cancelled) setMovement(m || {}) })
     return () => { cancelled = true }
   }, [event.external_event_id])
+
+  // LIVE-ON-OPEN: pull the current multi-book odds the moment this game opens, so Win
+  // Probability / Fair Value / the odds cards reflect the LIVE paid feed instead of the
+  // 15-min cron-written events.odds_*. Server-cached 90s → opening repeatedly is ~free.
+  const [liveLines, setLiveLines] = useState(null)
+  const [oddsConfirm, setOddsConfirm] = useState(null)  // tap-to-bet confirm for the Odds cards
+  const [shopFocus, setShopFocus] = useState(null)      // {mkt, n} → tells LineShop to open that market & scroll
+  useEffect(() => {
+    if (!token || !event.external_event_id || !event.sport) return
+    let cancelled = false
+    fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}`,
+      { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (!cancelled && j && j.found && j.markets) setLiveLines(j.markets) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [event.external_event_id, token])
 
   const awayPitch  = meta.away_pitcher  || null
   const homePitch  = meta.home_pitcher  || null
@@ -1537,10 +1585,22 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
 
           {/* ── Insights tab — ALL the RML edge features, premium card stack ── */}
           {dtab === 'Insights' && (() => {
-            const hasML = !!event.odds_ml_away && !!event.odds_ml_home
-            const dv = hasML ? devigTwoWay(event.odds_ml_away, event.odds_ml_home) : null
-            const dvSpread = (meta.spread_away_juice != null && meta.spread_home_juice != null) ? devigTwoWay(meta.spread_away_juice, meta.spread_home_juice) : null
-            const dvTotal  = (meta.over_juice != null && meta.under_juice != null) ? devigTwoWay(meta.over_juice, meta.under_juice) : null
+            // LIVE odds first (multi-book paid feed via game-lines), falling back to the
+            // cron-written events.odds_* only until the live fetch lands.
+            const live = liveLines ? liveConsensus(liveLines, event.away_team, event.home_team) : null
+            const isLive = !!live && (live.ml || live.spread || live.total)
+            const mlAway = live?.ml?.away ?? event.odds_ml_away
+            const mlHome = live?.ml?.home ?? event.odds_ml_home
+            const spAwayJ = live?.spread?.away ?? meta.spread_away_juice
+            const spHomeJ = live?.spread?.home ?? meta.spread_home_juice
+            const overJ   = live?.total?.over  ?? meta.over_juice
+            const underJ  = live?.total?.under ?? meta.under_juice
+            const spreadPt = live?.spread?.point ?? event.odds_spread_home   // home line
+            const totalPt  = live?.total?.point  ?? event.odds_total
+            const hasML = mlAway != null && mlHome != null
+            const dv = hasML ? devigTwoWay(mlAway, mlHome) : null
+            const dvSpread = (spAwayJ != null && spHomeJ != null) ? devigTwoWay(spAwayJ, spHomeJ) : null
+            const dvTotal  = (overJ != null && underJ != null) ? devigTwoWay(overJ, underJ) : null
             const fmtMv = (mkt, v) => v == null ? '—' : (mkt === 'ml' ? (v > 0 ? `+${v}` : `${v}`) : (mkt === 'spread' && v > 0 ? `+${v}` : `${v}`))
             const labelFor = { ml_away: `${event.away_abbr} ML`, ml_home: `${event.home_abbr} ML`, spread_away: `${event.away_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, spread_home: `${event.home_abbr} ${SPREAD_LABEL[event.sport] || 'Spread'}`, total: 'Total' }
             const order = ['ml_home', 'ml_away', 'spread_home', 'spread_away', 'total']
@@ -1553,16 +1613,31 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
               .map(b => evaluateBet(b, event, { dv, dvSpread, dvTotal }))
               .filter(Boolean)
 
-            // ── Odds table (was the Odds tab) ──
-            const hasSpread = event.odds_spread_home != null
-            const hasTotal  = event.odds_total != null
+            // ── Odds table (was the Odds tab) — driven by live values above when present ──
+            const hasSpread = spreadPt != null
+            const hasTotal  = totalPt != null
             const spreadLabel = SPREAD_LABEL[event.sport] || 'Spread'
-            const spreadAway = event.odds_spread_away > 0 ? `+${event.odds_spread_away}` : `${event.odds_spread_away}`
-            const spreadHome = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
+            const spAwayLine = spreadPt != null ? -Number(spreadPt) : null
+            const fmtLine = (v) => v == null ? '—' : (v > 0 ? `+${v}` : `${v}`)
+            const spreadAway = fmtLine(spAwayLine)
+            const spreadHome = fmtLine(spreadPt != null ? Number(spreadPt) : null)
             const hasAnyOdds = hasSpread || hasTotal || hasML
-            const OddsCard = ({ line, juice, pick, odds, empty }) => (
+            // Best book + deep-link for a given pick, from the live multi-book feed.
+            const lwOdds = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
+            const bestFor = (market, side) => {
+              if (!liveLines) return null
+              const m = liveLines[market === 'ml' ? 'h2h' : market === 'spread' ? 'spreads' : 'totals']
+              if (!m || !m.best || !m.outcomes) return null
+              const name = market === 'total'
+                ? m.outcomes.find(n => side === 'over' ? /^o/i.test(n) : /^u/i.test(n))
+                : m.outcomes.find(n => lwOdds(n) === lwOdds(side === 'away' ? event.away_team : event.home_team))
+              const b = name ? m.best[name] : null
+              if (!b) return null
+              return { book: b.book, price: b.price, link: b.link ? decorate(b.book, b.link) : null }
+            }
+            const OddsCard = ({ line, juice, pick, odds, market, side, empty }) => (
               <div
-                onClick={() => !empty && onLogPosition && onLogPosition(event, { pick, odds })}
+                onClick={() => { if (!empty && onLogPosition) setOddsConfirm({ pick, odds, market, side, best: bestFor(market, side) }) }}
                 style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '66px', cursor: (!empty && onLogPosition) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
                 onMouseEnter={e => { if (!empty && onLogPosition) { e.currentTarget.style.background = 'rgba(189,255,0,0.06)'; e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)' } }}
                 onMouseLeave={e => { e.currentTarget.style.background = CARD; e.currentTarget.style.borderColor = BORDER }}
@@ -1587,32 +1662,69 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                   How to read this
                 </a>
 
-                <LineShop event={event} token={token} onLogPosition={onLogPosition} />
-                <BookLineMovement event={event} />
-
+                {/* 1) Your Bet (pinned top, if logged) */}
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
 
+                {/* 2) Win Probability */}
+                {(dv || dvSpread || dvTotal) && (() => {
+                  const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
+                  const wpMarkets = [
+                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB },
+                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB },
+                    dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB },
+                  ].filter(Boolean)
+                  return <WinProbability markets={wpMarkets} />
+                })()}
+
+                {/* 3) Odds table (+ LIVE badge) */}
                 {hasAnyOdds && (
                   <div>
+                    {isLive && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '6px' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: `0 0 6px ${NEON}` }} />
+                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>Live odds · multi-book consensus</span>
+                      </div>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px' }}>
                       {[spreadLabel, 'Total', 'ML'].map(l => <div key={l} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center' }}>{l}</div>)}
                     </div>
                     {[
                       { label: event.away_abbr, cells: [
-                        hasSpread ? { line: spreadAway, juice: meta.spread_away_juice, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`, odds: meta.spread_away_juice ?? spreadAway } : null,
-                        hasTotal  ? { line: `O ${event.odds_total}`, juice: meta.over_juice, pick: `Over ${event.odds_total}`, odds: meta.over_juice ?? `O ${event.odds_total}` } : null,
-                        hasML     ? { line: fmtOdds(event.odds_ml_away), juice: null, pick: `${event.away_abbr} ML`, odds: event.odds_ml_away } : null,
+                        hasSpread ? { line: spreadAway, juice: spAwayJ, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`, odds: spAwayJ ?? spreadAway, market: 'spread', side: 'away' } : null,
+                        hasTotal  ? { line: `O ${totalPt}`, juice: overJ, pick: `Over ${totalPt}`, odds: overJ ?? `O ${totalPt}`, market: 'total', side: 'over' } : null,
+                        hasML     ? { line: fmtOdds(mlAway), juice: null, pick: `${event.away_abbr} ML`, odds: mlAway, market: 'ml', side: 'away' } : null,
                       ]},
                       { label: event.home_abbr, cells: [
-                        hasSpread ? { line: spreadHome, juice: meta.spread_home_juice, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`, odds: meta.spread_home_juice ?? spreadHome } : null,
-                        hasTotal  ? { line: `U ${event.odds_total}`, juice: meta.under_juice, pick: `Under ${event.odds_total}`, odds: meta.under_juice ?? `U ${event.odds_total}` } : null,
-                        hasML     ? { line: fmtOdds(event.odds_ml_home), juice: null, pick: `${event.home_abbr} ML`, odds: event.odds_ml_home } : null,
+                        hasSpread ? { line: spreadHome, juice: spHomeJ, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`, odds: spHomeJ ?? spreadHome, market: 'spread', side: 'home' } : null,
+                        hasTotal  ? { line: `U ${totalPt}`, juice: underJ, pick: `Under ${totalPt}`, odds: underJ ?? `U ${totalPt}`, market: 'total', side: 'under' } : null,
+                        hasML     ? { line: fmtOdds(mlHome), juice: null, pick: `${event.home_abbr} ML`, odds: mlHome, market: 'ml', side: 'home' } : null,
                       ]},
                     ].map(({ label, cells }) => (
                       <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-                        {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} /> : <OddsCard key={i} empty />)}
+                        {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} market={c.market} side={c.side} /> : <OddsCard key={i} empty />)}
                       </div>
                     ))}
+                    {oddsConfirm && (() => {
+                      const b = oddsConfirm.best
+                      const shopMkt = oddsConfirm.market === 'ml' ? 'h2h' : oddsConfirm.market === 'spread' ? 'spreads' : 'totals'
+                      return (
+                        <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '9px', padding: '11px 12px', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>
+                            <span style={{ color: NEON_T }}>{oddsConfirm.pick}</span>{b ? <> · best <span style={{ color: NEON_T }}>{BOOK_NAMES[b.book] || b.book} {fmtAm(b.price)}</span></> : ''}
+                          </span>
+                          <span style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {b && b.link && (
+                              <button onClick={() => { onLogPosition(event, { pick: oddsConfirm.pick, odds: b.price, book: b.book }); window.open(b.link, '_blank', 'noopener,noreferrer'); setOddsConfirm(null) }}
+                                style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Log &amp; Open</button>
+                            )}
+                            <button onClick={() => { setShopFocus({ mkt: shopMkt, n: (shopFocus?.n || 0) + 1 }); setOddsConfirm(null) }}
+                              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Compare Books</button>
+                            <button onClick={() => setOddsConfirm(null)}
+                              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Cancel</button>
+                          </span>
+                        </div>
+                      )
+                    })()}
                     {meta.odds_provider && (
                       <div style={{ textAlign: 'center', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginTop: '2px' }}>
                         Odds by <span style={{ color: NEON_T }}>{meta.odds_provider}</span>
@@ -1622,22 +1734,12 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                 )}
 
                 {(dv || dvSpread || dvTotal) && (() => {
-                  const sh = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
-                  const wpMarkets = [
-                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB },
-                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB },
-                    dvTotal  && { label: `Total ${event.odds_total}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB },
-                  ].filter(Boolean)
-                  return <WinProbability markets={wpMarkets} />
-                })()}
-
-                {(dv || dvSpread || dvTotal) && (() => {
-                  const sh = event.odds_spread_home > 0 ? `+${event.odds_spread_home}` : `${event.odds_spread_home}`
+                  const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
                   const pct = (p) => `${Math.round(p * 100)}%`
                   const rows = [
                     dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct,       pA: dv.fairA,       pB: dv.fairB,       pLabel: 'win' },
                     dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct, pA: dvSpread.fairA, pB: dvSpread.fairB, pLabel: 'cover' },
-                    dvTotal  && { name: `Total ${event.odds_total}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
+                    dvTotal  && { name: `Total ${totalPt}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
                     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
@@ -1666,6 +1768,10 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                   )
                 })()}
 
+                {/* 5) Line Shop — Compare Books / best price */}
+                <LineShop event={event} token={token} onLogPosition={onLogPosition} focus={shopFocus} />
+
+                {/* 6) Line Movement — simple sparklines + CLV */}
                 {moved.length > 0 && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
                     <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
@@ -1709,6 +1815,10 @@ function GameDetail({ event: propEvent, onLogPosition, onBack, bets = [], token 
                   </div>
                 )}
 
+                {/* 7) By Book · Best Available — per-book chart, collapsible (default closed) */}
+                <BookLineMovement event={event} collapsible />
+
+                {/* 8) Context */}
                 {meta.trends && <Trends awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} trends={meta.trends} />}
                 {meta.season_series && <SeasonSeries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} series={meta.season_series} />}
                 {meta.injuries && <Injuries awayAbbr={event.away_abbr} homeAbbr={event.home_abbr} injuries={meta.injuries} />}
@@ -2064,6 +2174,11 @@ export default function LiveCenter({ onLogPosition, bets = [], token = null, uni
 
   const selected = events.find(e => e.id === selectedId) ?? null
 
+  // Finished games sink to the bottom of the list so live/upcoming stay on top (no scrolling
+  // past completed games). Stable sort preserves the existing time/sport order within each group.
+  const isFinalEvent = (e) => e.status === 'FT' || e.status === 'AOT'
+  const orderedEvents = [...events].sort((a, b) => (isFinalEvent(a) ? 1 : 0) - (isFinalEvent(b) ? 1 : 0))
+
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' }}>
       {/* Header */}
@@ -2134,7 +2249,7 @@ export default function LiveCenter({ onLogPosition, bets = [], token = null, uni
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {events.map(e => (
+          {orderedEvents.map(e => (
             <GameCard key={e.id} event={e} showSport={isAllTab} onClick={() => setSelectedId(e.id)} />
           ))}
         </div>

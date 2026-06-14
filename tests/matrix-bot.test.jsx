@@ -13,6 +13,7 @@ vi.mock('../src/lib/events.js', () => ({
     { away_team: 'Chicago Cubs', home_team: 'San Francisco Giants', away_abbr: 'CHC', home_abbr: 'SF', external_event_id: 'evt1', start_time: '2099-12-31T23:00:00Z', status: 'STATUS_SCHEDULED' },
     { away_team: 'Los Angeles Dodgers', home_team: 'San Diego Padres', away_abbr: 'LAD', home_abbr: 'SD', external_event_id: 'evt2', start_time: '2099-12-31T23:30:00Z', status: 'STATUS_SCHEDULED' },
   ] : [] })),
+  isLiveEvent: vi.fn(() => false),
 }))
 vi.mock('../src/lib/oddsHistory.js', () => ({ fetchLineMovement: vi.fn(async () => ({})) }))
 
@@ -67,7 +68,7 @@ describe('MatrixBot — real render', () => {
     render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
     fireEvent.click(await screen.findByRole('button', { name: '▶ GO LIVE' }))
     await screen.findByText('CUBS ML')                                  // game-line scan done
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))    // open the gear
+    fireEvent.click(screen.getByRole('button', { name: /SETTINGS/ }))    // open the gear
     fireEvent.click(screen.getByRole('button', { name: 'PROPS' }))      // select PROPS → auto-scan
     fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
     expect(await screen.findByText('Spencer Strider O5.5')).toBeTruthy()
@@ -78,7 +79,7 @@ describe('MatrixBot — real render', () => {
     render(<MatrixBot token="tkn" bets={[]} bankroll={1000} unitSize={20} />)
     fireEvent.click(await screen.findByRole('button', { name: '▶ GO LIVE' }))
     await screen.findByText('CUBS ML')
-    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.click(screen.getByRole('button', { name: /SETTINGS/ }))
     fireEvent.click(screen.getByRole('button', { name: 'PROPS' }))
     fireEvent.click(screen.getByRole('button', { name: /BOARD/ }))
     expect(await screen.findByText('Aaron Judge O1.5')).toBeTruthy()   // line-shop prop is visible
