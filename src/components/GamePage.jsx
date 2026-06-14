@@ -168,68 +168,6 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
   }
 
   // ---- render helpers ----
-  // Render one market block (away/home or Over/Under rows of book prices).
-  const renderMarket = (key, heading) => {
-    const cmp = lines?.[key]
-    if (!cmp) return null
-    const sides = sidesFor(cmp, key, game)
-    if (!sides.length) return null
-    return (
-      <div key={key} style={{ marginBottom: '16px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>{heading}</div>
-        {sides.map(side => {
-          const cmpRows = cmp.rows || []
-          const best = bestRowFor(cmp, side.name)
-          const priced = cmpRows.filter(r => r?.prices && r.prices[side.name] != null)
-          const pt = (key !== 'h2h')
-            ? (cmp.modalPoint?.[side.name] ?? best?.points?.[side.name])
-            : null
-          // pick label
-          let pickLabel
-          if (key === 'h2h') pickLabel = `${side.label} ML`
-          else if (key === 'spreads') pickLabel = `${side.label} ${signedPt(pt)}`
-          else pickLabel = `${side.label} ${pt ?? ''}`.trim()
-
-          return (
-            <div key={side.name} style={{ marginBottom: '10px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: TEXT, marginBottom: '6px', letterSpacing: '0.03em' }}>
-                {key === 'totals' ? `${side.label} ${pt ?? ''}` : key === 'spreads' ? `${side.label} ${signedPt(pt)}` : side.label}
-              </div>
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
-                {priced.length === 0 && <span style={{ fontSize: '11px', color: MUTED }}>No prices</span>}
-                {priced.map(r => {
-                  const am = r.prices[side.name]
-                  const isBest = best && r.book === best.book
-                  const link = r.links?.[side.name]
-                  return (
-                    <button
-                      key={r.book}
-                      onClick={() => openConfirm({ pick: pickLabel, odds: am, book: r.book, link, byBook: null })}
-                      style={{
-                        flexShrink: 0, cursor: 'pointer', textAlign: 'center', minWidth: '64px',
-                        padding: '6px 8px', borderRadius: '8px',
-                        background: isBest ? 'rgba(189,255,0,0.08)' : CARD,
-                        border: `1px solid ${isBest ? NEON : BORDER}`,
-                        fontFamily: R,
-                      }}
-                    >
-                      <div style={{ fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '2px' }}>
-                        {bookLabel(r.book)}{r.sharp ? ' ◆' : ''}
-                      </div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: isBest ? NEON_T : TEXT }}>
-                        {isBest ? '✓ ' : ''}{fmtAm(Number(am))}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
   const renderProps = () => {
     const rows = groupedProps[tab] || []
     if (!rows.length) return <Empty>No {tab} props posted yet.</Empty>
@@ -237,7 +175,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     const pairs = {}
     for (const r of rows) {
       const k = `${r.player}__${r.market}__${r.point}`
-      ;(pairs[k] = pairs[k] || { player: r.player, marketLabel: r.marketLabel || r.market, point: r.point, sides: {} })
+      ;(pairs[k] = pairs[k] || { player: r.player, marketLabel: r.marketLabel || r.market, point: r.point, team: r.team, pos: r.pos, sides: {} })
       pairs[k].sides[r.side === 'Under' ? 'Under' : 'Over'] = r
     }
     // Same player's lines group together, stable order.
@@ -247,27 +185,55 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     )
     const sideBtn = (p, sideName) => {
       const r = p.sides[sideName]
+      const prefix = sideName === 'Under' ? 'u' : 'o'
       if (!r?.best) return (
-        <div key={sideName} style={{ flex: 1, textAlign: 'center', padding: '8px', borderRadius: '8px', background: CARD, border: `1px solid ${BORDER}`, fontSize: '12px', color: MUTED, fontFamily: R }}>—</div>
+        <div style={{ width: '72px', flexShrink: 0, textAlign: 'center', padding: '6px 4px', borderRadius: '8px', background: CARD, border: `1px solid ${BORDER}`, fontSize: '12px', color: MUTED, fontFamily: R }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.03em' }}>{prefix}{p.point}</div>
+          <div style={{ fontSize: '13px', fontWeight: 700, color: MUTED, marginTop: '2px' }}>—</div>
+        </div>
       )
       const pickLabel = `${p.player} ${sideName} ${p.point} ${p.marketLabel}`.trim()
       return (
-        <button key={sideName}
+        <button
           onClick={() => openConfirm({ pick: pickLabel, odds: r.best.price, book: r.best.book, link: r.best.link, byBook: r.byBook })}
-          style={{ flex: 1, cursor: 'pointer', textAlign: 'center', padding: '8px', borderRadius: '8px', background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, fontFamily: R }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{sideName.toUpperCase()} {p.point}</div>
+          style={{ position: 'relative', width: '72px', flexShrink: 0, cursor: 'pointer', textAlign: 'center', padding: '6px 4px', borderRadius: '8px', background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, fontFamily: R }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.03em' }}>{prefix}{p.point}</div>
           <div style={{ fontSize: '15px', fontWeight: 700, color: NEON_T, marginTop: '2px' }}>{fmtAm(Number(r.best.price))}</div>
           <div style={{ fontSize: '9px', color: MUTED, marginTop: '1px' }}>{bookLabel(r.best.book)}</div>
+          <BookGlyph />
         </button>
       )
     }
-    return cards.map((p, i) => (
-      <div key={i} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '11px 12px', marginBottom: '8px' }}>
-        <div style={{ fontSize: '14px', fontWeight: 700, color: TEXT, letterSpacing: '0.03em' }}>{p.player}</div>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginBottom: '8px' }}>{p.marketLabel} {p.point}</div>
-        <div style={{ display: 'flex', gap: '8px' }}>{sideBtn(p, 'Over')}{sideBtn(p, 'Under')}</div>
+    const initial = (s) => (s ? String(s).trim().charAt(0).toUpperCase() : '?')
+    return (
+      <div>
+        {/* right-aligned Over / Under column header */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '8px', paddingRight: '2px' }}>
+          {['Over', 'Under'].map(h => (
+            <div key={h} style={{ width: '72px', textAlign: 'center', fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</div>
+          ))}
+        </div>
+        {cards.map((p, i) => {
+          const sub = [p.team, p.pos].filter(Boolean).join(' · ')
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '10px 12px', marginBottom: '8px' }}>
+              <span style={{
+                flexShrink: 0, width: '32px', height: '32px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: CARD, border: `1px solid ${BORDER}`,
+                color: TEXT, fontSize: '13px', fontWeight: 700,
+              }}>{initial(p.player)}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: TEXT, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.player}</div>
+                {sub ? <div style={{ fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.03em' }}>{sub}</div> : null}
+                <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em', marginTop: '1px' }}>{p.marketLabel} {p.point}</div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>{sideBtn(p, 'Over')}{sideBtn(p, 'Under')}</div>
+            </div>
+          )
+        })}
       </div>
-    ))
+    )
   }
 
   const hasAnyLines = lines && (lines.h2h || lines.spreads || lines.totals)
@@ -361,6 +327,192 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     )
   }
 
+  // A large two-cell tappable card (used by Moneyline / Totals / Run Line / Team Total).
+  // `top` is the small header line, `mid` the large price, `book` the book label.
+  const BigCell = ({ top, mid, book, onClick, disabled }) => (
+    <button
+      onClick={disabled ? undefined : onClick}
+      style={{
+        position: 'relative', flex: 1, minWidth: 0,
+        padding: '14px 10px 16px', borderRadius: '12px',
+        background: disabled ? CARD : 'rgba(189,255,0,0.06)',
+        border: `1px solid ${disabled ? BORDER : NEON}`,
+        fontFamily: R, textAlign: 'center',
+        cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.05em', marginBottom: '6px', textTransform: 'uppercase' }}>{top}</div>
+      <div style={{ fontSize: '22px', fontWeight: 700, color: disabled ? MUTED : NEON_T, letterSpacing: '0.02em' }}>{mid}</div>
+      {!disabled && book ? <div style={{ fontSize: '9px', color: MUTED, marginTop: '4px' }}>{bookLabel(book)}</div> : null}
+      {!disabled && <BookGlyph />}
+    </button>
+  )
+
+  // Visual-only point slider: a pill strip of point values centered on the modal point.
+  // point slider is visual-only — alt-point odds aren't in our feed yet
+  const PointSlider = ({ main }) => {
+    const n = Number(main)
+    if (!Number.isFinite(n)) return null
+    const steps = [n - 2, n - 1, n, n + 1, n + 2]
+    return (
+      <div style={{ marginTop: '12px' }}>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', overflowX: 'auto', paddingBottom: '2px' }}>
+          {steps.map((s, i) => {
+            const active = i === 2
+            return (
+              // tapping a non-main point does nothing yet — we only have the main line in data
+              <div key={i} style={{
+                flexShrink: 0, padding: '6px 12px', borderRadius: '999px',
+                fontSize: '12px', fontWeight: 700, letterSpacing: '0.03em', fontFamily: R,
+                background: active ? 'rgba(189,255,0,0.1)' : CARD,
+                border: `1px solid ${active ? NEON : BORDER}`,
+                color: active ? NEON_T : MUTED,
+              }}>{s}</div>
+            )
+          })}
+        </div>
+        {/* View all is a non-functional placeholder — alt lines aren't in our feed yet */}
+        <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em', textTransform: 'uppercase' }}>View all</div>
+      </div>
+    )
+  }
+
+  // MONEYLINE tab — two equal cells (away | home), best ML price each. Uses h2h market.
+  const renderMoneylineTwoCell = () => {
+    const cmp = lines?.h2h
+    if (!cmp) return <Empty>Moneyline not posted yet.</Empty>
+    const sides = sidesFor(cmp, 'h2h', game)
+    if (!sides.length) return <Empty>Moneyline not posted yet.</Empty>
+    const order = ['away', 'home'].map(which => {
+      const team = which === 'away' ? game?.away : game?.home
+      const hit = sides.find(s => String(s.name).toLowerCase() === String(team).toLowerCase())
+      return { which, team: which === 'away' ? (game?.away_abbr || game?.away) : (game?.home_abbr || game?.home), name: hit?.name || team }
+    })
+    return (
+      <div style={{ display: 'flex', gap: '10px' }}>
+        {order.map(o => {
+          const best = bestRowFor(cmp, o.name)
+          const am = best ? best.prices?.[o.name] : null
+          const empty = am == null
+          return (
+            <BigCell key={o.which} disabled={empty}
+              top={o.team} mid={empty ? '—' : fmtAm(Number(am))} book={best?.book}
+              onClick={() => openConfirm({ pick: `${o.team} ML`, odds: am, book: best.book, link: best.links?.[o.name], byBook: null })}
+            />
+          )
+        })}
+      </div>
+    )
+  }
+
+  // TOTALS tab — Over/Under two cells + visual point slider.
+  const renderTotalsTwoCell = () => {
+    const cmp = lines?.totals
+    if (!cmp) return <Empty>Totals not posted yet.</Empty>
+    const sides = sidesFor(cmp, 'totals', game)
+    if (!sides.length) return <Empty>Totals not posted yet.</Empty>
+    const over = sides.find(s => s.label === 'Over') || sides[0]
+    const under = sides.find(s => s.label === 'Under') || sides[1]
+    const cellFor = (s, prefix, label) => {
+      if (!s?.name) return <BigCell disabled top={label} mid="—" />
+      const best = bestRowFor(cmp, s.name)
+      const pt = cmp.modalPoint?.[s.name] ?? best?.points?.[s.name]
+      const am = best ? best.prices?.[s.name] : null
+      if (am == null) return <BigCell disabled top={`${prefix}${pt ?? ''}`} mid="—" />
+      return (
+        <BigCell top={`${prefix}${pt ?? ''}`} mid={fmtAm(Number(am))} book={best.book}
+          onClick={() => openConfirm({ pick: `${label} ${pt ?? ''}`.trim(), odds: am, book: best.book, link: best.links?.[s.name], byBook: null })}
+        />
+      )
+    }
+    const mainPt = (over?.name && (cmp.modalPoint?.[over.name] ?? bestRowFor(cmp, over.name)?.points?.[over.name]))
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {cellFor(over, 'o', 'Over')}
+          {cellFor(under, 'u', 'Under')}
+        </div>
+        <PointSlider main={mainPt} />
+      </div>
+    )
+  }
+
+  // SPREAD / RUN LINE tab — away row + home row (signed point) + visual slider.
+  const renderSpreadCells = () => {
+    const cmp = lines?.spreads
+    if (!cmp) return <Empty>{spreadLabel} not posted yet.</Empty>
+    const sides = sidesFor(cmp, 'spreads', game)
+    if (!sides.length) return <Empty>{spreadLabel} not posted yet.</Empty>
+    const order = ['away', 'home'].map(which => {
+      const team = which === 'away' ? game?.away : game?.home
+      const teamLbl = which === 'away' ? (game?.away_abbr || game?.away) : (game?.home_abbr || game?.home)
+      const hit = sides.find(s => String(s.name).toLowerCase() === String(team).toLowerCase())
+      return { which, teamLbl, name: hit?.name || team }
+    })
+    let mainPt = null
+    return (
+      <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {order.map(o => {
+            const best = bestRowFor(cmp, o.name)
+            const pt = cmp.modalPoint?.[o.name] ?? best?.points?.[o.name]
+            if (mainPt == null && Number.isFinite(Number(pt))) mainPt = Math.abs(Number(pt))
+            const am = best ? best.prices?.[o.name] : null
+            const empty = am == null
+            return (
+              <BigCell key={o.which} disabled={empty}
+                top={`${o.teamLbl} ${signedPt(pt)}`} mid={empty ? '—' : fmtAm(Number(am))} book={best?.book}
+                onClick={() => openConfirm({ pick: `${o.teamLbl} ${signedPt(pt)}`.trim(), odds: am, book: best.book, link: best.links?.[o.name], byBook: null })}
+              />
+            )
+          })}
+        </div>
+        <PointSlider main={mainPt} />
+      </div>
+    )
+  }
+
+  // TEAM TOTAL tab — Over/Under per team. Our feed has no per-team totals market in `lines`,
+  // so unless a `team_totals`-style key exists, this renders the data-gated Empty state.
+  const renderTeamTotal = () => {
+    // Look for any team-totals-shaped market key; almost always absent in our feed.
+    const cmp = lines?.team_totals || lines?.teamTotals || lines?.team_total
+    if (!cmp) return <Empty>Team totals not posted yet.</Empty>
+    const section = (teamName, teamLbl) => {
+      const sides = (cmp[teamName] || cmp[teamLbl]) ? sidesFor(cmp[teamName] || cmp[teamLbl], 'totals', game) : []
+      const c = cmp[teamName] || cmp[teamLbl]
+      if (!c || !sides.length) return <Empty>Team total not posted for {teamLbl}.</Empty>
+      const over = sides.find(s => s.label === 'Over') || sides[0]
+      const under = sides.find(s => s.label === 'Under') || sides[1]
+      const cellFor = (s, prefix, label) => {
+        if (!s?.name) return <BigCell disabled top={label} mid="—" />
+        const best = bestRowFor(c, s.name)
+        const pt = c.modalPoint?.[s.name] ?? best?.points?.[s.name]
+        const am = best ? best.prices?.[s.name] : null
+        if (am == null) return <BigCell disabled top={`${prefix}${pt ?? ''}`} mid="—" />
+        return (
+          <BigCell top={`${prefix}${pt ?? ''}`} mid={fmtAm(Number(am))} book={best.book}
+            onClick={() => openConfirm({ pick: `${teamLbl} ${label} ${pt ?? ''}`.trim(), odds: am, book: best.book, link: best.links?.[s.name], byBook: null })}
+          />
+        )
+      }
+      return (
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {cellFor(over, 'o', 'Over')}
+          {cellFor(under, 'u', 'Under')}
+        </div>
+      )
+    }
+    return (
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Team Total — {game?.away_abbr || game?.away}</div>
+        {section(game?.away, game?.away_abbr || game?.away)}
+        <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '16px 0 8px' }}>Team Total — {game?.home_abbr || game?.home}</div>
+        {section(game?.home, game?.home_abbr || game?.home)}
+      </div>
+    )
+  }
+
   // Compact OddsJam-style two-row grid: AWAY then HOME, each with ML/Spread/Total cells.
   const renderGameLinesGrid = () => {
     const rows = [
@@ -404,9 +556,10 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
     if (tab === 'gamelines') {
       return renderGameLinesGrid()
     }
-    if (tab === 'ml') return renderMarket('h2h', 'Moneyline') || <Empty>No moneyline.</Empty>
-    if (tab === 'totals') return renderMarket('totals', 'Totals') || <Empty>No totals.</Empty>
-    if (tab === 'spread') return renderMarket('spreads', spreadLabel) || <Empty>No {spreadLabel.toLowerCase()}.</Empty>
+    if (tab === 'ml') return renderMoneylineTwoCell()
+    if (tab === 'totals') return renderTotalsTwoCell()
+    if (tab === 'spread') return renderSpreadCells()
+    if (tab === 'teamtotal') return renderTeamTotal()
     return null
   }
 
@@ -465,6 +618,7 @@ export default function GamePage({ game, sport, token, onAddToSlip, onLogPositio
         <Pill active={tab === 'ml'} onClick={() => setTab('ml')}>Moneyline</Pill>
         <Pill active={tab === 'totals'} onClick={() => setTab('totals')}>Totals</Pill>
         <Pill active={tab === 'spread'} onClick={() => setTab('spread')}>{spreadLabel}</Pill>
+        <Pill active={tab === 'teamtotal'} onClick={() => setTab('teamtotal')}>Team Total</Pill>
       </div>
 
       {/* Confirm bar */}
