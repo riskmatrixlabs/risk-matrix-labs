@@ -3061,6 +3061,21 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }
     setSlip([]); setSlipOff(new Set()); setSlipOpen(false)
   }
+  // Share the slip — native share sheet (text + best deep link), clipboard fallback.
+  const shareSlip = async () => {
+    const legs = enabledLegs()
+    if (!legs.length) return
+    const am = (a) => (Number(a) || 0) > 0 ? `+${a}` : `${a}`
+    const lines = legs.map(l => `• ${l.pick} ${am(l.odds)}${l.book ? ` (${BOOK_NAMES[l.book] || l.book})` : ''}`)
+    const isP = slipMode === 'parlay' && legs.length >= 2
+    const head = isP ? `${legs.length}-Leg Parlay ${am(slipComboOdds())}` : (legs.length > 1 ? `${legs.length} Straights` : legs[0].pick)
+    const text = `🎟 ${head}\n${lines.join('\n')}\n\nvia Risk Matrix Labs`
+    const url = legs.find(l => l.link)?.link || 'https://app.riskmatrixlabs.com'
+    try {
+      if (navigator.share) await navigator.share({ title: 'Risk Matrix Labs', text, url })
+      else { await navigator.clipboard.writeText(`${text}\n${url}`); alert('Slip copied to clipboard') }
+    } catch { /* user cancelled share — ignore */ }
+  }
 
   const TH = ({ col, label, right }) => (
     <th onClick={() => toggleSort(col)} style={{
@@ -3104,6 +3119,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: ocrBusy ? 'wait' : 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>{ocrBusy ? '…' : '📷'}</button>
                       <button onClick={() => { setBotView('board'); setTab('bot') }} title="Analyze a play in Channel 2 — your slip stays parked"
                         style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>📊</button>
+                      {slip.length > 0 && <button onClick={shareSlip} title="Share this slip"
+                        style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1 }}>➦</button>}
                       <button onClick={() => setSlipOpen(false)} title="Close" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '16px', fontWeight: 700, lineHeight: 1 }}>✕</button>
                     </span>
                   </div>
