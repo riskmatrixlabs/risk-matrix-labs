@@ -1202,8 +1202,10 @@ function TrackChannel({ bets, sport, token }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
-    fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
-    return () => { live = false }
+    const load = () => fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
+    load()
+    const id = setInterval(load, 60000)
+    return () => { live = false; clearInterval(id) }
   }, [sport])
 
   const graded = useMemo(() => {
@@ -1214,17 +1216,6 @@ function TrackChannel({ bets, sport, token }) {
     }
     return out
   }, [bets, events])
-
-  // group tracked bets by game → one card per game (closing lines live inside each card)
-  const games = useMemo(() => {
-    const m = new Map()
-    for (const g of graded) {
-      const key = `${lw(g.ev.away_team)}@${lw(g.ev.home_team)}`
-      if (!m.has(key)) m.set(key, { ev: g.ev, items: [] })
-      m.get(key).items.push(g)
-    }
-    return [...m.values()]
-  }, [graded])
 
   // Pikkit-style scoreboard: averages across every graded bet. CLV% is the headline metric —
   // beating the closing line over time is the truest proof you're a +EV operator.
@@ -1246,6 +1237,15 @@ function TrackChannel({ bets, sport, token }) {
     if (statusFilter === 'all') return true
     if (statusFilter === 'settled') return ['W', 'L', 'P'].includes(b.result)
     return b.result === 'Open'
+  }
+
+  const todayKey = todayStr()
+  const visibleBets = useMemo(() => (bets || []).filter(statusOk), [bets, statusFilter])
+  const dateGroups = useMemo(() => groupByDate(visibleBets, todayKey), [visibleBets])
+  const gradeFor = (b) => {
+    const g = graded.find(x => x.bet === b)
+    if (!g) return null
+    return { evPct: g.grade.evPct, clvPct: g.grade.clvPct }
   }
 
   return (
@@ -1292,8 +1292,23 @@ function TrackChannel({ bets, sport, token }) {
 
       {/* tracked positions — collapsible panel */}
       <LookSection label="TRACKED POSITIONS">
-        {!graded.length && <Empty text={`No graded ${sport} positions yet. Log a play on CH 1/2 and it grades here.`} />}
-        {games.map((g, i) => <TrackGameCard key={i} ev={g.ev} items={g.items} sport={sport} token={token} />)}
+        {!visibleBets.length && <Empty text={`No ${statusFilter === 'all' ? '' : statusFilter + ' '}positions yet. Log a play on CH 1/2 and it grades here.`} />}
+        {dateGroups.map((grp) => (
+          <div key={grp.date || 'undated'} style={{ marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 7px' }}>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em' }}>{grp.label}</span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{grp.tally.w}-{grp.tally.l}{grp.tally.p ? `-${grp.tally.p}` : ''} · {grp.tally.units >= 0 ? '+' : ''}{grp.tally.units}u</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {grp.bets.map((b) => {
+                const n = normalizeBet(b)
+                return n.kind === 'parlay'
+                  ? <BetTicket key={b.id} bet={n} grade={gradeFor(b)} />
+                  : <BetCard key={b.id} bet={n} grade={gradeFor(b)} />
+              })}
+            </div>
+          </div>
+        ))}
       </LookSection>
     </TvFrame>
   )
