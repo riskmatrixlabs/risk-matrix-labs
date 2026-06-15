@@ -99,6 +99,32 @@ async function persistSnapshots({ eventId, sport, away, home, markets }) {
 // Live-on-open serves identical odds to every viewer of a game for a short window. A 90s
 // cache means rapid re-opens / multiple viewers cost 0 extra credits while staying "live".
 const LINES_TTL_MS = 90 * 1000
+// cacheOnly opens (the free auto-load) accept a warmer/longer cache — the cron pre-fills the whole
+// slate every ~15 min, so opening any game shows best lines for free. A manual REFRESH still
+// re-pulls anything older than 90s for live freshness.
+const WARM_TTL_MS = 18 * 60 * 1000
+
+// Pre-warm the WHOLE slate's cheap game-lines cache with ONE bulk call per sport — so opening any
+// game serves best lines for FREE (cacheOnly). Called by cron-warm-lines. Returns a small summary.
+export async function warmSlate(sport) {
+  const sp = String(sport).toUpperCase()
+  if (!SPORT_KEYS[sp]) return { skipped: 'unsupported sport' }
+  const provider = getProvider()
+  const { games, credits } = await provider.fetchOdds({ sport: sp, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
+  let written = 0
+  for (const game of games || []) {
+    if (!game?.away_team || !game?.home_team) continue
+    const markets = {
+      h2h:     compareBooks(game.bookmakers, 'h2h'),
+      spreads: compareBooks(game.bookmakers, 'spreads'),
+      totals:  compareBooks(game.bookmakers, 'totals'),
+    }
+    const payload = { found: true, away: game.away_team, home: game.home_team, markets, creditsRemaining: credits.remaining, fetchedAt: new Date().toISOString() }
+    await writeScan(`LINES:${sp}`, `${lastWord(game.away_team)}@${lastWord(game.home_team)}`, payload, credits.remaining)
+    written++
+  }
+  return { written, games: games?.length || 0, creditsRemaining: credits.remaining }
+}
 
 export default async function handler(req, res) {
   const user = await requireAuth(req, res)
@@ -123,8 +149,9 @@ export default async function handler(req, res) {
   // Full payloads cache under a separate key so cheap/full never collide.
   const ckSport = full ? `LINES:${sport}:FULL` : `LINES:${sport}`
   const ckGame = `${lastWord(away)}@${lastWord(home)}`
+  const ttl = cacheOnly ? WARM_TTL_MS : LINES_TTL_MS   // free opens ride the cron-warmed cache
   const cached = await readScan(ckSport, ckGame)
-  if (cached && isFresh(cached.scanned_at, Date.now(), LINES_TTL_MS) && cached.payload) {
+  if (cached && isFresh(cached.scanned_at, Date.now(), ttl) && cached.payload) {
     return res.status(200).json({ ...cached.payload, cached: true })
   }
   if (cacheOnly) return res.status(200).json({ found: false, notCached: true })
