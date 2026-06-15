@@ -109,39 +109,26 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         Events
       </div>
 
-      {/* Search — filters the slate by team AND finds players by name. */}
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search team or player…"
-        style={{
-          width: '100%', boxSizing: 'border-box', marginBottom: '14px',
-          background: CARD, border: `1px solid ${BORDER}`, borderRadius: '999px',
-          padding: '9px 14px', fontFamily: R, fontSize: '13px', fontWeight: 600,
-          color: TEXT, letterSpacing: '0.03em', caretColor: NEON, outline: 'none',
-        }}
-      />
-
-      {/* Player matches — type a name → tap to open their game + props (mirrors CH1 search). */}
-      {query.trim().length >= 2 && (pStatus === 'loading' || players.length > 0) && (
-        <div style={{ marginBottom: '14px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Players</div>
-          {pStatus === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '4px 2px' }}>SEARCHING…</div>}
-          {players.map((m, i) => (
-            <button key={`${m.player}-${i}`} onClick={() => onPickPlayer && onPickPlayer(m)}
-              style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: '6px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {m.headshot
-                ? <img src={m.headshot} alt="" width="36" height="36" style={{ borderRadius: '50%', background: '#1a1a1a', objectFit: 'cover', flexShrink: 0 }} />
-                : <span style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{m.player[0] || '?'}</span>}
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.player}</span>
-                <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{[m.pos, m.team].filter(Boolean).join(' · ')}</span>
-              </span>
-              <span style={{ fontSize: '10px', fontWeight: 700, color: NEON_T, letterSpacing: '0.04em', textAlign: 'right', flexShrink: 0 }}>{(m.game?.away_abbr || m.game?.away)} @ {(m.game?.home_abbr || m.game?.home)}<br />{localClock(m.game?.commenceTime)}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Date strip — tap a day to load that slate (centered, squarish pills). */}
+      <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', paddingBottom: '4px', marginBottom: '16px' }}>
+        {dateStrip.map(d => {
+          const active = d.off === dayOff
+          return (
+            <button
+              key={d.off}
+              onClick={() => setDayOff(d.off)}
+              style={{
+                flexShrink: 0, whiteSpace: 'nowrap', cursor: 'pointer',
+                padding: '6px 13px', borderRadius: '10px',
+                fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em',
+                background: active ? 'rgba(189,255,0,0.1)' : CARD,
+                border: `1px solid ${active ? NEON : BORDER}`,
+                color: active ? NEON : MUTED,
+              }}
+            >{d.label}</button>
+          )
+        })}
+      </div>
 
       {/* Sport tiles — squarish (brand vibe), centered on the page. */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', paddingBottom: '4px', marginBottom: '16px' }}>
@@ -172,26 +159,39 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         })}
       </div>
 
-      {/* Date strip — tap a day to load that slate. */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
-        {dateStrip.map(d => {
-          const active = d.off === dayOff
-          return (
-            <button
-              key={d.off}
-              onClick={() => setDayOff(d.off)}
-              style={{
-                flexShrink: 0, whiteSpace: 'nowrap', cursor: 'pointer',
-                padding: '6px 13px', borderRadius: '999px',
-                fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em',
-                background: active ? 'rgba(189,255,0,0.1)' : CARD,
-                border: `1px solid ${active ? NEON : BORDER}`,
-                color: active ? NEON : MUTED,
-              }}
-            >{d.label}</button>
-          )
-        })}
-      </div>
+      {/* Search — filters the slate by team AND finds players by name. */}
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search team or player…"
+        style={{
+          width: '100%', boxSizing: 'border-box', marginBottom: '14px',
+          background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px',
+          padding: '9px 14px', fontFamily: R, fontSize: '13px', fontWeight: 600,
+          color: TEXT, letterSpacing: '0.03em', caretColor: NEON, outline: 'none',
+        }}
+      />
+
+      {/* Player matches — type a name → tap to open their game + props (mirrors CH1 search). */}
+      {query.trim().length >= 2 && (pStatus === 'loading' || players.length > 0) && (
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Players</div>
+          {pStatus === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '4px 2px' }}>SEARCHING…</div>}
+          {players.map((m, i) => (
+            <button key={`${m.player}-${i}`} onClick={() => onPickPlayer && onPickPlayer(m)}
+              style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: '6px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {m.headshot
+                ? <img src={m.headshot} alt="" width="36" height="36" style={{ borderRadius: '50%', background: '#1a1a1a', objectFit: 'cover', flexShrink: 0 }} />
+                : <span style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{m.player[0] || '?'}</span>}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.player}</span>
+                <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{[m.pos, m.team].filter(Boolean).join(' · ')}</span>
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: NEON_T, letterSpacing: '0.04em', textAlign: 'right', flexShrink: 0 }}>{(m.game?.away_abbr || m.game?.away)} @ {(m.game?.home_abbr || m.game?.home)}<br />{localClock(m.game?.commenceTime)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Selected-day slate. */}
       <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
