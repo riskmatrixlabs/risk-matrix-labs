@@ -3178,7 +3178,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                             const cDec = covered.reduce((a, l) => a * amToDec(l.byBook[bk]), 1)
                             return { book: bk, n: covered.length, odds: covered.length === total ? decToAm(cDec) : null, region: inRegion(bk) }
                           })
-                          const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
+                          // Pin the operator's home-state book(s) (e.g. Hard Rock in FL) to the top.
+                          const homeBooks = new Set(allowed || [])
+                          const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => {
+                            const ha = homeBooks.has(a.book) ? 1 : 0, hb = homeBooks.has(b.book) ? 1 : 0
+                            if (ha !== hb) return hb - ha
+                            return amToDec(b.odds) - amToDec(a.odds)
+                          })
                           const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
                           const region = rows.filter(r => !r.region && r.n > 0).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
                           const bookRow = (r, faded, best) => (

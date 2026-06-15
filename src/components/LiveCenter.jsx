@@ -1308,7 +1308,14 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
       // Geo filter: show only books usable in the operator's state (+ offshore), unless "show all".
       const allowed = booksForState(userState)
       const allowSet = allowed ? new Set([...allowed, ...OFFSHORE, ...NATIONWIDE]) : null
-      const allRows = [...cmp.rows].sort((x, y) => (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0))
+      // Pin the operator's HOME-state book(s) to the top (e.g. Hard Rock in FL) so the
+      // book you actually use is never buried by best-price sorting; rest sorted by price.
+      const homeBooks = new Set(allowed || [])
+      const allRows = [...cmp.rows].sort((x, y) => {
+        const hx = homeBooks.has(x.book) ? 1 : 0, hy = homeBooks.has(y.book) ? 1 : 0
+        if (hx !== hy) return hy - hx
+        return (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0)
+      })
       const rows = (allowSet && !showAllBooks) ? allRows.filter(r => allowSet.has(r.book)) : allRows
       const hiddenCount = allRows.length - rows.length
       const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
