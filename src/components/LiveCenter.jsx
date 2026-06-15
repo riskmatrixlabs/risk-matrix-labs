@@ -2015,23 +2015,35 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       const showOdds = mkt !== 'ml' && jm
                       return (
                         <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                          {/* LEFT — what it is + where it opened */}
-                          <span style={{ minWidth: '70px' }}>
+                          {/* LEFT — the bet + its LINE (the number you're betting over/under or the spread) */}
+                          {(() => {
+                            const arrow = flat ? '→' : up ? '↗' : '↘'
+                            const pOpen = showOdds ? fmtAm(jm.open) : fmtMv(mkt, m.open)     // the PRICE (juice). ML: odds.
+                            const pNow  = showOdds ? fmtAm(jm.current) : fmtMv(mkt, m.current)
+                            const priceMoved = pOpen !== pNow
+                            const lineMoved = showOdds && fmtMv(mkt, m.open) !== fmtMv(mkt, m.current)
+                            return (<>
+                          <span style={{ minWidth: '78px' }}>
                             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</div>
-                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED }}>
-                              <span style={{ color: 'rgba(255,255,255,0.35)' }}>open </span>{fmtMv(mkt, m.open)}{showOdds ? ` · ${fmtAm(jm.open)}` : ''}
+                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED, whiteSpace: 'nowrap' }}>
+                              {showOdds
+                                ? <><span style={{ color: 'rgba(255,255,255,0.35)' }}>line </span><span style={{ color: TEXT }}>{lineMoved ? `${fmtMv(mkt, m.open)}→${fmtMv(mkt, m.current)}` : fmtMv(mkt, m.current)}</span></>
+                                : <span style={{ color: 'rgba(255,255,255,0.35)' }}>moneyline</span>}
                             </div>
                           </span>
                           <Sparkline series={jm ? jm.series : m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
-                          {/* RIGHT — where it is now + the odds that moved + your CLV vs the open */}
-                          <span style={{ textAlign: 'right', minWidth: '64px' }}>
-                            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: lineColor }}>
-                              {flat ? '→' : up ? '↗' : '↘'} {fmtMv(mkt, m.current)}{showOdds ? <span style={{ fontSize: '11px', color: MUTED, fontWeight: 700 }}> {fmtAm(jm.current)}</span> : ''}
+                          {/* RIGHT — the PRICE moving from open → now, then your CLV (did you beat the close) */}
+                          <span style={{ textAlign: 'right', minWidth: '92px' }}>
+                            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
+                              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '8px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>price </span>
+                              {priceMoved ? <>{pOpen} <span style={{ color: lineColor }}>{arrow}</span> {pNow}</> : <>{pNow}</>}
                             </div>
                             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: clv && Math.abs(clv.clvPct) >= 0.1 ? (clv.beat ? NEON_T : '#FF3B3B') : MUTED }}>
                               {clv && Math.abs(clv.clvPct) >= 0.1 ? `${clv.beat ? '+' : ''}${clv.clvPct.toFixed(1)}% CLV` : 'no move'}
                             </div>
                           </span>
+                            </>)
+                          })()}
                         </div>
                       )
                     })}
