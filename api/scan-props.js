@@ -44,6 +44,10 @@ export default async function handler(req, res) {
   if (!SPORT_KEYS[sport]) return res.status(400).json({ error: `unsupported sport "${sport}"` })
   if (!away || !home) return res.status(400).json({ error: 'missing away/home team' })
   const full = String(req.query.full ?? '') === '1'
+  // us_ex (Novig/exchanges) is ~1.5x the credit cost — only pull it on an explicit refresh (ex=1),
+  // not on the auto-scan that fires every time a game is opened.
+  const ex = String(req.query.ex ?? '') === '1'
+  const REGIONS = ex ? ['us', 'us2', 'us_ex'] : ['us', 'us2']
   const markets = (full ? PROP_MARKETS_FULL[sport] : PROP_MARKETS[sport])
   if (!markets?.length) return res.status(200).json({ found: false, reason: 'no prop markets for sport' })
 
@@ -68,7 +72,7 @@ export default async function handler(req, res) {
     const tiers = (full && markets !== PROP_MARKETS[sport]) ? [markets, PROP_MARKETS[sport]] : [markets]
     let lastErr = null
     for (const mk of tiers) {
-      try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2', 'us_ex'], timeoutMs: 12000 }); game = r.game; credits = r.credits; usedMarkets = mk; break }
+      try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: REGIONS, timeoutMs: ex ? 12000 : 8000 }); game = r.game; credits = r.credits; usedMarkets = mk; break }
       catch (e) { lastErr = e }
     }
     if (!game) {

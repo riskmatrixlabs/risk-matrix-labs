@@ -1128,11 +1128,13 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
   const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
 
-  async function load() {
+  // withEx=true (manual refresh) pulls the pricier us_ex region (Novig/exchanges); the auto-load
+  // on game open stays cheap (us, us2) to protect credits while browsing.
+  async function load(withEx = false) {
     if (!token || status === 'loading') return
     setStatus('loading'); setErr('')
     try {
-      const res = await fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}`,
+      const res = await fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}${withEx ? '&ex=1' : ''}`,
         { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`)
       const j = await res.json()
@@ -1171,7 +1173,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
           {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits}</span>}
-        <button onClick={() => { setStatus('idle'); load() }} disabled={status === 'loading'} title="Refresh odds"
+        <button onClick={() => { setStatus('idle'); load(true) }} disabled={status === 'loading'} title="Refresh odds (incl. Novig/exchanges)"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 8px', color: NEON_T, cursor: status === 'loading' ? 'wait' : 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>
           <span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'loading' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'loading' ? '' : 'REFRESH'}
         </button>

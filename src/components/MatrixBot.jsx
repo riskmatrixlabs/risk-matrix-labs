@@ -864,11 +864,13 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   const toggleCard = (name) => setCollapsed(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
   const [teamF, setTeamF] = useState('ALL')            // filter players by team (shortens the scroll)
 
-  async function scan() {
+  // withEx=true (manual refresh) pulls the pricier us_ex region (Novig/exchanges); the auto-scan
+  // that fires on game open stays cheap (us, us2) so browsing doesn't bleed credits.
+  async function scan(withEx = false) {
     if (!token || status === 'scanning') return
     setStatus('scanning'); setErr('')
     try {
-      const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${withEx ? '&ex=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `props ${res.status}`)
       const j = await res.json()
       setData(j.found ? j : { edges: [], lineShopOnly: [], creditsRemaining: j.creditsRemaining })
@@ -948,7 +950,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: edgeCount ? NEON_T : MUTED, letterSpacing: '0.1em' }}>{edgeCount ? `${edgeCount} +EV · ${shownPlayers.length} PLAYERS` : propCount ? `${shownPlayers.length} PLAYERS · ${propCount} PROPS` : 'NO PROPS YET'}</span>
-        <button onClick={scan} title="Refresh prop odds" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 9px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} · ` : ''}<span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'scanning' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'scanning' ? 'REFRESHING' : 'REFRESH'}</button>
+        <button onClick={() => scan(true)} title="Refresh prop odds (incl. Novig/exchanges)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 9px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} · ` : ''}<span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'scanning' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'scanning' ? 'REFRESHING' : 'REFRESH'}</button>
       </div>
 
       {status === 'error'
