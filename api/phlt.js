@@ -34,7 +34,7 @@ async function rosterIndex(sport) {
   }
   const byFull = {}, byLast = {}
   for (const r of index || []) {
-    const v = { id: r.id || null, team: r.team || null }
+    const v = { id: r.id || null, team: r.team || null, bats: r.bats || null, throws: r.throws || null }
     const n = norm(r.player)
     byFull[n] = v; byLast[n.split(/\s+/).pop()] = v
   }
@@ -127,8 +127,15 @@ export default async function handler(req, res) {
     const p = probs[abbr]; if (!p?.pitcher) return null
     const nn = sav.normName(p.pitcher)
     const x = sav.pitcherX[nn], k = sav.pitcherK[nn]
-    if (!x && !k) return { name: p.pitcher, sparse: true }
-    return { name: p.pitcher, xbaAgainst: x?.xbaAgainst ?? null, era: x?.era ?? null, kPct: k?.kPct ?? null, whiffPct: k?.whiffPct ?? null }
+    const throws = (roster.byFull[norm(p.pitcher)] || roster.byLast[norm(p.pitcher).split(/\s+/).pop()])?.throws || null
+    if (!x && !k) return { name: p.pitcher, throws, sparse: true }
+    return { name: p.pitcher, throws, xbaAgainst: x?.xbaAgainst ?? null, era: x?.era ?? null, kPct: k?.kPct ?? null, whiffPct: k?.whiffPct ?? null }
+  }
+  // Platoon: switch hitter (S/B) always favored; opposite hands favored; same hands disadvantaged.
+  const platoon = (bats, throws) => {
+    if (!bats || !throws) return 0
+    if (bats === 'S' || bats === 'B') return 1
+    return bats !== throws ? 1 : -1
   }
   const pitchers = {}; for (const a of abbrs) pitchers[a] = pitcherFor(a)
 
@@ -146,7 +153,7 @@ export default async function handler(req, res) {
     const v = scoreHit({
       hitter: { avgLast5: form?.avgLast5, hitStreak: form?.hitStreak, bbPct: form?.bbPct, hitsLast4: form?.hitsLast4, xba: bat?.xba },
       pitcher: { kPct: pit.kPct, whiffPct: pit.whiffPct, xbaAgainst: pit.xbaAgainst, era: pit.era },
-      matchup: { platoonEdge: 0, xwoba: bat?.xwoba },   // handedness platoon: next
+      matchup: { platoonEdge: platoon(r?.bats, pit.throws), xwoba: bat?.xwoba },
       park: { parkFactor, weatherBoost },
     })
     verdicts[name] = { ...v, vs: pit.name || null, team: r?.team || null }
