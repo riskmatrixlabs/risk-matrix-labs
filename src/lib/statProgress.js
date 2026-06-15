@@ -23,6 +23,20 @@ export function parseTotal(title) {
   return { dir: m[1][0].toLowerCase() === 'o' ? 'over' : 'under', line: parseFloat(m[2]) }
 }
 
+// Loose extractor: pull a direction + line from anywhere in the title (props, totals,
+// team totals). Used to render an EMPTY bar pre-game so the bar always shows.
+export function parseLine(title) {
+  const m = String(title || '').match(/\b(over|under|o|u)\s*(\d[\d.]*)/i)
+  if (!m) return null
+  return { dir: m[1][0].toLowerCase() === 'o' ? 'over' : 'under', line: parseFloat(m[2]) }
+}
+
+// Empty/pre-game bar shell — shows the line with no fill until live stats arrive.
+export function shellBar(line, dir) {
+  if (!(line > 0)) return null
+  return { current: null, line, dir, pct: 0, cashing: false, color: '#888780', label: '—', pending: true }
+}
+
 export function isMoneylineOrSpread(title) {
   const t = String(title || '')
   return /\bml\b|moneyline/i.test(t) || /[+-]\s*\d+(\.\d+)?\b/.test(t)

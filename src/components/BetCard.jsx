@@ -35,17 +35,18 @@ function Ring({ pct, size = 38, stroke = 4, color = NEON }) {
 
 // Live stat-progress bar (Pikkit-style): fills to current ÷ line, green on track / red
 // once busted or lost, with a "current / line" readout. stat from src/lib/statProgress.js.
-function StatBar({ stat }) {
+function StatBar({ stat, style }) {
   if (!stat) return null
-  const p = Math.max(0, Math.min(1, stat.pct))
+  const pending = stat.current == null
+  const p = pending ? 0 : Math.max(0, Math.min(1, stat.pct))
   return (
-    <div style={{ marginTop: 6 }}>
+    <div style={{ marginTop: 6, ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
         <span style={{ fontFamily: I, fontSize: 9, color: MUTED, letterSpacing: '0.04em' }}>{stat.dir === 'over' ? 'OVER' : 'UNDER'} {stat.line}</span>
-        <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, color: stat.color }}>{stat.label}</span>
+        <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, color: pending ? MUTED : stat.color }}>{stat.label}</span>
       </div>
       <div style={{ height: 5, borderRadius: 3, background: '#222', overflow: 'hidden' }}>
-        <div style={{ width: `${Math.round(p * 100)}%`, height: '100%', background: stat.color, borderRadius: 3 }} />
+        {!pending && <div style={{ width: `${Math.round(p * 100)}%`, height: '100%', background: stat.color, borderRadius: 3 }} />}
       </div>
     </div>
   )
@@ -100,6 +101,9 @@ export function BetCard({ bet, grade, compact = false }) {
         {bet.book && <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#1c1c1c', color: '#9a9a9a', alignSelf: 'flex-start' }}>{bet.book}</span>}
         <Ring pct={winProb} size={compact ? 32 : 40} color={ringColor(st)} />
       </div>
+      {/* Progress bar sits ABOVE the odds (always shown for over/under bets, empty pre-game). */}
+      <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
+      <ScoreChip text={leg.scoreLine} status={st} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 11 }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#141414', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '7px 10px' }}>
           <span style={{ fontFamily: R, fontSize: 9, color: MUTED, letterSpacing: '0.1em' }}>ODDS</span>
@@ -109,8 +113,6 @@ export function BetCard({ bet, grade, compact = false }) {
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {grade?.clvPct != null && <GradeBadge label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
       </div>
-      <StatBar stat={leg.statNow} />
-      <ScoreChip text={leg.scoreLine} status={st} />
     </div>
   )
 }

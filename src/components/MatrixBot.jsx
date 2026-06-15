@@ -10,7 +10,7 @@ import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
 import { devigTwoWay, americanToImplied } from '../lib/devig.js'
-import { statProgress, totalProgress, scoreText, isMoneylineOrSpread } from '../lib/statProgress.js'
+import { statProgress, totalProgress, scoreText, isMoneylineOrSpread, parseLine, shellBar } from '../lib/statProgress.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
@@ -55,11 +55,14 @@ function withLogos(n, ev, players = [], boxStats = null) {
     leg.statNow = null
     leg.scoreLine = null
     const propBar = boxStats ? statProgress(leg.title, boxStats, leg.status) : null
+    const totBar = ev ? totalProgress(leg.title, ev.away_score, ev.home_score, leg.status) : null
     if (propBar) leg.statNow = propBar
-    else if (ev) {
-      const totBar = totalProgress(leg.title, ev.away_score, ev.home_score, leg.status)
-      if (totBar) leg.statNow = totBar
-      else if (isMoneylineOrSpread(leg.title)) leg.scoreLine = scoreText(ev)
+    else if (totBar) leg.statNow = totBar
+    else if (isMoneylineOrSpread(leg.title)) leg.scoreLine = ev ? scoreText(ev) : null
+    else {
+      // Over/under bet with no live data yet (pre-game) → show an EMPTY bar so it always renders.
+      const pl = parseLine(leg.title)
+      if (pl) leg.statNow = shellBar(pl.line, pl.dir)
     }
     let logo = null
     if (ev) {
