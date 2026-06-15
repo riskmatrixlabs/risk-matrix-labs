@@ -2985,6 +2985,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slipOpen, setSlipOpen] = useState(false)
   const [slipStake, setSlipStake] = useState('')
   const [slipMode, setSlipMode] = useState('parlay')      // 'parlay' | 'straights'
+  const [showOutRegion, setShowOutRegion] = useState(false) // expand the "not in your region" list
   const [slipOff, setSlipOff] = useState(() => new Set())  // picks toggled OFF (kept in slip, excluded from bet)
   const toggleLeg = (pick) => setSlipOff(s => { const n = new Set(s); n.has(pick) ? n.delete(pick) : n.add(pick); return n })
   const [ocrBusy, setOcrBusy] = useState(false)
@@ -3168,7 +3169,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           })
                           const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
                           const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
-                          const region = rows.filter(r => !r.region && r.n > 0)
+                          const region = rows.filter(r => !r.region && r.n > 0).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
                           const bookRow = (r, faded, best) => (
                             <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -3187,7 +3188,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               <div style={{ ...lbl, color: MUTED, opacity: 0.7 }}>Tap any book to place this parlay there</div>
                               {avail.length > 0 && <><div style={lbl}>✓ Best book · all {total} legs</div>{avail.map((r, i) => bookRow(r, false, i === 0))}</>}
                               {missing.length > 0 && <><div style={lbl}>Missing some legs</div>{missing.map(r => bookRow(r))}</>}
-                              {region.length > 0 && <><div style={lbl}>Not in your region</div>{region.map(r => bookRow(r, true))}</>}
+                              {region.length > 0 && <><div style={lbl}>Not in your region</div>{(showOutRegion ? region : region.slice(0, 2)).map(r => bookRow(r, true))}{region.length > 2 && (
+                                <button onClick={() => setShowOutRegion(v => !v)} style={{ width: '100%', marginTop: '7px', padding: '9px', borderRadius: '9px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{showOutRegion ? 'Show less ▴' : `+${region.length - 2} more ▾`}</button>
+                              )}</>}
                             </div>
                           )
                         })()}
