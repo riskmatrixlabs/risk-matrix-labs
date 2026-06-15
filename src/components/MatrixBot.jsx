@@ -536,18 +536,25 @@ function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip })
           <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>{[player.pos, player.team].filter(Boolean).join(' · ')}</div>
         </div>
       </div>
-      {pstats?.recent?.length > 0 && (
-        <div style={{ marginBottom: '10px' }}>
-          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '5px' }}>Last game{pstats.opponent ? ` ${pstats.home === '@' ? '@' : 'vs'} ${pstats.opponent}` : ''}</div>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {pstats.recent.slice(0, 6).map((s, i) => (
-              <span key={i} style={{ display: 'inline-flex', gap: '4px', alignItems: 'baseline', fontFamily: R, fontSize: '11px', fontWeight: 700, background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '3px 7px' }}>
-                <span style={{ fontSize: '8px', color: MUTED }}>{s.label}</span><span style={{ color: NEON_T }}>{s.value}</span>
-              </span>
-            ))}
+      {pstats && (pstats.season?.length > 0) && (() => {
+        const SHOW = ({ MLB: ['H', 'HR', 'RBI', 'R', 'SB'], NBA: ['PTS', 'REB', 'AST'], WNBA: ['PTS', 'REB', 'AST'], NHL: ['G', 'A', 'SOG'] }[sport]) || []
+        const pick = (arr) => SHOW.map(lbl => (arr || []).find(s => s.label === lbl)).filter(Boolean)
+        const seasonC = pick(pstats.season), l5 = pick(pstats.last5)
+        const keyRates = (pstats.rates || []).filter(r => /^(AVG|OPS|ERA|FG%|PTS|SV%)$/i.test(r.label)).slice(0, 2)
+        const lbl = { fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '5px' }
+        const chip = (s, i) => <span key={i} style={{ display: 'inline-flex', gap: '4px', alignItems: 'baseline', fontFamily: R, fontSize: '12px', fontWeight: 700, background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '3px 8px' }}><span style={{ fontSize: '8px', color: MUTED }}>{s.label}</span><span style={{ color: TEXT }}>{s.value}</span></span>
+        if (!seasonC.length) return null
+        return (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={lbl}>Season{pstats.games ? ` · ${pstats.games} GP` : ''}{keyRates.length ? ` · ${keyRates.map(r => `${r.value} ${r.label}`).join(' · ')}` : ''}</div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '9px' }}>{seasonC.map(chip)}</div>
+            {l5.length > 0 && <>
+              <div style={lbl}>Last {pstats.last5games} games</div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>{l5.map((s, i) => <span key={i} style={{ display: 'inline-flex', gap: '4px', alignItems: 'baseline', fontFamily: R, fontSize: '12px', fontWeight: 700, background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '6px', padding: '3px 8px' }}><span style={{ fontSize: '8px', color: MUTED }}>{s.label}</span><span style={{ color: NEON_T }}>{s.value}</span></span>)}</div>
+            </>}
           </div>
-        </div>
-      )}
+        )
+      })()}
       {status === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '6px 2px' }}>PULLING PROPS…</div>}
       {status === 'done' && !groups.length && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, padding: '6px 2px' }}>No props posted for {player.name} yet (try after lineups).</div>}
       {groups.map((g, i) => (
