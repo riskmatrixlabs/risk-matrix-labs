@@ -1209,7 +1209,10 @@ function TrackChannel({ bets, sport, token }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
-    const load = () => fetchEvents(sport, 'today').then(res => { if (live) setEvents(res?.data || []) }).catch(() => {})
+    // Load today AND yesterday so last night's settled bets still match an event —
+    // they get graded (EV/CLV) and show final stat bars instead of going blank.
+    const load = () => Promise.all([fetchEvents(sport, 'today'), fetchEvents(sport, 'yesterday')])
+      .then(([a, b]) => { if (live) setEvents([...(a?.data || []), ...(b?.data || [])]) }).catch(() => {})
     load()
     const id = setInterval(load, 60000)
     return () => { live = false; clearInterval(id) }
