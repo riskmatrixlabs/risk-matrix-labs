@@ -9,8 +9,10 @@ whole site (CH3, bet log, in-app slip, share card). This is the long-pending
 "bet-log / card redesign — read multi-leg parlays like a sportsbook slip, team logos"
 backlog item, finally built as a shared component.
 
-**Hard rule (owner):** nothing is removed from CH3. SCOREBOARD and TRACKED POSITIONS
-stay; we add on top and make them richer + better looking.
+**Hard rule (owner):** nothing is removed from CH3, and everything is built **inside
+the existing TV** (`TvFrame` channel UI) — CH3 stays the same channel, enriched in
+place. SCOREBOARD and TRACKED POSITIONS stay; we add on top and make them richer +
+better looking. No new page / no route change.
 
 **Forward-compat:** the card's grade-badge slot and the scoreboard's Operator Rating
 tile are deliberate empty homes for the EV Brain (`rml-evbrain-spec`) verdict
