@@ -9,6 +9,7 @@ import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_
 import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
+import { devigTwoWay, americanToImplied } from '../lib/devig.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
@@ -46,6 +47,8 @@ function headshotFor(title, players) {
 function withLogos(n, ev, players = []) {
   for (const leg of n.legs) {
     leg.headshot = players.length ? headshotFor(leg.title, players) : null
+    const lo = Number(leg.odds)
+    leg.winProb = Number.isFinite(lo) ? americanToImplied(lo) : null
     let logo = null
     if (ev) {
       const side = teamSide(leg.title, ev) || teamSide(leg.subtitle, ev)
@@ -1227,11 +1230,21 @@ function TrackChannel({ bets, sport, token }) {
     return () => { live = false }
   }, [token, betSports.join(',')])
 
+  // No-vig win probabilities from the matched event's two-way markets (same as Insights).
+  const buildDvs = (ev) => {
+    const m = ev.metadata || {}
+    return {
+      dv: (ev.odds_ml_away != null && ev.odds_ml_home != null) ? devigTwoWay(ev.odds_ml_away, ev.odds_ml_home) : null,
+      dvSpread: (m.spread_away_juice != null && m.spread_home_juice != null) ? devigTwoWay(m.spread_away_juice, m.spread_home_juice) : null,
+      dvTotal: (m.over_juice != null && m.under_juice != null) ? devigTwoWay(m.over_juice, m.under_juice) : null,
+    }
+  }
+
   const graded = useMemo(() => {
     const out = []
     for (const b of bets || []) {
       const ev = events.find(e => matchBetToEvent(b, e))
-      if (ev) { const grade = evaluateBet(b, ev, null); if (grade) out.push({ bet: b, ev, grade }) }
+      if (ev) { const grade = evaluateBet(b, ev, buildDvs(ev)); if (grade) out.push({ bet: b, ev, grade }) }
     }
     return out
   }, [bets, events])
@@ -1273,8 +1286,10 @@ function TrackChannel({ bets, sport, token }) {
   const dateGroups = useMemo(() => groupByDate(visibleBets, todayKey), [visibleBets])
   const gradeFor = (b) => {
     const g = graded.find(x => x.bet === b)
-    if (!g) return null
-    return { evPct: g.grade.evPct, clvPct: g.grade.clvPct }
+    const own = Number(b.odds)
+    const fallbackWP = Number.isFinite(own) ? americanToImplied(own) : null
+    if (!g) return fallbackWP != null ? { winProb: fallbackWP } : null
+    return { evPct: g.grade.evPct, clvPct: g.grade.clvPct, winProb: g.grade.fairProb ?? fallbackWP }
   }
 
   return (
