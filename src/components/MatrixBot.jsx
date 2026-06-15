@@ -28,10 +28,24 @@ const LEAGUE_LOGO = {
   WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
 }
 
-// Give each leg a real logo: the correct team logo from the matched event when the
-// pick's side is resolvable, else the league logo. Mutates and returns the normalized bet.
-function withLogos(n, ev) {
+const normName = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+
+// Find a player headshot whose name is the leading part of a prop pick
+// (e.g. "Aaron Judge Over 1.5 TB" → Aaron Judge). players: [{ norm, headshot }].
+function headshotFor(title, players) {
+  const t = normName(title)
+  let best = null
+  for (const p of players) {
+    if (p.norm && (t === p.norm || t.startsWith(p.norm + ' ')) && (!best || p.norm.length > best.norm.length)) best = p
+  }
+  return best?.headshot || null
+}
+
+// Give each leg a real image: a player headshot for player props, else the correct team
+// logo from the matched event, else the league logo. Mutates and returns the normalized bet.
+function withLogos(n, ev, players = []) {
   for (const leg of n.legs) {
+    leg.headshot = players.length ? headshotFor(leg.title, players) : null
     let logo = null
     if (ev) {
       const side = teamSide(leg.title, ev) || teamSide(leg.subtitle, ev)
@@ -1196,6 +1210,23 @@ function TrackChannel({ bets, sport, token }) {
     return () => { live = false; clearInterval(id) }
   }, [sport])
 
+  // Player headshots for prop cards: pull the day's roster map (name→headshot) once per sport
+  // present in the bet log. Free (cached ESPN rosters, 0 Odds-API credits).
+  const [players, setPlayers] = useState([])
+  const betSports = useMemo(() => [...new Set((bets || []).map(b => String(b.sport || '').toUpperCase()).filter(Boolean))], [bets])
+  useEffect(() => {
+    if (!token || !betSports.length) return
+    let live = true
+    Promise.all(betSports.map(s =>
+      fetch(`/api/player-search?all=1&sport=${encodeURIComponent(s)}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null).then(j => j?.players || []).catch(() => [])
+    )).then(arr => {
+      if (!live) return
+      setPlayers(arr.flat().map(p => ({ norm: normName(p.player), headshot: p.headshot })))
+    })
+    return () => { live = false }
+  }, [token, betSports.join(',')])
+
   const graded = useMemo(() => {
     const out = []
     for (const b of bets || []) {
@@ -1319,7 +1350,7 @@ function TrackChannel({ bets, sport, token }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {grp.bets.map((b) => {
                 const ev = graded.find(x => x.bet === b)?.ev
-                const n = withLogos(normalizeBet(b), ev)
+                const n = withLogos(normalizeBet(b), ev, players)
                 return n.kind === 'parlay'
                   ? <BetTicket key={b.id} bet={n} grade={gradeFor(b)} />
                   : <BetCard key={b.id} bet={n} grade={gradeFor(b)} />

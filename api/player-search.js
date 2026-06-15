@@ -86,10 +86,34 @@ export default async function handler(req, res) {
   const q = norm(req.query.q)
   const reqSport = req.query.sport ? String(req.query.sport).toUpperCase() : null
   const sports = reqSport && SPORTS[reqSport] ? [reqSport] : Object.keys(SPORTS)
-  if (q.length < 2) return res.status(200).json({ matches: [], reason: 'type at least 2 letters' })
 
   const dateYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   res.setHeader('Cache-Control', 'no-store')
+
+  // Roster map mode (?all=1): return the whole day's name→headshot list for the sport(s),
+  // so callers (e.g. CH3 cards) can match player names to headshots locally. Reuses the
+  // same cached index — zero extra Odds-API credits.
+  const loadIndex = async (s) => {
+    const cached = await readScan(`PLAYERS:${s}`, dateYmd)
+    if (cached && isFresh(cached.scanned_at, Date.now(), INDEX_TTL_MS) && cached.payload) return cached.payload
+    try { const payload = await buildIndex(s); await writeScan(`PLAYERS:${s}`, dateYmd, payload, null); return payload }
+    catch { return { hadGames: false, index: [] } }
+  }
+  if (req.query.all === '1') {
+    const seen = new Set()
+    const players = []
+    for (const s of sports) {
+      const payload = await loadIndex(s)
+      for (const row of payload.index || []) {
+        if (!row.headshot || seen.has(row.player)) continue
+        seen.add(row.player)
+        players.push({ player: row.player, headshot: row.headshot, team: row.team, sport: row.sport })
+      }
+    }
+    return res.status(200).json({ players })
+  }
+
+  if (q.length < 2) return res.status(200).json({ matches: [], reason: 'type at least 2 letters' })
 
   let anyGames = false
   const matches = []
