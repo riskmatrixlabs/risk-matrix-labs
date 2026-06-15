@@ -1449,6 +1449,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
   const tabs = getDetailTabs(event, meta, live, final)
   const [dtab, setDtab] = useState(tabs[0] ?? 'Odds')
   const [hitTeam,     setHitTeam]     = useState('away')
+  const [lineMoveOpen, setLineMoveOpen] = useState(true)   // Line Movement collapsible, open by default
   const [pitchTeam,   setPitchTeam]   = useState('away')
   const [skatersTeam, setSkatersTeam] = useState('away')
   const [movement,    setMovement]    = useState({})
@@ -1964,12 +1965,13 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 {/* 6) Line Movement — simple sparklines + CLV */}
                 {moved.length > 0 && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
+                    <div onClick={() => setLineMoveOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: lineMoveOpen ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <InfoLabel center tip={GLOSSARY.lineMove} label={
                         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {final ? 'open → close' : 'how the price is moving'}</span></span>
                       } />
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: lineMoveOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
-                    {moved.map((k, i) => {
+                    {lineMoveOpen && moved.map((k, i) => {
                       const mkt = k.split('_')[0]           // 'ml' | 'spread' | 'total'
                       const m = movement[k]                 // line/price series → the headline number
                       // The PRICE ("juice") series that actually moves — drives %, CLV, arrow, sparkline.
@@ -1984,20 +1986,22 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       const od = jm ? americanToDecimal(jm.open) : null
                       const cd = jm ? americanToDecimal(jm.current) : null
                       const pctMove = (od && cd) ? Math.abs((cd / od - 1) * 100) : 0
+                      // Run Line / Total: the headline is the LINE; show the juice (odds) that actually moved too.
+                      const showOdds = mkt !== 'ml' && jm
                       return (
                         <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           {/* LEFT — what it is + where it opened */}
                           <span style={{ minWidth: '70px' }}>
                             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</div>
                             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED }}>
-                              <span style={{ color: 'rgba(255,255,255,0.35)' }}>open </span>{fmtMv(mkt, m.open)}
+                              <span style={{ color: 'rgba(255,255,255,0.35)' }}>open </span>{fmtMv(mkt, m.open)}{showOdds ? ` · ${fmtAm(jm.open)}` : ''}
                             </div>
                           </span>
                           <Sparkline series={jm ? jm.series : m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
-                          {/* RIGHT — where it is now + your CLV vs the open */}
+                          {/* RIGHT — where it is now + the odds that moved + your CLV vs the open */}
                           <span style={{ textAlign: 'right', minWidth: '64px' }}>
                             <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: lineColor }}>
-                              {flat ? '→' : up ? '↗' : '↘'} {fmtMv(mkt, m.current)}
+                              {flat ? '→' : up ? '↗' : '↘'} {fmtMv(mkt, m.current)}{showOdds ? <span style={{ fontSize: '11px', color: MUTED, fontWeight: 700 }}> {fmtAm(jm.current)}</span> : ''}
                             </div>
                             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: clv && Math.abs(clv.clvPct) >= 0.1 ? (clv.beat ? NEON_T : '#FF3B3B') : MUTED }}>
                               {clv && Math.abs(clv.clvPct) >= 0.1 ? `${clv.beat ? '+' : ''}${clv.clvPct.toFixed(1)}% CLV` : 'no move'}
