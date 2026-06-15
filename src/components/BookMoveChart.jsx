@@ -7,11 +7,12 @@ import { fetchBookMovement } from '../lib/oddsHistory.js'
 import { REPUTABLE_BOOKS } from '../lib/edgeFilter.js'
 
 const up = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop().toUpperCase()
-const BOOK_LINE_COLORS = ['#378ADD', '#1D9E75', '#BDFF00', '#FF3B3B', '#EF9F27', '#A78BFA', '#5DCAA5', '#F472B6', '#38BDF8', '#FB923C']
+const BOOK_LINE_COLORS = ['#378ADD', '#1D9E75', '#BDFF00', '#FF3B3B', '#EF9F27', '#A78BFA', '#5DCAA5', '#F472B6', '#38BDF8', '#FB923C', '#E879F9', '#FACC15']
 
-// US RETAIL books people bet, shown first; PINNACLE last as the SHARP reference line.
-// Betfair (exchange) stays OUT — not a book you bet at.
-const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'ballybet', 'betparx', 'fliff', 'novig', 'prophetx', 'rebet', 'onyxodds', 'pinnacle']
+// Books people actually bet, shown first; the no-vig exchanges (Novig/ProphetX) + Fliff/Rebet
+// ranked high so they make the line-chart cut; PINNACLE last as the SHARP reference line.
+// williamhill_us dropped (duplicate of Caesars). Betfair stays OUT — not a book you bet at.
+const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'espnbet', 'fanatics', 'hardrockbet', 'fliff', 'novig', 'prophetx', 'rebet', 'betrivers', 'ballybet', 'betparx', 'pinnacle']
 // Clean, DISTINCT chip labels (slice(0,3) collided: FanDuel/Fanatics both → "Fan", BetMGM/
 // BetRivers/Betfair all → "Bet"). Map each book to a unique short tag.
 const BOOK_ABBR = {
@@ -21,7 +22,7 @@ const BOOK_ABBR = {
   novig: 'NOVIG', prophetx: 'PROPH', rebet: 'REBET', onyxodds: 'ONYX',
 }
 const bookTag = (book) => BOOK_ABBR[book] || (BOOK_NAMES[book] || book).slice(0, 4).toUpperCase()
-const MAX_BOOK_LINES = 8
+const MAX_BOOK_LINES = 12
 // Keep only US-retail books (no Pinnacle/Betfair), ordered by what bettors care about, capped.
 export function curateBooks(byBook) {
   const entries = Object.entries(byBook || {}).filter(([book]) => BOOK_PRIORITY.includes(book))
