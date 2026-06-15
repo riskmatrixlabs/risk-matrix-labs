@@ -141,11 +141,11 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
           showFilters={showFilters} setShowFilters={setShowFilters}
           showSearch={showSearch} setShowSearch={setShowSearch}
           onPick={(g) => tuneTo(g)}
-          onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot })} />
+          onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} />
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot })} />}
+          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} />}
           {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
         </div>
       )}
@@ -490,6 +490,18 @@ function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip })
     return () => { live = false }
   }, [player?.name, game?.external_event_id, token])
 
+  // Recent stats — FREE (ESPN), so the card shows the player's last game line, not just a name.
+  const [pstats, setPstats] = useState(null)
+  useEffect(() => {
+    if (!player?.id || !token) { setPstats(null); return }
+    let live = true
+    fetch(`/api/player-stats?sport=${encodeURIComponent(sport)}&id=${encodeURIComponent(player.id)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (live) setPstats(j?.found ? j : null) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [player?.id, sport, token])
+
   // group by market+line → { Over, Under }
   const groups = []
   const idx = {}
@@ -521,9 +533,21 @@ function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip })
           : <span style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontWeight: 700, color: MUTED }}>{player.name[0]}</span>}
         <div>
           <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{player.name}</div>
-          <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>{[player.pos, player.team].filter(Boolean).join(' · ')} · PROPS</div>
+          <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>{[player.pos, player.team].filter(Boolean).join(' · ')}</div>
         </div>
       </div>
+      {pstats?.recent?.length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '5px' }}>Last game{pstats.opponent ? ` ${pstats.home === '@' ? '@' : 'vs'} ${pstats.opponent}` : ''}</div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {pstats.recent.slice(0, 6).map((s, i) => (
+              <span key={i} style={{ display: 'inline-flex', gap: '4px', alignItems: 'baseline', fontFamily: R, fontSize: '11px', fontWeight: 700, background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '3px 7px' }}>
+                <span style={{ fontSize: '8px', color: MUTED }}>{s.label}</span><span style={{ color: NEON_T }}>{s.value}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       {status === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '6px 2px' }}>PULLING PROPS…</div>}
       {status === 'done' && !groups.length && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, padding: '6px 2px' }}>No props posted for {player.name} yet (try after lineups).</div>}
       {groups.map((g, i) => (

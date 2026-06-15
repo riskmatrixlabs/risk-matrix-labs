@@ -26,7 +26,7 @@ async function getJson(url) {
 
 function extractAthletes(roster) {
   const out = []
-  const push = (a) => { if (a?.displayName) out.push({ name: a.displayName, pos: a.position?.abbreviation || '', headshot: a.headshot?.href || '' }) }
+  const push = (a) => { if (a?.displayName) out.push({ name: a.displayName, pos: a.position?.abbreviation || '', headshot: a.headshot?.href || '', id: a.id || null }) }
   for (const g of roster?.athletes || []) {
     if (Array.isArray(g?.items)) { for (const a of g.items) push(a) }
     else push(g)
@@ -65,7 +65,7 @@ export async function buildIndex(sportKey) {
     const ref = teamRefs[i]
     const teamAbbr = ref.id === ref.g.homeId ? ref.g.home_abbr : ref.g.away_abbr
     for (const a of extractAthletes(roster)) {
-      index.push({ player: a.name, pos: a.pos, headshot: a.headshot, team: teamAbbr, sport: sportKey, game: { sport: sportKey, ...gameFields(ref.g) } })
+      index.push({ player: a.name, pos: a.pos, headshot: a.headshot, id: a.id, team: teamAbbr, sport: sportKey, game: { sport: sportKey, ...gameFields(ref.g) } })
     }
   })
   return { hadGames: games.length > 0, index }
