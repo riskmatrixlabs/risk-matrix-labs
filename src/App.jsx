@@ -3173,14 +3173,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                                 {best && <span style={{ color: NEON_T, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}>PLACE ON</span>}
                                 <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>
                               </span>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                                 {r.odds != null && <span className="tv-glow" style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{fmt(r.odds)}</span>}
-                                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
+                                <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
+                                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: best ? NEON : 'rgba(189,255,0,0.14)', color: best ? '#0A0A0A' : NEON_T, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>→</span>
                               </span>
                             </a>
                           )
                           return (
                             <div style={{ marginBottom: '4px' }}>
+                              <div style={{ ...lbl, color: MUTED, opacity: 0.7 }}>Tap any book to place this parlay there</div>
                               {avail.length > 0 && <><div style={lbl}>✓ Best book · all {total} legs</div>{avail.map((r, i) => bookRow(r, false, i === 0))}</>}
                               {missing.length > 0 && <><div style={lbl}>Missing some legs</div>{missing.map(r => bookRow(r))}</>}
                               {region.length > 0 && <><div style={lbl}>Not in your region</div>{region.map(r => bookRow(r, true))}</>}
