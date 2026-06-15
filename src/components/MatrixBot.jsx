@@ -10,6 +10,7 @@ import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
 import { devigTwoWay, americanToImplied } from '../lib/devig.js'
+import { statProgress } from '../lib/statProgress.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
@@ -44,11 +45,12 @@ function headshotFor(title, players) {
 
 // Give each leg a real image: a player headshot for player props, else the correct team
 // logo from the matched event, else the league logo. Mutates and returns the normalized bet.
-function withLogos(n, ev, players = []) {
+function withLogos(n, ev, players = [], boxStats = null) {
   for (const leg of n.legs) {
     leg.headshot = players.length ? headshotFor(leg.title, players) : null
     const lo = Number(leg.odds)
     leg.winProb = Number.isFinite(lo) ? americanToImplied(lo) : null
+    leg.statNow = boxStats ? statProgress(leg.title, boxStats, leg.status) : null
     let logo = null
     if (ev) {
       const side = teamSide(leg.title, ev) || teamSide(leg.subtitle, ev)
@@ -1230,6 +1232,30 @@ function TrackChannel({ bets, sport, token }) {
     return () => { live = false }
   }, [token, betSports.join(',')])
 
+  // Live box-score stats for prop progress bars — one fetch per live matched game,
+  // refreshed every 60s. Free (ESPN summary, 0 Odds-API credits), keyed by event id.
+  const [boxScores, setBoxScores] = useState({})
+  const liveGameKeys = useMemo(() => {
+    const set = new Set()
+    for (const b of bets || []) {
+      const ev = events.find(e => matchBetToEvent(b, e))
+      if (ev && isLiveEvent(ev) && ev.external_event_id) set.add(`${(b.sport || ev.sport || sport)}|${ev.external_event_id}`)
+    }
+    return [...set]
+  }, [bets, events, sport])
+  useEffect(() => {
+    if (!liveGameKeys.length) { setBoxScores({}); return }
+    let live = true
+    const load = () => Promise.all(liveGameKeys.map(k => {
+      const [sp, id] = k.split('|')
+      return fetch(`/api/box-score?sport=${encodeURIComponent(sp)}&id=${encodeURIComponent(id)}`)
+        .then(r => r.ok ? r.json() : null).then(j => [id, j?.players || {}]).catch(() => [id, {}])
+    })).then(pairs => { if (live) setBoxScores(Object.fromEntries(pairs)) })
+    load()
+    const t = setInterval(load, 60000)
+    return () => { live = false; clearInterval(t) }
+  }, [liveGameKeys.join(',')])
+
   // No-vig win probabilities from the matched event's two-way markets (same as Insights).
   const buildDvs = (ev) => {
     const m = ev.metadata || {}
@@ -1365,7 +1391,7 @@ function TrackChannel({ bets, sport, token }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {grp.bets.map((b) => {
                 const ev = graded.find(x => x.bet === b)?.ev
-                const n = withLogos(normalizeBet(b), ev, players)
+                const n = withLogos(normalizeBet(b), ev, players, ev ? boxScores[ev.external_event_id] : null)
                 return n.kind === 'parlay'
                   ? <BetTicket key={b.id} bet={n} grade={gradeFor(b)} />
                   : <BetCard key={b.id} bet={n} grade={gradeFor(b)} />

@@ -5,7 +5,6 @@ import { ticketStatus, slipClv } from '../lib/betCard.js'
 
 const R = "'Rajdhani',sans-serif"
 const I = "'Inter',sans-serif"
-const AMBER = '#FFB800'
 
 // This app uses unicode/emoji glyphs (no Tabler webfont). Map status → glyph.
 const GLYPH = { won: '✓', lost: '✕', live: '◷', push: '–' }
@@ -31,13 +30,20 @@ function Ring({ pct, size = 38, stroke = 4, color = NEON }) {
   )
 }
 
-// Thin per-leg progress bar — fills to the leg's win probability, colored by status.
-function ProbBar({ pct, color = NEON }) {
-  if (pct == null || Number.isNaN(pct)) return null
-  const p = Math.max(0, Math.min(1, pct))
+// Live stat-progress bar (Pikkit-style): fills to current ÷ line, green on track / red
+// once busted or lost, with a "current / line" readout. stat from src/lib/statProgress.js.
+function StatBar({ stat }) {
+  if (!stat) return null
+  const p = Math.max(0, Math.min(1, stat.pct))
   return (
-    <div style={{ height: 4, borderRadius: 2, background: '#222', overflow: 'hidden', marginTop: 6 }}>
-      <div style={{ width: `${Math.round(p * 100)}%`, height: '100%', background: color, borderRadius: 2 }} />
+    <div style={{ marginTop: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+        <span style={{ fontFamily: I, fontSize: 9, color: MUTED, letterSpacing: '0.04em' }}>{stat.dir === 'over' ? 'OVER' : 'UNDER'} {stat.line}</span>
+        <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, color: stat.color }}>{stat.label}</span>
+      </div>
+      <div style={{ height: 5, borderRadius: 3, background: '#222', overflow: 'hidden' }}>
+        <div style={{ width: `${Math.round(p * 100)}%`, height: '100%', background: stat.color, borderRadius: 3 }} />
+      </div>
     </div>
   )
 }
@@ -91,22 +97,23 @@ export function BetCard({ bet, grade, compact = false }) {
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {grade?.clvPct != null && <GradeBadge label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
       </div>
+      <StatBar stat={leg.statNow} />
     </div>
   )
 }
 
 function LegRow({ leg }) {
   const st = leg.status
+  // Name + detail stay light/readable; the bar (StatBar) carries the green/red status.
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', position: 'relative',
-      background: st.key === 'live' ? 'rgba(255,184,0,0.05)' : 'transparent' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', position: 'relative' }}>
       <Avatar headshot={leg.headshot} logo={leg.logo} label={leg.subtitle || leg.title} status={st} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'won' ? TEXT : st.key === 'live' ? AMBER : '#8a8a8a', textDecoration: st.key === 'lost' ? 'line-through' : 'none' }}>{leg.title}</div>
-        <div style={{ fontFamily: I, fontSize: 10, color: st.key === 'live' ? AMBER : MUTED }}>
-          {fmtOdds(leg.odds)}{leg.close != null ? ` · closed ${fmtOdds(leg.close)}` : ''}{st.key === 'live' ? ' · needs this' : ''}
+        <div style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, textDecoration: st.key === 'lost' ? 'line-through' : 'none' }}>{leg.title}</div>
+        <div style={{ fontFamily: I, fontSize: 10, color: MUTED }}>
+          {fmtOdds(leg.odds)}{leg.close != null ? ` · closed ${fmtOdds(leg.close)}` : ''}
         </div>
-        <ProbBar pct={leg.winProb} color={st.color} />
+        <StatBar stat={leg.statNow} />
       </div>
       <span style={{ color: st.color, fontSize: 17, fontWeight: 700, lineHeight: 1 }}>{GLYPH[st.key] || ''}</span>
     </div>
