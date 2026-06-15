@@ -428,8 +428,12 @@ const BOOKS = ['DraftKings','FanDuel','BetMGM','Caesars','ESPN Bet','PointsBet',
 
 const EMPTY = {
   date: '', sport: 'NFL', book: '', betType: 'Straight', event: '', pick: '',
-  odds: '', units: '', stake: '', result: 'Open', confidence: 0,
+  odds: '', units: '', stake: '', result: 'Open', confidence: 0, legs: [],
 }
+
+// Bet types that are multiple correlated/combined legs on one ticket.
+const MULTI_LEG_TYPES = ['Parlay', 'SGP', 'RR 2s', 'RR 3s']
+const isMultiLegType = (t) => MULTI_LEG_TYPES.includes(t)
 
 function profitFromOdds(stake, odds) {
   if (!stake || !odds || odds === 0) return 0
@@ -439,13 +443,29 @@ function profitFromOdds(stake, odds) {
 function AddBetModal({ onAdd, onClose, unitSize, initial }) {
   const { isMobile } = useMobile()
   const [form, setForm] = useState(initial
-    ? { ...initial, odds: String(initial.odds), units: String(initial.units), stake: String(initial.stake) }
+    ? { ...initial, odds: String(initial.odds), units: String(initial.units), stake: String(initial.stake),
+        legs: Array.isArray(initial.legs) ? initial.legs.map(l => ({ event: l.event || '', pick: l.pick || '', odds: l.odds == null ? '' : String(l.odds) })) : [] }
     : { ...EMPTY, date: new Date().toISOString().slice(0, 10) }
   )
   const isEdit = !!initial?.id
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const f   = (k)    => (e) => set(k, e.target.value)
+
+  // ── Parlay leg editor ──
+  const multiLeg = isMultiLegType(form.betType)
+  const legs = form.legs || []
+  const setLeg    = (i, k, v) => setForm(p => ({ ...p, legs: p.legs.map((l, j) => j === i ? { ...l, [k]: v } : l) }))
+  const addLeg    = ()        => setForm(p => ({ ...p, legs: [...(p.legs || []), { event: '', pick: '', odds: '' }] }))
+  const removeLeg = (i)       => setForm(p => ({ ...p, legs: p.legs.filter((_, j) => j !== i) }))
+  // Switching bet type: seed 2 empty legs when entering a multi-leg type with none yet.
+  const pickBetType = (t) => setForm(p => ({
+    ...p, betType: t,
+    legs: isMultiLegType(t) && (!p.legs || p.legs.length === 0) ? [{ event: '', pick: '', odds: '' }, { event: '', pick: '', odds: '' }] : p.legs,
+  }))
+  const cleanLegs = () => legs
+    .map(l => ({ event: (l.event || '').trim(), pick: (l.pick || '').trim(), odds: parseInt(String(l.odds).replace(/[−–—]/g, '-').replace(/[^0-9-]/g, '')) || 0 }))
+    .filter(l => l.pick || l.event)
 
   // Bidirectional: units ↔ stake
   const onUnitsChange = (e) => {
@@ -486,9 +506,18 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 
   const submit = (e) => {
     e.preventDefault()
-    if (!form.date || !form.event || !form.pick || !form.odds || (!form.units && !form.stake)) return
+    const cl = multiLeg ? cleanLegs() : []
+    // For a multi-leg ticket, the legs are the source of truth; the event/pick are derived from them.
+    const eventOut = multiLeg ? `${cl.length}-Leg Parlay` : form.event
+    const pickOut  = multiLeg ? cl.map(l => l.pick).filter(Boolean).join(' + ') : form.pick
+    if (multiLeg) {
+      if (!form.date || cl.length < 2 || !form.odds || (!form.units && !form.stake)) return
+    } else if (!form.date || !form.event || !form.pick || !form.odds || (!form.units && !form.stake)) return
     onAdd({
       ...form,
+      event: eventOut,
+      pick:  pickOut,
+      legs:  multiLeg ? cl.map(l => ({ pick: l.pick, odds: l.odds, event: l.event || null, sport: form.sport, book: form.book || null })) : null,
       odds,
       units: +effectiveUnits.toFixed(2),
       stake: +effectiveStake.toFixed(2),
@@ -510,7 +539,9 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 
   const autoStyle = { ...inputStyle, color: 'var(--muted)', fontStyle: 'italic', cursor: 'default', backgroundColor: 'var(--bg)' }
 
-  const isDisabled = !form.event || !form.pick || !form.odds || (!form.units && !form.stake)
+  const isDisabled = multiLeg
+    ? (cleanLegs().length < 2 || !form.odds || (!form.units && !form.stake))
+    : (!form.event || !form.pick || !form.odds || (!form.units && !form.stake))
 
   const SectionLabel = ({ children }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -588,12 +619,21 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
                     style={{ background: 'var(--card2)', border: `1px solid ${parseInt(form.odds) > 0 ? NEON : 'var(--border2)'}`, borderRadius: '6px', color: parseInt(form.odds) > 0 ? NEON_T : 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '2px 5px', cursor: 'pointer', flexShrink: 0 }}>
                     {parseInt(form.odds) > 0 ? '+' : '−'}
                   </button>
-                  <input value={form.odds.replace(/^[+-]/, '')} onChange={e => {
-                    const raw = e.target.value.replace(/[^0-9]/g,'')
-                    const sign = parseInt(form.odds) >= 0 ? '' : '-'
-                    set('odds', sign + raw)
-                  }} placeholder="110" inputMode="numeric"
-                    style={{ background: 'transparent', border: 'none', color: parseInt(form.odds) > 0 ? NEON_T : 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, textAlign: 'center', width: '60px', outline: 'none', padding: 0 }} />
+                  <input value={form.odds === '' ? '' : (form.odds === '+' || parseInt(form.odds) > 0 ? '+' : '−') + form.odds.replace(/[+-]/g, '')} onChange={e => {
+                    // Normalize any unicode minus to ASCII so sign detection is reliable even
+                    // though the displayed value uses a unicode '−'.
+                    const raw = e.target.value.replace(/[−–—]/g, '-')
+                    const digits = raw.replace(/[^0-9]/g, '')
+                    // A typed +/- sets the sign explicitly; otherwise keep the current sign.
+                    let neg
+                    if (/-/.test(raw)) neg = true
+                    else if (/\+/.test(raw)) neg = false
+                    else neg = (form.odds !== '+' && parseInt(form.odds) < 0)
+                    // Preserve a lone sign (no digits yet) so the next keystroke keeps the intent.
+                    if (!digits) { set('odds', neg ? '-' : (/\+/.test(raw) ? '+' : '')); return }
+                    set('odds', (neg ? '-' : '') + digits)
+                  }} placeholder="−110" inputMode="text"
+                    style={{ background: 'transparent', border: 'none', color: parseInt(form.odds) > 0 ? NEON_T : 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, textAlign: 'center', width: '72px', outline: 'none', padding: 0 }} />
                 </div>
               </div>
               {[
@@ -629,14 +669,45 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             )}
           </div>
 
-          {/* ── MATCHUP CARD ── */}
-          <div style={card}>
-            <span style={lbl}>Matchup</span>
-            <input value={form.event} onChange={f('event')} placeholder="Event  ·  e.g. Chiefs vs Raiders"
-              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', padding: '11px 14px', outline: 'none', marginBottom: '8px' }} />
-            <input value={form.pick} onChange={f('pick')} placeholder="Pick  ·  e.g. Chiefs -6.5"
-              style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '10px', color: form.pick ? NEON_T : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', fontWeight: form.pick ? 700 : 400, padding: '11px 14px', outline: 'none' }} />
-          </div>
+          {/* ── MATCHUP / LEGS CARD ── */}
+          {!multiLeg ? (
+            <div style={card}>
+              <span style={lbl}>Matchup</span>
+              <input value={form.event} onChange={f('event')} placeholder="Event  ·  e.g. Chiefs vs Raiders"
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', padding: '11px 14px', outline: 'none', marginBottom: '8px' }} />
+              <input value={form.pick} onChange={f('pick')} placeholder="Pick  ·  e.g. Chiefs -6.5"
+                style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '10px', color: form.pick ? NEON_T : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', fontWeight: form.pick ? 700 : 400, padding: '11px 14px', outline: 'none' }} />
+            </div>
+          ) : (
+            <div style={card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ ...lbl, marginBottom: 0 }}>Legs · {form.betType}</span>
+                <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: legs.length >= 2 ? NEON_T : MUTED }}>{cleanLegs().length} ADDED</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {legs.map((leg, i) => (
+                  <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED }}>LEG {i + 1}</span>
+                      {legs.length > 2 && (
+                        <button type="button" onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, fontFamily: R, fontSize: '14px', lineHeight: 1, cursor: 'pointer', padding: '0 2px' }}>×</button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input value={leg.pick} onChange={e => setLeg(i, 'pick', e.target.value)} placeholder="Pick  ·  Over 8.5"
+                        style={{ flex: 2, minWidth: 0, background: 'var(--card2)', border: `1px solid ${leg.pick ? NEON : 'var(--border2)'}`, borderRadius: '8px', color: leg.pick ? NEON_T : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '13px', fontWeight: leg.pick ? 700 : 400, padding: '9px 10px', outline: 'none' }} />
+                      <input value={leg.odds} onChange={e => setLeg(i, 'odds', e.target.value)} placeholder="−110" inputMode="text"
+                        style={{ width: '64px', flexShrink: 0, background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '8px', color: 'var(--text)', fontFamily: R, fontSize: '13px', fontWeight: 700, textAlign: 'center', padding: '9px 4px', outline: 'none' }} />
+                    </div>
+                    <input value={leg.event} onChange={e => setLeg(i, 'event', e.target.value)} placeholder="Event  ·  Tigers vs Astros  (for logos)"
+                      style={{ width: '100%', marginTop: '8px', background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '8px', color: 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '12px', padding: '8px 10px', outline: 'none' }} />
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addLeg} style={{ marginTop: '10px', width: '100%', background: 'var(--card2)', border: `1px dashed var(--border2)`, borderRadius: '10px', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', padding: '10px', cursor: 'pointer' }}>+ ADD LEG</button>
+              <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.04em', marginTop: '8px', lineHeight: 1.5 }}>Enter the combined ticket price in <b style={{ color: NEON_T }}>ODDS</b> above. Each leg's own price is optional.</div>
+            </div>
+          )}
 
           {/* ── SPORT CARD ── */}
           <div style={card}>
@@ -663,7 +734,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             <span style={lbl}>Bet Type</span>
             <div style={scrollRow}>
               {BET_TYPES.map(t => (
-                <button key={t} type="button" onClick={() => set('betType', t)} style={pill(form.betType === t)}>{t}</button>
+                <button key={t} type="button" onClick={() => pickBetType(t)} style={pill(form.betType === t)}>{t}</button>
               ))}
             </div>
           </div>
@@ -679,11 +750,12 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
             </div>
           </div>
 
-          <div style={{ height: '8px' }} />
+          {/* runway so the last fields always clear the sticky footer (no field trapped under the CTA) */}
+          <div style={{ height: '28px', flexShrink: 0 }} />
         </form>
 
         {/* Footer CTA */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: `calc(env(safe-area-inset-bottom) + 12px)`, borderTop: `1px solid var(--border)`, background: 'var(--card2)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+        <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: `calc(env(safe-area-inset-bottom) + 12px)`, borderTop: `1px solid var(--border)`, background: 'var(--card2)', boxShadow: '0 -10px 20px rgba(0,0,0,0.45)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
           <button form="mbet" type="submit" style={{
             ...btnStyle(true), width: '100%', padding: '15px', fontSize: '13px', letterSpacing: '0.18em', borderRadius: '12px',
             opacity: isDisabled ? 0.4 : 1,
