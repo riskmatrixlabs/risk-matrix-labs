@@ -609,25 +609,35 @@ function GameCard({ game, sport, token }) {
   }, [game?.away, game?.home, sport, token])
 
   const col = (t, fbAbbr) => (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: 0 }}>
-      {t?.logo ? <img src={t.logo} alt="" width="38" height="38" style={{ objectFit: 'contain' }} /> : <div style={{ width: '38px', height: '38px' }} />}
-      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{t?.abbr || fbAbbr}</span>
-      {t?.record && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{t.record}</span>}
-      {t?.pitcher && <span style={{ fontFamily: R, fontSize: '8px', color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '95px' }}>{t.pitcher}</span>}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+      {t?.logo ? <img src={t.logo} alt="" width="46" height="46" style={{ objectFit: 'contain' }} /> : <div style={{ width: '46px', height: '46px' }} />}
+      <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT }}>{t?.abbr || fbAbbr}</span>
+      {t?.record && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{t.record}</span>}
+      {t?.pitcher && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>⚾ {t.pitcher}{t.era ? <span style={{ color: NEON_T }}> · {t.era}</span> : ''}</span>}
     </div>
   )
   const isLive = info?.status?.state === 'in'
   const center = info ? (info.status.detail || (info.status.state === 'pre' ? '' : '')) : `${up(game.away)} @ ${up(game.home)}`
+  const ou = info?.ou
+  const ouLabel = ou ? (ou.lean === 'OVER' ? '📈 LEANS OVER' : ou.lean === 'UNDER' ? '📉 LEANS UNDER' : '➖ COIN FLIP') : null
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '11px 12px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-      {col(info?.away, game.away_abbr || up(game.away))}
-      <div style={{ flexShrink: 0, textAlign: 'center', minWidth: '66px' }}>
-        {info && info.status.state !== 'pre'
-          ? <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{info.away.score}<span style={{ color: MUTED, margin: '0 4px' }}>-</span>{info.home.score}</div>
-          : <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED }}>@</div>}
-        <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isLive ? DANGER : NEON_T, letterSpacing: '0.04em', marginTop: '3px', whiteSpace: 'nowrap' }}>{center}</div>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {col(info?.away, game.away_abbr || up(game.away))}
+        <div style={{ flexShrink: 0, textAlign: 'center', minWidth: '70px' }}>
+          {info && info.status.state !== 'pre'
+            ? <div style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: TEXT }}>{info.away.score}<span style={{ color: MUTED, margin: '0 4px' }}>-</span>{info.home.score}</div>
+            : <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>@</div>}
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isLive ? DANGER : NEON_T, letterSpacing: '0.04em', marginTop: '3px', whiteSpace: 'nowrap' }}>{center}</div>
+        </div>
+        {col(info?.home, game.home_abbr || up(game.home))}
       </div>
-      {col(info?.home, game.home_abbr || up(game.home))}
+      {ou && (
+        <div style={{ marginTop: '11px', display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.07)' : 'transparent' }}>
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>{ouLabel}</span>
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>{ou.reason}</span>
+        </div>
+      )}
     </div>
   )
 }
