@@ -63,9 +63,11 @@ export function statProgress(title, statsByPlayer, status) {
   const current = resolveStat(statsByPlayer[norm(p.player)], p.market)
   if (current == null || !(p.line > 0)) return null
 
-  const pct = Math.max(0, Math.min(1, current / p.line))
   const busted = p.dir === 'under' && current > p.line
   const cashing = p.dir === 'over' ? current >= p.line : current <= p.line
+  // A win fills the bar completely. Otherwise show progress toward the line.
+  const isWin = status?.key === 'won' || (status?.key !== 'lost' && cashing)
+  const pct = isWin ? 1 : Math.max(0, Math.min(1, current / p.line))
   // Sportsbook coloring: settled win = green, settled loss = red; live = green while
   // on track, red once an under busts.
   let color = NEON
