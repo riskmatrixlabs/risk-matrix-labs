@@ -124,10 +124,11 @@ function LegRow({ leg }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', position: 'relative' }}>
       <Avatar headshot={leg.headshot} logo={leg.logo} label={leg.subtitle || leg.title} status={st} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, textDecoration: st.key === 'lost' ? 'line-through' : 'none' }}>{leg.title}</div>
-        <div style={{ fontFamily: I, fontSize: 10, color: MUTED }}>
-          {fmtOdds(leg.odds)}{leg.close != null ? ` · closed ${fmtOdds(leg.close)}` : ''}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, textDecoration: st.key === 'lost' ? 'line-through' : 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.title}</span>
+          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, flexShrink: 0 }}>{fmtOdds(leg.odds)}</span>
         </div>
+        {leg.close != null && <div style={{ fontFamily: I, fontSize: 9, color: MUTED }}>closed {fmtOdds(leg.close)}</div>}
         <StatBar stat={leg.statNow} />
         <ScoreChip text={leg.scoreLine} status={st} />
       </div>
@@ -144,7 +145,9 @@ export function BetTicket({ bet, grade }) {
   const legProbs = bet.legs.map(l => l.winProb).filter(p => p != null && !Number.isNaN(p))
   const comboProb = legProbs.length === bet.legs.length && legProbs.length ? legProbs.reduce((a, b) => a * b, 1) : null
   return (
-    <div style={{ border: `1px solid ${BORDER}`, borderRadius: 14, background: '#0c0c0c', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', border: `1px solid ${t.overall.color}59`, borderRadius: 14, background: '#0c0c0c', overflow: 'hidden' }}>
+      {/* Left status-color accent stripe, matching the single card. */}
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: t.overall.color, zIndex: 2 }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '11px 13px', borderBottom: '1px solid #1e1e1e' }}>
         <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{bet.title}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -158,11 +161,12 @@ export function BetTicket({ bet, grade }) {
         {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} /></div>)}
       </div>
 
-      {/* Bottom matches the single (Wheeler) card: odds·stake→win tile + EV + CLV badges. */}
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, padding: '0 13px 12px' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, background: '#141414', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '6px 10px' }}>
-          <span style={{ fontFamily: R, fontSize: 8, color: MUTED, letterSpacing: '0.08em' }}>ODDS · STAKE → WIN</span>
-          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT }}>{fmtOdds(bet.odds)}{win != null ? ` · $${bet.stake.toFixed(0)} → $${win.toFixed(0)}` : ''}</span>
+      {/* Bottom matches the single (Wheeler) card exactly: ODDS tile (odds + stake→win) + EV + CLV badges. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 13px 12px' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#141414', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '7px 10px' }}>
+          <span style={{ fontFamily: R, fontSize: 9, color: MUTED, letterSpacing: '0.1em' }}>ODDS</span>
+          <span style={{ fontFamily: R, fontSize: 17, fontWeight: 700, color: TEXT }}>{fmtOdds(bet.odds)}</span>
+          {win != null && <span style={{ fontFamily: R, fontSize: 11, color: MUTED, marginLeft: 'auto' }}>${Number(bet.stake).toFixed(0)} → ${win.toFixed(0)}</span>}
         </div>
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {clvVal != null && <GradeBadge label="CLV" value={`${clvVal >= 0 ? '+' : ''}${clvVal.toFixed(1)}%`} good={clvVal >= 0} />}

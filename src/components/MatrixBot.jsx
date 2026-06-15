@@ -45,30 +45,36 @@ function headshotFor(title, players) {
 
 // Give each leg a real image: a player headshot for player props, else the correct team
 // logo from the matched event, else the league logo. Mutates and returns the normalized bet.
-function withLogos(n, ev, players = [], boxStats = null) {
+function withLogos(n, ev, players = [], boxStats = null, events = []) {
   for (const leg of n.legs) {
+    // Each parlay leg can be a different game — match the leg to its OWN event (by its
+    // event name) so ML/spread legs get real team logos + score, not the league fallback.
+    const legEv = (leg.subtitle && events.length)
+      ? events.find(e => matchBetToEvent({ sport: leg.sport || n.sport, event: leg.subtitle, date: n.date }, e))
+      : null
+    const gameEv = legEv || ev
     leg.headshot = players.length ? headshotFor(leg.title, players) : null
     const lo = Number(leg.odds)
     leg.winProb = Number.isFinite(lo) ? americanToImplied(lo) : null
     // Per-type live tracking: player prop → stat bar; game total → score-vs-line bar;
-    // ML/spread → score line. Totals/ML use the matched event's score (ev).
+    // ML/spread → score line.
     leg.statNow = null
     leg.scoreLine = null
     const propBar = boxStats ? statProgress(leg.title, boxStats, leg.status) : null
-    const totBar = ev ? totalProgress(leg.title, ev.away_score, ev.home_score, leg.status) : null
+    const totBar = gameEv ? totalProgress(leg.title, gameEv.away_score, gameEv.home_score, leg.status) : null
     if (propBar) leg.statNow = propBar
     else if (totBar) leg.statNow = totBar
-    else if (isMoneylineOrSpread(leg.title)) leg.scoreLine = ev ? scoreText(ev) : null
+    else if (isMoneylineOrSpread(leg.title)) leg.scoreLine = gameEv ? scoreText(gameEv) : null
     else {
       // Over/under bet with no live data yet (pre-game) → show an EMPTY bar so it always renders.
       const pl = parseLine(leg.title)
       if (pl) leg.statNow = shellBar(pl.line, pl.dir)
     }
     let logo = null
-    if (ev) {
-      const side = teamSide(leg.title, ev) || teamSide(leg.subtitle, ev)
-      if (side === 'away') logo = ev.away_logo
-      else if (side === 'home') logo = ev.home_logo
+    if (gameEv) {
+      const side = teamSide(leg.title, gameEv) || teamSide(leg.subtitle, gameEv)
+      if (side === 'away') logo = gameEv.away_logo
+      else if (side === 'home') logo = gameEv.home_logo
     }
     if (!logo) logo = LEAGUE_LOGO[String(leg.sport || n.sport || '').toUpperCase()] || null
     leg.logo = logo
@@ -1410,7 +1416,7 @@ function TrackChannel({ bets, sport, token }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {grp.bets.map((b) => {
                 const ev = graded.find(x => x.bet === b)?.ev
-                const n = withLogos(normalizeBet(b), ev, players, ev ? boxScores[ev.external_event_id] : null)
+                const n = withLogos(normalizeBet(b), ev, players, ev ? boxScores[ev.external_event_id] : null, events)
                 return n.kind === 'parlay'
                   ? <BetTicket key={b.id} bet={n} grade={gradeFor(b)} />
                   : <BetCard key={b.id} bet={n} grade={gradeFor(b)} />
