@@ -191,7 +191,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
   const hasScore = event.home_score != null
 
   // Delayed / postponed / suspended / canceled — show a clear tag instead of the original time.
-  const STATUS_TAG = { PPD: { label: 'PPD', color: '#ffa500' }, DLY: { label: 'Delayed', color: '#ffa500' }, SUS: { label: 'Suspended', color: '#ffa500' }, CXL: { label: 'Canceled', color: '#FF3B3B' } }
+  const STATUS_TAG = { PPD: { label: 'Postponed', color: '#ffa500' }, DLY: { label: 'Delayed', color: '#ffa500' }, SUS: { label: 'Suspended', color: '#ffa500' }, CXL: { label: 'Canceled', color: '#FF3B3B' } }
   const statusTag = STATUS_TAG[event.status] || null
   const centerLabel = live ? 'LIVE' : final ? (isOT ? 'Final/OT' : 'Final') : statusTag ? statusTag.label : fmtTime(event.start_time)
   const centerColor = live ? '#FF3B3B' : final ? MUTED : statusTag ? statusTag.color : TEXT
