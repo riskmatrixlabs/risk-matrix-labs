@@ -894,7 +894,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
     if (!P.lines.has(lk)) P.lines.set(lk, { marketLabel: p.marketLabel, point: p.point, sides: {}, ev: null })
     const L = P.lines.get(lk)
     L.sides[p.side] = p
-    if (p.evPct != null) {
+    if (p.evPct != null && p.evPct > 0) {   // only a POSITIVE edge counts as +EV (green)
       if (L.ev == null || p.evPct > L.ev) L.ev = p.evPct
       if (P.ev == null || p.evPct > P.ev) P.ev = p.evPct
     }
@@ -917,14 +917,17 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
 
   // Compact single-line price chip (▲ more / ▼ less). Tight so a player's whole board scans fast.
   const sideChip = (player, L, side) => {
-    const r = L.sides[side], more = side === 'Over', isEdge = r && r.evPct != null
+    const r = L.sides[side], more = side === 'Over'
+    const isEdge = r && r.evPct != null && r.evPct > 0          // GREEN highlight = a real +EV edge only
+    const isBad = r && r.evPct != null && r.evPct < 0           // -EV bet → flag red, never green
     if (!r) return <div style={{ flex: 1, padding: '7px 4px', borderRadius: '7px', border: `1px solid ${BORDER}`, textAlign: 'center', opacity: 0.35, fontFamily: R, fontSize: '12px', color: MUTED }}>{more ? '▲' : '▼'} —</div>
     return (
       <button onClick={() => setConfirm({ pick: `${player} ${side} ${L.point} ${L.marketLabel}`, odds: r.best.price, book: r.best.book, url: decorate(r.best.book, r.best.link), byBook: r.byBook, byBookLink: r.byBookLink, evPct: r.evPct, consensus: r.consensus })}
         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '7px 4px', borderRadius: '7px', border: `1px solid ${isEdge ? NEON : BORDER}`, background: isEdge ? 'rgba(189,255,0,0.1)' : '#0d0d0d', cursor: 'pointer' }}>
         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isEdge ? NEON_T : MUTED }}>{more ? '▲' : '▼'}</span>
         <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isEdge ? NEON_T : TEXT }}>{fmtAm(r.best.price)}</span>
-        {isEdge && <span style={{ fontFamily: R, fontSize: '8px', color: NEON_T }}>{r.consensus ? '~' : '+'}{r.evPct.toFixed(1)}</span>}
+        {isEdge && <span style={{ fontFamily: R, fontSize: '8px', color: NEON_T }}>{r.consensus ? '~' : '+'}{r.evPct.toFixed(1)}%</span>}
+        {isBad && <span style={{ fontFamily: R, fontSize: '8px', color: DANGER }}>{r.evPct.toFixed(1)}%</span>}
         {r.openPrice != null && r.openPrice !== r.best.price && (() => {
           const toDec = (a) => a > 0 ? 1 + a / 100 : 1 + 100 / -a
           const up = toDec(r.best.price) > toDec(r.openPrice)
