@@ -147,7 +147,7 @@ function OuFlag({ event, token, compact = false, mini = false }) {
   }
   if (compact) {
     return (
-      <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ marginBottom: '7px', display: 'flex', justifyContent: 'center' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '7px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent' }}>
           <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
           {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{ou.reason}</span> : null}
@@ -198,7 +198,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
       onClick={onClick}
       style={{
         background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px',
-        padding: '10px 14px', cursor: 'pointer',
+        padding: '8px 14px 9px', cursor: 'pointer',
         transition: 'border-color 0.15s',
       }}
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)'}
@@ -206,7 +206,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
     >
       {/* League tag — shown on the mixed-sport "All" slate so each card is identifiable */}
       {showSport && event.sport && (
-        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '8px' }}>{event.sport}</div>
+        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '4px' }}>{event.sport}</div>
       )}
       {/* Event subtitle — series/round name (e.g. "Stanley Cup Final · Game 5", "Commissioner's Cup") */}
       {(event.metadata?.event_note || event.metadata?.series_summary) && (() => {
@@ -218,6 +218,9 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           </div>
         )
       })()}
+      {/* O/U model lean — full flag (lean + total + reason), up top where it's easy to scan */}
+      {preGame && <OuFlag event={event} token={token} compact />}
+
       {/* Main row */}
       {live && hasScore && event.sport === 'MLB' ? (() => {
         // Live MLB: [Logo · Name · Score] [Bases · Inning] [Score · Name · Logo]
@@ -271,8 +274,6 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           </div>
           {/* Center */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '76px' }}>
-            {/* O/U model lean — compact, sits right above the time to save a whole row */}
-            {preGame && <OuFlag event={event} token={token} mini />}
             {hasScore ? (
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <span style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: (awayWin || awayLead) ? TEXT : MUTED, opacity: (homeWin || homeLead) ? 0.7 : 1 }}>{event.away_score}</span>
@@ -334,7 +335,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
 
       {/* Odds row */}
       {!hasScore && event.odds_ml_away != null && (
-        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+        <div style={{ marginTop: '8px', paddingTop: '7px', borderTop: `1px solid ${BORDER}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
           {[
             { label: event.away_abbr || 'Away', val: `ML ${fmtOdds(event.odds_ml_away)}` },
             { label: 'O/U',                     val: event.odds_total != null ? `${event.odds_total}` : '—' },
@@ -358,7 +359,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
       )}
 
       {/* Tap affordance — signals the card opens to full Insights */}
-      <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+      <div style={{ marginTop: '7px', paddingTop: '6px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
         <span style={{ fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>Tap for Insights</span>
         <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="rgba(189,255,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </div>
