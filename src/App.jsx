@@ -3012,8 +3012,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }
   const addToSlip = (leg) => {
     if (!leg?.pick) return
+    // Accumulate into the slip; do NOT auto-open the drawer. Auto-opening dropped a
+    // full-screen tap-to-close overlay over the board, so the next prop tap just closed
+    // the drawer instead of adding — making it feel like only one leg could be added.
+    // The neon FAB badge ticks up as feedback; the user opens the drawer when ready.
     setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, byBookLink: leg.byBookLink || null, evPct: leg.evPct ?? null, consensus: leg.consensus ?? null, sport: leg.sport || null, event: leg.event || null }])
-    setSlipOpen(true)
   }
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
   const amToDec = (a) => a == null ? 1 : (a > 0 ? 1 + a / 100 : 1 + 100 / -a)
