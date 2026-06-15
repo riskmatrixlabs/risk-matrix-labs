@@ -120,8 +120,52 @@ function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
   )
 }
 
+// ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
+// anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
+function OuFlag({ event, token, compact = false }) {
+  const [ou, setOu] = useState(null)
+  useEffect(() => {
+    if (!token || event?.sport !== 'MLB' || !event?.away_team || !event?.home_team) { setOu(null); return }
+    let cancel = false
+    const iso = event.start_time ? `&iso=${encodeURIComponent(event.start_time)}` : ''
+    fetch(`/api/game-info?sport=MLB&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (!cancel && j?.ou?.lean) setOu(j.ou) }).catch(() => {})
+    return () => { cancel = true }
+  }, [event?.away_team, event?.home_team, event?.sport, token])
+  if (!ou) return null
+  const t = ou.total
+  const label = ou.lean === 'OVER' ? '📈 OVER' : ou.lean === 'UNDER' ? '📉 UNDER' : '➖ LEAN'
+  if (compact) {
+    return (
+      <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '7px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent' }}>
+          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
+          {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{ou.reason}</span> : null}
+        </span>
+      </div>
+    )
+  }
+  const moveArrow = t && t.dir > 0 ? '▲' : t && t.dir < 0 ? '▼' : null
+  const bp = ou.bullpens
+  return (
+    <div style={{ margin: '0 16px 12px', padding: '11px 13px', borderRadius: '12px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.06)' : CARD }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : TEXT, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` vs ${t.current}` : ''}</span>
+        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{ou.reason}</span>
+      </div>
+      {(moveArrow || ou.edge || (bp && (bp.away != null || bp.home != null))) && (
+        <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+          {moveArrow && t?.open != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : '#FF3B3B' }}>{moveArrow} since open</span></span>}
+          {bp && (bp.away != null || bp.home != null) && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>pens {bp.away ?? '—'}/{bp.home ?? '—'}</span>}
+          {ou.edge && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Game card — Apple Sports horizontal layout ──────────────────────────────
-function GameCard({ event, onClick, showSport = false }) {
+function GameCard({ event, onClick, showSport = false, token = null }) {
   const live  = isLiveEvent(event)
   const final = event.status === 'FT'   || event.status === 'AOT'
   const isOT  = event.status === 'AOT'
@@ -296,6 +340,9 @@ function GameCard({ event, onClick, showSport = false }) {
           <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{event.metadata.home_pitcher.name}</span>
         </div>
       )}
+
+      {/* O/U model lean (MLB) — compact, scannable on the list card */}
+      <OuFlag event={event} token={token} compact />
 
       {/* Tap affordance — signals the card opens to full Insights */}
       <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
@@ -1359,7 +1406,20 @@ function BonusButton() {
   )
 }
 
-function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, bets = [], token = null, unitSize = 0 }) {
+function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPrev = null, onNext = null, posLabel = '', bets = [], token = null, unitSize = 0 }) {
+  // Swipe left/right (from anywhere in the detail) to slide to the next/prev game — fixes
+  // "can't get to the next card from inside". Horizontal-only so it never fights vertical scroll.
+  const touch = useRef(null)
+  const onTouchStart = (e) => { const t = e.touches?.[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null }
+  const onTouchEnd = (e) => {
+    const s = touch.current; const t = e.changedTouches?.[0]; touch.current = null
+    if (!s || !t) return
+    const dx = t.clientX - s.x, dy = t.clientY - s.y
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+      if (dx < 0 && onNext) onNext()
+      else if (dx > 0 && onPrev) onPrev()
+    }
+  }
   const event = useLiveGame(propEvent)
   const live     = isLiveEvent(event)
   const final    = event.status === 'FT'   || event.status === 'AOT'
@@ -1486,7 +1546,8 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, bets
   // ── MLB Live Situation bar ─────────────────────────────────────────────────
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0A0A0A', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0A0A0A', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
 
       {/* ── Top bar ── */}
@@ -1496,7 +1557,15 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, bets
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>Back</span>
         </button>
-        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em', color: MUTED, textTransform: 'uppercase' }}>{event.league} · {fmtTime(event.start_time)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={onPrev} disabled={!onPrev} aria-label="Previous game" style={{ background: 'none', border: 'none', cursor: onPrev ? 'pointer' : 'default', padding: '4px', opacity: onPrev ? 1 : 0.25, display: 'flex' }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke={NEON_T} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{event.league} · {fmtTime(event.start_time)}{posLabel ? ` · ${posLabel}` : ''}</span>
+          <button onClick={onNext} disabled={!onNext} aria-label="Next game" style={{ background: 'none', border: 'none', cursor: onNext ? 'pointer' : 'default', padding: '4px', opacity: onNext ? 1 : 0.25, display: 'flex' }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3L11 8L6 13" stroke={NEON_T} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', minWidth: '60px' }}>
           <NotifyBell event={event} token={token} />
           <button onClick={() => setShareOpen(true)} aria-label="Share game" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
@@ -1674,6 +1743,8 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, bets
 
           {/* Context strip — venue / coverage + weather, always visible above every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
+          {/* O/U model — full breakdown (Statcast + bullpen + weather, anchored to total) */}
+          <OuFlag event={event} token={token} />
           {meta.weather && (
             <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
               <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, textAlign: 'center' }}>Weather</div>
@@ -2345,16 +2416,24 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
         <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
           LOADING SLATE...
         </div>
-      ) : selected ? (
-        <GameDetail event={selected} onBack={() => setSelectedId(null)} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} bets={bets} token={token} unitSize={unitSize} />
-      ) : events.length === 0 ? (
+      ) : selected ? (() => {
+        const idx = orderedEvents.findIndex(e => e.id === selectedId)
+        const prevId = idx > 0 ? orderedEvents[idx - 1].id : null
+        const nextId = idx >= 0 && idx < orderedEvents.length - 1 ? orderedEvents[idx + 1].id : null
+        return <GameDetail event={selected} onBack={() => setSelectedId(null)}
+          onPrev={prevId ? () => setSelectedId(prevId) : null}
+          onNext={nextId ? () => setSelectedId(nextId) : null}
+          posLabel={idx >= 0 ? `${idx + 1}/${orderedEvents.length}` : ''}
+          onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} bets={bets} token={token} unitSize={unitSize} />
+      })()
+      : events.length === 0 ? (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>
           {isLiveTab ? 'NO LIVE GAMES RIGHT NOW' : 'NO GAMES FOUND'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {orderedEvents.map(e => (
-            <GameCard key={e.id} event={e} showSport={isAllTab} onClick={() => setSelectedId(e.id)} />
+            <GameCard key={e.id} event={e} showSport={isAllTab} token={token} onClick={() => setSelectedId(e.id)} />
           ))}
         </div>
       )}
