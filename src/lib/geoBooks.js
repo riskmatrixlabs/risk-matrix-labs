@@ -8,6 +8,10 @@ export const REGULATED = ['draftkings', 'fanduel', 'betmgm', 'williamhill_us', '
 // Offshore / grey-market books — operate regardless of state law (shown everywhere, tagged).
 export const OFFSHORE = ['bovada', 'betonlineag', 'betus', 'mybookieag', 'lowvig']
 
+// Exchanges / sweepstakes / DFS-style apps (Novig, ProphetX, Fliff, Rebet, Onyx) — operate
+// broadly nationwide, including DFS-only and single-operator states like FL. Placeable everywhere.
+export const NATIONWIDE = ['novig', 'prophetx', 'fliff', 'rebet', 'onyxodds']
+
 // States with NO full legal online sportsbook → regulated list is empty; users rely on
 // DFS pick'em (PrizePicks/Underdog/Dabble), the Novig exchange, or offshore (sign-up links).
 const DFS_ONLY = new Set(['CA', 'TX', 'GA', 'MN', 'MO', 'AL', 'AK', 'OK', 'UT', 'ID', 'HI', 'SC', 'NM'])

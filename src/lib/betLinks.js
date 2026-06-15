@@ -39,6 +39,7 @@ export const BOOK_HOME = {
   fanatics: 'https://sportsbook.fanatics.com/', betrivers: 'https://betrivers.com/',
   hardrockbet: 'https://app.hardrock.bet/', ballybet: 'https://play.ballybet.com/',
   betparx: 'https://www.betparx.com/', fliff: 'https://www.getfliff.com/', pinnacle: 'https://www.pinnacle.com/',
+  novig: 'https://novig.us/', prophetx: 'https://prophetx.co/', rebet: 'https://www.rebet.app/', onyxodds: 'https://onyxodds.com/',
 }
 // Best place-link for a book: its decorated deep link if present, else its homepage.
 export function placeLink(book, deepLink) {

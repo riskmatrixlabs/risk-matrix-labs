@@ -12,8 +12,10 @@ import { americanToDecimal } from './devig.js'
 export const REPUTABLE_BOOKS = new Set([
   'pinnacle',
   'draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us',
-  'betrivers', 'espnbet', 'fanatics', 'hardrockbet',
+  'betrivers', 'espnbet', 'fanatics', 'hardrockbet', 'ballybet', 'betparx',
   'betfair_ex_us', 'betfair_ex_eu',
+  // exchanges / sweeps / DFS-style apps (Pikkit-style coverage) — broadly playable nationwide
+  'novig', 'prophetx', 'fliff', 'rebet', 'onyxodds',
 ])
 
 export const DEFAULTS = {

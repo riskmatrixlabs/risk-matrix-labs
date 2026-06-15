@@ -11,13 +11,14 @@ const BOOK_LINE_COLORS = ['#378ADD', '#1D9E75', '#BDFF00', '#FF3B3B', '#EF9F27',
 
 // US RETAIL books people bet, shown first; PINNACLE last as the SHARP reference line.
 // Betfair (exchange) stays OUT — not a book you bet at.
-const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'ballybet', 'betparx', 'fliff', 'pinnacle']
+const BOOK_PRIORITY = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'williamhill_us', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'ballybet', 'betparx', 'fliff', 'novig', 'prophetx', 'rebet', 'onyxodds', 'pinnacle']
 // Clean, DISTINCT chip labels (slice(0,3) collided: FanDuel/Fanatics both → "Fan", BetMGM/
 // BetRivers/Betfair all → "Bet"). Map each book to a unique short tag.
 const BOOK_ABBR = {
   draftkings: 'DK', fanduel: 'FD', betmgm: 'MGM', caesars: 'CZR', williamhill_us: 'CZR',
   espnbet: 'ESPN', fanatics: 'FAN', betrivers: 'BR', hardrockbet: 'HR',
   ballybet: 'BALLY', betparx: 'PARX', fliff: 'FLIFF', pinnacle: 'PIN',
+  novig: 'NOVIG', prophetx: 'PROPH', rebet: 'REBET', onyxodds: 'ONYX',
 }
 const bookTag = (book) => BOOK_ABBR[book] || (BOOK_NAMES[book] || book).slice(0, 4).toUpperCase()
 const MAX_BOOK_LINES = 8

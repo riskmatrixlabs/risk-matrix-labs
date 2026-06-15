@@ -7,7 +7,7 @@ import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { liveConsensus } from '../lib/liveConsensus'
 import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES } from '../lib/betLinks'
-import { booksForState, OFFSHORE, US_STATES, guessState } from '../lib/geoBooks'
+import { booksForState, OFFSHORE, NATIONWIDE, US_STATES, guessState } from '../lib/geoBooks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
 
@@ -1206,7 +1206,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
       const sortName = cols[0].name
       // Geo filter: show only books usable in the operator's state (+ offshore), unless "show all".
       const allowed = booksForState(userState)
-      const allowSet = allowed ? new Set([...allowed, ...OFFSHORE]) : null
+      const allowSet = allowed ? new Set([...allowed, ...OFFSHORE, ...NATIONWIDE]) : null
       const allRows = [...cmp.rows].sort((x, y) => (dec(y.prices[sortName]) ?? 0) - (dec(x.prices[sortName]) ?? 0))
       const rows = (allowSet && !showAllBooks) ? allRows.filter(r => allowSet.has(r.book)) : allRows
       const hiddenCount = allRows.length - rows.length

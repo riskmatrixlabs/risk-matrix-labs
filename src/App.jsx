@@ -31,7 +31,7 @@ import LiveCenter   from './components/LiveCenter'
 import MatrixBot    from './components/MatrixBot'
 import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
-import { booksForState, OFFSHORE } from './lib/geoBooks'
+import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
 import { placeLink } from './lib/betLinks'
 
 const getKeys = (userId) => ({
@@ -3118,7 +3118,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     const stk = Number(slipStake) || 0
                     let userState = ''; try { userState = localStorage.getItem('rml_state') || '' } catch {}
                     const allowed = booksForState(userState)
-                    const inRegion = (bk) => !allowed || allowed.includes(bk) || OFFSHORE.includes(bk)
+                    const inRegion = (bk) => !allowed || allowed.includes(bk) || OFFSHORE.includes(bk) || NATIONWIDE.includes(bk)
                     const comboDec = enabled.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)
                     const payoutVal = stk > 0 ? (isStraights ? enabled.reduce((s, l) => s + stk * amToDec(Number(l.odds) || 0), 0) : stk * comboDec) : 0
                     const lbl = { fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, opacity: 0.85, marginTop: '12px', marginBottom: '4px' }
