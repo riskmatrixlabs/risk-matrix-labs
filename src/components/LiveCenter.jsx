@@ -790,26 +790,33 @@ function Collapsible({ title, sub, tip, defaultOpen = true, children }) {
   )
 }
 
-function WinProbability({ markets }) {
+function WinProbability({ markets, live }) {
   const [open, setOpen] = useState(true)
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div onClick={() => setOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
         <InfoLabel center tip={GLOSSARY.winProb} label={
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Win Probability <span style={{ color: 'rgba(255,255,255,0.3)' }}>· true chance to win</span></span>
         } />
+        <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '5px', border: `1px solid ${live ? '#FF3B3B' : BORDER}`, color: live ? '#FF3B3B' : MUTED, whiteSpace: 'nowrap' }}>{live ? '● Live' : 'Pre-game'}</span>
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </div>
       {open && (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px 16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '13px', padding: '14px 16px' }}>
         {markets.map((m, i) => {
           const a = Math.round(m.pA * 100), b = Math.round(m.pB * 100)
           return (
             <div key={i}>
-              {m.label && <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', marginBottom: '5px' }}>{m.label}</div>}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: a >= b ? NEON_T : TEXT }}>{m.aLabel} {a}%</span>
-                <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: b > a ? NEON_T : TEXT }}>{b}% {m.bLabel}</span>
+              {m.label && <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', marginBottom: '6px', textAlign: 'center' }}>{m.label}</div>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                <span style={{ textAlign: 'left' }}>
+                  <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: a >= b ? NEON_T : TEXT }}>{m.aLabel} {a}%</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>{m.pLabel ? `${m.pLabel} · ` : ''}fair {m.oA}</div>
+                </span>
+                <span style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: b > a ? NEON_T : TEXT }}>{b}% {m.bLabel}</div>
+                  <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>fair {m.oB}{m.pLabel ? ` · ${m.pLabel}` : ''}</div>
+                </span>
               </div>
               <div style={{ display: 'flex', height: '7px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
                 <div style={{ width: `${a}%`, background: a >= b ? NEON : 'rgba(255,255,255,0.3)' }} />
@@ -1886,7 +1893,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     dvTotal  && { name: `Total ${totalPt}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
-                    <Collapsible title="Fair Value" sub="the honest price" tip={GLOSSARY.fairValue}>
+                    <Collapsible title="Fair Value" sub={`${isLive ? 'live' : 'pre-game'} · honest price`} tip={GLOSSARY.fairValue}>
                       {rows.map((m, i) => (
                         <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span>
@@ -1971,11 +1978,11 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 {(dv || dvSpread || dvTotal) && (() => {
                   const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
                   const wpMarkets = [
-                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB },
-                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB },
-                    dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB },
+                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB,       oA: fair(dv.fairAmericanA),       oB: fair(dv.fairAmericanB),       pLabel: 'win' },
+                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB, oA: fair(dvSpread.fairAmericanA), oB: fair(dvSpread.fairAmericanB), pLabel: 'cover' },
+                    dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB,  oA: fair(dvTotal.fairAmericanA),  oB: fair(dvTotal.fairAmericanB),  pLabel: '' },
                   ].filter(Boolean)
-                  return <WinProbability markets={wpMarkets} />
+                  return <WinProbability markets={wpMarkets} live={isLive} />
                 })()}
 
                 <BonusButton />
