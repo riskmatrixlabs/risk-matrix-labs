@@ -595,6 +595,43 @@ function LookFrame({ onBack, children }) {
   )
 }
 
+// Matchup header for CH2 — logos, records, status/score, MLB pitchers (FREE via ESPN game-info).
+function GameCard({ game, sport, token }) {
+  const [info, setInfo] = useState(null)
+  useEffect(() => {
+    if (!game?.away || !game?.home || !token) { setInfo(null); return }
+    let live = true
+    fetch(`/api/game-info?sport=${encodeURIComponent(game.sport || sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${game.commenceTime ? `&iso=${encodeURIComponent(game.commenceTime)}` : ''}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (live) setInfo(j?.found ? j : null) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [game?.away, game?.home, sport, token])
+
+  const col = (t, fbAbbr) => (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: 0 }}>
+      {t?.logo ? <img src={t.logo} alt="" width="38" height="38" style={{ objectFit: 'contain' }} /> : <div style={{ width: '38px', height: '38px' }} />}
+      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{t?.abbr || fbAbbr}</span>
+      {t?.record && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{t.record}</span>}
+      {t?.pitcher && <span style={{ fontFamily: R, fontSize: '8px', color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '95px' }}>{t.pitcher}</span>}
+    </div>
+  )
+  const isLive = info?.status?.state === 'in'
+  const center = info ? (info.status.detail || (info.status.state === 'pre' ? '' : '')) : `${up(game.away)} @ ${up(game.home)}`
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '11px 12px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {col(info?.away, game.away_abbr || up(game.away))}
+      <div style={{ flexShrink: 0, textAlign: 'center', minWidth: '66px' }}>
+        {info && info.status.state !== 'pre'
+          ? <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{info.away.score}<span style={{ color: MUTED, margin: '0 4px' }}>-</span>{info.home.score}</div>
+          : <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED }}>@</div>}
+        <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isLive ? DANGER : NEON_T, letterSpacing: '0.04em', marginTop: '3px', whiteSpace: 'nowrap' }}>{center}</div>
+      </div>
+      {col(info?.home, game.home_abbr || up(game.home))}
+    </div>
+  )
+}
+
 function LookChannel({ game, player = null, sport, setSport, token, onLogPosition, onAddToSlip, onBack, onTune, onPickPlayer }) {
   const [bookMove, setBookMove] = useState({})   // per-book movement (the line-movement chart)
   const [chartMkt, setChartMkt] = useState('ml') // ml | spread | total
@@ -649,7 +686,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
 
       {game && (
         <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: `1px solid ${BORDER}` }}>
-          <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT, marginBottom: '2px' }}>{up(game.away)} @ {up(game.home)}</div>
+          <GameCard game={game} sport={sport} token={token} />
 
           <LookSection label="LINE MOVEMENT">
             {/* primary: market tabs + ⚙ (secondary controls tuck into the gear so the panel isn't a wall of buttons) */}
