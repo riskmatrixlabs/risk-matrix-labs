@@ -66,11 +66,25 @@ The universal **bet-quality + discipline grader** (sits on top of our sport mode
 - 🟢 **Game Center detail clarity:** O/U flag → footer; status tags (Postponed/Delayed/Suspended/Canceled); OPS in box score; injury away/home tabs; "Your Bet" → slim chip; all Insights sections collapsible (open default); Win Prob + Fair Value clearer (both sides + odds + pre-game/live tag; line on each side w/ correct sign); Line Movement LINE-vs-PRICE relabel; HOLD tooltip; square tabs.
 - 🟢 **CH2:** squarish centered league tiles; search↔date swap.
 
-## 🎯 NEXT SESSION — start here (in order)
-1. ⚠️ **DECIDE 3 things** before any EV Brain code (see memory `rml-evbrain-spec`): (a) PHLT name collision — keep PHLT for the universal grader, rename MLB hitter model (e.g. "Hit Score"); (b) ModelProb source — recommend de-vig consensus; (c) "Play" label vs no-"play" brand rule.
-2. 🟡 **EV Brain Phase 1** — `src/lib/evBrain.ts` pure scoring fns (PHLT/EV/CLV/Ladder/RR/Discipline/Operator/Final Decision) + constants + bet JSON schema + labels + tests. ~1 session, unlocks all.
-3. 🟡 **EV Brain Phase 2** — wire ModelProb←de-vig consensus + live MLB models; CLV←odds_history; Discipline/Operator←bet log; bet-grade card + operator tile + tooltips. ~2 sessions → MLB MVP.
-4. 🟡 **CH3 TRACK redesign** — the EV slips live here (settled-bet grading, parlay grading). Still original.
-5. 🟡 **EV Brain Phase 3** — other sports (NBA/WNBA prop, NHL SOG, MLB team total) — free-data sourcing risk.
+## ✅ SHIPPED Session 57 (CH3 EV TRACK rebuilt + universal bet cards + live stat bars · SW rml-v254→v269)
+Full CH3 redesign via brainstorm→spec→plan→subagent-driven build (spec+plan in `docs/superpowers/`), then ~10 polish/fix passes verified live in Chrome.
+- 🟢 **Universal BetCard** — `src/components/BetCard.jsx` (BetCard + BetTicket) + pure `src/lib/betCard.js` (21 tests). Used in CH3 + App.jsx bet log. Connected parlay legs, "X OF N HIT" pill, status-color left accent stripe, footer matches single card.
+- 🟢 **CH3 TrackChannel recompose** — SCOREBOARD: 3 tiles + RECORD line (W-L-P·units·ROI) + OPERATOR tile (SOON, EV-Brain home) + status chips + ⚙ gear (time scope + RESET stub). TRACKED POSITIONS: date-grouped (TODAY first + tally), 60s refresh, empty state. Loads today+yesterday events.
+- 🟢 **Win-prob ring** (Pikkit) — de-vig fair % (live ML), orange=pending/green=won/red=lost; parlay = combined product.
+- 🟢 **Live stat bars** — `api/box-score.js` (FREE ESPN boxscore) + `src/lib/statProgress.js`. Prop→stat÷line, total→score÷line, ML/spread→score line. Green/red, **win=100%**, live+finished. Always shows on O/U cards (empty pre-game), **above the odds**.
+- 🟢 **Headshots + team logos** — `player-search?all=1` roster map (FREE); parlay legs match each leg to its own game for real team logos/score.
+- 🟢 **Slip multi-add FIXED** — `addToSlip` no longer auto-opens drawer (overlay was blocking). Verified: logged a 2-leg parlay end-to-end.
+- 🟢 **Home-book pin** — Hard Rock pinned to top of Compare Books + parlay PLACE-ON for FL. (HR intermittently absent from cheap cache → REFRESH re-pulls.)
+- 🟢 **O/U total-anchor BUG FIXED** — `game-info.js totalAnchor` grabbed wrong day's row on repeated matchups (→ total 0/stale); now windows + orders + prefers a real total.
 
-**Pending/blocked:** ANTHROPIC_API_KEY (unlocks OCR bet-slip import, still owner-pending) · NFL support · umpire + lineups for O/U (umpire = no free zone-tendency data, lineups = fuzzy) · bullpen FATIGUE (recent IP, needs daily accumulation).
+## 🎯 NEXT SESSION — start here (in order)
+1. 🆕 **Spec SPOTLIGHT** (new idea, owner-approved concept) — dismissible, confidence-ranked panel of today's GREEN model signals (O/U leans + PHLT + EV edges) → clickable to game/log. NOT a moving marquee (off-brand/bad UX) — a pinned static panel `⬡ SPOTLIGHT (N)`. **It's the EV Brain's first surface** (real cross-type ranking needs the unified score). v0: `strong`-gate + factor-count + bullpen-priority + `edge` value-tag as lines move. Free O/U leans fill cheaply; prop signals need a slate-wide cron (credits). Future: snapshot at surface-time → track Spotlight win-rate. Frame as "leans/edges," never "picks." (Today's proven list: 5 strong OVERs — KC@WSH, PIT@ATH, COL@CHC, TB@LAD, DET@HOU.)
+2. ⚠️ **DECIDE 3 things** before EV Brain code (memory `rml-evbrain-spec`): (a) PHLT name collision → rename MLB hitter model; (b) ModelProb source → de-vig consensus; (c) "Play" label vs no-"play" brand rule.
+3. 🟡 **EV Brain Phase 1** — `src/lib/evBrain.ts` pure scoring fns + constants + bet schema + labels + tests. Unlocks Spotlight ranking + CH3 OPERATOR tile + verdict badges.
+4. 🟡 **EV Brain Phase 2** — wire ModelProb/CLV/Discipline to real feeds; fills the empty CH3 OPERATOR tile + card verdict slots (already built waiting).
+5. 🟡 **CH3 gear deferred actions** — settle-manually, sport-filter, share, delete-position, real RESET handler (all stubs now).
+6. 🟡 **Per-leg box-score** for cross-game parlay prop legs (currently only the bet-level matched game gets box scores). + make Hard Rock always-in-scan + fix LineShop "show-all-first" tap.
+
+**Pending/blocked:** ANTHROPIC_API_KEY (OCR, owner-pending) · NFL · umpire + lineups for O/U (no free data) · bullpen FATIGUE (needs daily IP accumulation).
+
+**Done this session, do NOT redo:** CH3 TRACK redesign (was item #4 — DONE), universal bet cards, live stat bars, win rings, slip multi-add fix.
