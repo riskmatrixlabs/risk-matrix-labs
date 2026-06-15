@@ -8,7 +8,7 @@ import './MatrixBot.css'
 import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_LABEL, fmtAm, Sparkline } from './botShared.jsx'
 import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
-import { matchBetToEvent, evaluateBet } from '../lib/betMatch.js'
+import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
@@ -19,6 +19,30 @@ import { BookMoveChart } from './BookMoveChart.jsx'
 import EventsPicker from './EventsPicker.jsx'
 import { normalizeBet, computeRecord, groupByDate } from '../lib/betCard.js'
 import { BetCard, BetTicket } from './BetCard.jsx'
+
+// League logos (ESPN transparent PNGs) — clean fallback when a bet's team side can't be resolved.
+const LEAGUE_LOGO = {
+  MLB:  'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png',
+  NHL:  'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+  NBA:  'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+  WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
+}
+
+// Give each leg a real logo: the correct team logo from the matched event when the
+// pick's side is resolvable, else the league logo. Mutates and returns the normalized bet.
+function withLogos(n, ev) {
+  for (const leg of n.legs) {
+    let logo = null
+    if (ev) {
+      const side = teamSide(leg.title, ev) || teamSide(leg.subtitle, ev)
+      if (side === 'away') logo = ev.away_logo
+      else if (side === 'home') logo = ev.home_logo
+    }
+    if (!logo) logo = LEAGUE_LOGO[String(leg.sport || n.sport || '').toUpperCase()] || null
+    leg.logo = logo
+  }
+  return n
+}
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -1294,7 +1318,8 @@ function TrackChannel({ bets, sport, token }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {grp.bets.map((b) => {
-                const n = normalizeBet(b)
+                const ev = graded.find(x => x.bet === b)?.ev
+                const n = withLogos(normalizeBet(b), ev)
                 return n.kind === 'parlay'
                   ? <BetTicket key={b.id} bet={n} grade={gradeFor(b)} />
                   : <BetCard key={b.id} bet={n} grade={gradeFor(b)} />
