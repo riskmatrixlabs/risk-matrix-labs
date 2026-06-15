@@ -856,7 +856,8 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   const [status, setStatus] = useState('idle')
   const [data, setData]     = useState(null)
   const [err, setErr]       = useState('')
-  const [statF, setStatF]   = useState('ALL')   // stat-type filter chips (Hits, Strikeouts…)
+  const firstStat = (sp) => (PROP_MARKETS[sp] || []).map(labelFor)[0] || 'ALL'
+  const [statF, setStatF]   = useState(() => firstStat(sport))   // default to the FIRST prop tab, not ALL
   const [confirm, setConfirm] = useState(null)
   // All player cards open by default (full board, like a sportsbook). Tap a header to collapse one;
   // we track only the manually-collapsed players so new scans default everyone open again.
@@ -882,6 +883,8 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   // On open: read cache ONLY (free — never spends credits). Cached props show instantly; if nothing's
   // cached you tap ↻ REFRESH to do a paid scan. So just browsing games costs nothing.
   useEffect(() => { if (token && game?.away) scan({ cacheOnly: true }) }, [game?.away, game?.home, token])
+  // Reset the stat filter to the first prop tab on each new game/sport (so it opens focused, not on ALL).
+  useEffect(() => { setStatF(firstStat(sport)) }, [game?.away, game?.home, sport])
 
   // Group props BY PLAYER → one card per player holding ALL their lines (scan player by player).
   const pmap = new Map()
