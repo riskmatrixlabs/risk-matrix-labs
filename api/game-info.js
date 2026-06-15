@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
 import { getSavantMaps } from './savant.js'
 import { fetchWeather } from './lib/weather.js'
+import { readScan, writeScan, isFresh, todayStr } from './_lib/scanStore.js'
 
 export const config = { maxDuration: 20 }
 
@@ -64,6 +65,28 @@ export const PARK_GEO = {
   PIT: [40.4469, -80.0057], SD: [32.7073, -117.1566], SF: [37.7786, -122.3893], SEA: [47.5914, -122.3325, 1],
   STL: [38.6226, -90.1928], TB: [27.7683, -82.6534, 1], TEX: [32.7473, -97.0832, 1], TOR: [43.6414, -79.3894, 1],
   WSH: [38.8730, -77.0074],
+}
+
+// ESPN abbr → MLB Stats API team id (statsapi.mlb.com, free, no key). Powers bullpen ERA.
+const MLB_TEAM_ID = {
+  ARI: 109, AZ: 109, ATL: 144, BAL: 110, BOS: 111, CHC: 112, CHW: 145, CWS: 145, CIN: 113,
+  CLE: 114, COL: 115, DET: 116, HOU: 117, KC: 118, LAA: 108, LAD: 119, MIA: 146, MIL: 158,
+  MIN: 142, NYM: 121, NYY: 147, ATH: 133, OAK: 133, PHI: 143, PIT: 134, SD: 135, SEA: 136,
+  SF: 137, STL: 138, TB: 139, TEX: 140, TOR: 141, WSH: 120,
+}
+const SEASON = 2026
+
+// Team bullpen (relief) ERA — owner's #1 O/U signal. Free MLB Stats API, cached ~12h.
+async function bullpenEra(abbr) {
+  const id = MLB_TEAM_ID[String(abbr || '').toUpperCase()]
+  if (!id) return null
+  const date = todayStr()
+  const cached = await readScan(`BULLPEN-${id}`, date)
+  if (cached?.payload?.era != null && isFresh(cached.scanned_at, Date.now(), 12 * 3600e3)) return cached.payload.era
+  const j = await getJson(`https://statsapi.mlb.com/api/v1/teams/${id}/stats?stats=statSplits&group=pitching&season=${SEASON}&sitCodes=rp`, 7000)
+  const era = parseFloat(j?.stats?.[0]?.splits?.[0]?.stat?.era)
+  if (Number.isFinite(era)) { await writeScan(`BULLPEN-${id}`, date, { era }); return era }
+  return null
 }
 
 // Game-hour weather → a run-scoring boost in [-1,+1] (hot air carries = over; cold = under).
@@ -159,10 +182,11 @@ export default async function handler(req, res) {
   let ou = null
   if (sport === 'MLB') {
     try {
-      const [ae, he, sav, anchor, wx] = await Promise.all([
+      const [ae, he, sav, anchor, wx, aBp, hBp] = await Promise.all([
         pitcherEra(cfg, aSide.pitcherId), pitcherEra(cfg, hSide.pitcherId),
         getSavantMaps().catch(() => null), totalAnchor(sport, away, home).catch(() => null),
         gameWeather(hSide.abbr, iso).catch(() => null),
+        bullpenEra(aSide.abbr).catch(() => null), bullpenEra(hSide.abbr).catch(() => null),
       ])
       aSide.era = ae; hSide.era = he
       // Statcast skill read per starter: xERA (fallback raw ERA), xBA-against (contact quality —
@@ -199,6 +223,14 @@ export default async function handler(req, res) {
         if (ap.kPct >= 26 && hp.kPct >= 26) { score -= 1; why.push('two K arms') }
         else if (ap.kPct <= 18 && hp.kPct <= 18) { score += 1; why.push('contact arms') }
       }
+      // Bullpen quality — owner's #1 signal. Weak relief (high ERA) on either side pushes over;
+      // two shutdown pens push under. (Fatigue/recent-IP is a later refinement.)
+      if (aBp != null && hBp != null) {
+        const worstBp = Math.max(aBp, hBp), bestBp = Math.min(aBp, hBp)
+        if (aBp >= 4.6 && hBp >= 4.6) { score += 1; why.push('two weak pens') }
+        else if (worstBp >= 4.7) { score += 1; why.push('a weak pen') }
+        else if (bestBp <= 3.3 && worstBp <= 3.7) { score -= 1; why.push('shutdown pens') }
+      }
       // Weather: hot air carries → over; cold → under (domed parks neutralized).
       if (wx && wx.note && !wx.dome) {
         if (wx.boost >= 0.5) { score += 1; why.push(wx.note) }
@@ -215,7 +247,7 @@ export default async function handler(req, res) {
           else edge = 'value — line moved against the lean'
         }
         ou = { lean, strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
-          total: anchor || null, edge, weather: wx || null }
+          total: anchor || null, edge, weather: wx || null, bullpens: { away: aBp ?? null, home: hBp ?? null } }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
   }
