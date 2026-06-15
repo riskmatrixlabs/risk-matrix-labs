@@ -18,10 +18,12 @@ export function betStatus(result) {
   return STATUS.live
 }
 
-const isParlay = (bet) =>
-  (Array.isArray(bet.legs) && bet.legs.length > 0) ||
-  (bet.betType && bet.betType !== 'Straight') ||
-  / \+ /.test(String(bet.pick || ''))
+const isParlay = (bet) => {
+  if (bet.betType === 'Straight') return false
+  return (Array.isArray(bet.legs) && bet.legs.length > 0) ||
+    (bet.betType && bet.betType !== 'Straight') ||
+    / \+ /.test(String(bet.pick || ''))
+}
 
 function legFrom(raw, parent) {
   return {
@@ -30,7 +32,7 @@ function legFrom(raw, parent) {
     odds: raw.odds != null ? Number(raw.odds) : null,
     book: raw.book || parent.book || '',
     sport: raw.sport || parent.sport || '',
-    result: raw.result != null ? raw.result : (parent.result === 'Open' ? 'Open' : raw.result),
+    result: raw.result != null ? raw.result : 'Open',
     status: betStatus(raw.result != null ? raw.result : 'Open'),
   }
 }

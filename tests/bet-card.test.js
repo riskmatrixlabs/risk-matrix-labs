@@ -40,6 +40,20 @@ describe('normalizeBet', () => {
     expect(n.legs).toHaveLength(3)
     expect(n.legs[1].title).toBe('Soto O1.5 TB')
   })
+  it('parlay leg from legs[] missing its own result → live (not inherited from parent)', () => {
+    const n = normalizeBet({ id: 9, betType: 'Parlay', sport: 'MLB', stake: 20, odds: 300, result: 'L',
+      date: '2026-06-15', legs: [
+        { pick: 'A ML', odds: -110, result: 'L' },
+        { pick: 'B ML', odds: -120 },
+      ] })
+    expect(n.legs[1].result).toBe('Open')
+    expect(n.legs[1].status.key).toBe('live')
+  })
+  it('explicit Straight with " + " in pick is NOT a parlay', () => {
+    const n = normalizeBet({ id: 10, betType: 'Straight', sport: 'MLB', stake: 20, odds: -110,
+      event: 'X vs Y', pick: 'Over 4.5 + juice', result: 'Open' })
+    expect(n.kind).toBe('straight')
+  })
   it('parlay without legs array → splits pick on " + "', () => {
     const n = normalizeBet({ id: 3, betType: 'SGP', sport: 'NHL', stake: 10, odds: 142, result: 'Open',
       date: '2026-06-15', pick: 'Oilers ML + Over 5.5', event: 'Oilers vs Canucks' })
