@@ -193,3 +193,15 @@ workflow/
 **Caching/credits (~8k left — DISCIPLINE):** props cached **30 min** (was 2 min), shared in `scan_cache`; stat/team/player filtering = client-side FREE; RE-SCAN = manual refresh. Game-lines stay live 90s (owner watches). See [[rml-ch2-vision]] in memory for the locked CH2 spec.
 
 **Still open / next:** ANTHROPIC_API_KEY for OCR Upload Pic (still pending owner); prop "open" accuracy improves as history accrues; NFL not supported (only MLB/NHL/NBA/WNBA — adding it = new sport key + prop markets); CH3 TRACK still original (collapsible panels added but not redesigned); decide GamePage delete vs salvage; for LIVE games props can be 30-min stale (shorten cache for live if wanted). `rml-master.html` NOT updated this session.
+
+## SESSION 54 (Jun 15 2026 · branch `feat/game-browser-lab` · SW rml-v178→v217 · all deployed) — see docs/superpowers/HANDOFF-models.md
+**Big slip + CH2 polish pass, then the start of two real models.** ~40 deploys; tree clean.
+- **Slip → bottom-left neon ticket FAB** (opens upward; 📷 Pic + 📊 Analyze + ➦ Share). Centered confirm + log modals. **Parlay/Straights toggle**, per-leg on/off switches, edge badges, "PLACE ON <book>" CTA, every parlay book row tappable, per-book **deep links** (`byBookLink`), "not in region" → top-2 + dropdown. Crisp chat removed.
+- **CH2:** chart junk-spike fixed (consensus-prob outlier reject); date strip wired; Line-Movement ⚙ gear; props open by default + ↻ REFRESH; all prop cards open; stat tab defaults to first prop; **−EV no longer green** (green=+EV, red=−EV, fixed the "+EV but negative" confusion); Player Props moved BELOW Compare Books; `--muted` brightened for readability.
+- **Books:** Novig/ProphetX/Fliff/Rebet surfaced via `us_ex` region (Onyx = sign-up only, not in feed); nationwide-placeable in `geoBooks`.
+- **CREDIT FIX (important):** opening a game = **0 credits**. `scan-props`+`game-lines` serve `cacheOnly` on auto-load; paid fetch only on explicit ↻ REFRESH (which adds `us_ex`/Novig). Was bleeding before.
+- **Player card:** real ESPN stats — season line + LAST-5 form (`api/player-stats.js`, free, 15min cache; id captured in `player-search`).
+- **Game card:** `api/game-info.js` (free ESPN, date-aware, fetch-timeout + try/catch hardened) → logos, W-L, status/score, MLB pitchers + ERA, and **Over/Under lean flag** (ballpark factor + starter ERA). New `GameCard` in MatrixBot.
+- **Flows verified live:** CH1 search→CH2 and CH1 bot-pick→CH2 both carry through. Fixed a credit leak in the player-search path (PlayerProps was paid; now cacheOnly).
+
+**NEXT = build two models, both FREE (planned, not built):** **(A) PHLT v2.2** hitter-hit prop scorer (Pitcher 30/Form 30/Matchup 15/Park-Weather 10/Streak 15 → A/B/C/Avoid + fades) into Player Props — Statcast (whiff/xBA) confirmed free from **Baseball Savant CSV**, match by name. **(B) O/U totals** model on the game card — add bullpen+weather+umpire+lineups, anchor lean to the live total. Full plans + memory: `rml-phlt-model`, `rml-ou-model`, `HANDOFF-models.md`. Still open from before: ANTHROPIC_API_KEY (OCR), CH3 TRACK redesign + parlay grading, NFL.
