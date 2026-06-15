@@ -198,7 +198,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
       onClick={onClick}
       style={{
         background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px',
-        padding: '8px 14px 9px', cursor: 'pointer',
+        padding: '3px 14px 9px', cursor: 'pointer',
         transition: 'border-color 0.15s',
       }}
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)'}
@@ -206,7 +206,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
     >
       {/* League tag — shown on the mixed-sport "All" slate so each card is identifiable */}
       {showSport && event.sport && (
-        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '4px' }}>{event.sport}</div>
+        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>{event.sport}</div>
       )}
       {/* Event subtitle — series/round name (e.g. "Stanley Cup Final · Game 5", "Commissioner's Cup") */}
       {(event.metadata?.event_note || event.metadata?.series_summary) && (() => {
