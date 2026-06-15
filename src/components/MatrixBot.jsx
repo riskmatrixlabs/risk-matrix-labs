@@ -619,7 +619,11 @@ function GameCard({ game, sport, token }) {
   const isLive = info?.status?.state === 'in'
   const center = info ? (info.status.detail || (info.status.state === 'pre' ? '' : '')) : `${up(game.away)} @ ${up(game.home)}`
   const ou = info?.ou
-  const ouLabel = ou ? (ou.lean === 'OVER' ? '📈 LEANS OVER' : ou.lean === 'UNDER' ? '📉 LEANS UNDER' : '➖ COIN FLIP') : null
+  const t = ou?.total
+  // "LEANS OVER vs 8.5" — anchored to the live total instead of a naked lean.
+  const ouLabel = ou ? (ou.lean === 'OVER' ? '📈 LEANS OVER' : ou.lean === 'UNDER' ? '📉 LEANS UNDER' : '➖ COIN FLIP')
+    + (t?.current != null ? ` vs ${t.current}` : '') : null
+  const moveArrow = t && t.dir > 0 ? '▲' : t && t.dir < 0 ? '▼' : null
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -633,9 +637,24 @@ function GameCard({ game, sport, token }) {
         {col(info?.home, game.home_abbr || up(game.home))}
       </div>
       {ou && (
-        <div style={{ marginTop: '11px', display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.07)' : 'transparent' }}>
-          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>{ouLabel}</span>
-          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>{ou.reason}</span>
+        <div style={{ marginTop: '11px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.07)' : 'transparent' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>{ouLabel}</span>
+            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ou.reason}</span>
+          </div>
+          {/* anchored extras: since-open move on the number + value/late verdict */}
+          {(moveArrow || ou.edge) && (
+            <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {moveArrow && t?.open != null && (
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>
+                  total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : DANGER }}>{moveArrow} since open</span>
+                </span>
+              )}
+              {ou.edge && (
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : DANGER, letterSpacing: '0.03em' }}>{ou.edge}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -83,7 +83,10 @@ async function persistSnapshots({ eventId, sport, away, home, markets }) {
           ? (/^o/i.test(name) ? 'over' : 'under')
           : (lastWord(name) === lastWord(away) ? 'away' : lastWord(name) === lastWord(home) ? 'home' : null)
         if (!side) continue
-        rows.push({ external_event_id: String(eventId), provider: 'oddsapi', sport, market: MK[key], side, value: price, book: r.book, captured_at: at })
+        // Persist the consensus LINE NUMBER too (total/spread) so the since-open move on the
+        // number itself accrues — powers the game card's "LEANS OVER vs 8.5 · opened 8 ▲".
+        const point = (key === 'totals' || key === 'spreads') ? (cmp.modalPoint ?? r.points?.[name] ?? null) : null
+        rows.push({ external_event_id: String(eventId), provider: 'oddsapi', sport, market: MK[key], side, value: price, point, book: r.book, captured_at: at })
       }
     }
   }

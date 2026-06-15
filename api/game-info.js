@@ -2,8 +2,38 @@
 // names, returns the matchup card data: logos, records, status/score, and (MLB) probable
 // pitchers. Powers the CH2 game card. Cached 5 min.
 import { requireAuth } from './_lib/auth.js'
+import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'
+import { getSavantMaps } from './savant.js'
 
 export const config = { maxDuration: 20 }
+
+const db = () => (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
+  : null
+
+// Anchor the O/U lean to a real number: current total from events (synced free) + the open
+// from odds_history's accruing total-point snapshots → since-open direction. All Supabase, $0.
+async function totalAnchor(sport, away, home) {
+  const sb = db(); if (!sb) return null
+  const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
+  try {
+    const { data: evs } = await sb.from('events')
+      .select('external_event_id, away_team, home_team, odds_total')
+      .eq('sport', sport).gte('start_time', new Date(Date.now() - 8 * 3600e3).toISOString()).limit(60)
+    const ev = (evs || []).find(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away))
+    if (!ev) return null
+    const current = ev.odds_total != null ? Number(ev.odds_total) : null
+    let open = null
+    const { data: hist } = await sb.from('odds_history')
+      .select('point, captured_at').eq('external_event_id', String(ev.external_event_id))
+      .eq('market', 'total').not('point', 'is', null).order('captured_at', { ascending: true }).limit(200)
+    if (hist?.length) open = Number(hist[0].point)
+    if (current == null && open == null) return null
+    const dir = (current != null && open != null) ? Math.sign(current - open) : 0
+    return { current, open, dir }
+  } catch { return null }
+}
 
 const SPORTS = {
   MLB:  { sport: 'baseball',   league: 'mlb'  },
@@ -39,6 +69,7 @@ function side(c) {
     record: c?.records?.find(r => r.type === 'total')?.summary || c?.records?.[0]?.summary || null,
     score: c?.score ?? null,
     pitcher: pr?.shortName || pr?.displayName || null,
+    pitcherFull: pr?.fullName || pr?.displayName || pr?.shortName || null, // for Savant name-match
     pitcherId: pr?.id || null,
     era: null,
   }
@@ -90,31 +121,64 @@ export default async function handler(req, res) {
   const st = comp.status?.type || {}
   const aSide = side(a), hSide = side(h)
 
-  // Pull both starters' ERA (MLB) and flag an Over/Under lean — the thing nobody surfaces.
-  // Best-effort: never let a pitcher-stats hiccup kill the whole game card.
+  // Over/Under lean (MLB) — scored on SKILL pitching (Statcast xERA/K%, less noisy than raw ERA;
+  // shared with the PHLT props model) + ballpark, then ANCHORED to the live total with the
+  // since-open move so it's a number to beat, not a naked guess. Best-effort; never blocks the card.
   let ou = null
   if (sport === 'MLB') {
     try {
-      const [ae, he] = await Promise.all([pitcherEra(cfg, aSide.pitcherId), pitcherEra(cfg, hSide.pitcherId)])
+      const [ae, he, sav, anchor] = await Promise.all([
+        pitcherEra(cfg, aSide.pitcherId), pitcherEra(cfg, hSide.pitcherId),
+        getSavantMaps().catch(() => null), totalAnchor(sport, away, home).catch(() => null),
+      ])
       aSide.era = ae; hSide.era = he
-      const an = parseFloat(ae), hn = parseFloat(he)
+      // Statcast skill read per starter: xERA (fallback raw ERA), xBA-against (contact quality —
+      // the cleanest "how hard is he hit" signal), and K% (strikeout arms suppress runs).
+      const pStat = (s) => {
+        const nn = sav?.normName(s.pitcherFull || s.pitcher || '')
+        const x = nn ? sav?.pitcherX?.[nn] : null, k = nn ? sav?.pitcherK?.[nn] : null
+        const eff = x?.xera ?? parseFloat(s.era)
+        return { eff: Number.isFinite(eff) ? eff : null, xba: x?.xbaAgainst ?? null, kPct: k?.kPct ?? null, hasX: !!x }
+      }
+      const ap = pStat(aSide), hp = pStat(hSide)
       const pf = PARK[String(hSide.abbr).toUpperCase()] ?? 1.0
       let score = 0; const why = []
-      // ballpark
       if (pf >= 1.06) { score += 1; why.push('hitter park') }
       else if (pf <= 0.93) { score -= 1; why.push('pitcher park') }
-      // starting pitching (a soft arm on either side pushes over; two aces push under)
-      if (Number.isFinite(an) && Number.isFinite(hn)) {
-        const avg = (an + hn) / 2, worst = Math.max(an, hn)
-        if (avg <= 3.3) { score -= 1; why.push('both arms sharp') }
-        else if (worst >= 5.5) { score += 1; why.push('a soft arm') }
-        else if (avg >= 4.6) { score += 1; why.push('weak pitching') }
+      const usingX = ap.hasX || hp.hasX
+      // xERA (regressed, tighter spread than raw ERA → tighter thresholds).
+      if (ap.eff != null && hp.eff != null) {
+        const avg = (ap.eff + hp.eff) / 2, worst = Math.max(ap.eff, hp.eff)
+        const tag = usingX ? 'xERA' : 'ERA'
+        if (avg <= 3.5) { score -= 1; why.push(`both arms sharp (${tag})`) }
+        else if (worst >= 4.8) { score += 1; why.push(`a soft arm (${tag})`) }
+        else if (avg >= 4.3) { score += 1; why.push(`weak pitching (${tag})`) }
       }
-      if (why.length) {
+      // xBA-against: a starter hitters square up (≥.265) pushes over; a tough-contact arm (≤.215) under.
+      if (ap.xba != null || hp.xba != null) {
+        const xs = [ap.xba, hp.xba].filter(v => v != null)
+        const worstXba = Math.max(...xs), bestXba = Math.min(...xs)
+        if (worstXba >= 0.265) { score += 1; why.push('hard-hit arm (xBA)') }
+        else if (bestXba <= 0.215 && xs.length === 2) { score -= 1; why.push('tough contact (xBA)') }
+      }
+      // Strikeout arms suppress balls in play → under; two contact arms → over.
+      if (ap.kPct != null && hp.kPct != null) {
+        if (ap.kPct >= 26 && hp.kPct >= 26) { score -= 1; why.push('two K arms') }
+        else if (ap.kPct <= 18 && hp.kPct <= 18) { score += 1; why.push('contact arms') }
+      }
+      if (why.length || anchor?.current != null) {
         const lean = score >= 1 ? 'OVER' : score <= -1 ? 'UNDER' : 'LEAN'
-        ou = { lean, strong: Math.abs(score) >= 2, reason: why.join(' · ') }
+        // Value vs the market: lean agrees with the move = late; line moved against the lean = value.
+        let edge = null
+        if (anchor && anchor.dir !== 0 && lean !== 'LEAN') {
+          const moveOver = anchor.dir > 0   // total climbing
+          if ((lean === 'OVER') === moveOver) edge = 'late — line already moved your way'
+          else edge = 'value — line moved against the lean'
+        }
+        ou = { lean, strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
+          total: anchor || null, edge }
       }
-    } catch { /* ERA/O-U is a bonus — ignore failures */ }
+    } catch { /* O-U is a bonus — ignore failures */ }
   }
 
   return res.status(200).json({
