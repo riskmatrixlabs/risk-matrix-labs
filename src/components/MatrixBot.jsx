@@ -17,6 +17,8 @@ import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
 import EventsPicker from './EventsPicker.jsx'
+import { normalizeBet, computeRecord, groupByDate } from '../lib/betCard.js'
+import { BetCard, BetTicket } from './BetCard.jsx'
 
 const SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -1238,6 +1240,14 @@ function TrackChannel({ bets, sport, token }) {
     }
   }, [graded])
 
+  const [statusFilter, setStatusFilter] = useState('all')   // all | live | pending | settled
+  const record = useMemo(() => computeRecord(bets || []), [bets])
+  const statusOk = (b) => {
+    if (statusFilter === 'all') return true
+    if (statusFilter === 'settled') return ['W', 'L', 'P'].includes(b.result)
+    return b.result === 'Open'
+  }
+
   return (
     <TvFrame ch="33">
       <div style={{ textAlign: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, marginBottom: '12px' }}>⬡ BEAT THE CLOSE</div>
@@ -1256,6 +1266,23 @@ function TrackChannel({ bets, sport, token }) {
                 {val == null ? '—' : `${signed && val >= 0 ? '+' : ''}${val.toFixed(label === 'BEAT CLOSE' ? 0 : 1)}%`}
               </div>
             </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '8px', marginTop: '8px' }}>
+          <div style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '9px 10px' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>RECORD</div>
+            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>
+              {record.w}-{record.l}{record.p ? `-${record.p}` : ''} · {record.units >= 0 ? '+' : ''}{record.units.toFixed(1)}u{record.roi != null ? ` · ROI ${record.roi >= 0 ? '+' : ''}${record.roi.toFixed(1)}%` : ''}
+            </div>
+          </div>
+          <div style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '9px 10px', textAlign: 'center' }}>
+            <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>OPERATOR</div>
+            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>SOON</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+          {[['all', 'ALL'], ['live', 'LIVE'], ['pending', 'PENDING'], ['settled', 'SETTLED']].map(([k, lbl]) => (
+            <button key={k} onClick={() => setStatusFilter(k)} style={pill(statusFilter === k)}>{lbl}</button>
           ))}
         </div>
         <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginTop: '10px' }}>
