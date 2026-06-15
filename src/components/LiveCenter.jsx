@@ -766,6 +766,7 @@ function SeasonSeries({ awayAbbr, homeAbbr, series }) {
 const GLOSSARY = {
   winProb:  "Each side's real chance to win — the sportsbook's odds with their built-in profit margin stripped out. The honest read on who's better.",
   fairValue:"The fair price — what the odds would be if the book took no cut (“no-vig”). Compare it to what you're actually being asked to pay. HOLD is the book's margin on that market.",
+  hold:     "The sportsbook's cut on this market (the “vig”). Both sides are priced so the odds add up to MORE than 100% — that extra is the hold. Lower = fairer prices. ~4.5% means the book is padded about 4.5% in its favor; Fair Value strips it out to show the honest price.",
   lineMove: "How the price has moved since it opened. When a line drifts steadily one way, money is piling in on that side — the market is getting more confident.",
   clvOpen:  "If you'd taken the OPENING price, how much better it was than now. Beating the closing line (green) is the #1 predictor of a winning bettor.",
   yourBet:  "Your logged bet on this game, graded. Win Prob = its true chance. +EV = is the price worth it. CLV = did you beat the closing line.",
@@ -1773,7 +1774,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 <button key={t} onClick={() => setDtab(t)} style={{
                   flexShrink: 0, padding: '7px 15px', fontFamily: R, fontSize: '10px', fontWeight: 700,
                   letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-                  border: 'none', borderRadius: '20px', cursor: 'pointer',
+                  border: 'none', borderRadius: '7px', cursor: 'pointer',
                   background: dtab === t ? NEON : 'rgba(255,255,255,0.05)',
                   color: dtab === t ? '#0A0A0A' : MUTED,
                   boxShadow: dtab === t ? '0 0 10px rgba(189,255,0,0.25)' : 'none',
@@ -1885,12 +1886,15 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
 
                 {/* Fair Value (swapped above Win Probability) */}
                 {(dv || dvSpread || dvTotal) && (() => {
-                  const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
                   const pct = (p) => `${Math.round(p * 100)}%`
+                  // Line belongs on EACH SIDE with its own sign (away +1.5 / home -1.5), not jammed
+                  // in the middle where the sign is ambiguous.
+                  const fmtSp = (n) => n == null ? '' : (Number(n) > 0 ? `+${n}` : `${n}`)
+                  const spHome = spreadPt, spAway = spreadPt != null ? -Number(spreadPt) : null
                   const rows = [
-                    dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct,       pA: dv.fairA,       pB: dv.fairB,       pLabel: 'win' },
-                    dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct, pA: dvSpread.fairA, pB: dvSpread.fairB, pLabel: 'cover' },
-                    dvTotal  && { name: `Total ${totalPt}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
+                    dv       && { name: 'Moneyline', aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct,       pA: dv.fairA,       pB: dv.fairB,       pLabel: 'win' },
+                    dvSpread && { name: spreadLabel, aL: `${event.away_abbr} ${fmtSp(spAway)}`, bL: `${event.home_abbr} ${fmtSp(spHome)}`, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct, pA: dvSpread.fairA, pB: dvSpread.fairB, pLabel: 'cover' },
+                    dvTotal  && { name: 'Total', aL: `Over ${totalPt}`, bL: `Under ${totalPt}`, a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
                     <Collapsible title="Fair Value" sub={`${isLive ? 'live' : 'pre-game'} · honest price`} tip={GLOSSARY.fairValue}>
@@ -1902,7 +1906,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                           </span>
                           <span style={{ textAlign: 'center' }}>
                             <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{m.name}</div>
-                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>HOLD <span style={{ color: m.hold > 5 ? '#FF3B3B' : NEON_T }}>{m.hold.toFixed(1)}%</span></div>
+                            <InfoLabel center tip={GLOSSARY.hold} label={<span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>HOLD <span style={{ color: m.hold > 5 ? '#FF3B3B' : NEON_T }}>{m.hold.toFixed(1)}%</span></span>} />
                           </span>
                           <span style={{ textAlign: 'right' }}>
                             <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}>{m.b}<span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}> {m.bL}</span></div>
@@ -2442,7 +2446,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
             return (
               <button key={s} onClick={() => setSport(s)} style={{
                 fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-                padding: '5px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', flexShrink: 0,
+                padding: '5px 14px', borderRadius: '7px', border: 'none', cursor: 'pointer', flexShrink: 0,
                 display: 'flex', alignItems: 'center', gap: '5px',
                 background: active ? (isLive ? '#FF3B3B' : NEON) : 'rgba(189,255,0,0.06)',
                 color:      active ? (isLive ? '#fff' : '#0A0A0A') : (isLive ? '#FF3B3B' : MUTED),
