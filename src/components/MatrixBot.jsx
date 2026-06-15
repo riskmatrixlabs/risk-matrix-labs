@@ -914,43 +914,6 @@ function BookChips({ cmp, sideName }) {
   )
 }
 
-// Closing-lines grid (Pikkit screenshot): away/home rows × ML / Spread / Total best cells.
-function ClosingLines({ M, game, sport }) {
-  const markets = ['h2h', 'spreads', 'totals'].filter(k => M[k])
-  if (!markets.length) return null
-  const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
-  const sideName = (cmp, which) => {
-    if (!cmp) return null
-    if (cmp.outcomes.some(n => /^o/i.test(n)) && cmp.outcomes.some(n => /^u/i.test(n)))
-      return which === 'away' ? cmp.outcomes.find(n => /^o/i.test(n)) : cmp.outcomes.find(n => /^u/i.test(n))
-    const away = cmp.outcomes.find(n => lw(n) === lw(game.away)) || cmp.outcomes[0]
-    const home = cmp.outcomes.find(n => lw(n) === lw(game.home)) || cmp.outcomes[1]
-    return which === 'away' ? away : home
-  }
-  const Row = ({ which, label }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
-      <span style={{ width: '46px', flexShrink: 0, fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{label}</span>
-      {markets.map(k => {
-        const cmp = M[k], name = sideName(cmp, which), b = cmp?.best?.[name]
-        const pt = cmp?.modalPoint?.[name], isTot = k === 'totals', over = /^o/i.test(name || '')
-        return (
-          <div key={k} style={{ flex: 1, position: 'relative', background: '#15161a', borderRadius: '6px', padding: '5px 4px', textAlign: 'center', minWidth: 0 }}>
-            {k !== 'h2h' && pt != null && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{isTot ? (over ? 'o' : 'u') + pt : fmtPt(pt)}</div>}
-            <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: b ? TEXT : MUTED }}>{b ? fmtAm(b.price) : '—'}{b && <span style={{ marginLeft: '4px', display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: '#1D9E75', verticalAlign: 'middle' }} />}</div>
-          </div>
-        )
-      })}
-    </div>
-  )
-  return (
-    <div style={{ marginTop: '10px' }}>
-      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, marginBottom: '6px' }}>CLOSING LINES</div>
-      <Row which="away" label={up(game.away)} />
-      <Row which="home" label={up(game.home)} />
-    </div>
-  )
-}
-
 // Props sub-panel — per-game on-demand prop scan (credit-disciplined).
 // PrizePicks-style: one card per player+line, big line number, More (Over) / Less (Under) buttons.
 function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
@@ -1271,7 +1234,7 @@ function TrackChannel({ bets, sport, token }) {
               <button key={k} onClick={() => setScope(k)} style={pill(scope === k)}>{lbl}</button>
             ))}
           </div>
-          <button onClick={() => { if (confirm('Reset your tracked record? This cannot be undone.')) {} }}
+          <button onClick={() => { if (confirm('Reset your tracked record? This cannot be undone.')) { /* TODO(ev-track): wire reset handler when bet-log mutation is available */ } }}
             style={{ width: '100%', padding: '9px', background: 'transparent', border: `1px solid ${DANGER}59`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: DANGER }}>
             RESET SCOREBOARD
           </button>
@@ -1344,54 +1307,3 @@ function TrackChannel({ bets, sport, token }) {
   )
 }
 
-// One game card on TRACK: the graded bets for this game + its closing-lines grid.
-function TrackGameCard({ ev, items, sport, token }) {
-  const [M, setM] = useState(null)
-  const [showClose, setShowClose] = useState(false)   // closing-lines grid collapsed by default
-  useEffect(() => {
-    if (!token || !ev) return
-    let live = true
-    fetch(`/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null).then(j => { if (live) setM(j?.markets || null) }).catch(() => {})
-    return () => { live = false }
-  }, [ev, sport, token])
-
-  return (
-    <div style={{ padding: '14px', marginBottom: '10px', borderRadius: '12px', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
-      {/* game title — secondary */}
-      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>{up(ev.away_team)} @ {up(ev.home_team)}</div>
-
-      {/* bets — the pick + EV/CLV are the hero */}
-      {items.map(({ bet, grade }, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderTop: i ? `1px solid ${BORDER}` : 'none' }}>
-          <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, minWidth: 0, lineHeight: 1.2 }}>{bet.pick || bet.event}</span>
-          <span style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            {grade.evPct != null && <Stat label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
-            {grade.clvPct != null && <Stat label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
-            {grade.evPct == null && grade.clvPct == null && <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, alignSelf: 'center' }}>Awaiting close…</span>}
-          </span>
-        </div>
-      ))}
-
-      {/* closing lines — collapsible, default hidden so it stops dominating the card */}
-      {M && (
-        <>
-          <button onClick={() => setShowClose(s => !s)} style={{ width: '100%', marginTop: '10px', padding: '8px', background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase' }}>
-            {showClose ? '▾ Hide closing lines' : '▸ Closing lines'}
-          </button>
-          {showClose && <div style={{ marginTop: '10px' }}><ClosingLines M={M} game={{ away: ev.away_team, home: ev.home_team }} sport={sport} /></div>}
-        </>
-      )}
-    </div>
-  )
-}
-
-// EV / CLV chip — boxed and bold so the grade reads at a glance (the hero metric on TRACK).
-function Stat({ label, value, good }) {
-  return (
-    <div style={{ textAlign: 'center', minWidth: '54px', padding: '5px 8px', borderRadius: '8px', background: good ? 'rgba(189,255,0,0.08)' : 'rgba(255,59,59,0.08)', border: `1px solid ${good ? 'rgba(189,255,0,0.3)' : 'rgba(255,59,59,0.3)'}` }}>
-      <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.12em' }}>{label}</div>
-      <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: good ? NEON_T : DANGER }}>{value}</div>
-    </div>
-  )
-}
