@@ -1262,21 +1262,23 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
                     </tr>
                     {confirm && confirm.book === r.book && (
                       <tr>
-                        <td colSpan={cols.length + 1} style={{ padding: '0 6px 10px' }}>
-                          <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '9px', padding: '11px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-                            <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>
-                              Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?
-                            </span>
-                            <span style={{ display: 'flex', gap: '8px' }}>
-                              {onAddToSlip && (
-                                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setConfirm(null) }}
-                                  style={{ padding: '7px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>+ Slip</button>
-                              )}
-                              <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
-                                style={{ padding: '7px 12px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log &amp; Open</button>
-                              <button onClick={() => setConfirm(null)}
-                                style={{ padding: '7px 12px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cancel</button>
-                            </span>
+                        <td colSpan={cols.length + 1} style={{ padding: 0 }}>
+                          <div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.55)' }}>
+                            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '360px', background: '#15171c', border: `1px solid ${NEON}`, borderRadius: '14px', padding: '18px 16px 16px', boxShadow: '0 14px 44px rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                              <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>
+                                Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?
+                              </span>
+                              <span style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {onAddToSlip && (
+                                  <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setConfirm(null) }}
+                                    style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>+ Slip</button>
+                                )}
+                                <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
+                                  style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log &amp; Open</button>
+                                <button onClick={() => setConfirm(null)}
+                                  style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cancel</button>
+                              </span>
+                            </div>
                           </div>
                         </td>
                       </tr>
