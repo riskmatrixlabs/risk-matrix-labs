@@ -143,8 +143,8 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         </div>
       )}
 
-      {/* Sport circles — league logo inside, abbr label below. */}
-      <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
+      {/* Sport tiles — squarish (brand vibe), centered on the page. */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', paddingBottom: '4px', marginBottom: '16px' }}>
         {FEED_SPORTS.map(s => {
           const active = s === sport
           return (
@@ -157,7 +157,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
               }}
             >
               <span style={{
-                width: '40px', height: '40px', borderRadius: '50%',
+                width: '46px', height: '46px', borderRadius: '12px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: CARD,
                 border: `1px solid ${active ? NEON : BORDER}`,
