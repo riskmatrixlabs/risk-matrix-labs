@@ -662,13 +662,14 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
               : <Empty text={Object.keys(bookMove).length > 0 ? `No movement in the last ${frame === '6h' ? '6 hours' : '24 hours'} — try Since Open.` : `${chartMkt === 'ml' ? 'ML' : chartMkt === 'total' ? 'Total' : (SPREAD_LABEL[game.sport || sport] || 'Spread')} by-sportsbook history is building — fills in as the game's viewed.`} />}
           </LookSection>
 
+          {/* GAME-level lines (Line Movement + Compare Books) sit together up top; PLAYER PROPS below. */}
+          <LookSection label="COMPARE BOOKS · GAME LINES">
+            <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
+          </LookSection>
+
           <LookSection label="PLAYER PROPS" defaultOpen={true}>
             {player && <PlayerProps player={player} game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}
             <PropsPanel game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
-          </LookSection>
-
-          <LookSection label="COMPARE BOOKS · GAME LINES">
-            <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
           </LookSection>
         </div>
       )}
