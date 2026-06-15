@@ -5,7 +5,7 @@
 import { requireAuth } from './_lib/auth.js'
 import { readScan, writeScan, isFresh, todayStr } from './_lib/scanStore.js'
 import { getSavantMaps } from './savant.js'
-import { PARK } from './game-info.js'
+import { PARK, gameWeather } from './game-info.js'
 import { buildIndex } from './player-search.js'
 import { scoreHit } from '../src/lib/phlt.js'
 
@@ -119,6 +119,8 @@ export default async function handler(req, res) {
   const abbrs = Object.keys(probs)
   const homeAbbr = abbrs.find(a => probs[a] && norm(probs[a].name) === norm(home)) || abbrs[1] || home
   const parkFactor = (PARK[homeAbbr] || 1.0) * 100
+  const wx = await gameWeather(homeAbbr, iso).catch(() => null)
+  const weatherBoost = wx && !wx.dome ? wx.boost : null   // hot air carries (over) → helps a hitter
 
   // Pitcher context (xBA-against/K%/whiff from Savant, by name) for whoever is throwing for each side.
   const pitcherFor = (abbr) => {
@@ -144,8 +146,8 @@ export default async function handler(req, res) {
     const v = scoreHit({
       hitter: { avgLast5: form?.avgLast5, hitStreak: form?.hitStreak, bbPct: form?.bbPct, hitsLast4: form?.hitsLast4, xba: bat?.xba },
       pitcher: { kPct: pit.kPct, whiffPct: pit.whiffPct, xbaAgainst: pit.xbaAgainst, era: pit.era },
-      matchup: { platoonEdge: 0, xwoba: bat?.xwoba },   // handedness platoon: v2
-      park: { parkFactor },
+      matchup: { platoonEdge: 0, xwoba: bat?.xwoba },   // handedness platoon: next
+      park: { parkFactor, weatherBoost },
     })
     verdicts[name] = { ...v, vs: pit.name || null, team: r?.team || null }
   }))

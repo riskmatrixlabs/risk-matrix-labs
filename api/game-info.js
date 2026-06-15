@@ -5,6 +5,7 @@ import { requireAuth } from './_lib/auth.js'
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
 import { getSavantMaps } from './savant.js'
+import { fetchWeather } from './lib/weather.js'
 
 export const config = { maxDuration: 20 }
 
@@ -49,6 +50,37 @@ export const PARK = {
   ATL: 1.01, WSH: 1.01, LAA: 1.00, MIN: 1.00, HOU: 1.00, TOR: 1.00, NYY: 1.00, CWS: 0.99, CHW: 0.99,
   MIL: 0.99, PIT: 0.98, STL: 0.97, CLE: 0.97, DET: 0.96, LAD: 0.97, TB: 0.95, NYM: 0.94, SD: 0.94,
   ATH: 0.94, OAK: 0.94, MIA: 0.92, SEA: 0.92, SF: 0.91,
+}
+
+// MLB park coords by HOME abbr → [lat, lon, dome?]. Domed/retractable parks neutralize weather
+// (roof usually closed in heat/cold/rain) so we don't fake a wind/temp edge indoors.
+export const PARK_GEO = {
+  ARI: [33.4455, -112.0667, 1], ATL: [33.8908, -84.4678], BAL: [39.2839, -76.6217],
+  BOS: [42.3467, -71.0972], CHC: [41.9484, -87.6553], CWS: [41.8299, -87.6338], CHW: [41.8299, -87.6338],
+  CIN: [39.0975, -84.5069], CLE: [41.4962, -81.6852], COL: [39.7559, -104.9942], DET: [42.3390, -83.0485],
+  HOU: [29.7572, -95.3556, 1], KC: [39.0517, -94.4803], LAA: [33.8003, -117.8827], LAD: [34.0739, -118.2400],
+  MIA: [25.7781, -80.2197, 1], MIL: [43.0280, -87.9712, 1], MIN: [44.9817, -93.2776], NYM: [40.7571, -73.8458],
+  NYY: [40.8296, -73.9262], ATH: [38.5802, -121.5132], OAK: [37.7516, -122.2005], PHI: [39.9061, -75.1665],
+  PIT: [40.4469, -80.0057], SD: [32.7073, -117.1566], SF: [37.7786, -122.3893], SEA: [47.5914, -122.3325, 1],
+  STL: [38.6226, -90.1928], TB: [27.7683, -82.6534, 1], TEX: [32.7473, -97.0832, 1], TOR: [43.6414, -79.3894, 1],
+  WSH: [38.8730, -77.0074],
+}
+
+// Game-hour weather → a run-scoring boost in [-1,+1] (hot air carries = over; cold = under).
+// Returns { tempF, windMph, windDir, precipPct, boost, note } or null. Free (open-meteo).
+export async function gameWeather(homeAbbr, iso) {
+  const geo = PARK_GEO[String(homeAbbr || '').toUpperCase()]
+  if (!geo) return null
+  if (geo[2]) return { dome: true, boost: 0, note: 'roof' }   // controlled environment
+  const w = await fetchWeather(geo[0], geo[1], iso || new Date().toISOString()).catch(() => null)
+  if (!w || w.tempF == null) return null
+  let boost = 0; const parts = []
+  if (w.tempF >= 88) { boost += 0.7; parts.push(`hot ${w.tempF}°`) }
+  else if (w.tempF >= 80) { boost += 0.35; parts.push(`warm ${w.tempF}°`) }
+  else if (w.tempF <= 48) { boost -= 0.7; parts.push(`cold ${w.tempF}°`) }
+  else if (w.tempF <= 57) { boost -= 0.35; parts.push(`cool ${w.tempF}°`) }
+  if (w.windMph >= 15) parts.push(`wind ${w.windMph}mph ${w.windDir}`)   // shown; direction-vs-park is a later refinement
+  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, precipPct: w.precipPct, boost: Math.max(-1, Math.min(1, boost)), note: parts.join(' · ') }
 }
 
 async function getJson(url, ms = 6000) {
@@ -127,9 +159,10 @@ export default async function handler(req, res) {
   let ou = null
   if (sport === 'MLB') {
     try {
-      const [ae, he, sav, anchor] = await Promise.all([
+      const [ae, he, sav, anchor, wx] = await Promise.all([
         pitcherEra(cfg, aSide.pitcherId), pitcherEra(cfg, hSide.pitcherId),
         getSavantMaps().catch(() => null), totalAnchor(sport, away, home).catch(() => null),
+        gameWeather(hSide.abbr, iso).catch(() => null),
       ])
       aSide.era = ae; hSide.era = he
       // Statcast skill read per starter: xERA (fallback raw ERA), xBA-against (contact quality —
@@ -166,6 +199,12 @@ export default async function handler(req, res) {
         if (ap.kPct >= 26 && hp.kPct >= 26) { score -= 1; why.push('two K arms') }
         else if (ap.kPct <= 18 && hp.kPct <= 18) { score += 1; why.push('contact arms') }
       }
+      // Weather: hot air carries → over; cold → under (domed parks neutralized).
+      if (wx && wx.note && !wx.dome) {
+        if (wx.boost >= 0.5) { score += 1; why.push(wx.note) }
+        else if (wx.boost <= -0.5) { score -= 1; why.push(wx.note) }
+        else if (wx.note) why.push(wx.note)   // mild/wind: show context without moving the lean
+      }
       if (why.length || anchor?.current != null) {
         const lean = score >= 1 ? 'OVER' : score <= -1 ? 'UNDER' : 'LEAN'
         // Value vs the market: lean agrees with the move = late; line moved against the lean = value.
@@ -176,7 +215,7 @@ export default async function handler(req, res) {
           else edge = 'value — line moved against the lean'
         }
         ou = { lean, strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
-          total: anchor || null, edge }
+          total: anchor || null, edge, weather: wx || null }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
   }
