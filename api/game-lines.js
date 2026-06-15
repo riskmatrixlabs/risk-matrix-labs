@@ -125,7 +125,7 @@ export default async function handler(req, res) {
       // (1) BASE LINES via the fast, reliable bulk endpoint — same call cheap mode uses (~1s).
       //     This guarantees the page always gets game lines; segments are a bonus layered on top.
       const provider = getProvider()
-      const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
+      const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2', 'us_ex'] })
       const baseGame = games.find(g => lastWord(g.home_team) === lastWord(home) && lastWord(g.away_team) === lastWord(away))
       if (!baseGame) return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
 
@@ -145,7 +145,7 @@ export default async function handler(req, res) {
           const tiers = sport === 'MLB' ? [FULL_MARKETS.MLB, BASE_FULL] : [BASE_FULL]
           let evGame = null
           for (const mk of tiers) {
-            try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2'], timeoutMs: 7000 }); evGame = r.game; segCredits = r.credits?.remaining; break }
+            try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2', 'us_ex'], timeoutMs: 7000 }); evGame = r.game; segCredits = r.credits?.remaining; break }
             catch (e) { /* unsupported markets / slow — try next tier */ }
           }
           if (evGame) {
@@ -182,7 +182,7 @@ export default async function handler(req, res) {
 
   try {
     const provider = getProvider()
-    const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
+    const { games, credits } = await provider.fetchOdds({ sport, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2', 'us_ex'] })
     const game = games.find(g => lastWord(g.home_team) === lastWord(home) && lastWord(g.away_team) === lastWord(away))
     if (!game) return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
 
