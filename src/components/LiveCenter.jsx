@@ -1170,7 +1170,11 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
           <option value="">All states</option>
           {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits} left</span>}
+        {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits}</span>}
+        <button onClick={() => { setStatus('idle'); load() }} disabled={status === 'loading'} title="Refresh odds"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 8px', color: NEON_T, cursor: status === 'loading' ? 'wait' : 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>
+          <span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'loading' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'loading' ? '' : 'REFRESH'}
+        </button>
       </span>
     </div>
   )

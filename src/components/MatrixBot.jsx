@@ -662,7 +662,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
               : <Empty text={Object.keys(bookMove).length > 0 ? `No movement in the last ${frame === '6h' ? '6 hours' : '24 hours'} — try Since Open.` : `${chartMkt === 'ml' ? 'ML' : chartMkt === 'total' ? 'Total' : (SPREAD_LABEL[game.sport || sport] || 'Spread')} by-sportsbook history is building — fills in as the game's viewed.`} />}
           </LookSection>
 
-          <LookSection label="PLAYER PROPS" defaultOpen={false}>
+          <LookSection label="PLAYER PROPS" defaultOpen={true}>
             {player && <PlayerProps player={player} game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}
             <PropsPanel game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
           </LookSection>
@@ -948,7 +948,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: edgeCount ? NEON_T : MUTED, letterSpacing: '0.1em' }}>{edgeCount ? `${edgeCount} +EV · ${shownPlayers.length} PLAYERS` : propCount ? `${shownPlayers.length} PLAYERS · ${propCount} PROPS` : 'NO PROPS YET'}</span>
-        <button onClick={scan} style={{ background: 'none', border: 'none', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} left · ` : ''}{status === 'scanning' ? 'SCANNING…' : 'RE-SCAN'}</button>
+        <button onClick={scan} title="Refresh prop odds" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 9px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} · ` : ''}<span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'scanning' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'scanning' ? 'REFRESHING' : 'REFRESH'}</button>
       </div>
 
       {status === 'error'
