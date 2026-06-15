@@ -676,9 +676,10 @@ function Trends({ awayAbbr, homeAbbr, trends }) {
   )
 }
 
-// ── Injuries — per-team list (collapsible, default open). ──
+// ── Injuries — away/home TAB split (like the box-score hitting toggle), collapsible. ──
 function Injuries({ awayAbbr, homeAbbr, injuries }) {
   const [open, setOpen] = useState(true)
+  const [team, setTeam] = useState('away')
   const a = injuries?.away ?? [], h = injuries?.home ?? []
   if (!a.length && !h.length) return null
   const statusColor = (s) => {
@@ -687,22 +688,7 @@ function Injuries({ awayAbbr, homeAbbr, injuries }) {
     if (t.includes('day')) return NEON_T
     return MUTED
   }
-  const teamBlock = (abbr, list) => (
-    <div style={{ padding: '4px 0' }}>
-      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', padding: '8px 16px 4px' }}>{abbr}</div>
-      {list.length === 0
-        ? <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: MUTED, padding: '4px 16px 8px' }}>No reported injuries</div>
-        : list.map((p, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', padding: '6px 16px' }}>
-            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</span>
-            <span style={{ textAlign: 'right', flexShrink: 0 }}>
-              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: statusColor(p.status) }}>{p.status}</span>
-              {p.detail && <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: MUTED }}> · {p.detail}</span>}
-            </span>
-          </div>
-        ))}
-    </div>
-  )
+  const list = team === 'away' ? a : h
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
       <button onClick={() => setOpen(o => !o)} style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.03)', border: 'none', cursor: 'pointer' }}>
@@ -711,8 +697,25 @@ function Injuries({ awayAbbr, homeAbbr, injuries }) {
       </button>
       {open && (
         <div>
-          {teamBlock(awayAbbr, a)}
-          <div style={{ borderTop: `1px solid ${BORDER}` }}>{teamBlock(homeAbbr, h)}</div>
+          {/* away/home tabs — same pattern as the box-score hitting split */}
+          <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
+            {[{ key: 'away', label: awayAbbr }, { key: 'home', label: homeAbbr }].map((t, i) => (
+              <button key={t.key} onClick={() => setTeam(t.key)} style={{ flex: 1, padding: '10px', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: team === t.key ? 'rgba(189,255,0,0.1)' : 'transparent', color: team === t.key ? NEON_T : MUTED, borderRight: i === 0 ? `1px solid ${BORDER}` : 'none', borderBottom: team === t.key ? `2px solid ${NEON}` : '2px solid transparent' }}>{t.label} Injuries</button>
+            ))}
+          </div>
+          <div style={{ padding: '4px 0' }}>
+            {list.length === 0
+              ? <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: MUTED, padding: '10px 16px' }}>No reported injuries</div>
+              : list.map((p, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', padding: '7px 16px' }}>
+                  <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</span>
+                  <span style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: statusColor(p.status) }}>{p.status}</span>
+                    {p.detail && <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: MUTED }}> · {p.detail}</span>}
+                  </span>
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </div>
