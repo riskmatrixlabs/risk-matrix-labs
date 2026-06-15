@@ -2982,6 +2982,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slip, setSlip] = useState([])           // legs: [{ pick, odds, book?, sport?, event? }]
   const [slipOpen, setSlipOpen] = useState(false)
   const [slipStake, setSlipStake] = useState('')
+  const [slipMode, setSlipMode] = useState('parlay')      // 'parlay' | 'straights'
+  const [slipOff, setSlipOff] = useState(() => new Set())  // picks toggled OFF (kept in slip, excluded from bet)
+  const toggleLeg = (pick) => setSlipOff(s => { const n = new Set(s); n.has(pick) ? n.delete(pick) : n.add(pick); return n })
   const [ocrBusy, setOcrBusy] = useState(false)
   const photoRef = useRef(null)
   const onBetSlipPhoto = async (e) => {
@@ -3004,7 +3007,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
   const amToDec = (a) => a == null ? 1 : (a > 0 ? 1 + a / 100 : 1 + 100 / -a)
   const decToAm = (d) => d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1))
-  const slipComboOdds = () => decToAm(slip.reduce((acc, l) => acc * amToDec(Number(l.odds) || 0), 1))
+  const enabledLegs = () => slip.filter(l => !slipOff.has(l.pick))
+  const slipComboOdds = () => decToAm(enabledLegs().reduce((acc, l) => acc * amToDec(Number(l.odds) || 0), 1))
   const commitBet = (b) => {
     setBets(p => [...p, b])
     if (userId && cloudSyncedRef.current) {
@@ -3013,27 +3017,49 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }
   }
   const logParlay = (stake) => {
-    if (slip.length < 1) return
+    const legs = enabledLegs()
+    if (legs.length < 1) return
     const stk = Number(stake) || 0
-    const isP = slip.length >= 2
-    const odds = isP ? slipComboOdds() : (Number(slip[0].odds) || 0)
-    commitBet({
-      id: Date.now(),
-      date: new Date().toISOString().slice(0, 10),
-      sport: slip[0]?.sport || '',
-      book: isP ? '' : (slip[0].book || ''),
-      betType: isP ? 'Parlay' : 'Straight',
-      event: isP ? `${slip.length}-Leg Parlay` : (slip[0].event || ''),
-      pick: isP ? slip.map(l => l.pick).join('  +  ') : slip[0].pick,
-      odds,
-      units: stats.unitSize ? stk / stats.unitSize : 0,
-      stake: stk,
-      result: 'Open',
-      pnl: 0,
-      legs: isP ? slip.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })) : null,
-      notes: 'In-app bet slip',
-    })
-    setSlip([]); setSlipOpen(false)
+    const mkUnits = () => (stats.unitSize ? stk / stats.unitSize : 0)
+    if (slipMode === 'straights') {
+      // log each enabled leg as its own straight bet (stake applies to each)
+      legs.forEach((l, i) => commitBet({
+        id: Date.now() + i,
+        date: new Date().toISOString().slice(0, 10),
+        sport: l.sport || '',
+        book: l.book || '',
+        betType: 'Straight',
+        event: l.event || '',
+        pick: l.pick,
+        odds: Number(l.odds) || 0,
+        units: mkUnits(),
+        stake: stk,
+        result: 'Open',
+        pnl: 0,
+        legs: null,
+        notes: 'In-app bet slip (straight)',
+      }))
+    } else {
+      const isP = legs.length >= 2
+      const odds = isP ? decToAm(legs.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)) : (Number(legs[0].odds) || 0)
+      commitBet({
+        id: Date.now(),
+        date: new Date().toISOString().slice(0, 10),
+        sport: legs[0]?.sport || '',
+        book: isP ? '' : (legs[0].book || ''),
+        betType: isP ? 'Parlay' : 'Straight',
+        event: isP ? `${legs.length}-Leg Parlay` : (legs[0].event || ''),
+        pick: isP ? legs.map(l => l.pick).join('  +  ') : legs[0].pick,
+        odds,
+        units: mkUnits(),
+        stake: stk,
+        result: 'Open',
+        pnl: 0,
+        legs: isP ? legs.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })) : null,
+        notes: 'In-app bet slip',
+      })
+    }
+    setSlip([]); setSlipOff(new Set()); setSlipOpen(false)
   }
 
   const TH = ({ col, label, right }) => (
@@ -3085,76 +3111,122 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   {ocrBusy && <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T, textAlign: 'center', padding: '6px 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Reading slip…</div>}
                   {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No picks yet — tap a price to add one, or upload a slip photo (📷 Pic).</div>}
 
-                  {/* ── BOOKS FIRST: where to place your slip, best book highlighted, bold neon odds ── */}
-                  {(() => {
-                    const shop = slip.filter(l => l.byBook && Object.keys(l.byBook).length)
-                    if (!shop.length) return null
-                    const total = shop.length
+                  {slip.length > 0 && (() => {
+                    const fmt = (a) => `${(Number(a) || 0) > 0 ? '+' : ''}${a}`
+                    const enabled = slip.filter(l => !slipOff.has(l.pick))
+                    const isStraights = slipMode === 'straights'
+                    const stk = Number(slipStake) || 0
                     let userState = ''; try { userState = localStorage.getItem('rml_state') || '' } catch {}
                     const allowed = booksForState(userState)
                     const inRegion = (bk) => !allowed || allowed.includes(bk) || OFFSHORE.includes(bk)
-                    const books = [...new Set(shop.flatMap(l => Object.keys(l.byBook)))]
-                    const rows = books.map(bk => {
-                      const covered = shop.filter(l => l.byBook[bk] != null)
-                      const comboDec = covered.reduce((a, l) => a * amToDec(l.byBook[bk]), 1)
-                      return { book: bk, n: covered.length, odds: covered.length === total ? decToAm(comboDec) : null, region: inRegion(bk) }
-                    })
-                    const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
-                    const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
-                    const region = rows.filter(r => !r.region && r.n > 0)
+                    const comboDec = enabled.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)
+                    const payoutVal = stk > 0 ? (isStraights ? enabled.reduce((s, l) => s + stk * amToDec(Number(l.odds) || 0), 0) : stk * comboDec) : 0
                     const lbl = { fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, opacity: 0.85, marginTop: '12px', marginBottom: '4px' }
-                    const bookRow = (r, faded, best) => (
-                      <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                          {best && <span style={{ color: NEON_T, fontSize: '14px', fontWeight: 700 }}>✓</span>}
-                          <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>
-                        </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                          {r.odds != null && <span className="tv-glow" style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{r.odds > 0 ? '+' : ''}{r.odds}</span>}
-                          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
-                        </span>
-                      </a>
-                    )
+                    const bestForLeg = (l) => {
+                      const ents = l.byBook ? Object.entries(l.byBook).filter(([bk]) => inRegion(bk)) : []
+                      if (!ents.length) return { book: l.book, odds: Number(l.odds) || 0 }
+                      return ents.reduce((b, [bk, od]) => (!b || amToDec(od) > amToDec(b.odds)) ? { book: bk, odds: od } : b, null)
+                    }
                     return (
-                      <div style={{ marginBottom: '4px' }}>
-                        {avail.length > 0 && <><div style={lbl}>✓ Best book · all {total} legs</div>{avail.map((r, i) => bookRow(r, false, i === 0))}</>}
-                        {missing.length > 0 && <><div style={lbl}>Missing some legs</div>{missing.map(r => bookRow(r))}</>}
-                        {region.length > 0 && <><div style={lbl}>Not available in your region</div>{region.map(r => bookRow(r, true))}</>}
-                      </div>
+                      <>
+                        {/* Parlay / Straights — treat your picks as one combined ticket, or shop each on its own */}
+                        <div style={{ display: 'flex', gap: '4px', margin: '2px 0 12px', background: 'var(--bg)', borderRadius: '9px', padding: '3px' }}>
+                          {[['parlay', 'Parlay'], ['straights', 'Straights']].map(([k, label]) => (
+                            <button key={k} onClick={() => setSlipMode(k)} style={{ flex: 1, padding: '8px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', border: 'none', background: slipMode === k ? NEON : 'transparent', color: slipMode === k ? '#0A0A0A' : MUTED }}>{label}</button>
+                          ))}
+                        </div>
+
+                        {/* PARLAY: combined price across books, best to PLACE ON */}
+                        {!isStraights && (() => {
+                          const shop = enabled.filter(l => l.byBook && Object.keys(l.byBook).length)
+                          if (!shop.length) return null
+                          const total = shop.length
+                          const books = [...new Set(shop.flatMap(l => Object.keys(l.byBook)))]
+                          const rows = books.map(bk => {
+                            const covered = shop.filter(l => l.byBook[bk] != null)
+                            const cDec = covered.reduce((a, l) => a * amToDec(l.byBook[bk]), 1)
+                            return { book: bk, n: covered.length, odds: covered.length === total ? decToAm(cDec) : null, region: inRegion(bk) }
+                          })
+                          const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
+                          const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
+                          const region = rows.filter(r => !r.region && r.n > 0)
+                          const bookRow = (r, faded, best) => (
+                            <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                {best && <span style={{ color: NEON_T, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}>PLACE ON</span>}
+                                <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>
+                              </span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                                {r.odds != null && <span className="tv-glow" style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{fmt(r.odds)}</span>}
+                                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
+                              </span>
+                            </a>
+                          )
+                          return (
+                            <div style={{ marginBottom: '4px' }}>
+                              {avail.length > 0 && <><div style={lbl}>✓ Best book · all {total} legs</div>{avail.map((r, i) => bookRow(r, false, i === 0))}</>}
+                              {missing.length > 0 && <><div style={lbl}>Missing some legs</div>{missing.map(r => bookRow(r))}</>}
+                              {region.length > 0 && <><div style={lbl}>Not in your region</div>{region.map(r => bookRow(r, true))}</>}
+                            </div>
+                          )
+                        })()}
+
+                        {/* STRAIGHTS: shop each enabled leg to its own best book */}
+                        {isStraights && (
+                          <div style={{ marginBottom: '4px' }}>
+                            <div style={lbl}>Best book · each bet</div>
+                            {enabled.length === 0 && <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, padding: '6px 0' }}>All legs off — toggle one on below.</div>}
+                            {enabled.map((l, i) => { const b = bestForLeg(l); return (
+                              <a key={i} href={placeLink(b.book) || l.link || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 12px', marginTop: '7px', borderRadius: '11px', border: '1px solid var(--border)', textDecoration: 'none' }}>
+                                <span style={{ minWidth: 0 }}>
+                                  <span style={{ display: 'block', fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.pick}</span>
+                                  <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>place on {BOOK_NAMES[b.book] || b.book || '—'}</span>
+                                </span>
+                                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: NEON_T, flexShrink: 0 }}>{fmt(b.odds)}</span>
+                              </a>
+                            )})}
+                          </div>
+                        )}
+
+                        {/* picks — each with an on/off toggle (keep a leg but leave it out) */}
+                        <div style={{ ...lbl, color: MUTED }}>Your picks · {enabled.length}/{slip.length} on</div>
+                        {slip.map((l, i) => { const off = slipOff.has(l.pick); return (
+                          <div key={i} style={{ padding: '9px 0', borderTop: '1px solid var(--border)', opacity: off ? 0.4 : 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                                <button onClick={() => toggleLeg(l.pick)} title={off ? 'Include leg' : 'Exclude leg'} style={{ flexShrink: 0, width: '34px', height: '20px', borderRadius: '999px', border: 'none', cursor: 'pointer', background: off ? 'var(--border)' : NEON, position: 'relative', padding: 0 }}>
+                                  <span style={{ position: 'absolute', top: '2px', left: off ? '2px' : '16px', width: '16px', height: '16px', borderRadius: '50%', background: '#0A0A0A', transition: 'left 0.15s ease' }} />
+                                </button>
+                                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
+                              </span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{fmt(l.odds)}</span>
+                                <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '15px', fontWeight: 700 }}>✕</button>
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px', paddingLeft: '43px' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                                <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
+                                {l.evPct != null && <span title={l.consensus ? 'consensus edge (de-vig avg of all books)' : 'edge vs sharp (Pinnacle)'} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, padding: '1px 5px', borderRadius: '5px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)' }}>{l.consensus ? '~' : '+'}{Number(l.evPct).toFixed(1)}% edge</span>}
+                              </span>
+                              {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
+                            </div>
+                          </div>
+                        )})}
+
+                        {/* stake + log */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
+                          <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder={isStraights ? 'Stake $ / bet' : 'Stake $'}
+                            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, outline: 'none' }} />
+                          {payoutVal > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>→ ${payoutVal.toFixed(2)}</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <button onClick={() => { setSlip([]); setSlipStake(''); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
+                          <button onClick={() => { logParlay(slipStake); setSlipStake('') }} disabled={!enabled.length} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: enabled.length ? 'pointer' : 'not-allowed', opacity: enabled.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{isStraights ? `Log ${enabled.length} Straight${enabled.length === 1 ? '' : 's'}` : enabled.length >= 2 ? `Log ${enabled.length}-Leg Parlay` : 'Log Bet'}</button>
+                        </div>
+                      </>
                     )
                   })()}
-
-                  {/* legs — bold neon odds */}
-                  {slip.length > 0 && <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED, marginTop: '14px', marginBottom: '2px' }}>Your picks</div>}
-                  {slip.map((l, i) => (
-                    <div key={i} style={{ padding: '9px 0', borderTop: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                          <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
-                          <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '15px', fontWeight: 700 }}>✕</button>
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                          <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
-                          {l.evPct != null && <span title={l.consensus ? 'consensus edge (de-vig avg of all books)' : 'edge vs sharp (Pinnacle)'} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, padding: '1px 5px', borderRadius: '5px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)' }}>{l.consensus ? '~' : '+'}{Number(l.evPct).toFixed(1)}% edge</span>}
-                        </span>
-                        {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
-                      </div>
-                    </div>
-                  ))}
-                  {slip.length > 0 && (<>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
-                    <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder="Stake $"
-                      style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, outline: 'none' }} />
-                    {payout > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>→ ${payout.toFixed(2)}</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                    <button onClick={() => { setSlip([]); setSlipStake('') }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
-                    <button onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{slip.length >= 2 ? `Log ${slip.length}-Leg Parlay` : 'Log Bet'}</button>
-                  </div>
-                  </>)}
                   </div>
                 </div>
               )}
