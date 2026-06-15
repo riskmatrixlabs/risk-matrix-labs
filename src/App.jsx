@@ -539,7 +539,8 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
     const BET_TYPES  = ['Straight','Parlay','SGP','RR 2s','RR 3s','Live Bet','Hedge']
 
     return (
-      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: isMobile ? '100%' : '480px', height: '100dvh', zIndex: 10000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '10px' : '20px' }}>
+       <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '480px', maxHeight: isMobile ? '92dvh' : '88dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${NEON}`, boxShadow: '0 18px 55px rgba(0,0,0,0.75)' }}>
 
         {/* Header */}
         <div style={{ flexShrink: 0, padding: '14px 16px 12px', borderBottom: `1px solid var(--border)`, borderTop: `3px solid ${NEON}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)' }}>
@@ -688,6 +689,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
           }}>{isEdit ? '✓ SAVE CHANGES' : '+ LOG BET'}</button>
           <button type="button" onClick={onClose} style={{ ...btnStyle(), width: '100%', padding: '11px', fontSize: '11px', borderRadius: '12px' }}>Cancel</button>
         </div>
+       </div>
       </div>
     )
   }
