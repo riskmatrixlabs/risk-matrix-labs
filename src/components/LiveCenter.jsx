@@ -122,7 +122,7 @@ function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
 
 // ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
 // anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
-function OuFlag({ event, token, compact = false, mini = false }) {
+function OuFlag({ event, token, compact = false, mini = false, inline = false }) {
   const [ou, setOu] = useState(null)
   useEffect(() => {
     if (!token || event?.sport !== 'MLB' || !event?.away_team || !event?.home_team) { setOu(null); return }
@@ -135,6 +135,15 @@ function OuFlag({ event, token, compact = false, mini = false }) {
   if (!ou) return null
   const t = ou.total
   const label = ou.lean === 'OVER' ? '📈 OVER' : ou.lean === 'UNDER' ? '📉 UNDER' : '➖ LEAN'
+  // inline — sits in the card footer (right side), next to the Tap-for-Insights tag.
+  if (inline) {
+    return (
+      <span title={ou.reason} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 9px', borderRadius: '6px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent', minWidth: 0, maxWidth: '66%' }}>
+        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
+        {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ou.reason}</span> : null}
+      </span>
+    )
+  }
   // mini — tiny inline badge that sits above the time in the list card's center column.
   if (mini) {
     const arrow = ou.lean === 'OVER' ? '📈' : ou.lean === 'UNDER' ? '📉' : '➖'
@@ -218,9 +227,6 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           </div>
         )
       })()}
-      {/* O/U model lean — full flag (lean + total + reason), up top where it's easy to scan */}
-      {preGame && <OuFlag event={event} token={token} compact />}
-
       {/* Main row */}
       {live && hasScore && event.sport === 'MLB' ? (() => {
         // Live MLB: [Logo · Name · Score] [Bases · Inning] [Score · Name · Logo]
@@ -358,10 +364,13 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
         </div>
       )}
 
-      {/* Tap affordance — signals the card opens to full Insights */}
-      <div style={{ marginTop: '7px', paddingTop: '6px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-        <span style={{ fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>Tap for Insights</span>
-        <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="rgba(189,255,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      {/* Footer — Tap-for-Insights tag (left) + O/U model flag (right) */}
+      <div style={{ marginTop: '7px', paddingTop: '6px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+          <span style={{ fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>Tap for Insights</span>
+          <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="rgba(189,255,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </span>
+        {preGame && <OuFlag event={event} token={token} inline />}
       </div>
     </div>
   )
