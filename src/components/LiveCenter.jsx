@@ -1986,18 +1986,22 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       const pctMove = (od && cd) ? Math.abs((cd / od - 1) * 100) : 0
                       return (
                         <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                          <span style={{ minWidth: '64px' }}>
+                          {/* LEFT — what it is + where it opened */}
+                          <span style={{ minWidth: '70px' }}>
                             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{labelFor[k]}</div>
-                            {clv && Math.abs(clv.clvPct) >= 0.1 && (
-                              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: clv.beat ? NEON_T : '#FF3B3B' }}>
-                                {clv.beat ? '+' : ''}{clv.clvPct.toFixed(1)}% <span style={{ color: MUTED, fontWeight: 500 }}>CLV@open</span>
-                              </div>
-                            )}
+                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED }}>
+                              <span style={{ color: 'rgba(255,255,255,0.35)' }}>open </span>{fmtMv(mkt, m.open)}
+                            </div>
                           </span>
                           <Sparkline series={jm ? jm.series : m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
-                          <span style={{ textAlign: 'right' }}>
-                            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtMv(mkt, m.current)}</div>
-                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: lineColor }}>{flat ? '→ 0%' : `${up ? '↗' : '↘'} ${pctMove.toFixed(1)}%`}</div>
+                          {/* RIGHT — where it is now + your CLV vs the open */}
+                          <span style={{ textAlign: 'right', minWidth: '64px' }}>
+                            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: lineColor }}>
+                              {flat ? '→' : up ? '↗' : '↘'} {fmtMv(mkt, m.current)}
+                            </div>
+                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: clv && Math.abs(clv.clvPct) >= 0.1 ? (clv.beat ? NEON_T : '#FF3B3B') : MUTED }}>
+                              {clv && Math.abs(clv.clvPct) >= 0.1 ? `${clv.beat ? '+' : ''}${clv.clvPct.toFixed(1)}% CLV` : 'no move'}
+                            </div>
                           </span>
                         </div>
                       )
