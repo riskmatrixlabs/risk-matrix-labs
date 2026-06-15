@@ -1854,15 +1854,40 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 {/* 1) Your Bet (pinned top, if logged) */}
                 {myBets.length > 0 && <PersonalBet graded={myBets} />}
 
-                {/* 2) Win Probability */}
+                {/* Fair Value (swapped above Win Probability) */}
                 {(dv || dvSpread || dvTotal) && (() => {
                   const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
-                  const wpMarkets = [
-                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB },
-                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB },
-                    dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB },
+                  const pct = (p) => `${Math.round(p * 100)}%`
+                  const rows = [
+                    dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct,       pA: dv.fairA,       pB: dv.fairB,       pLabel: 'win' },
+                    dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct, pA: dvSpread.fairA, pB: dvSpread.fairB, pLabel: 'cover' },
+                    dvTotal  && { name: `Total ${totalPt}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
-                  return <WinProbability markets={wpMarkets} />
+                  return (
+                    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
+                        <InfoLabel center tip={GLOSSARY.fairValue} label={
+                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· the honest price</span></span>
+                        } />
+                      </div>
+                      {rows.map((m, i) => (
+                        <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                          <span>
+                            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}><span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}>{m.aL} </span>{m.a}</div>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>{pct(m.pA)} <span style={{ color: MUTED, fontWeight: 500 }}>{m.pLabel}</span></div>
+                          </span>
+                          <span style={{ textAlign: 'center' }}>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{m.name}</div>
+                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>HOLD <span style={{ color: m.hold > 5 ? '#FF3B3B' : NEON_T }}>{m.hold.toFixed(1)}%</span></div>
+                          </span>
+                          <span style={{ textAlign: 'right' }}>
+                            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}>{m.b}<span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}> {m.bL}</span></div>
+                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>{pct(m.pB)} <span style={{ color: MUTED, fontWeight: 500 }}>{m.pLabel}</span></div>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
                 })()}
 
                 {/* 3) Odds table (+ LIVE badge) */}
@@ -1922,39 +1947,15 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                   </div>
                 )}
 
+                {/* Win Probability (swapped below Fair Value) */}
                 {(dv || dvSpread || dvTotal) && (() => {
                   const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
-                  const pct = (p) => `${Math.round(p * 100)}%`
-                  const rows = [
-                    dv       && { name: 'Moneyline',          aL: event.away_abbr, bL: event.home_abbr, a: fair(dv.fairAmericanA),       b: fair(dv.fairAmericanB),       hold: dv.holdPct,       pA: dv.fairA,       pB: dv.fairB,       pLabel: 'win' },
-                    dvSpread && { name: `${spreadLabel} ${sh}`, aL: event.away_abbr, bL: event.home_abbr, a: fair(dvSpread.fairAmericanA), b: fair(dvSpread.fairAmericanB), hold: dvSpread.holdPct, pA: dvSpread.fairA, pB: dvSpread.fairB, pLabel: 'cover' },
-                    dvTotal  && { name: `Total ${totalPt}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
+                  const wpMarkets = [
+                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB },
+                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB },
+                    dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB },
                   ].filter(Boolean)
-                  return (
-                    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
-                        <InfoLabel center tip={GLOSSARY.fairValue} label={
-                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· the honest price</span></span>
-                        } />
-                      </div>
-                      {rows.map((m, i) => (
-                        <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-                          <span>
-                            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}><span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}>{m.aL} </span>{m.a}</div>
-                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>{pct(m.pA)} <span style={{ color: MUTED, fontWeight: 500 }}>{m.pLabel}</span></div>
-                          </span>
-                          <span style={{ textAlign: 'center' }}>
-                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{m.name}</div>
-                            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>HOLD <span style={{ color: m.hold > 5 ? '#FF3B3B' : NEON_T }}>{m.hold.toFixed(1)}%</span></div>
-                          </span>
-                          <span style={{ textAlign: 'right' }}>
-                            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T }}>{m.b}<span style={{ color: MUTED, fontSize: '10px', fontWeight: 700 }}> {m.bL}</span></div>
-                            <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT }}>{pct(m.pB)} <span style={{ color: MUTED, fontWeight: 500 }}>{m.pLabel}</span></div>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )
+                  return <WinProbability markets={wpMarkets} />
                 })()}
 
                 {/* 5) Line Shop — Compare Books / best price */}

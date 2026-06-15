@@ -106,12 +106,28 @@ const WARM_TTL_MS = 18 * 60 * 1000
 
 // Pre-warm the WHOLE slate's cheap game-lines cache with ONE bulk call per sport — so opening any
 // game serves best lines for FREE (cacheOnly). Called by cron-warm-lines. Returns a small summary.
+// Map "away@home" (last words) → ESPN external_event_id from the events table, so warm snapshots
+// land under the id the By-Sportsbook chart reads.
+async function loadEventIds(sport) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return {}
+  try {
+    const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
+    const from = new Date(Date.now() - 3 * 3600e3).toISOString()
+    const to = new Date(Date.now() + 12 * 3600e3).toISOString()
+    const { data } = await db.from('events').select('external_event_id, away_team, home_team').eq('sport', sport).gte('start_time', from).lte('start_time', to)
+    const map = {}
+    for (const e of data || []) map[`${lastWord(e.away_team)}@${lastWord(e.home_team)}`] = e.external_event_id
+    return map
+  } catch { return {} }
+}
+
 export async function warmSlate(sport) {
   const sp = String(sport).toUpperCase()
   if (!SPORT_KEYS[sp]) return { skipped: 'unsupported sport' }
   const provider = getProvider()
   const { games, credits } = await provider.fetchOdds({ sport: sp, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
-  let written = 0
+  const evMap = await loadEventIds(sp)
+  let written = 0, snapped = 0
   for (const game of games || []) {
     if (!game?.away_team || !game?.home_team) continue
     const markets = {
@@ -122,8 +138,12 @@ export async function warmSlate(sport) {
     const payload = { found: true, away: game.away_team, home: game.home_team, markets, creditsRemaining: credits.remaining, fetchedAt: new Date().toISOString() }
     await writeScan(`LINES:${sp}`, `${lastWord(game.away_team)}@${lastWord(game.home_team)}`, payload, credits.remaining)
     written++
+    // Per-book snapshots → feeds the By-Sportsbook line-movement chart for the whole slate, $0 extra
+    // (we already paid for this bulk pull). Builds history over time as the cron ticks.
+    const eventId = evMap[`${lastWord(game.away_team)}@${lastWord(game.home_team)}`]
+    if (eventId) { await persistSnapshots({ eventId, sport: sp, away: game.away_team, home: game.home_team, markets }); snapped++ }
   }
-  return { written, games: games?.length || 0, creditsRemaining: credits.remaining }
+  return { written, snapped, games: games?.length || 0, creditsRemaining: credits.remaining }
 }
 
 export default async function handler(req, res) {
