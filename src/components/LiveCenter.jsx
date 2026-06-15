@@ -1947,7 +1947,10 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                   </div>
                 )}
 
-                {/* Win Probability (swapped below Fair Value) */}
+                {/* Line Shop — Compare Books / best price (swapped above Win Probability) */}
+                <LineShop event={event} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} focus={shopFocus} />
+
+                {/* Win Probability */}
                 {(dv || dvSpread || dvTotal) && (() => {
                   const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
                   const wpMarkets = [
@@ -1957,9 +1960,6 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                   ].filter(Boolean)
                   return <WinProbability markets={wpMarkets} />
                 })()}
-
-                {/* 5) Line Shop — Compare Books / best price */}
-                <LineShop event={event} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} focus={shopFocus} />
 
                 <BonusButton />
 
