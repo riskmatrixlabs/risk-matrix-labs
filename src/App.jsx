@@ -3066,30 +3066,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                   <button onClick={(e) => { e.stopPropagation(); setBotView('board'); setTab('bot') }} title="Analyze a play in Channel 2 — your slip stays parked"
                     style={{ padding: '5px 10px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>📊 Analyze</button>
-                  <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '11px' }}>{slipOpen ? '▾' : '▸'}</span></span>
+                  <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '12px' }}>{slipOpen ? '▾' : '▸'}</span></span>
                 </span>
               </div>
               {slipOpen && (
-                <div style={{ padding: '10px 14px 14px' }}>
+                <div style={{ padding: '10px 14px 14px', maxHeight: '72vh', overflowY: 'auto' }}>
                   {/* Upload Pic — OCR a bet-slip photo into legs */}
-                  <button onClick={() => photoRef.current?.click()} disabled={ocrBusy} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: ocrBusy ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{ocrBusy ? 'Reading slip…' : '📷 Upload Pic (read a bet slip)'}</button>
+                  <button onClick={() => photoRef.current?.click()} disabled={ocrBusy} style={{ width: '100%', padding: '11px', marginBottom: '12px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: ocrBusy ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{ocrBusy ? 'Reading slip…' : '📷 Upload Pic (read a bet slip)'}</button>
                   {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No picks yet — tap a price to add one, or upload a slip photo.</div>}
-                  {slip.map((l, i) => (
-                    <div key={i} style={{ padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
-                          <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '14px', fontWeight: 700 }}>✕</button>
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
-                        <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
-                        {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
-                      </div>
-                    </div>
-                  ))}
-                  {/* ── Line-shop "link page": which books have your legs, combined odds, place links ── */}
+
+                  {/* ── BOOKS FIRST: where to place your slip, best book highlighted, bold neon odds ── */}
                   {(() => {
                     const shop = slip.filter(l => l.byBook && Object.keys(l.byBook).length)
                     if (!shop.length) return null
@@ -3106,30 +3092,54 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
                     const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
                     const region = rows.filter(r => !r.region && r.n > 0)
-                    const lbl = { fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED, marginTop: '12px', marginBottom: '2px' }
-                    const bookRow = (r, faded) => (
-                      <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: '1px solid var(--border)', textDecoration: 'none', opacity: faded ? 0.5 : 1 }}>
-                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}{r.odds != null && <span style={{ color: NEON_T, marginLeft: '6px' }}>{r.odds > 0 ? '+' : ''}{r.odds}</span>}</span>
-                        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
+                    const lbl = { fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, opacity: 0.85, marginTop: '12px', marginBottom: '4px' }
+                    const bookRow = (r, faded, best) => (
+                      <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          {best && <span style={{ color: NEON_T, fontSize: '14px', fontWeight: 700 }}>✓</span>}
+                          <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                          {r.odds != null && <span className="tv-glow" style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: NEON_T }}>{r.odds > 0 ? '+' : ''}{r.odds}</span>}
+                          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{r.n}/{total}</span>
+                        </span>
                       </a>
                     )
                     return (
-                      <div>
-                        {avail.length > 0 && <><div style={lbl}>All props available</div>{avail.map(r => bookRow(r))}</>}
-                        {missing.length > 0 && <><div style={lbl}>Missing props</div>{missing.map(r => bookRow(r))}</>}
+                      <div style={{ marginBottom: '4px' }}>
+                        {avail.length > 0 && <><div style={lbl}>✓ Best book · all {total} legs</div>{avail.map((r, i) => bookRow(r, false, i === 0))}</>}
+                        {missing.length > 0 && <><div style={lbl}>Missing some legs</div>{missing.map(r => bookRow(r))}</>}
                         {region.length > 0 && <><div style={lbl}>Not available in your region</div>{region.map(r => bookRow(r, true))}</>}
                       </div>
                     )
                   })()}
+
+                  {/* legs — bold neon odds */}
+                  {slip.length > 0 && <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: MUTED, marginTop: '14px', marginBottom: '2px' }}>Your picks</div>}
+                  {slip.map((l, i) => (
+                    <div key={i} style={{ padding: '9px 0', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                          <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
+                          <button onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', fontSize: '15px', fontWeight: 700 }}>✕</button>
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
+                        <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
+                        {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
+                      </div>
+                    </div>
+                  ))}
                   {slip.length > 0 && (<>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
                     <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder="Stake $"
-                      style={{ flex: 1, padding: '9px 11px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '13px', outline: 'none' }} />
-                    <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, whiteSpace: 'nowrap' }}>{payout > 0 ? `→ $${payout.toFixed(2)}` : ''}</span>
+                      style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, outline: 'none' }} />
+                    {payout > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>→ ${payout.toFixed(2)}</span>}
                   </div>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                    <button onClick={() => { setSlip([]); setSlipStake('') }} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
-                    <button onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{slip.length >= 2 ? `Log ${slip.length}-Leg Parlay` : 'Log Bet'}</button>
+                    <button onClick={() => { setSlip([]); setSlipStake('') }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
+                    <button onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{slip.length >= 2 ? `Log ${slip.length}-Leg Parlay` : 'Log Bet'}</button>
                   </div>
                   </>)}
                 </div>

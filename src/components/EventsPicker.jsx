@@ -10,6 +10,14 @@ import { fetchEvents, isLiveEvent } from '../lib/events.js'
 // Sports the provider supports today — must match FindChannel's FEED_SPORTS.
 const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']
 
+// League logos (ESPN, transparent PNGs) for the sport selector circles.
+const LEAGUE_LOGO = {
+  MLB:  'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png',
+  NHL:  'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+  NBA:  'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+  WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
+}
+
 // Game time in the user's local timezone (device tz), not raw UTC.
 const localClock = (iso) => {
   try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) }
@@ -41,11 +49,26 @@ const buildDateStrip = () => {
   return out
 }
 
-export default function EventsPicker({ sport, onPickSport, onPickGame, token }) {
+export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPlayer, token, selectedId }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [players, setPlayers] = useState([])      // player-name search matches (across today's games)
+  const [pStatus, setPStatus] = useState('idle')  // idle | loading | done
   const dateStrip = buildDateStrip()
+
+  // Search ALSO finds players (mirrors CH1's player search) — type a name → their game + props.
+  useEffect(() => {
+    if (!token || query.trim().length < 2) { setPlayers([]); setPStatus('idle'); return }
+    let live = true; setPStatus('loading')
+    const id = setTimeout(() => {
+      fetch(`/api/player-search?q=${encodeURIComponent(query.trim())}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : { matches: [] })
+        .then(j => { if (live) { setPlayers(j.matches || []); setPStatus('done') } })
+        .catch(() => { if (live) setPStatus('done') })
+    }, 300)
+    return () => { live = false; clearTimeout(id) }
+  }, [query, token])
 
   // Case-insensitive substring filter on away/home name + abbr.
   const q = query.trim().toLowerCase()
@@ -60,9 +83,11 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
     fetchEvents(sport, 'today')
       .then(res => {
         if (!live) return
+        // Show the WHOLE slate (pre-game AND live) so a game card never disappears mid-game.
+        // Pre-game first, live after; live games are tagged (props stay pre-game-gated).
         const rows = (res?.data || [])
-          .filter(e => !isLiveEvent(e))           // pre-game only
-          .map(e => ({ ...e, _sport: sport }))
+          .map(e => ({ ...e, _sport: sport, _live: isLiveEvent(e) }))
+          .sort((a, b) => (a._live === b._live) ? 0 : (a._live ? 1 : -1))
         setEvents(rows)
       })
       .catch(() => { if (live) setEvents([]) })
@@ -76,11 +101,11 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
         Events
       </div>
 
-      {/* Search — filters today's slate by team name/abbr. */}
+      {/* Search — filters the slate by team AND finds players by name. */}
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search teams…"
+        placeholder="Search team or player…"
         style={{
           width: '100%', boxSizing: 'border-box', marginBottom: '14px',
           background: CARD, border: `1px solid ${BORDER}`, borderRadius: '999px',
@@ -89,8 +114,29 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
         }}
       />
 
-      {/* Sport circles — horizontal scrollable row. */}
-      <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
+      {/* Player matches — type a name → tap to open their game + props (mirrors CH1 search). */}
+      {query.trim().length >= 2 && (pStatus === 'loading' || players.length > 0) && (
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Players</div>
+          {pStatus === 'loading' && <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)', padding: '4px 2px' }}>SEARCHING…</div>}
+          {players.map((m, i) => (
+            <button key={`${m.player}-${i}`} onClick={() => onPickPlayer && onPickPlayer(m)}
+              style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: '6px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: '#0d0d0d', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {m.headshot
+                ? <img src={m.headshot} alt="" width="36" height="36" style={{ borderRadius: '50%', background: '#1a1a1a', objectFit: 'cover', flexShrink: 0 }} />
+                : <span style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{m.player[0] || '?'}</span>}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.player}</span>
+                <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{[m.pos, m.team].filter(Boolean).join(' · ')}</span>
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: NEON_T, letterSpacing: '0.04em', textAlign: 'right', flexShrink: 0 }}>{(m.game?.away_abbr || m.game?.away)} @ {(m.game?.home_abbr || m.game?.home)}<br />{localClock(m.game?.commenceTime)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Sport circles — league logo inside, abbr label below. */}
+      <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
         {FEED_SPORTS.map(s => {
           const active = s === sport
           return (
@@ -98,17 +144,21 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
               key={s}
               onClick={() => onPickSport && onPickSport(s)}
               style={{
-                flexShrink: 0,
-                width: '54px', height: '54px', borderRadius: '50%',
-                cursor: 'pointer',
-                background: CARD,
-                border: `1px solid ${active ? NEON : BORDER}`,
-                boxShadow: active ? `0 0 0 2px ${NEON}, 0 0 12px rgba(189,255,0,0.4)` : 'none',
-                color: active ? NEON : MUTED,
-                fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em',
+                flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
+                cursor: 'pointer', background: 'transparent', border: 'none', padding: 0,
               }}
             >
-              {s}
+              <span style={{
+                width: '40px', height: '40px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: CARD,
+                border: `1px solid ${active ? NEON : BORDER}`,
+                boxShadow: active ? `0 0 0 2px ${NEON}` : 'none',
+                opacity: active ? 1 : 0.55,
+              }}>
+                <img src={LEAGUE_LOGO[s]} alt={s} width="22" height="22" style={{ objectFit: 'contain' }} />
+              </span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: active ? NEON_T : MUTED }}>{s}</span>
             </button>
           )
         })}
@@ -148,31 +198,37 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, token }) 
           {events.length === 0 ? 'No games today' : 'No matching games'}
         </div>
       ) : (
-        filtered.map((ev, i) => (
-          <button
-            key={(ev.external_event_id || '') + i}
-            onClick={() => onPickGame && onPickGame(buildGame(ev))}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              width: '100%', textAlign: 'left', cursor: 'pointer',
-              background: 'rgba(189,255,0,0.04)',
-              border: `1px solid ${BORDER}`, borderRadius: '8px',
-              padding: '11px 13px', marginBottom: '8px',
-              fontFamily: R,
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              {ev.away_logo ? <img src={ev.away_logo} alt="" width="22" height="22" style={{ objectFit: 'contain', flexShrink: 0 }} /> : null}
-              <span style={{ fontSize: '15px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+        // Square cards in a horizontal slider — saves vertical space, swipe through the slate.
+        <div className="tv-ticker" style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '6px', WebkitOverflowScrolling: 'touch' }}>
+          {filtered.map((ev, i) => {
+            const sel = selectedId && ev.external_event_id === selectedId
+            return (
+            <button
+              key={(ev.external_event_id || '') + i}
+              onClick={() => onPickGame && onPickGame(buildGame(ev))}
+              style={{
+                flexShrink: 0, width: '124px', height: '124px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+                cursor: 'pointer', background: sel ? 'rgba(189,255,0,0.12)' : 'rgba(189,255,0,0.04)',
+                border: `1px solid ${sel ? NEON : BORDER}`, borderRadius: '14px',
+                boxShadow: sel ? `0 0 0 1px ${NEON}` : 'none',
+                padding: '13px 10px', fontFamily: R,
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {ev.away_logo ? <img src={ev.away_logo} alt="" width="30" height="30" style={{ objectFit: 'contain' }} /> : null}
+                <span style={{ fontSize: '10px', color: MUTED }}>@</span>
+                {ev.home_logo ? <img src={ev.home_logo} alt="" width="30" height="30" style={{ objectFit: 'contain' }} /> : null}
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: TEXT, letterSpacing: '0.03em', textAlign: 'center', whiteSpace: 'nowrap' }}>
                 {(ev.away_abbr || ev.away_team)} <span style={{ color: MUTED }}>@</span> {(ev.home_abbr || ev.home_team)}
               </span>
-              {ev.home_logo ? <img src={ev.home_logo} alt="" width="22" height="22" style={{ objectFit: 'contain', flexShrink: 0 }} /> : null}
-            </span>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: NEON_T, letterSpacing: '0.04em', flexShrink: 0 }}>
-              {localClock(ev.start_time)}
-            </span>
-          </button>
-        ))
+              <span style={{ fontSize: '11px', fontWeight: 700, color: ev._live ? '#FF3B3B' : NEON_T, letterSpacing: '0.04em' }}>
+                {ev._live ? '● LIVE' : localClock(ev.start_time)}
+              </span>
+            </button>
+          )})}
+        </div>
       )}
     </div>
   )

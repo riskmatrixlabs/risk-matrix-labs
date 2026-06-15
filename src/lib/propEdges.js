@@ -41,6 +41,24 @@ function bestOf(quotes) {
   return best
 }
 
+// No Pinnacle? Build a fair line from the MARKET CONSENSUS: de-vig each book that prices BOTH
+// sides, then average the fair Over prob across books. Less sharp than Pinnacle (books carry
+// bias) but a real "is it priced well?" signal from data we already paid for. Needs ≥2 two-way books.
+function consensusFair(sides) {
+  const over = {}, under = {}
+  for (const q of sides.Over || []) over[q.book] = q.price
+  for (const q of sides.Under || []) under[q.book] = q.price
+  const fairs = []
+  for (const book of Object.keys(over)) {
+    if (under[book] == null) continue
+    const dv = devigTwoWay(over[book], under[book])
+    if (dv && dv.fairA != null) fairs.push(dv.fairA)
+  }
+  if (fairs.length < 2) return null
+  const fairOver = fairs.reduce((s, v) => s + v, 0) / fairs.length
+  return { fairOver, fairUnder: 1 - fairOver, books: fairs.length }
+}
+
 export function propEdges(event, marketKeys, nowMs, opts = {}) {
   const o = { ...DEFAULTS, ...opts }
   if (o.preGameOnly && event?.commence_time != null) {
@@ -68,9 +86,16 @@ export function propEdges(event, marketKeys, nowMs, opts = {}) {
           if (isCredibleEdge({ evPct: ev }, o)) edges.push(edge)
         }
       } else {
-        for (const [side, best] of [['Over', bestOver], ['Under', bestUnder]]) {
+        // No sharp anchor → consensus de-vig edge from all books (capped 1%–15% to reject noise/errors).
+        const cons = consensusFair(sides)
+        for (const [side, best, fairP] of [['Over', bestOver, cons?.fairOver], ['Under', bestUnder, cons?.fairUnder]]) {
           if (!best) continue
-          lineShopOnly.push({ ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side) })
+          const row = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side) }
+          if (cons && fairP != null) {
+            const ev = evPct(best.price, fairP)
+            if (ev != null && ev >= 1 && ev <= 15) { edges.push({ ...row, fairProb: fairP, evPct: ev, consensus: true, consensusBooks: cons.books }); continue }
+          }
+          lineShopOnly.push(row)
         }
       }
     }

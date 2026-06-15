@@ -119,3 +119,30 @@ export async function writeScan(sport, dateStr, payload, creditsRemaining) {
     /* best-effort cache; ignore write failures */
   }
 }
+
+// ── Prop history (view-driven): snapshot best prop prices on each scan so props get a
+// "since open" read like game lines. $0 extra credits — rides scans already paid for. ──
+export async function capturePropSnapshots(rows) {
+  const supabase = client()
+  if (!supabase || !rows?.length) return
+  try { await supabase.from('prop_history').insert(rows) } catch { /* best-effort */ }
+}
+
+// Earliest captured best price per (player|market|point|side) for one event = the "open".
+export async function fetchPropOpens(eventId) {
+  const supabase = client()
+  if (!supabase || !eventId) return {}
+  try {
+    const { data } = await supabase
+      .from('prop_history')
+      .select('player, market, point, side, price, captured_at')
+      .eq('external_event_id', String(eventId))
+      .order('captured_at', { ascending: true })
+    const out = {}
+    for (const r of data || []) {
+      const k = `${r.player}|${r.market}|${r.point}|${r.side}`
+      if (!(k in out)) out[k] = r.price
+    }
+    return out
+  } catch { return {} }
+}

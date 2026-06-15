@@ -34,3 +34,14 @@
 - `vite preview` does NOT run `/api` functions — only a real Vercel deploy does.
 - Preview deployment URLs (`risk-matrix-labs-xxx.vercel.app`) serve HTML for `/api` (protection) — always test on `app.riskmatrixlabs.com`.
 - `ODDS_API_KEY` + `VITE_SUPABASE_*` are Production-scoped only (not Preview).
+
+---
+
+## SESSION 53 UPDATE (Jun 14 2026 · SW rml-v177) — read CLAUDE.md "SESSION 53" for full detail
+CH2 is now the analysis engine (one screen, slider always on top, detail inline — no page switch):
+- LINE MOVEMENT (top, since-open verdict + time-frame chips + junk-odds filtered) → PLAYER PROPS (collapsed; grouped BY PLAYER accordion, headshots, team filter, consensus `~%` edge, ▲/▼ since-open) → COMPARE BOOKS.
+- Unified free search (teams AND players). Live games now show (tagged ● LIVE); props always findable (pre-game gate removed).
+- NEW DB: `prop_history` table (migration applied) — view-driven prop snapshots → since-open movement; builds over time.
+- Bet Matrix redesigned (books on top, best book ✓, bold neon odds, scrollable).
+- Bugs fixed: sport mismatch (filter vs game sport), hidden live games, duplicate ALL / lying filter count.
+- Open: ANTHROPIC_API_KEY for OCR still pending; CH3 TRACK not redesigned; NFL unsupported; rml-master.html stale.

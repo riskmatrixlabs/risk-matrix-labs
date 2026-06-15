@@ -16,7 +16,7 @@ const SPORTS = {
   NBA:  { sport: 'basketball', league: 'nba'  },
   NHL:  { sport: 'hockey',     league: 'nhl'  },
 }
-const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+export const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 
 async function getJson(url) {
   const r = await fetch(url)
@@ -35,7 +35,7 @@ function extractAthletes(roster) {
 }
 
 // Build the day's player→game index for one sport from ESPN scoreboard + rosters.
-async function buildIndex(sportKey) {
+export async function buildIndex(sportKey) {
   const cfg = SPORTS[sportKey]
   // No `dates` param → ESPN's natural current slate (matches what the bot shows). Passing a
   // UTC date returned the WRONG day in the evening (next-day games), so search came back blank.

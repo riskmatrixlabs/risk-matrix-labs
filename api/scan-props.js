@@ -5,14 +5,34 @@ import { requireAuth } from './_lib/auth.js'
 import { fetchSportEvents, fetchEventOdds, SPORT_KEYS } from './_lib/oddsProviders/theOddsApi.js'
 import { propEdges } from '../src/lib/propEdges.js'
 import { PROP_MARKETS, PROP_MARKETS_FULL } from '../src/lib/propMarkets.js'
-import { readScan, writeScan, isFresh } from './_lib/scanStore.js'
+import { readScan, writeScan, isFresh, capturePropSnapshots, fetchPropOpens } from './_lib/scanStore.js'
+import { buildIndex, norm } from './player-search.js'
 
 export const config = { maxDuration: 20 }
 
+// Real ESPN headshots + team, joined onto props by player name (free roster index, cached per sport/day).
+async function rosterMap(sport) {
+  try {
+    const dateYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const cached = await readScan(`PLAYERS:${sport}`, dateYmd)
+    let index = cached?.payload?.index
+    if (!index) { const built = await buildIndex(sport); index = built.index; await writeScan(`PLAYERS:${sport}`, dateYmd, built, null) }
+    const byFull = {}, byLast = {}
+    for (const r of index || []) {
+      const n = norm(r.player)
+      const v = { headshot: r.headshot || null, team: r.team || null }
+      byFull[n] = v
+      byLast[n.split(/\s+/).pop()] = v
+    }
+    return { byFull, byLast }
+  } catch { return { byFull: {}, byLast: {} } }
+}
+
 const lastWord = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
-// Same per-game props paid for once per 2 min, no matter how many spots request them
-// (bot props board, player-prop CH2 view, etc.) — protects credits.
-const PROPS_TTL_MS = 2 * 60 * 1000
+// Props are paid for ONCE per game per 30 min, shared across every viewer (stored in scan_cache).
+// Prop lines barely move pre-game, so a long window slashes credit burn during slip-building;
+// the RE-SCAN button forces a fresh pull on demand. (Game lines stay live/90s — watched live.)
+const PROPS_TTL_MS = 30 * 60 * 1000
 
 export default async function handler(req, res) {
   const user = await requireAuth(req, res)
@@ -56,10 +76,23 @@ export default async function handler(req, res) {
       return res.status(200).json({ found: false, creditsRemaining: credits.remaining })
     }
 
-    const { edges, lineShopOnly } = propEdges(game, usedMarkets, Date.now())
+    // Props are always findable (no pre-game gate) so you can build a slip even once a game tips off.
+    const { edges, lineShopOnly } = propEdges(game, usedMarkets, Date.now(), { preGameOnly: false })
+    // join real headshots + team by player name (full match, then last-name fallback)
+    const roster = await rosterMap(sport)
+    // view-driven prop history: snapshot best price per side, then read the OPEN (earliest) for movement
+    const snaps = [...edges, ...lineShopOnly]
+      .filter(p => p.best?.price != null)
+      .map(p => ({ external_event_id: match.id, sport, player: p.player, market: p.market, point: p.point ?? null, side: p.side, price: p.best.price, book: p.best.book || null }))
+    await capturePropSnapshots(snaps)
+    const opens = await fetchPropOpens(match.id)
+    const withShot = (p) => {
+      const n = norm(p.player); const hit = roster.byFull[n] || roster.byLast[n.split(/\s+/).pop()] || {}
+      return { ...p, headshot: hit.headshot || null, team: hit.team || null, openPrice: opens[`${p.player}|${p.market}|${p.point}|${p.side}`] ?? null }
+    }
     const payload = {
       found: true, away: game.away_team, home: game.home_team,
-      edges, lineShopOnly,
+      edges: edges.map(withShot), lineShopOnly: lineShopOnly.map(withShot),
       creditsRemaining: credits.remaining,
       scannedAt: new Date().toISOString(),
     }

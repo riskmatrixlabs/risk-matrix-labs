@@ -172,3 +172,24 @@ workflow/
 - **Parked / unused:** `GameBrowser.jsx` + `GamePage.jsx` (Lab's standalone market-tab UI — duplicated LookChannel, removed from flow; decide delete vs salvage). `?full=1` path on `game-lines.js`/`scan-props.js` (segments, team totals, 16 prop markets) is DORMANT — it timed out in serverless (returned HTML), so the Lab uses the cheap proven endpoints. Revisit deeper markets via precompute/cron, NOT on-demand.
 - **⚠️ NEXT = design the end-to-end UX flows for all 3 channels BEFORE coding** (owner says current flows aren't right). Then build CH3. Don't guess flows.
 - Gotchas: `vite preview` doesn't run `/api`; preview `*.vercel.app` URLs serve HTML for `/api` (always test on app.riskmatrixlabs.com); `ODDS_API_KEY`/`VITE_SUPABASE_*` are Production-scoped only.
+
+## SESSION 53 (Jun 14 2026 · branch `feat/game-browser-lab` · SW rml-v177 · prod deployed)
+**CH2 rebuilt into the analysis engine + bug fixes. Verified live via Chrome MCP on the slate.** Files: `src/components/MatrixBot.jsx`, `src/components/EventsPicker.jsx`, `src/App.jsx`, `src/lib/propEdges.js`, `src/lib/oddsHistory.js`, `api/scan-props.js`, `api/player-search.js`, `api/_lib/scanStore.js`.
+
+**CH2 layout (one screen, slider always on top, detail inline — no page switch):**
+- `EventsPicker` = game selector ALWAYS on top: square-card slider (incl. LIVE games tagged ● LIVE — `isLiveEvent` no longer hides them), league-logo sport circles (small), **unified free search of teams AND players** (player match → `onPickPlayer` → tuneTo game+player). Selected card highlighted.
+- Detail order: **LINE MOVEMENT** (top, open) → **PLAYER PROPS** (collapsed default) → **COMPARE BOOKS**. Each a collapsible `LookSection` (grid 0fr→1fr animation).
+- **LINE MOVEMENT** = by-book chart, ML/Run Line/Total tabs, **Since Open / 24H / 6H** time-frame chips (client-side window, free), **SINCE OPEN verdict** (open→now, ▲ moved your way / ▼ late). Junk-odds filtered per-book in `fetchBookMovement` (oddsHistory.js): drop points outside the book's own median ×0.82–×1.25 (kills -5000/-50000/-2000 spikes).
+- **PLAYER PROPS = grouped BY PLAYER** (PrizePicks model): scannable collapsed player list (accordion, one open at a time) → expand → lines grouped by stat type, compact rows (line# + ▲more/▼less price chips). Stat tabs (sport-correlated `PROP_MARKETS[sport]`) + **team filter (BOTH·away·home)** pinned on top, always present. Counts reflect active filters. **Real ESPN headshots** joined by name in scan-props (`rosterMap`, last-name fallback). Props **always findable** — removed pre-game gate (`preGameOnly:false`) so you can build a slip on live games too.
+
+**Edge model on props (the "is it a good bet" answer):** each chip shows best price + book + edge. `+X%` = sharp (Pinnacle de-vig). `~X%` = **consensus edge** (de-vig every book, average fair prob; `propEdges.consensusFair`, capped 1–15%). ▲/▼ = **since-open movement** (NEW — see prop history).
+
+**NEW — prop history (`prop_history` table, migration applied):** view-driven snapshots in scan-props (`capturePropSnapshots`), `fetchPropOpens` returns earliest price = "open"; each prop gets `openPrice` → ▲/▼ vs open on the chip. **Builds over time** — first scan: open=current (no arrow); fills as scans accumulate. $0 extra credits.
+
+**Bet Matrix (`src/App.jsx` ~3056):** redesigned — books **on top** (best book ✓ + neon border), **bold neon odds/payout** (20px per-book combo, 16px legs/payout/header), drawer `maxHeight:72vh` + scroll.
+
+**Bugs fixed this session:** (1) **sport mismatch** — props/chart used the filter sport not the game's → sent `sport=NHL` for an MLB game = blank props; now `game.sport || sport` everywhere. (2) live games hidden from picker. (3) duplicate "ALL" + filter count showing total not filtered.
+
+**Caching/credits (~8k left — DISCIPLINE):** props cached **30 min** (was 2 min), shared in `scan_cache`; stat/team/player filtering = client-side FREE; RE-SCAN = manual refresh. Game-lines stay live 90s (owner watches). See [[rml-ch2-vision]] in memory for the locked CH2 spec.
+
+**Still open / next:** ANTHROPIC_API_KEY for OCR Upload Pic (still pending owner); prop "open" accuracy improves as history accrues; NFL not supported (only MLB/NHL/NBA/WNBA — adding it = new sport key + prop markets); CH3 TRACK still original (collapsible panels added but not redesigned); decide GamePage delete vs salvage; for LIVE games props can be 30-min stale (shorten cache for live if wanted). `rml-master.html` NOT updated this session.

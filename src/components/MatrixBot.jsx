@@ -145,7 +145,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onTune={(g) => tuneTo(g)} />}
+          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot })} />}
           {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
         </div>
       )}
@@ -554,30 +554,22 @@ function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip })
 // Module-level so its component identity is CONSTANT across LookChannel re-renders.
 // (Defined inline it remounted the whole CH2 subtree on every render — collapsing the
 //  Compare Books table — because the parent passes a fresh onBack each render.)
-function LookFrame({ game, onBack, children }) {
+function LookFrame({ onBack, children }) {
+  // The game selector lives inside CH2 now (always on screen), so back simply leaves to CH 1.
   return (
     <TvFrame ch="07">
       <button onClick={onBack} style={{ ...pill(false), marginBottom: '12px', fontSize: '10px', padding: '5px 12px' }}>← CH 1</button>
-      {game && <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT, marginBottom: '2px' }}>{up(game.away)} @ {up(game.home)}</div>}
-      <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.1em', marginBottom: '12px' }}>BY BOOK · BEST AVAILABLE</div>
       {children}
     </TvFrame>
   )
 }
 
-function LookChannel({ game, player = null, sport, setSport, token, onLogPosition, onAddToSlip, onBack, onTune }) {
-  const [status, setStatus] = useState('idle')   // idle | loading | done | error
-  const [data, setData]     = useState(null)
-  const [mkt, setMkt]       = useState('h2h')
-  const [move, setMove]     = useState({})
-  const [bookMove, setBookMove] = useState({})   // per-book movement (By Sportsbook chart)
-  const [chartMkt, setChartMkt] = useState('ml') // ml | spread | total — CH2 chart only
+function LookChannel({ game, player = null, sport, setSport, token, onLogPosition, onAddToSlip, onBack, onTune, onPickPlayer }) {
+  const [bookMove, setBookMove] = useState({})   // per-book movement (the line-movement chart)
+  const [chartMkt, setChartMkt] = useState('ml') // ml | spread | total
   const [bookSide, setBookSide] = useState('away')
-  const [view, setView]     = useState('books')  // books | move
-  const [err, setErr]       = useState('')
-  const dec = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
-  // switching market resets the side toggle to a valid side for that market
   const setMarket = (m) => { setChartMkt(m); setBookSide(m === 'total' ? 'over' : 'away') }
+  const [frame, setFrame] = useState('all')   // line-movement window: all (since open) | 24h | 6h
 
   useEffect(() => {
     if (!game?.external_event_id) { setBookMove({}); return }
@@ -586,105 +578,110 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
     return () => { live = false }
   }, [game, chartMkt, bookSide])
 
-  useEffect(() => {
-    if (!game || !token) return
-    let live = true
-    setStatus('loading'); setErr(''); setMove({}); setMkt('h2h'); setView('books')
-    fetch(`/api/game-lines?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&eventId=${encodeURIComponent(game.external_event_id || '')}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async res => { if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`); return res.json() })
-      .then(j => { if (live) { setData(j.found && j.markets ? j : null); setStatus('done') } })
-      .catch(e => { if (live) { setErr(e.message); setStatus('error') } })
-    if (game.external_event_id) fetchLineMovement(game.external_event_id).then(m => { if (live) setMove(m || {}) }).catch(() => {})
-    return () => { live = false }
-  }, [game, sport, token])
-
-  // CH2 landing (no game tuned): the free game browser. Picking a game tunes it into THIS same
-  // LookChannel below — so the chart / line-shop / props all show, identical to arriving from CH1.
-  if (!game) return <LookFrame game={game} onBack={onBack}><EventsPicker sport={sport} onPickSport={setSport} onPickGame={onTune} token={token} /></LookFrame>
-  if (status === 'loading') return <LookFrame game={game} onBack={onBack}><div style={{ textAlign: 'center', padding: '20px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>TUNING IN…</div></LookFrame>
-  if (status === 'error')   return <LookFrame game={game} onBack={onBack}><Empty text={`Failed — ${err}`} /></LookFrame>
-  if (!data)                return <LookFrame game={game} onBack={onBack}>{player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}<Empty text="No book lines for this game (pre-game only)." /></LookFrame>
-
-  const M = data.markets
-  const fmtPt = (pt) => pt == null ? '' : (pt > 0 ? `+${pt}` : `${pt}`)
-  const moveRows = Object.entries(move || {}).filter(([, m]) => m && m.series && m.series.length >= 2)
-  const gameMarkets = ['h2h', 'spreads', 'totals'].filter(k => M[k])
-  const mktName = (k) => k === 'h2h' ? 'MONEYLINE' : k === 'spreads' ? (SPREAD_LABEL[sport] || 'SPREAD').toUpperCase() : 'TOTAL'
-
-  const sidesFor = (cmp, key) => !cmp ? [] : (key === 'totals'
-    ? cmp.outcomes.map(n => ({ name: n, label: /^o/i.test(n) ? 'OVER' : 'UNDER' }))
-    : [{ name: cmp.outcomes.find(n => lw(n) === lw(game.away)) || cmp.outcomes[0], label: up(game.away) },
-       { name: cmp.outcomes.find(n => lw(n) === lw(game.home)) || cmp.outcomes[1], label: up(game.home) }])
-
-  // By-book stack for ONE market (no tabs — every market is stacked vertically).
-  const renderBooks = (key) => {
-    const cmp = M[key]; if (!cmp) return null
-    const isTot = key === 'totals'
-    return (
-      <div key={key} style={{ marginBottom: '14px' }}>
-        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', color: NEON_T, marginBottom: '8px' }}>{mktName(key)}</div>
-        {sidesFor(cmp, key).map(side => {
-          const rows = [...cmp.rows].filter(r => r.prices[side.name] != null).sort((a, b) => (dec(b.prices[side.name]) ?? 0) - (dec(a.prices[side.name]) ?? 0))
-          if (!rows.length) return null
-          const bestBook = cmp.best[side.name]?.book
-          return (
-            <div key={side.name} style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '10px 12px', marginBottom: '10px' }}>
-              <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>{side.label}{isTot && cmp.modalPoint?.[side.name] != null ? ` ${cmp.modalPoint[side.name]}` : ''}</div>
-              {rows.map(r => {
-                const p = r.prices[side.name], pt = r.points[side.name]
-                const best = r.book === bestBook
-                const pick = isTot ? `${/^o/i.test(side.name) ? 'Over' : 'Under'} ${pt}` : key === 'spreads' ? `${side.label} ${fmtPt(pt)}` : `${side.label} ML`
-                return (
-                  <div key={r.book} onClick={() => onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick, odds: p })}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 2px', cursor: 'pointer' }}>
-                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: best ? 700 : 500, color: best ? NEON_T : MUTED }}>{BOOK_NAMES[r.book] || r.book}{r.sharp && <span style={{ fontSize: '8px', color: '#5DCAA5', marginLeft: '6px' }}>SHARP</span>}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: best ? NEON_T : TEXT }}>{fmtAm(p)}{pt != null ? <span style={{ fontSize: '10px', color: MUTED }}> {isTot ? (/^o/i.test(side.name) ? 'o' : 'u') + pt : fmtPt(pt)}</span> : ''}</span>
-                      {best && <span style={{ color: NEON_T, fontSize: '13px' }}>✓</span>}
-                      {best && r.links?.[side.name] && <BetLink book={r.book} link={r.links[side.name]} />}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  const mlCmp = M.h2h
-  const mlSide = sidesFor(mlCmp, 'h2h')[0]?.name
-
-  // line chart = moneyline price over time (same scale → clean); fall back to non-juice series
-  const chartRows = (() => {
-    const ml = moveRows.filter(([k]) => /^(h2h|ml)/i.test(k))
-    return ml.length ? ml : moveRows.filter(([k]) => !/juice/i.test(k))
+  // Window the per-book movement to the selected time frame (client-side, free — no extra fetch).
+  const framed = (() => {
+    if (frame === 'all') return bookMove
+    const cutoff = Date.now() - (frame === '6h' ? 6 : 24) * 3600 * 1000
+    const out = {}
+    for (const [book, m] of Object.entries(bookMove)) {
+      const keep = (m.times || []).map((t, i) => ({ ms: new Date(t).getTime(), i })).filter(x => x.ms >= cutoff).map(x => x.i)
+      if (!keep.length) continue
+      const series = keep.map(i => m.series[i]); const times = keep.map(i => m.times[i])
+      out[book] = { open: series[0], current: series[series.length - 1], series, times }
+    }
+    return out
   })()
 
+  // "Is it still a good bet?" — best price NOW vs where this side OPENED within the chosen frame.
+  const sinceOpen = (() => {
+    const toDec = (a) => a == null ? null : (a > 0 ? 1 + a / 100 : 1 + 100 / -a)
+    let best = null
+    for (const [book, m] of Object.entries(framed)) {
+      const d = toDec(m.current); if (d == null) continue
+      if (!best || d > best.dec) best = { book, dec: d, open: m.open, current: m.current }
+    }
+    if (!best) return null
+    const od = toDec(best.open)
+    return { book: best.book, open: best.open, current: best.current, dir: od == null ? 0 : best.dec - od }
+  })()
+
+  // ONE screen: the game selector (slider + search + leagues) is ALWAYS on top. Picking a game loads
+  // its detail right below — no page switch, no back-to-list. Each panel self-fetches + shows its own
+  // empty state, so props still appear even when a game has no book lines.
   return (
-    <LookFrame game={game} onBack={onBack}>
-      {/* player mode (arrived via search) → that player's props on top */}
-      {player && <PlayerProps player={player} game={game} sport={sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}
-      {/* per-market movement summary (sparklines) */}
-      <MarketSummary move={move} sport={sport} />
+    <LookFrame onBack={onBack}>
+      <EventsPicker sport={sport} onPickSport={setSport} onPickGame={onTune} onPickPlayer={onPickPlayer} token={token} selectedId={game?.external_event_id} />
 
-      {/* CH2-only: market tabs for the By-Sportsbook chart (ML / Run Line / Total) */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-        {[['ml', 'ML'], ['spread', (SPREAD_LABEL[sport] || 'Spread')], ['total', 'Total']].map(([k, label]) => (
-          <button key={k} onClick={() => setMarket(k)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${chartMkt === k ? NEON : BORDER}`, background: chartMkt === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: chartMkt === k ? NEON_T : MUTED }}>{label}</button>
-        ))}
-      </div>
-      {/* line chart — one line per BOOK (By Sportsbook) for the selected market */}
-      {Object.keys(bookMove).length > 0
-        ? <BookMoveChart byBook={bookMove} game={game} market={chartMkt} side={bookSide} onSide={setBookSide} />
-        : <Empty text={`${chartMkt === 'ml' ? 'ML' : chartMkt === 'total' ? 'Total' : (SPREAD_LABEL[sport] || 'Spread')} by-sportsbook history is building — fills in as the game's viewed.`} />}
+      {!game && <div style={{ marginTop: '14px' }}><Empty text="Tap a game above — line movement, compare books & props load right here." /></div>}
 
-      {/* book prices = the shared Compare Books table (replaces the long by-book stacks) */}
-      <div style={{ marginTop: '16px' }}>
-        <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
-      </div>
+      {game && (
+        <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: `1px solid ${BORDER}` }}>
+          <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT, marginBottom: '2px' }}>{up(game.away)} @ {up(game.home)}</div>
+
+          <LookSection label="LINE MOVEMENT">
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+              {[['ml', 'ML'], ['spread', (SPREAD_LABEL[game.sport || sport] || 'Spread')], ['total', 'Total']].map(([k, label]) => (
+                <button key={k} onClick={() => setMarket(k)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${chartMkt === k ? NEON : BORDER}`, background: chartMkt === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: chartMkt === k ? NEON_T : MUTED }}>{label}</button>
+              ))}
+            </div>
+            {/* time-frame window for the movement */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+              {[['all', 'Since Open'], ['24h', '24H'], ['6h', '6H']].map(([k, label]) => (
+                <button key={k} onClick={() => setFrame(k)} style={{ flex: 1, padding: '5px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${frame === k ? NEON : BORDER}`, background: frame === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: frame === k ? NEON_T : MUTED }}>{label}</button>
+              ))}
+            </div>
+            {sinceOpen && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d0d0d', border: `1px solid ${sinceOpen.dir > 0 ? NEON : BORDER}`, borderRadius: '10px', padding: '10px 12px', marginBottom: '10px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.12em' }}>SINCE OPEN · {(BOOK_NAMES[sinceOpen.book] || sinceOpen.book)}</div>
+                  <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtAm(sinceOpen.open)} <span style={{ color: MUTED }}>→</span> <span style={{ color: NEON_T }}>{fmtAm(sinceOpen.current)}</span></div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: sinceOpen.dir > 0 ? NEON_T : sinceOpen.dir < 0 ? DANGER : MUTED }}>{sinceOpen.dir > 0 ? '▲ MOVED YOUR WAY' : sinceOpen.dir < 0 ? '▼ MOVED AGAINST' : '— FLAT'}</div>
+                  <div style={{ fontFamily: R, fontSize: '8px', color: MUTED }}>{sinceOpen.dir > 0 ? 'value better than open — still good' : sinceOpen.dir < 0 ? "you're late — value worse than open" : 'no move since open'}</div>
+                </div>
+              </div>
+            )}
+            {Object.keys(framed).length > 0
+              ? <BookMoveChart byBook={framed} game={game} market={chartMkt} side={bookSide} onSide={setBookSide} />
+              : <Empty text={Object.keys(bookMove).length > 0 ? `No movement in the last ${frame === '6h' ? '6 hours' : '24 hours'} — try Since Open.` : `${chartMkt === 'ml' ? 'ML' : chartMkt === 'total' ? 'Total' : (SPREAD_LABEL[game.sport || sport] || 'Spread')} by-sportsbook history is building — fills in as the game's viewed.`} />}
+          </LookSection>
+
+          <LookSection label="PLAYER PROPS" defaultOpen={false}>
+            {player && <PlayerProps player={player} game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}
+            <PropsPanel game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
+          </LookSection>
+
+          <LookSection label="COMPARE BOOKS · GAME LINES">
+            <LineShop event={{ sport: game.sport || sport, league: game.sport || sport, away_team: game.away, home_team: game.home, away_abbr: game.away_abbr, home_abbr: game.home_abbr, external_event_id: game.external_event_id || '', start_time: game.commenceTime }} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
+          </LookSection>
+        </div>
+      )}
     </LookFrame>
+  )
+}
+
+// Every CH2 block is a COLLAPSIBLE panel — all on one page, in sequence, nothing hidden behind tabs
+// or separate screens. Default open (everything visible); tap the header to collapse in place.
+// Smooth open/close via the grid 0fr→1fr trick (animates dynamic-height content cleanly).
+function LookSection({ label, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ marginTop: '12px', border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', background: '#0c0d0f' }}>
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 13px', cursor: 'pointer', background: open ? 'rgba(189,255,0,0.06)' : 'transparent', border: 'none', borderBottom: open ? `1px solid ${BORDER}` : 'none', transition: 'background 0.2s ease' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, flexShrink: 0, boxShadow: open ? `0 0 6px ${NEON}` : 'none' }} />
+          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+        </span>
+        <span style={{ fontFamily: R, fontSize: '11px', color: open ? NEON_T : MUTED, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s ease', flexShrink: 0 }}>▾</span>
+      </button>
+      <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.28s ease' }}>
+        <div style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '13px' }}>{children}</div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -839,10 +836,15 @@ function ClosingLines({ M, game, sport }) {
 }
 
 // Props sub-panel — per-game on-demand prop scan (credit-disciplined).
-function PropsPanel({ game, sport, token, onLogPosition }) {
+// PrizePicks-style: one card per player+line, big line number, More (Over) / Less (Under) buttons.
+function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   const [status, setStatus] = useState('idle')
   const [data, setData]     = useState(null)
   const [err, setErr]       = useState('')
+  const [statF, setStatF]   = useState('ALL')   // stat-type filter chips (Hits, Strikeouts…)
+  const [confirm, setConfirm] = useState(null)
+  const [openPlayer, setOpenPlayer] = useState(null)   // accordion: which player's props are expanded
+  const [teamF, setTeamF] = useState('ALL')            // filter players by team (shortens the scroll)
 
   async function scan() {
     if (!token || status === 'scanning') return
@@ -856,47 +858,141 @@ function PropsPanel({ game, sport, token, onLogPosition }) {
     } catch (e) { setErr(e.message); setStatus('error') }
   }
 
-  const logProp = (p) => onLogPosition && onLogPosition(
-    { sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime },
-    { pick: `${p.player} ${p.side} ${p.point} ${p.marketLabel}`, odds: p.best.price })
+  // Auto-scan props on open so the section is ALWAYS visible (no button to click). Cached 2min server-side = cheap.
+  useEffect(() => { if (token && game?.away) scan() }, [game?.away, game?.home, token])
 
-  if (status === 'idle') return <button onClick={scan} style={{ width: '100%', padding: '11px', borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T }}>▶ SCAN PROPS</button>
-  if (status === 'scanning') return <div style={{ textAlign: 'center', padding: '22px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: 'rgba(189,255,0,0.6)', letterSpacing: '0.1em' }}>SCANNING PROPS…</div>
-  if (status === 'error') return <div style={{ textAlign: 'center', padding: '16px', color: DANGER, fontFamily: R, fontSize: '11px' }}>Failed — {err} <button onClick={scan} style={{ ...pill(false), marginLeft: '8px' }}>RETRY</button></div>
+  // Group props BY PLAYER → one card per player holding ALL their lines (scan player by player).
+  const pmap = new Map()
+  for (const p of [...(data?.edges || []), ...(data?.lineShopOnly || [])]) {
+    if (!pmap.has(p.player)) pmap.set(p.player, { player: p.player, lines: new Map(), ev: null, headshot: p.headshot || null, team: p.team || null })
+    const P = pmap.get(p.player)
+    if (!P.headshot && p.headshot) P.headshot = p.headshot
+    if (!P.team && p.team) P.team = p.team
+    const lk = `${p.market}|${p.point}`
+    if (!P.lines.has(lk)) P.lines.set(lk, { marketLabel: p.marketLabel, point: p.point, sides: {}, ev: null })
+    const L = P.lines.get(lk)
+    L.sides[p.side] = p
+    if (p.evPct != null) {
+      if (L.ev == null || p.evPct > L.ev) L.ev = p.evPct
+      if (P.ev == null || p.evPct > P.ev) P.ev = p.evPct
+    }
+  }
+  const players = [...pmap.values()]
+    .map(P => ({ ...P, lines: [...P.lines.values()] }))
+    .sort((a, b) => (b.ev ?? -99) - (a.ev ?? -99))
+  // Tabs = the sport's STANDARD prop categories — always pinned on top, even before any props load.
+  const tabLabels = (PROP_MARKETS[sport] || []).map(labelFor)
+  const teams = [...new Set(players.map(P => P.team).filter(Boolean))]
+  // Team filter shortens the scroll; stat tab filters which LINES show (player drops if none match).
+  const shownPlayers = players
+    .filter(P => teamF === 'ALL' || P.team === teamF)
+    .map(P => ({ ...P, lines: statF === 'ALL' ? P.lines : P.lines.filter(l => l.marketLabel === statF) }))
+    .filter(P => P.lines.length)
+  // counts reflect the ACTIVE filters (team + stat) so the header never lies
+  const propCount = shownPlayers.reduce((n, P) => n + P.lines.length, 0)
+  const edgeCount = shownPlayers.reduce((n, P) => n + P.lines.filter(l => l.ev != null).length, 0)
+  const initials = (n) => String(n || '').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 
-  const edges = data?.edges || [], ls = data?.lineShopOnly || []
+  // Compact single-line price chip (▲ more / ▼ less). Tight so a player's whole board scans fast.
+  const sideChip = (player, L, side) => {
+    const r = L.sides[side], more = side === 'Over', isEdge = r && r.evPct != null
+    if (!r) return <div style={{ flex: 1, padding: '7px 4px', borderRadius: '7px', border: `1px solid ${BORDER}`, textAlign: 'center', opacity: 0.35, fontFamily: R, fontSize: '12px', color: MUTED }}>{more ? '▲' : '▼'} —</div>
+    return (
+      <button onClick={() => setConfirm({ pick: `${player} ${side} ${L.point} ${L.marketLabel}`, odds: r.best.price, book: r.best.book, url: decorate(r.best.book, r.best.link), byBook: r.byBook })}
+        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '7px 4px', borderRadius: '7px', border: `1px solid ${isEdge ? NEON : BORDER}`, background: isEdge ? 'rgba(189,255,0,0.1)' : '#0d0d0d', cursor: 'pointer' }}>
+        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isEdge ? NEON_T : MUTED }}>{more ? '▲' : '▼'}</span>
+        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isEdge ? NEON_T : TEXT }}>{fmtAm(r.best.price)}</span>
+        {isEdge && <span style={{ fontFamily: R, fontSize: '8px', color: NEON_T }}>{r.consensus ? '~' : '+'}{r.evPct.toFixed(1)}</span>}
+        {r.openPrice != null && r.openPrice !== r.best.price && (() => {
+          const toDec = (a) => a > 0 ? 1 + a / 100 : 1 + 100 / -a
+          const up = toDec(r.best.price) > toDec(r.openPrice)
+          return <span title={`opened ${r.openPrice > 0 ? '+' : ''}${r.openPrice}`} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: up ? NEON_T : DANGER }}>{up ? '▲' : '▼'}</span>
+        })()}
+      </button>
+    )
+  }
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: edges.length ? NEON_T : MUTED, letterSpacing: '0.1em' }}>{edges.length ? `${edges.length} VALID PROP MATRIX${edges.length > 1 ? 'ES' : ''}` : 'NO VALID PROP MATRIX'}</span>
-        <button onClick={scan} style={{ background: 'none', border: 'none', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} left · ` : ''}RE-SCAN</button>
+      {/* Stat-type tabs — ALWAYS pinned on top, even with no props loaded (the sport's standard categories). */}
+      <div className="tv-ticker" style={{ display: 'flex', gap: '6px', marginBottom: '10px', overflowX: 'auto' }}>
+        <button onClick={() => setStatF('ALL')} style={pill(statF === 'ALL')}>ALL</button>
+        {tabLabels.map(s => <button key={s} onClick={() => setStatF(s)} style={pill(statF === s)}>{s}</button>)}
       </div>
-      {edges.length === 0 && <Empty text="No +EV props right now — we won't fake an edge." />}
-      {edges.map((p, i) => (
-        <div key={i} onClick={() => logProp(p)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 12px', marginBottom: '8px', borderRadius: '12px', cursor: 'pointer', background: 'rgba(189,255,0,0.04)', border: `1px solid ${NEON}` }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{p.player} {p.side} {p.point}</div>
-            <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{p.marketLabel} · {BOOK_NAMES[p.best.book] || p.best.book} · +{p.evPct.toFixed(1)}% EV</div>
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-            <span className="tv-glow" style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: NEON_T }}>{fmtAm(p.best.price)}</span>
-            {p.best.link && <BetLink book={p.best.book} link={p.best.link} />}
-          </div>
+
+      {/* team filter — shortens the player scroll to one side */}
+      {teams.length > 1 && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+          <button onClick={() => setTeamF('ALL')} style={{ ...pill(teamF === 'ALL'), flex: 1 }}>BOTH</button>
+          {teams.map(t => <button key={t} onClick={() => setTeamF(t)} style={{ ...pill(teamF === t), flex: 1 }}>{t}</button>)}
         </div>
-      ))}
-      {ls.length > 0 && (
-        <>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.12em', margin: '12px 0 6px' }}>LINE SHOP · NO SHARP ANCHOR</div>
-          {ls.map((p, i) => (
-            <div key={i} onClick={() => logProp(p)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '9px 12px', marginBottom: '6px', borderRadius: '10px', cursor: 'pointer', background: '#0d0d0d', border: `1px solid ${BORDER}` }}>
-              <div style={{ fontFamily: R, fontSize: '12px', color: TEXT }}>{p.player} {p.side} {p.point} <span style={{ color: MUTED, fontSize: '10px' }}>· {p.marketLabel}</span></div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmtAm(p.best.price)}</span>
-                {p.best.link && <BetLink book={p.best.book} link={p.best.link} />}
-              </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: edgeCount ? NEON_T : MUTED, letterSpacing: '0.1em' }}>{edgeCount ? `${edgeCount} +EV · ${shownPlayers.length} PLAYERS` : propCount ? `${shownPlayers.length} PLAYERS · ${propCount} PROPS` : 'NO PROPS YET'}</span>
+        <button onClick={scan} style={{ background: 'none', border: 'none', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} left · ` : ''}{status === 'scanning' ? 'SCANNING…' : 'RE-SCAN'}</button>
+      </div>
+
+      {status === 'error'
+        ? <div style={{ textAlign: 'center', padding: '16px', color: DANGER, fontFamily: R, fontSize: '11px' }}>Failed — {err} <button onClick={scan} style={{ ...pill(false), marginLeft: '8px' }}>RETRY</button></div>
+        : (status === 'idle' || status === 'scanning')
+          ? <div style={{ textAlign: 'center', padding: '22px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: 'rgba(189,255,0,0.6)', letterSpacing: '0.1em' }}>SCANNING PROPS…</div>
+          : !players.length
+            ? <Empty text="No props posted for this game yet — try after lineups." />
+            : !shownPlayers.length
+              ? <Empty text={`No ${statF} props on the board right now.`} />
+              : shownPlayers.map((P, i) => {
+        const open = openPlayer === P.player
+        return (
+        <div key={i} style={{ background: '#101114', border: `1px solid ${P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
+          {/* collapsed row — tap to open this player's board */}
+          <button onClick={() => setOpenPlayer(open ? null : P.player)}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', background: open ? 'rgba(189,255,0,0.05)' : 'transparent', border: 'none' }}>
+            {P.headshot
+              ? <img src={P.headshot} alt="" width="34" height="34" style={{ borderRadius: '50%', background: '#1a1d22', border: `1px solid ${NEON}`, objectFit: 'cover', flexShrink: 0 }} />
+              : <span style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a1d22', border: `1px solid ${NEON}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: R, fontWeight: 700, fontSize: '11px', color: NEON_T, flexShrink: 0 }}>{initials(P.player)}</span>}
+            <span style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
+              <span style={{ display: 'block', fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{P.player}</span>
+              <span style={{ display: 'block', fontFamily: R, fontSize: '9px', fontWeight: 700, color: P.ev != null ? NEON_T : MUTED, letterSpacing: '0.06em' }}>{P.lines.length} {P.lines.length === 1 ? 'PROP' : 'PROPS'}{P.ev != null ? ` · +${P.ev.toFixed(1)}% EV` : ''}</span>
+            </span>
+            <span style={{ fontFamily: R, fontSize: '11px', color: open ? NEON_T : MUTED, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease', flexShrink: 0 }}>▾</span>
+          </button>
+          {open && (
+            <div style={{ padding: '2px 12px 12px' }}>
+              {(() => {
+                const byStat = {}
+                for (const L of P.lines) (byStat[L.marketLabel] ??= []).push(L)
+                return Object.entries(byStat).map(([stat, lines], si) => (
+                  <div key={si} style={{ marginTop: si === 0 ? 0 : '12px', paddingTop: si === 0 ? 0 : '10px', borderTop: si === 0 ? 'none' : `1px solid ${BORDER}` }}>
+                    <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '6px', opacity: 0.85 }}>{stat}</div>
+                    {lines.map((L, j) => (
+                      <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                        <span style={{ width: '44px', flexShrink: 0, fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{L.point}</span>
+                        {sideChip(P.player, L, 'Over')}
+                        {sideChip(P.player, L, 'Under')}
+                      </div>
+                    ))}
+                  </div>
+                ))
+              })()}
             </div>
-          ))}
-        </>
+          )}
+        </div>
+      )})}
+
+      {confirm && (
+        <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '10px', padding: '11px 12px', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>Add <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span>?</span>
+          <span style={{ display: 'flex', gap: '8px' }}>
+            {onAddToSlip && (
+              <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
+                style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
+            )}
+            <button onClick={() => { onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
+              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
+            <button onClick={() => setConfirm(null)} style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
+          </span>
+        </div>
       )}
     </div>
   )
@@ -949,9 +1045,9 @@ function TrackChannel({ bets, sport, token }) {
     <TvFrame ch="33">
       <div style={{ textAlign: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, marginBottom: '12px' }}>⬡ BEAT THE CLOSE</div>
 
-      {/* scoreboard — the Pikkit Pro headline numbers */}
-      {graded.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px' }}>
+      {/* scoreboard — the Pikkit Pro headline numbers (collapsible panel) */}
+      <LookSection label="SCOREBOARD">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
           {[
             ['AVG CLV', board.avgClv, true],
             ['BEAT CLOSE', board.beatRate, false],
@@ -965,11 +1061,16 @@ function TrackChannel({ bets, sport, token }) {
             </div>
           ))}
         </div>
-      )}
-      {graded.length > 0 && <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginBottom: '10px' }}>{board.tracked} TRACKED · CLV IS THE TRUTH — BEAT THE CLOSE &gt; 50% = SHARP</div>}
+        <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginTop: '10px' }}>
+          {graded.length > 0 ? `${board.tracked} TRACKED · CLV IS THE TRUTH — BEAT THE CLOSE > 50% = SHARP` : 'CLV IS THE TRUTH — log a play on CH 1/2 and it grades here.'}
+        </div>
+      </LookSection>
 
-      {!graded.length && <Empty text={`No graded ${sport} positions yet. Log a play on CH 1/2 and it grades here.`} />}
-      {games.map((g, i) => <TrackGameCard key={i} ev={g.ev} items={g.items} sport={sport} token={token} />)}
+      {/* tracked positions — collapsible panel */}
+      <LookSection label="TRACKED POSITIONS">
+        {!graded.length && <Empty text={`No graded ${sport} positions yet. Log a play on CH 1/2 and it grades here.`} />}
+        {games.map((g, i) => <TrackGameCard key={i} ev={g.ev} items={g.items} sport={sport} token={token} />)}
+      </LookSection>
     </TvFrame>
   )
 }
