@@ -15,13 +15,17 @@ export const config = { maxDuration: 25 }
 const YEAR = 2026
 const TTL_MS = 12 * 60 * 60 * 1000 // season stats are slow — one pull per ~half-day
 
+// min=10 (not "q"=qualified) so spot-starter probables + bench bats are covered — a missing
+// player scores neutral, i.e. no signal, which is worse than a modest-sample read. Bump CACHE_V
+// when changing these so the 12h-cached rows from the old query are invalidated.
+const CACHE_V = 'v2'
 const URLS = {
   // name, player_id, pa, ba, est_ba (=xBA), est_slg, est_woba
-  batter: `https://baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&year=${YEAR}&position=&team=&filterType=bip&min=q&csv=true`,
+  batter: `https://baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&year=${YEAR}&position=&team=&filterType=bip&min=10&csv=true`,
   // same shape + era, xera, era_minus_xera_diff (est_ba here = xBA-AGAINST)
-  pitcherX: `https://baseballsavant.mlb.com/leaderboard/expected_statistics?type=pitcher&year=${YEAR}&position=&team=&filterType=bip&min=q&csv=true`,
+  pitcherX: `https://baseballsavant.mlb.com/leaderboard/expected_statistics?type=pitcher&year=${YEAR}&position=&team=&filterType=bip&min=10&csv=true`,
   // name, player_id, k_percent, whiff_percent
-  pitcherK: `https://baseballsavant.mlb.com/leaderboard/custom?year=${YEAR}&type=pitcher&filter=&min=q&selections=k_percent,whiff_percent&chart=false&x=k_percent&y=k_percent&r=no&chartType=beeswarm&sort=k_percent&sortDir=desc&csv=true`,
+  pitcherK: `https://baseballsavant.mlb.com/leaderboard/custom?year=${YEAR}&type=pitcher&filter=&min=10&selections=k_percent,whiff_percent&chart=false&x=k_percent&y=k_percent&r=no&chartType=beeswarm&sort=k_percent&sortDir=desc&csv=true`,
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -68,7 +72,8 @@ function parseCsv(text) {
 // Returns { map, count, sample } ; degrades to an empty map on any failure (never throws).
 async function loadBoard(kind, url, build) {
   const date = todayStr()
-  const cached = await readScan(`SAVANT-${kind}`, date)
+  const cacheKind = `SAVANT-${kind}-${CACHE_V}`
+  const cached = await readScan(cacheKind, date)
   if (cached?.payload?.map && isFresh(cached.scanned_at, Date.now(), TTL_MS)) {
     return { map: cached.payload.map, count: cached.payload.count, cached: true }
   }
@@ -84,7 +89,7 @@ async function loadBoard(kind, url, build) {
       if (rec) map[normName(name)] = rec
     }
     const count = Object.keys(map).length
-    if (count) await writeScan(`SAVANT-${kind}`, date, { map, count })
+    if (count) await writeScan(cacheKind, date, { map, count })
     return { map, count, cached: false }
   } catch (e) {
     // fall back to a stale cache if we have one rather than going dark
@@ -106,6 +111,21 @@ const buildPitcherK = (row) => {
   if (k == null && w == null) return null
   return { kPct: k, whiffPct: w }
 }
+
+// Shared accessor so other server endpoints (api/phlt.js) get the cached Savant maps in-process
+// — no internal HTTP hop. Returns name-normalized maps + the normName helper for matching.
+export async function getSavantMaps() {
+  const [b, x, k] = await Promise.all([
+    loadBoard('batter', URLS.batter, buildBatter),
+    loadBoard('pitcherX', URLS.pitcherX, buildPitcherX),
+    loadBoard('pitcherK', URLS.pitcherK, buildPitcherK),
+  ])
+  return {
+    batter: b.map, pitcherX: x.map, pitcherK: k.map, normName,
+    counts: { batter: b.count, pitcherX: x.count, pitcherK: k.count },
+  }
+}
+export { normName }
 
 // ── handler ──────────────────────────────────────────────────────────────────
 // GET /api/savant?names=James Wood|Aaron Judge&pitchers=Sandy Alcantara

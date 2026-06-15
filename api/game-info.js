@@ -14,7 +14,7 @@ const SPORTS = {
 const lastWord = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
 
 // MLB run-scoring park factor by HOME team (approx; >1 hitter-friendly, <1 pitcher-friendly).
-const PARK = {
+export const PARK = {
   COL: 1.13, CIN: 1.08, BOS: 1.06, KC: 1.05, TEX: 1.04, ARI: 1.04, PHI: 1.03, BAL: 1.03, CHC: 1.02,
   ATL: 1.01, WSH: 1.01, LAA: 1.00, MIN: 1.00, HOU: 1.00, TOR: 1.00, NYY: 1.00, CWS: 0.99, CHW: 0.99,
   MIL: 0.99, PIT: 0.98, STL: 0.97, CLE: 0.97, DET: 0.96, LAD: 0.97, TB: 0.95, NYM: 0.94, SD: 0.94,

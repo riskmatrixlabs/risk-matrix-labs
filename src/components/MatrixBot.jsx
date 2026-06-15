@@ -943,6 +943,8 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   const [collapsed, setCollapsed] = useState(() => new Set())
   const toggleCard = (name) => setCollapsed(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
   const [teamF, setTeamF] = useState('ALL')            // filter players by team (shortens the scroll)
+  const [phlt, setPhlt] = useState({})                 // PHLT v2.2 hitter-HIT verdicts, by player name (MLB)
+  const [phltOpen, setPhltOpen] = useState(() => new Set()) // which players' PHLT breakdown is expanded
 
   // withEx=true (manual refresh) pulls the pricier us_ex region (Novig/exchanges); the auto-scan
   // that fires on game open stays cheap (us, us2) so browsing doesn't bleed credits.
@@ -965,6 +967,19 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   // Reset the stat filter to the first prop tab on each new game/sport (so it opens focused, not on ALL).
   useEffect(() => { setStatF(firstStat(sport)) }, [game?.away, game?.home, sport])
 
+  // PHLT v2.2 — once props load, score every hitter's chance to record a HIT (FREE Statcast + ESPN
+  // form, all server-side & cached). MLB only. Auto-runs on game open (Savant ≠ Odds-API credits).
+  useEffect(() => {
+    if (!token || sport !== 'MLB' || !game?.away) { setPhlt({}); return }
+    const names = [...new Set([...(data?.edges || []), ...(data?.lineShopOnly || [])].map(p => p.player).filter(Boolean))].slice(0, 30)
+    if (!names.length) return
+    let cancel = false
+    const iso = game.commenceTime ? `&iso=${encodeURIComponent(game.commenceTime)}` : ''
+    fetch(`/api/phlt?sport=${sport}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${iso}&names=${encodeURIComponent(names.join('|'))}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (!cancel && j?.verdicts) setPhlt(j.verdicts) }).catch(() => {})
+    return () => { cancel = true }
+  }, [game?.away, game?.home, sport, token, data])
+
   // Group props BY PLAYER → one card per player holding ALL their lines (scan player by player).
   const pmap = new Map()
   for (const p of [...(data?.edges || []), ...(data?.lineShopOnly || [])]) {
@@ -981,9 +996,11 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
       if (P.ev == null || p.evPct > P.ev) P.ev = p.evPct
     }
   }
+  // PHLT rank: locks (A) float up, fades (AVOID) sink, no-data falls back to EV order.
+  const phltRank = (P) => { const v = P.phlt; if (!v || v.score == null) return -1; return v.faded ? -2 : v.score }
   const players = [...pmap.values()]
-    .map(P => ({ ...P, lines: [...P.lines.values()] }))
-    .sort((a, b) => (b.ev ?? -99) - (a.ev ?? -99))
+    .map(P => ({ ...P, lines: [...P.lines.values()], phlt: phlt[P.player] || null }))
+    .sort((a, b) => phltRank(b) - phltRank(a) || (b.ev ?? -99) - (a.ev ?? -99))
   // Tabs = the sport's STANDARD prop categories — always pinned on top, even before any props load.
   const tabLabels = (PROP_MARKETS[sport] || []).map(labelFor)
   const teams = [...new Set(players.map(P => P.team).filter(Boolean))]
@@ -996,6 +1013,30 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   const propCount = shownPlayers.reduce((n, P) => n + P.lines.length, 0)
   const edgeCount = shownPlayers.reduce((n, P) => n + P.lines.filter(l => l.ev != null).length, 0)
   const initials = (n) => String(n || '').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+
+  // PHLT verdict badge (A·Lock / B·Strong / C·Caution / FADE) — same flag language as the game card.
+  const PHLT_C = { A: '#BDFF00', B: '#56b3ff', C: '#ffcf3a', AVOID: '#FF3B3B' }
+  const phltBadge = (v, big = false) => {
+    if (!v || v.score == null) return null
+    const c = PHLT_C[v.tier] || MUTED
+    const text = v.tier === 'AVOID' ? 'FADE' : v.tier
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: big ? '3px 8px' : '2px 6px', borderRadius: '6px', border: `1px solid ${c}`, background: `${c}1a`, fontFamily: R, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}>
+        <span style={{ fontSize: big ? '12px' : '10px', color: c, letterSpacing: '0.04em' }}>{text}</span>
+        <span style={{ fontSize: big ? '11px' : '9px', color: c, opacity: 0.85 }}>{v.score}</span>
+      </span>
+    )
+  }
+  // 5-part breakdown bar (Pitcher/Form/Matchup/Park/Streak) shown when a player's PHLT is expanded.
+  const phltBar = (label, val) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
+      <span style={{ width: '58px', flexShrink: 0, fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.04em' }}>{label}</span>
+      <span style={{ flex: 1, height: '5px', background: '#1a1d22', borderRadius: '3px', overflow: 'hidden' }}>
+        <span style={{ display: 'block', height: '100%', width: `${Math.max(0, Math.min(100, val))}%`, background: NEON, opacity: 0.8 }} />
+      </span>
+      <span style={{ width: '22px', textAlign: 'right', fontFamily: R, fontSize: '9px', fontWeight: 700, color: TEXT }}>{val}</span>
+    </div>
+  )
 
   // Compact single-line price chip (▲ more / ▼ less). Tight so a player's whole board scans fast.
   const sideChip = (player, L, side) => {
@@ -1051,7 +1092,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
               : shownPlayers.map((P, i) => {
         const open = !collapsed.has(P.player)
         return (
-        <div key={i} style={{ background: '#101114', border: `1px solid ${P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
+        <div key={i} style={{ background: '#101114', border: `1px solid ${P.phlt?.faded ? 'rgba(255,59,59,0.4)' : P.phlt?.tier === 'A' ? NEON : P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
           {/* collapsed row — tap to open this player's board */}
           <button onClick={() => toggleCard(P.player)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', background: open ? 'rgba(189,255,0,0.05)' : 'transparent', border: 'none' }}>
@@ -1062,10 +1103,38 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
               <span style={{ display: 'block', fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{P.player}</span>
               <span style={{ display: 'block', fontFamily: R, fontSize: '9px', fontWeight: 700, color: P.ev != null ? NEON_T : MUTED, letterSpacing: '0.06em' }}>{P.lines.length} {P.lines.length === 1 ? 'PROP' : 'PROPS'}{P.ev != null ? ` · +${P.ev.toFixed(1)}% EV` : ''}</span>
             </span>
+            {phltBadge(P.phlt)}
             <span style={{ fontFamily: R, fontSize: '11px', color: open ? NEON_T : MUTED, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s ease', flexShrink: 0 }}>▾</span>
           </button>
           {open && (
             <div style={{ padding: '2px 12px 12px' }}>
+              {P.phlt && P.phlt.score != null && (() => {
+                const v = P.phlt, c = PHLT_C[v.tier] || MUTED, exp = phltOpen.has(P.player)
+                return (
+                  <div style={{ marginBottom: '10px', padding: '8px 10px', borderRadius: '10px', border: `1px solid ${c}55`, background: `${c}0d` }}>
+                    <button onClick={() => setPhltOpen(s => { const n = new Set(s); n.has(P.player) ? n.delete(P.player) : n.add(P.player); return n })}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      {phltBadge(v, true)}
+                      <span style={{ minWidth: 0, flex: 1, textAlign: 'left', fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        PHLT · TO HIT{v.vs ? ` · vs ${v.vs}` : ''}
+                      </span>
+                      <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, transform: exp ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>▾</span>
+                    </button>
+                    {v.fades?.length > 0 && (
+                      <div style={{ marginTop: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, color: DANGER, letterSpacing: '0.03em' }}>⚑ {v.fades.join(' · ')}</div>
+                    )}
+                    {exp && v.breakdown && (
+                      <div style={{ marginTop: '8px' }}>
+                        {phltBar('PITCHER', v.breakdown.pitcher)}
+                        {phltBar('FORM', v.breakdown.form)}
+                        {phltBar('MATCHUP', v.breakdown.matchup)}
+                        {phltBar('PARK/WX', v.breakdown.parkWeather)}
+                        {phltBar('STREAK', v.breakdown.streak)}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               {(() => {
                 const byStat = {}
                 for (const L of P.lines) (byStat[L.marketLabel] ??= []).push(L)

@@ -5,7 +5,8 @@
 //
 // Confidence matrix (weights sum to 100):
 //   Pitcher Profile 30 · Hitter Form 30 · Matchup Fit 15 · Park/Weather 10 · Hot Streak 15
-// Tiers:  85+ A·Lock | 75–84 B·Strong | 65–74 C·Caution | <65 Avoid
+// Tiers:  85+ A·Prime | 75–84 B·Strong | 65–74 C·Caution | <65 Fade
+// (brand voice: operators, not gamblers — never "lock"/"pick"/"play".)
 // Auto-fades (override the tier to Avoid):
 //   Cold Zone: 0 hits in last 4 games OR BB% > 15%
 //   Red-Flag Pitcher: among {K%>27, Whiff%>30, xBA-against<.220} — any TWO ⇒ fade.
@@ -91,10 +92,10 @@ export function coldZone(h = {}) {
 }
 
 export function tierFor(score) {
-  if (score >= 85) return { tier: 'A', label: 'Lock Pick', color: 'green' }
-  if (score >= 75) return { tier: 'B', label: 'Strong Play', color: 'blue' }
-  if (score >= 65) return { tier: 'C', label: 'Caution Pick', color: 'yellow' }
-  return { tier: 'AVOID', label: 'Avoid', color: 'red' }
+  if (score >= 85) return { tier: 'A', label: 'Prime', color: 'green' }
+  if (score >= 75) return { tier: 'B', label: 'Strong', color: 'blue' }
+  if (score >= 65) return { tier: 'C', label: 'Caution', color: 'yellow' }
+  return { tier: 'AVOID', label: 'Fade', color: 'red' }
 }
 
 /**
@@ -130,7 +131,7 @@ export function scoreHit({ hitter = {}, pitcher = {}, matchup = {}, park = {} } 
   ]
 
   // Fades override the tier to Avoid but we keep the computed score for transparency.
-  const t = faded ? { tier: 'AVOID', label: 'Avoid', color: 'red' } : tierFor(raw)
+  const t = faded ? { tier: 'AVOID', label: 'Fade', color: 'red' } : tierFor(raw)
   return {
     score: raw,
     ...t,
