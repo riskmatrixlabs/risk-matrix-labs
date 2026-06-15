@@ -477,7 +477,7 @@ function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip })
   useEffect(() => {
     if (!player?.name || !game?.away || !token) return
     let live = true; setStatus('loading')
-    fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}&cacheOnly=1`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(j => {
         if (!live) return
