@@ -122,7 +122,7 @@ function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
 
 // ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
 // anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
-function OuFlag({ event, token, compact = false }) {
+function OuFlag({ event, token, compact = false, mini = false }) {
   const [ou, setOu] = useState(null)
   useEffect(() => {
     if (!token || event?.sport !== 'MLB' || !event?.away_team || !event?.home_team) { setOu(null); return }
@@ -135,6 +135,16 @@ function OuFlag({ event, token, compact = false }) {
   if (!ou) return null
   const t = ou.total
   const label = ou.lean === 'OVER' ? '📈 OVER' : ou.lean === 'UNDER' ? '📉 UNDER' : '➖ LEAN'
+  // mini — tiny inline badge that sits above the time in the list card's center column.
+  if (mini) {
+    const arrow = ou.lean === 'OVER' ? '📈' : ou.lean === 'UNDER' ? '📉' : '➖'
+    const side = ou.lean === 'OVER' ? 'O' : ou.lean === 'UNDER' ? 'U' : '·'
+    return (
+      <span title={ou.reason} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 7px', borderRadius: '6px', border: `1px solid ${ou.strong ? NEON : 'rgba(255,255,255,0.12)'}`, background: ou.strong ? 'rgba(189,255,0,0.1)' : 'transparent', fontFamily: R, fontSize: '9.5px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+        {arrow} {side}{t?.current != null ? ` ${t.current}` : ''}
+      </span>
+    )
+  }
   if (compact) {
     return (
       <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
@@ -171,8 +181,12 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
   const isOT  = event.status === 'AOT'
   const hasScore = event.home_score != null
 
-  const centerLabel = live ? 'LIVE' : final ? (isOT ? 'Final/OT' : 'Final') : fmtTime(event.start_time)
-  const centerColor = live ? '#FF3B3B' : final ? MUTED : TEXT
+  // Delayed / postponed / suspended / canceled — show a clear tag instead of the original time.
+  const STATUS_TAG = { PPD: { label: 'PPD', color: '#ffa500' }, DLY: { label: 'Delayed', color: '#ffa500' }, SUS: { label: 'Suspended', color: '#ffa500' }, CXL: { label: 'Canceled', color: '#FF3B3B' } }
+  const statusTag = STATUS_TAG[event.status] || null
+  const centerLabel = live ? 'LIVE' : final ? (isOT ? 'Final/OT' : 'Final') : statusTag ? statusTag.label : fmtTime(event.start_time)
+  const centerColor = live ? '#FF3B3B' : final ? MUTED : statusTag ? statusTag.color : TEXT
+  const preGame = !live && !final && !statusTag   // when the O/U lean is meaningful
 
   const awayWin = hasScore && final && event.away_score > event.home_score
   const homeWin = hasScore && final && event.home_score > event.away_score
@@ -184,7 +198,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
       onClick={onClick}
       style={{
         background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px',
-        padding: '14px 16px', cursor: 'pointer',
+        padding: '10px 14px', cursor: 'pointer',
         transition: 'border-color 0.15s',
       }}
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)'}
@@ -257,6 +271,8 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           </div>
           {/* Center */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '76px' }}>
+            {/* O/U model lean — compact, sits right above the time to save a whole row */}
+            {preGame && <OuFlag event={event} token={token} mini />}
             {hasScore ? (
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <span style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: (awayWin || awayLead) ? TEXT : MUTED, opacity: (homeWin || homeLead) ? 0.7 : 1 }}>{event.away_score}</span>
@@ -340,9 +356,6 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>{event.metadata.home_pitcher.name}</span>
         </div>
       )}
-
-      {/* O/U model lean (MLB) — compact, scannable on the list card */}
-      <OuFlag event={event} token={token} compact />
 
       {/* Tap affordance — signals the card opens to full Insights */}
       <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>

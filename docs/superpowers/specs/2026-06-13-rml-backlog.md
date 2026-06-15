@@ -43,3 +43,19 @@ The shared backbone is a real **bet model** (players + parlays + per-bet markets
 
 ## Maintenance / hygiene
 - 🔴 **rml-master.html is STALE** — owner wants it brought up to date (single source of truth per CLAUDE.md).
+
+## 🆕 QUEUED — PHLT + EV Brain (owner spec, session 55) — see memory `rml-evbrain-spec`
+The universal **bet-quality + discipline grader** (sits on top of our sport models). NOT picks — a risk dashboard. Verdict: **Play / Small Play / Lean / Pass**; operator label **Clean / Risky / Degen**.
+- 🟡 **Phase 1 — Brain core** (`src/lib/evBrain.ts`): pure scoring fns (PHLT Score, EV, CLV, Ladder, Round Robin, Discipline, Operator Rating, Final Decision) + constants + bet JSON schema + labels + tests. ~1 session, low risk, unlocks all.
+- 🟡 **Phase 2 — Wire real feeds + UI**: ModelProb ← de-vig consensus + live MLB models; CLV ← odds_history; Discipline/Operator ← bet-log behavior; bet-grade card + operator tile + tooltips on dashboard. ~2 sessions → MLB MVP.
+- 🟡 **Phase 3 — Other sports**: NBA/WNBA prop, NHL SOG, MLB team total (free-data sourcing risk, like bullpen). ~1 session each.
+- ⚠️ **DECIDE FIRST:** (1) PHLT name collision — owner's PHLT (Player/Price/Probability/Line/Tempo grader) vs our shipped PHLT (Pitcher Hit Likelihood Targeting MLB model) → rename baseball one. (2) ModelProb source (recommend de-vig consensus). (3) "Play" label vs brand no-"play" rule.
+
+## ✅ SHIPPED sessions 53–55 (CH2 + models + infra)
+- 🟢 **CH2 analysis engine** — line movement (since-open verdict, timeframe chips), props GROUPED BY PLAYER, unified search, compare books, credit discipline (0-cost open).
+- 🟢 **PHLT v2.2 hitter model LIVE** — A/B/C/Fade badges on prop cards (Pitcher/Form/Matchup/Park-Weather/Streak), sorted, fades, breakdown. Free Statcast (`api/savant.js`) + ESPN form + handedness platoon + weather.
+- 🟢 **O/U Model B v2 LIVE** — lean on Statcast xERA/xBA/K% + **bullpen ERA** (MLB Stats API) + weather + park, **anchored to live total** + since-open/value verdict. On CH2 game card AND Game Center (outside + inside).
+- 🟢 **Game Center flags + swipe fix** — O/U flag on list cards + detail; prev/next chevrons + touch-swipe between games.
+- 🟢 **Caching fix** — scan_cache/prop_history were silently failing (missing service_role grants); now cache (props 0-cost open, models stop re-fetching). See memory `rml-supabase-grants-gotcha`.
+- 🟢 CH2 polish — squarish centered league tiles, search↔date swap, brand-safe labels (Prime/Strong/Caution/Fade, never "lock").
+- Prod SW **rml-v234**, branch `feat/game-browser-lab`.

@@ -48,7 +48,11 @@ function mapStatus(statusName, statusDetail) {
       ? 'AOT' : 'FT'
   }
   if (statusName === 'STATUS_IN_PROGRESS') return 'IP'
-  if (statusDetail?.toLowerCase().includes('postponed')) return 'PPD'
+  const d = statusDetail?.toLowerCase() || ''
+  if (d.includes('postponed')) return 'PPD'
+  if (d.includes('delay')) return 'DLY'        // incl rain delay
+  if (d.includes('suspend')) return 'SUS'
+  if (d.includes('cancel') || d.includes('forfeit')) return 'CXL'
   return 'NS'
 }
 

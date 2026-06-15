@@ -77,7 +77,11 @@ export function mapStatus(statusName, statusDetail) {
     return statusDetail?.toLowerCase().includes('ot') || statusDetail?.toLowerCase().includes('so') ? 'AOT' : 'FT'
   }
   if (statusName === 'STATUS_IN_PROGRESS') return 'IP'
-  if (statusDetail?.toLowerCase().includes('postponed')) return 'PPD'
+  const d = statusDetail?.toLowerCase() || ''
+  if (d.includes('postponed')) return 'PPD'
+  if (d.includes('delay')) return 'DLY'
+  if (d.includes('suspend')) return 'SUS'
+  if (d.includes('cancel') || d.includes('forfeit')) return 'CXL'
   return 'NS'
 }
 
