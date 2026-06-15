@@ -20,10 +20,17 @@ async function totalAnchor(sport, away, home) {
   const sb = db(); if (!sb) return null
   const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   try {
+    // Window to the next ~20h and order by start so the SOONEST matching game wins — a
+    // matchup repeats across a series, so an unbounded/unordered find grabbed the wrong
+    // day's row (null or stale total). Prefer a row that actually carries a total.
     const { data: evs } = await sb.from('events')
-      .select('external_event_id, away_team, home_team, odds_total')
-      .eq('sport', sport).gte('start_time', new Date(Date.now() - 8 * 3600e3).toISOString()).limit(60)
-    const ev = (evs || []).find(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away))
+      .select('external_event_id, away_team, home_team, odds_total, start_time')
+      .eq('sport', sport)
+      .gte('start_time', new Date(Date.now() - 8 * 3600e3).toISOString())
+      .lte('start_time', new Date(Date.now() + 20 * 3600e3).toISOString())
+      .order('start_time', { ascending: true }).limit(60)
+    const matches = (evs || []).filter(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away))
+    const ev = matches.find(e => e.odds_total != null) || matches[0]
     if (!ev) return null
     const current = ev.odds_total != null ? Number(ev.odds_total) : null
     let open = null
