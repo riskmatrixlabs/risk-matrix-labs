@@ -431,6 +431,11 @@ export function buildLiveMeta(s, comp, away, home, key) {
             ab: parseInt(v[idx('AB')]) || 0, r: parseInt(v[idx('R')]) || 0, h: parseInt(v[idx('H')]) || 0,
             rbi: parseInt(v[idx('RBI')]) || 0, hr: parseInt(v[idx('HR')]) || 0, bb: parseInt(v[idx('BB')]) || 0,
             k: parseInt(v[idx('K')] ?? v[idx('SO')]) || 0, avg: v[idx('AVG')] ?? v[idx('BA')] ?? null,
+            ops: (() => {
+              const direct = v[idx('OPS')]; if (direct != null && direct !== '') return direct
+              const obp = parseFloat(v[idx('OBP')]), slg = parseFloat(v[idx('SLG')])
+              return (Number.isFinite(obp) && Number.isFinite(slg)) ? (obp + slg).toFixed(3).replace(/^0\./, '.') : null
+            })(),
           }
         })
       }

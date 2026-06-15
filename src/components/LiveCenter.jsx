@@ -532,8 +532,8 @@ function HitterRow({ p }) {
         </div>
       </div>
       {open && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', borderTop: `1px solid ${BORDER}`, background: BORDER }}>
-          {[{ l: 'AB', v: p.ab }, { l: 'H', v: p.h }, { l: 'R', v: p.r }, { l: 'RBI', v: p.rbi }, { l: 'HR', v: p.hr }, { l: 'BB', v: p.bb }, { l: 'K', v: p.k }, { l: 'AVG', v: p.avg }].map(({ l, v }) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', borderTop: `1px solid ${BORDER}`, background: BORDER }}>
+          {[{ l: 'AB', v: p.ab }, { l: 'H', v: p.h }, { l: 'R', v: p.r }, { l: 'RBI', v: p.rbi }, { l: 'HR', v: p.hr }, { l: 'BB', v: p.bb }, { l: 'K', v: p.k }, { l: 'AVG', v: p.avg }, { l: 'OPS', v: p.ops }].map(({ l, v }) => (
             <div key={l} style={{ background: '#0A0A0A', padding: '10px 8px', textAlign: 'center' }}>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: '4px' }}>{l}</div>
               <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: l === 'H' && v > 0 ? NEON_T : TEXT }}>{v ?? '—'}</div>
@@ -2104,7 +2104,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                   <table style={{ width: '100%', minWidth: '420px', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(189,255,0,0.03)' }}>
-                        {['Hitter','AB','R','H','RBI','HR','BB','K','AVG'].map((h, i) => (
+                        {['Hitter','AB','R','H','RBI','HR','BB','K','AVG','OPS'].map((h, i) => (
                           <th key={h} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', padding: '8px 8px', textAlign: i === 0 ? 'left' : 'center', borderBottom: `1px solid ${BORDER}` }}>{h}</th>
                         ))}
                       </tr>
@@ -2113,7 +2113,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       {(hitTeam === 'away' ? awayHit : homeHit).map((p, i, arr) => (
                         <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}{p.pos ? <span style={{ color: MUTED, fontWeight: 500 }}> {p.pos}</span> : ''}</td>
-                          {[p.ab, p.r, p.h, p.rbi, p.hr, p.bb, p.k, p.avg].map((v, j) => (
+                          {[p.ab, p.r, p.h, p.rbi, p.hr, p.bb, p.k, p.avg, p.ops].map((v, j) => (
                             <td key={j} style={{ fontFamily: R, fontSize: '12px', fontWeight: j === 2 && p.h > 0 ? 700 : 500, color: j === 2 && p.h > 0 ? NEON_T : TEXT, textAlign: 'center', padding: '9px 8px' }}>{v ?? '—'}</td>
                           ))}
                         </tr>

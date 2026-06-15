@@ -216,6 +216,11 @@ async function fetchSport({ key, sport, league }, dateStr) {
                     bb:   parseInt(sv[idx('BB')])  || 0,
                     k:    parseInt(sv[idx('K')] ?? sv[idx('SO')]) || 0,
                     avg:  sv[idx('AVG')] ?? sv[idx('BA')] ?? null,
+                    ops:  (() => {
+                      const direct = sv[idx('OPS')]; if (direct != null && direct !== '') return direct
+                      const obp = parseFloat(sv[idx('OBP')]), slg = parseFloat(sv[idx('SLG')])
+                      return (Number.isFinite(obp) && Number.isFinite(slg)) ? (obp + slg).toFixed(3).replace(/^0\./, '.') : null
+                    })(),
                   }
                 })
             }
