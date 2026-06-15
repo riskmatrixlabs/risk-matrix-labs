@@ -101,11 +101,12 @@ export async function readLatestCredits() {
 }
 
 // Persist a fresh scan result + the credits it left us with. Best-effort; never throws.
+// Returns a small status object so callers can surface failures during diagnosis.
 export async function writeScan(sport, dateStr, payload, creditsRemaining) {
   const supabase = client()
-  if (!supabase) return
+  if (!supabase) return { skipped: 'no-client', hasUrl: !!process.env.SUPABASE_URL, hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY }
   try {
-    await supabase.from('scan_cache').upsert(
+    const { error } = await supabase.from('scan_cache').upsert(
       {
         key: cacheKey(sport, dateStr),
         sport: String(sport).toUpperCase(),
@@ -115,8 +116,9 @@ export async function writeScan(sport, dateStr, payload, creditsRemaining) {
       },
       { onConflict: 'key' }
     )
-  } catch {
-    /* best-effort cache; ignore write failures */
+    return error ? { error: error.message || String(error) } : { ok: true }
+  } catch (e) {
+    return { error: String(e?.message || e) }
   }
 }
 

@@ -89,8 +89,8 @@ async function loadBoard(kind, url, build) {
       if (rec) map[normName(name)] = rec
     }
     const count = Object.keys(map).length
-    if (count) await writeScan(cacheKind, date, { map, count })
-    return { map, count, cached: false }
+    const writeStatus = count ? await writeScan(cacheKind, date, { map, count }) : { skipped: 'no-count' }
+    return { map, count, cached: false, writeStatus }
   } catch (e) {
     // fall back to a stale cache if we have one rather than going dark
     if (cached?.payload?.map) return { map: cached.payload.map, count: cached.payload.count, cached: true, stale: true }
@@ -173,6 +173,7 @@ export default async function handler(req, res) {
     },
   }
   if (probe) {
+    body.writeStatus = { batter: batBoard.writeStatus, pitcherX: pxBoard.writeStatus, pitcherK: pkBoard.writeStatus }
     body.sample = {
       batter: Object.entries(batBoard.map).slice(0, 3).map(([k, v]) => ({ k, ...v })),
       pitcherX: Object.entries(pxBoard.map).slice(0, 3).map(([k, v]) => ({ k, ...v })),
