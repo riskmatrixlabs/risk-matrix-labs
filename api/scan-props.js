@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     const tiers = (full && markets !== PROP_MARKETS[sport]) ? [markets, PROP_MARKETS[sport]] : [markets]
     let lastErr = null
     for (const mk of tiers) {
-      try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2', 'us_ex'], timeoutMs: 8000 }); game = r.game; credits = r.credits; usedMarkets = mk; break }
+      try { const r = await fetchEventOdds({ sport, eventId: match.id, markets: mk, regions: ['us', 'us2'], timeoutMs: 8000 }); game = r.game; credits = r.credits; usedMarkets = mk; break }
       catch (e) { lastErr = e }
     }
     if (!game) {
