@@ -59,3 +59,18 @@ The universal **bet-quality + discipline grader** (sits on top of our sport mode
 - 🟢 **Caching fix** — scan_cache/prop_history were silently failing (missing service_role grants); now cache (props 0-cost open, models stop re-fetching). See memory `rml-supabase-grants-gotcha`.
 - 🟢 CH2 polish — squarish centered league tiles, search↔date swap, brand-safe labels (Prime/Strong/Caution/Fade, never "lock").
 - Prod SW **rml-v234**, branch `feat/game-browser-lab`.
+
+## ✅ SHIPPED Session 56 (Game Center polish + credit pre-warm + education clarity · SW rml-v254)
+- 🟢 **Slate-wide line pre-warm** (`cron-warm-lines` */15) — opening ANY game shows best lines FREE (cacheOnly, 18-min WARM_TTL); 1 bulk call/sport; also feeds the By-Sportsbook chart. Props still pay-on-demand.
+- 🟢 **Caching fixed** (service_role grants) — props/savant/roster now cache (was a silent bleed).
+- 🟢 **Game Center detail clarity:** O/U flag → footer; status tags (Postponed/Delayed/Suspended/Canceled); OPS in box score; injury away/home tabs; "Your Bet" → slim chip; all Insights sections collapsible (open default); Win Prob + Fair Value clearer (both sides + odds + pre-game/live tag; line on each side w/ correct sign); Line Movement LINE-vs-PRICE relabel; HOLD tooltip; square tabs.
+- 🟢 **CH2:** squarish centered league tiles; search↔date swap.
+
+## 🎯 NEXT SESSION — start here (in order)
+1. ⚠️ **DECIDE 3 things** before any EV Brain code (see memory `rml-evbrain-spec`): (a) PHLT name collision — keep PHLT for the universal grader, rename MLB hitter model (e.g. "Hit Score"); (b) ModelProb source — recommend de-vig consensus; (c) "Play" label vs no-"play" brand rule.
+2. 🟡 **EV Brain Phase 1** — `src/lib/evBrain.ts` pure scoring fns (PHLT/EV/CLV/Ladder/RR/Discipline/Operator/Final Decision) + constants + bet JSON schema + labels + tests. ~1 session, unlocks all.
+3. 🟡 **EV Brain Phase 2** — wire ModelProb←de-vig consensus + live MLB models; CLV←odds_history; Discipline/Operator←bet log; bet-grade card + operator tile + tooltips. ~2 sessions → MLB MVP.
+4. 🟡 **CH3 TRACK redesign** — the EV slips live here (settled-bet grading, parlay grading). Still original.
+5. 🟡 **EV Brain Phase 3** — other sports (NBA/WNBA prop, NHL SOG, MLB team total) — free-data sourcing risk.
+
+**Pending/blocked:** ANTHROPIC_API_KEY (unlocks OCR bet-slip import, still owner-pending) · NFL support · umpire + lineups for O/U (umpire = no free zone-tendency data, lineups = fuzzy) · bullpen FATIGUE (recent IP, needs daily accumulation).
