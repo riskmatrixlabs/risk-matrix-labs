@@ -804,44 +804,33 @@ function WinProbability({ markets }) {
 
 // ── Your Bet — links a logged bet to this game: your price vs no-vig fair (EV) + CLV. ──
 // graded: array of evaluateBet() results. The free Pikkit-PRO card, pinned atop Insights.
+// Slim "you're on this" position chip — a contextual nod that you have a bet on this game,
+// with live CLV. The full bet/EV lives in Overview (mirrors Bet Log) + CH3 Track, not here.
 function PersonalBet({ graded }) {
   const fmtAm = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
-  const resultColor = (r) => r === 'W' ? NEON_T : r === 'L' ? '#FF3B3B' : MUTED
   return (
-    <div style={{ background: CARD, border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '10px', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.07)' }}>
-        <InfoLabel center tip={GLOSSARY.yourBet} label={
-          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: NEON_T }}>Your Bet <span style={{ color: 'rgba(255,255,255,0.3)' }}>· position ↔ edge</span></span>
-        } />
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
       {graded.map((g, i) => {
-        const evPos = g.evPct != null && g.evPct >= 0
         const clvPos = g.clvPct != null && g.clvPct >= 0
-        const stat = (label, val, color, tip) => (
-          <div style={{ textAlign: 'center', flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <InfoLabel tip={tip} label={<span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>} />
-            </div>
-            <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color }}>{val}</div>
-          </div>
-        )
+        const settled = g.result && g.result !== 'Open'
+        const won = g.result === 'W'
         return (
-          <div key={i} style={{ padding: '12px 14px', borderBottom: i < graded.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2px' }}>
-              <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.01em' }}>{g.pick}</span>
-              <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{fmtAm(g.yourAmerican)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '11px' }}>
-              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 600, color: MUTED }}>
-                {g.book || 'Your book'}{g.fairAmerican != null && <> · fair <span style={{ color: TEXT, fontWeight: 700 }}>{fmtAm(g.fairAmerican)}</span></>}
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '11px', padding: '9px 13px', borderRadius: '11px', border: '1px solid rgba(189,255,0,0.35)', background: 'linear-gradient(95deg, rgba(189,255,0,0.10), rgba(189,255,0,0.02))', boxShadow: '0 0 14px rgba(189,255,0,0.05) inset' }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: NEON, boxShadow: `0 0 7px ${NEON}`, flexShrink: 0 }} />
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{ display: 'block', fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: NEON_T, marginBottom: '1px' }}>You're on this</span>
+              <span style={{ display: 'block', fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.pick} <span style={{ color: NEON_T }}>{fmtAm(g.yourAmerican)}</span></span>
+            </span>
+            {settled ? (
+              <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: won ? NEON_T : '#FF3B3B', flexShrink: 0 }}>{won ? 'Won' : 'Lost'}</span>
+            ) : g.clvPct != null ? (
+              <span style={{ textAlign: 'right', flexShrink: 0 }}>
+                <span style={{ display: 'block', fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>CLV</span>
+                <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: clvPos ? NEON_T : '#FF3B3B' }}>{clvPos ? '+' : ''}{g.clvPct.toFixed(1)}%</span>
               </span>
-              {g.result && <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: resultColor(g.result) }}>{g.result === 'Open' ? 'Open' : g.result}</span>}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {stat('Win Prob', g.fairProb != null ? `${Math.round(g.fairProb * 100)}%` : '—', TEXT, GLOSSARY.winProb)}
-              {stat('+EV', g.evPct != null ? `${evPos ? '+' : ''}${g.evPct.toFixed(1)}%` : '—', g.evPct == null ? MUTED : evPos ? NEON_T : '#FF3B3B', GLOSSARY.ev)}
-              {stat('CLV', g.clvPct != null ? `${clvPos ? '+' : ''}${g.clvPct.toFixed(1)}%` : '—', g.clvPct == null ? MUTED : clvPos ? NEON_T : '#FF3B3B', GLOSSARY.clv)}
-            </div>
+            ) : (
+              <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED, flexShrink: 0 }}>Open</span>
+            )}
           </div>
         )
       })}
