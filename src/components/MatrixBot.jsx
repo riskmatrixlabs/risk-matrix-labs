@@ -1243,8 +1243,8 @@ function TrackChannel({ bets, sport, token }) {
 
       {/* scoreboard — the Pikkit Pro headline numbers (collapsible panel) */}
       <LookSection label="SCOREBOARD" headerRight={
-        <button aria-label="Track settings" onClick={() => setGearOpen(o => !o)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: MUTED, fontSize: '16px' }}>
-          <i className="ti ti-settings" />
+        <button aria-label="Track settings" onClick={() => setGearOpen(o => !o)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: MUTED, fontSize: '16px', lineHeight: 1 }}>
+          ⚙
         </button>
       }>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>

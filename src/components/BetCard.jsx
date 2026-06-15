@@ -7,6 +7,9 @@ const R = "'Rajdhani',sans-serif"
 const I = "'Inter',sans-serif"
 const AMBER = '#FFB800'
 
+// This app uses unicode/emoji glyphs (no Tabler webfont). Map status → glyph.
+const GLYPH = { won: '✓', lost: '✕', live: '◷', push: '–' }
+
 const fmtOdds = (o) => o == null ? '' : (o > 0 ? `+${o}` : `${o}`)
 const initials = (s) => String(s || '').replace(/[^A-Za-z ]/g, '').split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase()
 
@@ -71,7 +74,7 @@ function LegRow({ leg }) {
           {fmtOdds(leg.odds)}{leg.close != null ? ` · closed ${fmtOdds(leg.close)}` : ''}{st.key === 'live' ? ' · needs this' : ''}
         </div>
       </div>
-      <i className={`ti ${st.icon}`} style={{ color: st.color, fontSize: 17 }} />
+      <span style={{ color: st.color, fontSize: 17, fontWeight: 700, lineHeight: 1 }}>{GLYPH[st.key] || ''}</span>
     </div>
   )
 }
@@ -108,7 +111,7 @@ export function BetTicket({ bet, grade }) {
       {clv.clvPct != null && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: 10,
           background: clv.beat ? `${NEON}12` : 'rgba(255,59,59,0.10)', borderTop: `1px solid ${(clv.beat ? NEON : '#FF3B3B')}40` }}>
-          <i className={`ti ${clv.beat ? 'ti-trending-up' : 'ti-trending-down'}`} style={{ color: clv.beat ? NEON : '#FF3B3B', fontSize: 18 }} />
+          <span style={{ color: clv.beat ? NEON : '#FF3B3B', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>{clv.beat ? '▲' : '▼'}</span>
           <span style={{ fontFamily: R, fontSize: 13, fontWeight: 700, color: clv.beat ? NEON : '#FF3B3B', letterSpacing: '0.06em' }}>{clv.beat ? 'YOU BEAT THE CLOSE' : 'WORSE THAN CLOSE'}</span>
           <span style={{ fontFamily: R, fontSize: 15, fontWeight: 700, color: clv.beat ? NEON : '#FF3B3B' }}>{`${clv.clvPct >= 0 ? '+' : ''}${clv.clvPct.toFixed(1)}% CLV`}</span>
         </div>
