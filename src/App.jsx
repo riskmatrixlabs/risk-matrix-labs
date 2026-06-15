@@ -3001,7 +3001,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }
   const addToSlip = (leg) => {
     if (!leg?.pick) return
-    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, evPct: leg.evPct ?? null, consensus: leg.consensus ?? null, sport: leg.sport || null, event: leg.event || null }])
+    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, byBookLink: leg.byBookLink || null, evPct: leg.evPct ?? null, consensus: leg.consensus ?? null, sport: leg.sport || null, event: leg.event || null }])
     setSlipOpen(true)
   }
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
@@ -3176,11 +3176,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           <div style={{ marginBottom: '4px' }}>
                             <div style={lbl}>Best book · each bet</div>
                             {enabled.length === 0 && <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, padding: '6px 0' }}>All legs off — toggle one on below.</div>}
-                            {enabled.map((l, i) => { const b = bestForLeg(l); return (
-                              <a key={i} href={placeLink(b.book) || l.link || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 12px', marginTop: '7px', borderRadius: '11px', border: '1px solid var(--border)', textDecoration: 'none' }}>
+                            {enabled.map((l, i) => { const b = bestForLeg(l); const deep = l.byBookLink?.[b.book]; return (
+                              <a key={i} href={deep || placeLink(b.book) || l.link || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 12px', marginTop: '7px', borderRadius: '11px', border: '1px solid var(--border)', textDecoration: 'none' }}>
                                 <span style={{ minWidth: 0 }}>
                                   <span style={{ display: 'block', fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.pick}</span>
-                                  <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>place on {BOOK_NAMES[b.book] || b.book || '—'}</span>
+                                  <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>place on {BOOK_NAMES[b.book] || b.book || '—'}{deep ? ' ↗' : ''}</span>
                                 </span>
                                 <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: NEON_T, flexShrink: 0 }}>{fmt(b.odds)}</span>
                               </a>

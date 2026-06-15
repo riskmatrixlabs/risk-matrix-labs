@@ -77,12 +77,14 @@ export function propEdges(event, marketKeys, nowMs, opts = {}) {
       const base = { player, market: marketKey, marketLabel: labelFor(marketKey), point }
       // every book's price for a side → powers the Bet Matrix line-shop page for props
       const bb = (s) => Object.fromEntries((sides[s] || []).filter(q => q.price != null).map(q => [q.book, q.price]))
+      // every book's DEEP bet-slip link (when the feed carries one) → line-shop can place on any book
+      const bbLink = (s) => Object.fromEntries((sides[s] || []).filter(q => q.price != null && q.link).map(q => [q.book, q.link]))
       if (dv) {
         const sharpHoldPct = dv.holdPct
         for (const [side, best, fairProb] of [['Over', bestOver, dv.fairA], ['Under', bestUnder, dv.fairB]]) {
           if (!best) continue
           const ev = evPct(best.price, fairProb)
-          const edge = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side), fairProb, sharpHoldPct, evPct: ev }
+          const edge = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side), byBookLink: bbLink(side), fairProb, sharpHoldPct, evPct: ev }
           if (isCredibleEdge({ evPct: ev }, o)) edges.push(edge)
         }
       } else {
@@ -90,7 +92,7 @@ export function propEdges(event, marketKeys, nowMs, opts = {}) {
         const cons = consensusFair(sides)
         for (const [side, best, fairP] of [['Over', bestOver, cons?.fairOver], ['Under', bestUnder, cons?.fairUnder]]) {
           if (!best) continue
-          const row = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side) }
+          const row = { ...base, side, best: { book: best.book, price: best.price, link: best.link }, byBook: bb(side), byBookLink: bbLink(side) }
           if (cons && fairP != null) {
             const ev = evPct(best.price, fairP)
             if (ev != null && ev >= 1 && ev <= 15) { edges.push({ ...row, fairProb: fairP, evPct: ev, consensus: true, consensusBooks: cons.books }); continue }

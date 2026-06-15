@@ -916,7 +916,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
     const r = L.sides[side], more = side === 'Over', isEdge = r && r.evPct != null
     if (!r) return <div style={{ flex: 1, padding: '7px 4px', borderRadius: '7px', border: `1px solid ${BORDER}`, textAlign: 'center', opacity: 0.35, fontFamily: R, fontSize: '12px', color: MUTED }}>{more ? '▲' : '▼'} —</div>
     return (
-      <button onClick={() => setConfirm({ pick: `${player} ${side} ${L.point} ${L.marketLabel}`, odds: r.best.price, book: r.best.book, url: decorate(r.best.book, r.best.link), byBook: r.byBook, evPct: r.evPct, consensus: r.consensus })}
+      <button onClick={() => setConfirm({ pick: `${player} ${side} ${L.point} ${L.marketLabel}`, odds: r.best.price, book: r.best.book, url: decorate(r.best.book, r.best.link), byBook: r.byBook, byBookLink: r.byBookLink, evPct: r.evPct, consensus: r.consensus })}
         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '7px 4px', borderRadius: '7px', border: `1px solid ${isEdge ? NEON : BORDER}`, background: isEdge ? 'rgba(189,255,0,0.1)' : '#0d0d0d', cursor: 'pointer' }}>
         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isEdge ? NEON_T : MUTED }}>{more ? '▲' : '▼'}</span>
         <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isEdge ? NEON_T : TEXT }}>{fmtAm(r.best.price)}</span>
@@ -1004,7 +1004,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
             <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>Add <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span>?</span>
             <span style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
               {onAddToSlip && (
-                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, evPct: confirm.evPct, consensus: confirm.consensus, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
+                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, byBookLink: confirm.byBookLink, evPct: confirm.evPct, consensus: confirm.consensus, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
                   style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
               )}
               <button onClick={() => { onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
