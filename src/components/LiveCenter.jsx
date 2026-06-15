@@ -775,15 +775,33 @@ const GLOSSARY = {
 
 // ── Win Probability split — both teams' no-vig implied %, all three markets. ──
 // markets: [{ label, aLabel, bLabel, pA, pB }] — pA/pB are 0–1 fair probabilities.
-function WinProbability({ markets }) {
+// Reusable collapsible card — header toggles, open by default. For the inline Insights sections.
+function Collapsible({ title, sub, tip, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const head = <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{title}{sub ? <span style={{ color: 'rgba(255,255,255,0.3)' }}> · {sub}</span> : ''}</span>
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px 16px' }}>
-      <div style={{ marginBottom: '12px' }}>
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {tip ? <InfoLabel center tip={tip} label={head} /> : head}
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </div>
+      {open && children}
+    </div>
+  )
+}
+
+function WinProbability({ markets }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
+      <div onClick={() => setOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <InfoLabel center tip={GLOSSARY.winProb} label={
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Win Probability <span style={{ color: 'rgba(255,255,255,0.3)' }}>· true chance to win</span></span>
         } />
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {open && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px 16px' }}>
         {markets.map((m, i) => {
           const a = Math.round(m.pA * 100), b = Math.round(m.pB * 100)
           return (
@@ -801,6 +819,7 @@ function WinProbability({ markets }) {
           )
         })}
       </div>
+      )}
     </div>
   )
 }
@@ -1185,6 +1204,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
   const [confirm, setConfirm] = useState(null)   // { book, name, pick, odds, url } — tap-to-bet confirm
   const [userState, setUserState] = useState(() => { try { return localStorage.getItem('rml_state') || guessState() || '' } catch { return '' } })
   const [showAllBooks, setShowAllBooks] = useState(false)
+  const [secOpen, setSecOpen] = useState(true)   // collapsible section, open by default
   const pickState = (s) => { setUserState(s); try { s ? localStorage.setItem('rml_state', s) : localStorage.removeItem('rml_state') } catch {} }
   const rootRef = useRef(null)
   const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
@@ -1240,6 +1260,9 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
         <button onClick={() => { setStatus('idle'); load({ ex: true }) }} disabled={status === 'loading'} title="Refresh odds (incl. Novig/exchanges)"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 8px', color: NEON_T, cursor: status === 'loading' ? 'wait' : 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>
           <span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'loading' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'loading' ? '' : 'REFRESH'}
+        </button>
+        <button onClick={() => setSecOpen(o => !o)} aria-label="Collapse line shop" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex' }}>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ transform: secOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
       </span>
     </div>
@@ -1378,7 +1401,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
     }
   }
 
-  return <div ref={rootRef} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{body}</div>
+  return <div ref={rootRef} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>{header}{secOpen && body}</div>
 }
 
 // Small CTA → nice pop-up of sign-up bonuses (most are DFS). Same links live on the Partners page.
@@ -1762,14 +1785,13 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
           {/* O/U model — full breakdown (Statcast + bullpen + weather, anchored to total) */}
           <OuFlag event={event} token={token} />
           {meta.weather && (
-            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-              <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED, textAlign: 'center' }}>Weather</div>
+            <Collapsible title="Weather">
               <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>
                 {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
                 {meta.weather.windMph != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>WIND</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.windMph} {meta.weather.windDir}</div></span>}
                 {meta.weather.precipPct != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>RAIN</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: meta.weather.precipPct >= 50 ? '#FF3B3B' : TEXT }}>{meta.weather.precipPct}%</div></span>}
               </div>
-            </div>
+            </Collapsible>
           )}
 
           {/* ── Insights tab — ALL the RML edge features, premium card stack ── */}
@@ -1864,12 +1886,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     dvTotal  && { name: `Total ${totalPt}`, aL: 'O',        bL: 'U',             a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
-                    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, background: 'rgba(189,255,0,0.04)' }}>
-                        <InfoLabel center tip={GLOSSARY.fairValue} label={
-                          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Fair Value <span style={{ color: 'rgba(255,255,255,0.3)' }}>· the honest price</span></span>
-                        } />
-                      </div>
+                    <Collapsible title="Fair Value" sub="the honest price" tip={GLOSSARY.fairValue}>
                       {rows.map((m, i) => (
                         <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span>
@@ -1886,7 +1903,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                           </span>
                         </div>
                       ))}
-                    </div>
+                    </Collapsible>
                   )
                 })()}
 
