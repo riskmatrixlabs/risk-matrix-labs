@@ -1239,7 +1239,10 @@ function TrackChannel({ bets, sport, token }) {
     const set = new Set()
     for (const b of bets || []) {
       const ev = events.find(e => matchBetToEvent(b, e))
-      if (ev && isLiveEvent(ev) && ev.external_event_id) set.add(`${(b.sport || ev.sport || sport)}|${ev.external_event_id}`)
+      // Live OR finished (FT/AOT) games have a box score — finished gives the settled
+      // final stat so the bar locks in green/red instead of going blank.
+      const hasBox = ev && (isLiveEvent(ev) || ev.status === 'FT' || ev.status === 'AOT')
+      if (hasBox && ev.external_event_id) set.add(`${(b.sport || ev.sport || sport)}|${ev.external_event_id}`)
     }
     return [...set]
   }, [bets, events, sport])
