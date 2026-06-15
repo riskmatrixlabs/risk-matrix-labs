@@ -12,6 +12,8 @@ function genUUID() {
   })
 }
 import { useSwipeable } from 'react-swipeable'
+import { BetCard as UniBetCard, BetTicket as UniBetTicket } from './components/BetCard.jsx'
+import { normalizeBet } from './lib/betCard.js'
 import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
@@ -893,7 +895,12 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
         </div>
       </>) : (<>
 
-      {/* ── SETTLED: event + pick + meta row ── */}
+      {/* ── SETTLED descriptive row — universal card for non-ladder bets ── */}
+      {!isLadder ? (
+        <div style={{ padding: '6px 8px 7px' }}>
+          {(() => { const n = normalizeBet(bet); return n.kind === 'parlay' ? <UniBetTicket bet={n} /> : <UniBetCard bet={n} /> })()}
+        </div>
+      ) : (<>
       <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -921,6 +928,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
         </span>
         {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
       </div>
+      </>)}
 
       {/* ── SETTLED FOOTER: stats bar + edit/delete ── */}
       {!isOpen && (<>
