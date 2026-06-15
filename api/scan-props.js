@@ -48,6 +48,9 @@ export default async function handler(req, res) {
   // not on the auto-scan that fires every time a game is opened.
   const ex = String(req.query.ex ?? '') === '1'
   const REGIONS = ex ? ['us', 'us2', 'us_ex'] : ['us', 'us2']
+  // cacheOnly: serve from cache only — NEVER spend credits. Opening a game uses this so just
+  // browsing costs nothing; a fresh paid scan happens only on an explicit tap/refresh.
+  const cacheOnly = String(req.query.cacheOnly ?? '') === '1'
   const markets = (full ? PROP_MARKETS_FULL[sport] : PROP_MARKETS[sport])
   if (!markets?.length) return res.status(200).json({ found: false, reason: 'no prop markets for sport' })
 
@@ -60,6 +63,7 @@ export default async function handler(req, res) {
   if (cached && isFresh(cached.scanned_at, Date.now(), PROPS_TTL_MS) && cached.payload) {
     return res.status(200).json({ ...cached.payload, cached: true })
   }
+  if (cacheOnly) return res.status(200).json({ found: false, notCached: true })
 
   try {
     const { events } = await fetchSportEvents({ sport })

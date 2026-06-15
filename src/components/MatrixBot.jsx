@@ -866,20 +866,22 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
 
   // withEx=true (manual refresh) pulls the pricier us_ex region (Novig/exchanges); the auto-scan
   // that fires on game open stays cheap (us, us2) so browsing doesn't bleed credits.
-  async function scan(withEx = false) {
+  async function scan(opts = {}) {
     if (!token || status === 'scanning') return
     setStatus('scanning'); setErr('')
+    const qs = opts.ex ? '&ex=1' : opts.cacheOnly ? '&cacheOnly=1' : ''
     try {
-      const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${withEx ? '&ex=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(sport)}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${qs}`, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `props ${res.status}`)
       const j = await res.json()
-      setData(j.found ? j : { edges: [], lineShopOnly: [], creditsRemaining: j.creditsRemaining })
+      setData(j.found ? j : { edges: [], lineShopOnly: [], creditsRemaining: j.creditsRemaining, notCached: j.notCached })
       setStatus('done')
     } catch (e) { setErr(e.message); setStatus('error') }
   }
 
-  // Auto-scan props on open so the section is ALWAYS visible (no button to click). Cached 2min server-side = cheap.
-  useEffect(() => { if (token && game?.away) scan() }, [game?.away, game?.home, token])
+  // On open: read cache ONLY (free — never spends credits). Cached props show instantly; if nothing's
+  // cached you tap ↻ REFRESH to do a paid scan. So just browsing games costs nothing.
+  useEffect(() => { if (token && game?.away) scan({ cacheOnly: true }) }, [game?.away, game?.home, token])
 
   // Group props BY PLAYER → one card per player holding ALL their lines (scan player by player).
   const pmap = new Map()
@@ -950,7 +952,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: edgeCount ? NEON_T : MUTED, letterSpacing: '0.1em' }}>{edgeCount ? `${edgeCount} +EV · ${shownPlayers.length} PLAYERS` : propCount ? `${shownPlayers.length} PLAYERS · ${propCount} PROPS` : 'NO PROPS YET'}</span>
-        <button onClick={() => scan(true)} title="Refresh prop odds (incl. Novig/exchanges)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 9px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} · ` : ''}<span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'scanning' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'scanning' ? 'REFRESHING' : 'REFRESH'}</button>
+        <button onClick={() => scan({ ex: true })} title="Refresh prop odds (incl. Novig/exchanges)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 9px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>{data?.creditsRemaining != null ? `${data.creditsRemaining} · ` : ''}<span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'scanning' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'scanning' ? 'REFRESHING' : 'REFRESH'}</button>
       </div>
 
       {status === 'error'
@@ -958,7 +960,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
         : (status === 'idle' || status === 'scanning')
           ? <div style={{ textAlign: 'center', padding: '22px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: 'rgba(189,255,0,0.6)', letterSpacing: '0.1em' }}>SCANNING PROPS…</div>
           : !players.length
-            ? <Empty text="No props posted for this game yet — try after lineups." />
+            ? <Empty text={data?.notCached ? 'Tap ↻ REFRESH to load props (spends credits)' : 'No props posted for this game yet — try after lineups.'} />
             : !shownPlayers.length
               ? <Empty text={`No ${statF} props on the board right now.`} />
               : shownPlayers.map((P, i) => {

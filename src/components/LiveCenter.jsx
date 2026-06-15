@@ -1130,15 +1130,17 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
 
   // withEx=true (manual refresh) pulls the pricier us_ex region (Novig/exchanges); the auto-load
   // on game open stays cheap (us, us2) to protect credits while browsing.
-  async function load(withEx = false) {
+  async function load(opts = {}) {
     if (!token || status === 'loading') return
     setStatus('loading'); setErr('')
+    const qs = opts.ex ? '&ex=1' : opts.cacheOnly ? '&cacheOnly=1' : ''
     try {
-      const res = await fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}${withEx ? '&ex=1' : ''}`,
+      const res = await fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}${qs}`,
         { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `lines ${res.status}`)
       const j = await res.json()
-      setCredits(j.creditsRemaining)
+      if (j.notCached) { setStatus('idle'); return }   // nothing cached → show the load button, spent nothing
+      if (j.creditsRemaining != null) setCredits(j.creditsRemaining)
       setData(j.found && j.markets ? j : null)
       setStatus('done')
     } catch (e) { setErr(e.message); setStatus('error') }
@@ -1149,7 +1151,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
   useEffect(() => {
     if (!token || !event?.away_team || !event?.home_team) return
     setData(null); setErr(''); setStatus('idle')
-    load()
+    load({ cacheOnly: true })   // free: show cached lines if any, spend nothing on open
   }, [event?.external_event_id, token])
 
   // "Compare Books" from an Odds card → open this market, load if needed, scroll into view.
@@ -1173,7 +1175,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
           {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {credits != null && <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>{credits}</span>}
-        <button onClick={() => { setStatus('idle'); load(true) }} disabled={status === 'loading'} title="Refresh odds (incl. Novig/exchanges)"
+        <button onClick={() => { setStatus('idle'); load({ ex: true }) }} disabled={status === 'loading'} title="Refresh odds (incl. Novig/exchanges)"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(189,255,0,0.08)', border: `1px solid ${NEON}`, borderRadius: '7px', padding: '4px 8px', color: NEON_T, cursor: status === 'loading' ? 'wait' : 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em' }}>
           <span style={{ fontSize: '11px', display: 'inline-block', animation: status === 'loading' ? 'spin 0.8s linear infinite' : 'none' }}>↻</span> {status === 'loading' ? '' : 'REFRESH'}
         </button>

@@ -111,6 +111,8 @@ export default async function handler(req, res) {
   // us_ex (Novig/exchanges) ~1.5x credits — only on explicit refresh (ex=1), not the auto-load.
   const ex = String(req.query.ex ?? '') === '1'
   const REGIONS = ex ? ['us', 'us2', 'us_ex'] : ['us', 'us2']
+  // cacheOnly: serve cache only, never spend credits (used by the auto-load on game open).
+  const cacheOnly = String(req.query.cacheOnly ?? '') === '1'
 
   res.setHeader('Cache-Control', 'no-store')
 
@@ -122,6 +124,7 @@ export default async function handler(req, res) {
   if (cached && isFresh(cached.scanned_at, Date.now(), LINES_TTL_MS) && cached.payload) {
     return res.status(200).json({ ...cached.payload, cached: true })
   }
+  if (cacheOnly) return res.status(200).json({ found: false, notCached: true })
 
   if (full) {
     try {
