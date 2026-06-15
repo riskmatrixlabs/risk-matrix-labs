@@ -105,8 +105,10 @@ export function BookLineMovement({ event, title = true, collapsible = false }) {
   )
 }
 
-export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, onSide }) {
-  const [mode, setMode] = useState('books')           // 'books' = By Sportsbook | 'best' = Best Available
+export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, onSide, mode: modeProp, onMode }) {
+  const [modeInner, setModeInner] = useState('books')  // 'books' = By Sportsbook | 'best' = Best Available
+  const mode = modeProp ?? modeInner                    // parent may lift this into the settings gear
+  const setMode = onMode ?? setModeInner
   const decT = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
   const byBook = curateBooks(rawByBook)              // reputable US books only, capped & ordered
   const colored = Object.entries(byBook).map(([book, m], i) => ({ book, m, color: BOOK_LINE_COLORS[i % BOOK_LINE_COLORS.length] }))
@@ -125,10 +127,12 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
   )
   return (
     <div>
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-        <Toggle val="books" label="By Sportsbook" />
-        <Toggle val="best" label="Best Available" />
-      </div>
+      {!onMode && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+          <Toggle val="books" label="By Sportsbook" />
+          <Toggle val="best" label="Best Available" />
+        </div>
+      )}
       {game && onSide && (
         <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
           {(market === 'total' ? ['over', 'under'] : ['away', 'home']).map(s => {

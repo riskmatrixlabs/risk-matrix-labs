@@ -570,6 +570,8 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
   const [bookSide, setBookSide] = useState('away')
   const setMarket = (m) => { setChartMkt(m); setBookSide(m === 'total' ? 'over' : 'away') }
   const [frame, setFrame] = useState('all')   // line-movement window: all (since open) | 24h | 6h
+  const [chartMode, setChartMode] = useState('books') // by-sportsbook | best — lifted into the ⚙ tray
+  const [lineSettings, setLineSettings] = useState(false) // ⚙ tray open?
 
   useEffect(() => {
     if (!game?.external_event_id) { setBookMove({}); return }
@@ -619,17 +621,30 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
           <div style={{ fontFamily: R, fontSize: '17px', fontWeight: 700, color: TEXT, marginBottom: '2px' }}>{up(game.away)} @ {up(game.home)}</div>
 
           <LookSection label="LINE MOVEMENT">
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+            {/* primary: market tabs + ⚙ (secondary controls tuck into the gear so the panel isn't a wall of buttons) */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: lineSettings ? '8px' : '10px', alignItems: 'stretch' }}>
               {[['ml', 'ML'], ['spread', (SPREAD_LABEL[game.sport || sport] || 'Spread')], ['total', 'Total']].map(([k, label]) => (
                 <button key={k} onClick={() => setMarket(k)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${chartMkt === k ? NEON : BORDER}`, background: chartMkt === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: chartMkt === k ? NEON_T : MUTED }}>{label}</button>
               ))}
+              <button onClick={() => setLineSettings(s => !s)} title="Line movement settings" aria-label="Line movement settings"
+                style={{ flexShrink: 0, padding: '6px 10px', borderRadius: '7px', cursor: 'pointer', fontSize: '13px', border: `1px solid ${lineSettings ? NEON : BORDER}`, background: lineSettings ? 'rgba(189,255,0,0.1)' : 'transparent', color: lineSettings ? NEON_T : MUTED }}>⚙</button>
             </div>
-            {/* time-frame window for the movement */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-              {[['all', 'Since Open'], ['24h', '24H'], ['6h', '6H']].map(([k, label]) => (
-                <button key={k} onClick={() => setFrame(k)} style={{ flex: 1, padding: '5px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${frame === k ? NEON : BORDER}`, background: frame === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: frame === k ? NEON_T : MUTED }}>{label}</button>
-              ))}
-            </div>
+            {lineSettings && (
+              <div style={{ border: `1px solid ${BORDER}`, borderRadius: '9px', padding: '9px 10px', marginBottom: '10px', background: '#0d0d0d' }}>
+                <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '6px' }}>Time frame</div>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                  {[['all', 'Since Open'], ['24h', '24H'], ['6h', '6H']].map(([k, label]) => (
+                    <button key={k} onClick={() => setFrame(k)} style={{ flex: 1, padding: '5px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${frame === k ? NEON : BORDER}`, background: frame === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: frame === k ? NEON_T : MUTED }}>{label}</button>
+                  ))}
+                </div>
+                <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '6px' }}>Chart</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[['books', 'By Sportsbook'], ['best', 'Best Available']].map(([k, label]) => (
+                    <button key={k} onClick={() => setChartMode(k)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, border: `1px solid ${chartMode === k ? NEON : BORDER}`, background: chartMode === k ? 'rgba(189,255,0,0.1)' : 'transparent', color: chartMode === k ? NEON_T : MUTED }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             {sinceOpen && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d0d0d', border: `1px solid ${sinceOpen.dir > 0 ? NEON : BORDER}`, borderRadius: '10px', padding: '10px 12px', marginBottom: '10px' }}>
                 <div style={{ minWidth: 0 }}>
@@ -643,7 +658,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
               </div>
             )}
             {Object.keys(framed).length > 0
-              ? <BookMoveChart byBook={framed} game={game} market={chartMkt} side={bookSide} onSide={setBookSide} />
+              ? <BookMoveChart byBook={framed} game={game} market={chartMkt} side={bookSide} onSide={setBookSide} mode={chartMode} onMode={setChartMode} />
               : <Empty text={Object.keys(bookMove).length > 0 ? `No movement in the last ${frame === '6h' ? '6 hours' : '24 hours'} — try Since Open.` : `${chartMkt === 'ml' ? 'ML' : chartMkt === 'total' ? 'Total' : (SPREAD_LABEL[game.sport || sport] || 'Spread')} by-sportsbook history is building — fills in as the game's viewed.`} />}
           </LookSection>
 
@@ -843,7 +858,10 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   const [err, setErr]       = useState('')
   const [statF, setStatF]   = useState('ALL')   // stat-type filter chips (Hits, Strikeouts…)
   const [confirm, setConfirm] = useState(null)
-  const [openPlayer, setOpenPlayer] = useState(null)   // accordion: which player's props are expanded
+  // All player cards open by default (full board, like a sportsbook). Tap a header to collapse one;
+  // we track only the manually-collapsed players so new scans default everyone open again.
+  const [collapsed, setCollapsed] = useState(() => new Set())
+  const toggleCard = (name) => setCollapsed(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
   const [teamF, setTeamF] = useState('ALL')            // filter players by team (shortens the scroll)
 
   async function scan() {
@@ -898,7 +916,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
     const r = L.sides[side], more = side === 'Over', isEdge = r && r.evPct != null
     if (!r) return <div style={{ flex: 1, padding: '7px 4px', borderRadius: '7px', border: `1px solid ${BORDER}`, textAlign: 'center', opacity: 0.35, fontFamily: R, fontSize: '12px', color: MUTED }}>{more ? '▲' : '▼'} —</div>
     return (
-      <button onClick={() => setConfirm({ pick: `${player} ${side} ${L.point} ${L.marketLabel}`, odds: r.best.price, book: r.best.book, url: decorate(r.best.book, r.best.link), byBook: r.byBook })}
+      <button onClick={() => setConfirm({ pick: `${player} ${side} ${L.point} ${L.marketLabel}`, odds: r.best.price, book: r.best.book, url: decorate(r.best.book, r.best.link), byBook: r.byBook, evPct: r.evPct, consensus: r.consensus })}
         style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '7px 4px', borderRadius: '7px', border: `1px solid ${isEdge ? NEON : BORDER}`, background: isEdge ? 'rgba(189,255,0,0.1)' : '#0d0d0d', cursor: 'pointer' }}>
         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: isEdge ? NEON_T : MUTED }}>{more ? '▲' : '▼'}</span>
         <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: isEdge ? NEON_T : TEXT }}>{fmtAm(r.best.price)}</span>
@@ -942,11 +960,11 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
             : !shownPlayers.length
               ? <Empty text={`No ${statF} props on the board right now.`} />
               : shownPlayers.map((P, i) => {
-        const open = openPlayer === P.player
+        const open = !collapsed.has(P.player)
         return (
         <div key={i} style={{ background: '#101114', border: `1px solid ${P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
           {/* collapsed row — tap to open this player's board */}
-          <button onClick={() => setOpenPlayer(open ? null : P.player)}
+          <button onClick={() => toggleCard(P.player)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', background: open ? 'rgba(189,255,0,0.05)' : 'transparent', border: 'none' }}>
             {P.headshot
               ? <img src={P.headshot} alt="" width="34" height="34" style={{ borderRadius: '50%', background: '#1a1d22', border: `1px solid ${NEON}`, objectFit: 'cover', flexShrink: 0 }} />
@@ -981,17 +999,19 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
       )})}
 
       {confirm && (
-        <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '10px', padding: '11px 12px', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>Add <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span>?</span>
-          <span style={{ display: 'flex', gap: '8px' }}>
-            {onAddToSlip && (
-              <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
-                style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
-            )}
-            <button onClick={() => { onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
-              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
-            <button onClick={() => setConfirm(null)} style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
-          </span>
+        <div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.55)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '360px', background: '#15171c', border: `1px solid ${NEON}`, borderRadius: '14px', padding: '18px 16px 16px', boxShadow: '0 14px 44px rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>Add <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span>?</span>
+            <span style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {onAddToSlip && (
+                <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, evPct: confirm.evPct, consensus: confirm.consensus, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
+                  style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
+              )}
+              <button onClick={() => { onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
+                style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
+              <button onClick={() => setConfirm(null)} style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
+            </span>
+          </div>
         </div>
       )}
     </div>

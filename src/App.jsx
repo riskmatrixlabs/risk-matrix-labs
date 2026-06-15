@@ -25,7 +25,7 @@ import {
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
   PieChart, Pie, RadialBarChart, RadialBar, Legend,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio, Tv } from 'lucide-react'
+import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio, Tv, Ticket } from 'lucide-react'
 import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
 import MatrixBot    from './components/MatrixBot'
@@ -2998,7 +2998,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   }
   const addToSlip = (leg) => {
     if (!leg?.pick) return
-    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, sport: leg.sport || null, event: leg.event || null }])
+    setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, evPct: leg.evPct ?? null, consensus: leg.consensus ?? null, sport: leg.sport || null, event: leg.event || null }])
     setSlipOpen(true)
   }
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
@@ -3058,22 +3058,32 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         const stk = Number(slipStake) || 0
         const payout = stk > 0 ? stk * amToDec(combo) : 0
         return (
-          <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 200, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <>
             <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBetSlipPhoto} />
-            <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: '480px', margin: '0 10px 10px', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
-              <div onClick={() => setSlipOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', cursor: 'pointer', background: 'rgba(189,255,0,0.06)' }}>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase' }}>🎟 Bet Matrix{slip.length ? ` · ${slip.length} ${slip.length === 1 ? 'leg' : 'legs'}` : ''}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                  <button onClick={(e) => { e.stopPropagation(); setBotView('board'); setTab('bot') }} title="Analyze a play in Channel 2 — your slip stays parked"
-                    style={{ padding: '5px 10px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>📊 Analyze</button>
-                  <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{slip.length >= 2 ? `${combo > 0 ? '+' : ''}${combo}` : ''} <span style={{ color: MUTED, fontSize: '12px' }}>{slipOpen ? '▾' : '▸'}</span></span>
-                </span>
-              </div>
+            {slipOpen && <div onClick={() => setSlipOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.45)' }} />}
+            <div style={{ position: 'fixed', bottom: isMobile ? 'calc(62px + env(safe-area-inset-bottom))' : '20px', left: isMobile ? '10px' : '16px', zIndex: 151, display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-start', maxWidth: 'calc(100vw - 20px)', pointerEvents: 'none' }}>
+              {/* FAB — bottom-left corner */}
+              <button onClick={() => setSlipOpen(o => !o)} title="Bet Matrix slip"
+                style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '52px', minWidth: '52px', padding: slip.length ? '0 17px' : '0', borderRadius: '999px', border: 'none', background: NEON, boxShadow: '0 6px 20px rgba(189,255,0,0.35)', cursor: 'pointer', fontFamily: R }}>
+                <Ticket size={22} color="#0A0A0A" strokeWidth={2.2} />
+                {slip.length > 0 && <span style={{ fontSize: '15px', fontWeight: 700, color: '#0A0A0A' }}>{slip.length}</span>}
+              </button>
+              {/* panel — opens upward from the FAB */}
               {slipOpen && (
-                <div style={{ padding: '10px 14px 14px', maxHeight: '72vh', overflowY: 'auto' }}>
-                  {/* Upload Pic — OCR a bet-slip photo into legs */}
-                  <button onClick={() => photoRef.current?.click()} disabled={ocrBusy} style={{ width: '100%', padding: '11px', marginBottom: '12px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: ocrBusy ? 'wait' : 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{ocrBusy ? 'Reading slip…' : '📷 Upload Pic (read a bet slip)'}</button>
-                  {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No picks yet — tap a price to add one, or upload a slip photo.</div>}
+                <div style={{ pointerEvents: 'auto', marginBottom: '10px', width: '320px', maxWidth: 'calc(100vw - 20px)', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'rgba(189,255,0,0.06)' }}>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎟 Bet Matrix{slip.length ? ` · ${slip.length}` : ''}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <button onClick={() => photoRef.current?.click()} disabled={ocrBusy} title="Read a bet-slip photo into legs (OCR)"
+                        style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: ocrBusy ? 'wait' : 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>{ocrBusy ? '…' : '📷'}</button>
+                      <button onClick={() => { setBotView('board'); setTab('bot') }} title="Analyze a play in Channel 2 — your slip stays parked"
+                        style={{ padding: '5px 8px', borderRadius: '7px', border: `1px solid ${NEON}`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}>📊</button>
+                      <button onClick={() => setSlipOpen(false)} title="Close" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', fontSize: '16px', fontWeight: 700, lineHeight: 1 }}>✕</button>
+                    </span>
+                  </div>
+                  <div style={{ padding: '10px 14px 14px', maxHeight: '70vh', overflowY: 'auto' }}>
+                  {ocrBusy && <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T, textAlign: 'center', padding: '6px 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Reading slip…</div>}
+                  {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No picks yet — tap a price to add one, or upload a slip photo (📷 Pic).</div>}
 
                   {/* ── BOOKS FIRST: where to place your slip, best book highlighted, bold neon odds ── */}
                   {(() => {
@@ -3126,7 +3136,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px' }}>
-                        <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                          <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
+                          {l.evPct != null && <span title={l.consensus ? 'consensus edge (de-vig avg of all books)' : 'edge vs sharp (Pinnacle)'} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, padding: '1px 5px', borderRadius: '5px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)' }}>{l.consensus ? '~' : '+'}{Number(l.evPct).toFixed(1)}% edge</span>}
+                        </span>
                         {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
                       </div>
                     </div>
@@ -3142,10 +3155,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     <button onClick={() => { logParlay(slipStake); setSlipStake('') }} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{slip.length >= 2 ? `Log ${slip.length}-Leg Parlay` : 'Log Bet'}</button>
                   </div>
                   </>)}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          </>
         )
       })()}
 

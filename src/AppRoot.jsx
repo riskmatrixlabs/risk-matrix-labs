@@ -148,16 +148,6 @@ export default function AppRoot() {
     try { if (window.$crisp) { window.$crisp.push(['set', 'user:email', [session.user.email]]) } } catch {}
   }, [session?.user?.id])
 
-  // Boot Crisp chat once on mount
-  useEffect(() => {
-    window.$crisp = []
-    window.CRISP_WEBSITE_ID = '470f77af-d0cb-4f5c-a540-44cbf5d7465c'
-    const s = document.createElement('script')
-    s.src = 'https://client.crisp.chat/l.js'
-    s.async = true
-    document.head.appendChild(s)
-  }, [])
-
   // GA4 helper — pushes to dataLayer (GTM picks it up)
   const ga4 = (event, params = {}) => {
     try {

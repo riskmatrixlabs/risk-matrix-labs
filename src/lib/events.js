@@ -59,7 +59,11 @@ export async function fetchEvents(sport, date = 'today') {
     const { to }   = etWindow(etDate(7), etDate(8))
     query = query.gte('start_time', from).lte('start_time', to).limit(30)
   } else {
-    query = query.gte('start_time', `${date}T04:00:00Z`).lte('start_time', `${date}T03:59:59Z`)
+    // explicit ET date (YYYY-MM-DD) → that day's 04:00Z → next day 03:59:59Z window
+    const next = new Date(`${date}T12:00:00Z`)
+    next.setUTCDate(next.getUTCDate() + 1)
+    const nextStr = next.toISOString().slice(0, 10)
+    query = query.gte('start_time', `${date}T04:00:00Z`).lte('start_time', `${nextStr}T03:59:59Z`)
   }
 
   const result = await query

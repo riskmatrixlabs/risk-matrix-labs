@@ -29,15 +29,7 @@ Sentry.init({
   integrations: [Sentry.browserTracingIntegration()],
 })
 
-// ── Crisp ────────────────────────────────────────────────────────────────────
-window.$crisp = []
-window.CRISP_WEBSITE_ID = '470f77af-d0cb-4f5c-a540-44cbf5d7465c'
-;(function () {
-  const s = document.createElement('script')
-  s.src = 'https://client.crisp.chat/l.js'
-  s.async = true
-  document.head.appendChild(s)
-})()
+// ── Crisp chat removed ───────────────────────────────────────────────────────
 
 // ── Service Worker ───────────────────────────────────────────────────────────
 // One-time reset: service workers installed before sw.js learned to skip /api could cache

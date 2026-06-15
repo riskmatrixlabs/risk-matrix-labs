@@ -36,15 +36,21 @@ const buildGame = (ev) => ({
   commenceTime: ev.start_time,
 })
 
-// Build the visual-only date strip labels: yesterday, Today, +3 days.
-// date strip is visual-only for now — real multi-day fetch is a later step
+// ET (UTC-4) YYYY-MM-DD for an offset in days — matches fetchEvents' day windows.
+const etDateStr = (off = 0) => new Date(Date.now() + (-4 * 60) * 60 * 1000 + off * 86400000).toISOString().slice(0, 10)
+
+// Date strip: yesterday → Today → +3 days. `key` is what fetchEvents() consumes.
 const buildDateStrip = () => {
   const out = []
   const fmt = (d) => d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
   for (let off = -1; off <= 3; off++) {
     const d = new Date()
     d.setDate(d.getDate() + off)
-    out.push({ off, label: off === 0 ? 'Today' : fmt(d) })
+    out.push({
+      off,
+      label: off === 0 ? 'Today' : fmt(d),
+      key: off === 0 ? 'today' : off === -1 ? 'yesterday' : etDateStr(off),
+    })
   }
   return out
 }
@@ -55,7 +61,9 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
   const [query, setQuery] = useState('')
   const [players, setPlayers] = useState([])      // player-name search matches (across today's games)
   const [pStatus, setPStatus] = useState('idle')  // idle | loading | done
+  const [dayOff, setDayOff] = useState(0)          // selected date-strip offset (0 = today)
   const dateStrip = buildDateStrip()
+  const activeDay = dateStrip.find(d => d.off === dayOff) || dateStrip[1]
 
   // Search ALSO finds players (mirrors CH1's player search) — type a name → their game + props.
   useEffect(() => {
@@ -80,7 +88,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
   useEffect(() => {
     let live = true
     setLoading(true)
-    fetchEvents(sport, 'today')
+    fetchEvents(sport, activeDay.key)
       .then(res => {
         if (!live) return
         // Show the WHOLE slate (pre-game AND live) so a game card never disappears mid-game.
@@ -93,7 +101,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
       .catch(() => { if (live) setEvents([]) })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
-  }, [sport])
+  }, [sport, dayOff])
 
   return (
     <div style={{ width: '100%', fontFamily: R }}>
@@ -164,29 +172,30 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         })}
       </div>
 
-      {/* Date strip — visual-only for now (real multi-day fetch is a later step). */}
+      {/* Date strip — tap a day to load that slate. */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '16px', WebkitOverflowScrolling: 'touch' }}>
         {dateStrip.map(d => {
-          const active = d.off === 0
+          const active = d.off === dayOff
           return (
-            <span
+            <button
               key={d.off}
+              onClick={() => setDayOff(d.off)}
               style={{
-                flexShrink: 0, whiteSpace: 'nowrap',
+                flexShrink: 0, whiteSpace: 'nowrap', cursor: 'pointer',
                 padding: '6px 13px', borderRadius: '999px',
                 fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em',
                 background: active ? 'rgba(189,255,0,0.1)' : CARD,
                 border: `1px solid ${active ? NEON : BORDER}`,
                 color: active ? NEON : MUTED,
               }}
-            >{d.label}</span>
+            >{d.label}</button>
           )
         })}
       </div>
 
-      {/* Today slate. */}
+      {/* Selected-day slate. */}
       <div style={{ fontSize: '11px', fontWeight: 700, color: MUTED, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
-        Today
+        {dayOff === 0 ? 'Today' : activeDay.label}
       </div>
 
       {loading ? (
@@ -195,7 +204,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '20px 12px', fontSize: '11px', color: MUTED, letterSpacing: '0.04em' }}>
-          {events.length === 0 ? 'No games today' : 'No matching games'}
+          {events.length === 0 ? `No games ${dayOff === 0 ? 'today' : activeDay.label}` : 'No matching games'}
         </div>
       ) : (
         // Square cards in a horizontal slider — saves vertical space, swipe through the slate.

@@ -1142,6 +1142,14 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
     } catch (e) { setErr(e.message); setStatus('error') }
   }
 
+  // Auto-load lines when the game opens / changes — they're viewable without hunting for a
+  // button. Cheap: one call per game, 90s shared cache (game-lines are meant to stay live).
+  useEffect(() => {
+    if (!token || !event?.away_team || !event?.home_team) return
+    setData(null); setErr(''); setStatus('idle')
+    load()
+  }, [event?.external_event_id, token])
+
   // "Compare Books" from an Odds card → open this market, load if needed, scroll into view.
   useEffect(() => {
     if (!focus) return
