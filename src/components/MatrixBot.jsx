@@ -779,7 +779,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
 // Every CH2 block is a COLLAPSIBLE panel — all on one page, in sequence, nothing hidden behind tabs
 // or separate screens. Default open (everything visible); tap the header to collapse in place.
 // Smooth open/close via the grid 0fr→1fr trick (animates dynamic-height content cleanly).
-function LookSection({ label, defaultOpen = true, children }) {
+function LookSection({ label, defaultOpen = true, headerRight = null, children }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={{ marginTop: '12px', border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden', background: '#0c0d0f' }}>
@@ -789,6 +789,7 @@ function LookSection({ label, defaultOpen = true, children }) {
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, flexShrink: 0, boxShadow: open ? `0 0 6px ${NEON}` : 'none' }} />
           <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
         </span>
+        {headerRight && <span onClick={(e) => e.stopPropagation()} style={{ marginLeft: 'auto' }}>{headerRight}</span>}
         <span style={{ fontFamily: R, fontSize: '11px', color: open ? NEON_T : MUTED, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.25s ease', flexShrink: 0 }}>▾</span>
       </button>
       <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.28s ease' }}>
@@ -1231,8 +1232,18 @@ function TrackChannel({ bets, sport, token }) {
     }
   }, [graded])
 
+  const [gearOpen, setGearOpen] = useState(false)
+  const [scope, setScope] = useState('all')   // all | 30d | 7d | today
+  const scopedBets = useMemo(() => {
+    if (scope === 'all') return bets || []
+    const days = scope === '30d' ? 30 : scope === '7d' ? 7 : 1
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - (days - 1))
+    const cutStr = cutoff.toISOString().slice(0, 10)
+    return (bets || []).filter(b => (b.date || '') >= cutStr)
+  }, [bets, scope])
+
   const [statusFilter, setStatusFilter] = useState('all')   // all | live | pending | settled
-  const record = useMemo(() => computeRecord(bets || []), [bets])
+  const record = useMemo(() => computeRecord(scopedBets), [scopedBets])
   const statusOk = (b) => {
     if (statusFilter === 'all') return true
     if (statusFilter === 'settled') return ['W', 'L', 'P'].includes(b.result)
@@ -1240,7 +1251,7 @@ function TrackChannel({ bets, sport, token }) {
   }
 
   const todayKey = todayStr()
-  const visibleBets = useMemo(() => (bets || []).filter(statusOk), [bets, statusFilter])
+  const visibleBets = useMemo(() => scopedBets.filter(statusOk), [scopedBets, statusFilter])
   const dateGroups = useMemo(() => groupByDate(visibleBets, todayKey), [visibleBets])
   const gradeFor = (b) => {
     const g = graded.find(x => x.bet === b)
@@ -1252,8 +1263,27 @@ function TrackChannel({ bets, sport, token }) {
     <TvFrame ch="33">
       <div style={{ textAlign: 'center', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.18em', color: NEON_T, marginBottom: '12px' }}>⬡ BEAT THE CLOSE</div>
 
+      {gearOpen && (
+        <div style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '12px', marginBottom: '12px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.14em', marginBottom: '6px' }}>TIME SCOPE</div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            {[['all', 'ALL-TIME'], ['30d', '30D'], ['7d', '7D'], ['today', 'TODAY']].map(([k, lbl]) => (
+              <button key={k} onClick={() => setScope(k)} style={pill(scope === k)}>{lbl}</button>
+            ))}
+          </div>
+          <button onClick={() => { if (confirm('Reset your tracked record? This cannot be undone.')) {} }}
+            style={{ width: '100%', padding: '9px', background: 'transparent', border: `1px solid ${DANGER}59`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: DANGER }}>
+            RESET SCOREBOARD
+          </button>
+        </div>
+      )}
+
       {/* scoreboard — the Pikkit Pro headline numbers (collapsible panel) */}
-      <LookSection label="SCOREBOARD">
+      <LookSection label="SCOREBOARD" headerRight={
+        <button aria-label="Track settings" onClick={() => setGearOpen(o => !o)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: MUTED, fontSize: '16px' }}>
+          <i className="ti ti-settings" />
+        </button>
+      }>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
           {[
             ['AVG CLV', board.avgClv, true],
