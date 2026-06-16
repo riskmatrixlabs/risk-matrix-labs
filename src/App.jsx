@@ -3118,6 +3118,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                             const cDec = covered.reduce((a, l) => a * amToDec(l.byBook[bk]), 1)
                             return { book: bk, n: covered.length, odds: covered.length === total ? decToAm(cDec) : null, region: inRegion(bk) }
                           })
+                          // Always offer the operator's home-state book (e.g. Hard Rock in FL) to place on, even if the feed had no price for it.
+                          for (const hb of (allowed || [])) { if (!rows.some(r => r.book === hb)) rows.push({ book: hb, n: total, odds: null, region: true }) }
                           // Pin the operator's home-state book(s) (e.g. Hard Rock in FL) to the top.
                           const homeBooks = new Set(allowed || [])
                           const avail = rows.filter(r => r.n === total && r.region).sort((a, b) => {
@@ -3161,15 +3163,18 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               const ls = legStakeOf(l)
                               const homeBooks = new Set(allowed || [])
                               let rows = Object.keys(l.byBook || {}).map(bk => ({ book: bk, odds: l.byBook[bk], region: inRegion(bk), link: l.byBookLink?.[bk] }))
-                              if (!rows.length) { const b = bestForLeg(l); rows = [{ book: b.book, odds: b.odds, region: true, link: l.link }] }
-                              const inReg = rows.filter(r => r.region).sort((a, b) => { const ha = homeBooks.has(a.book) ? 1 : 0, hb = homeBooks.has(b.book) ? 1 : 0; if (ha !== hb) return hb - ha; return amToDec(b.odds) - amToDec(a.odds) })
-                              const outReg = rows.filter(r => !r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
+                              if (!rows.length) { const b = bestForLeg(l); if (b.book) rows = [{ book: b.book, odds: b.odds, region: true, link: l.link }] }
+                              // Always offer the operator's home-state book(s) (e.g. Hard Rock in FL) — even when the odds feed didn't carry a price for it.
+                              for (const hb of (allowed || [])) { if (!rows.some(r => r.book === hb)) rows.push({ book: hb, odds: null, region: true, link: null }) }
+                              // Priced books first (best price on top), then any no-price home book to place on anyway.
+                              const inReg = rows.filter(r => r.region).sort((a, b) => { const pa = a.odds != null ? 1 : 0, pb = b.odds != null ? 1 : 0; if (pa !== pb) return pb - pa; return (amToDec(b.odds) || 0) - (amToDec(a.odds) || 0) })
+                              const outReg = rows.filter(r => !r.region && r.odds != null).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
                               const exp = straightsExp.has(l.pick)
-                              const bestOdds = (inReg[0]?.odds ?? Number(l.odds)) || 0
+                              const bestOdds = (inReg.find(r => r.odds != null)?.odds ?? Number(l.odds)) || 0
                               const bookRow = (r, best) => (
                                 <a key={r.book} href={placeLink(r.book, r.link) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none' }}>
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>{best && <span style={{ color: NEON_T, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em' }}>BEST</span>}<span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span></span>
-                                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{fmt(r.odds)}</span><span style={{ width: '22px', height: '22px', borderRadius: '50%', background: best ? NEON : 'rgba(189,255,0,0.14)', color: best ? '#0A0A0A' : NEON_T, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>→</span></span>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: r.odds != null ? NEON_T : MUTED }}>{r.odds != null ? fmt(r.odds) : '—'}</span><span style={{ width: '22px', height: '22px', borderRadius: '50%', background: best ? NEON : 'rgba(189,255,0,0.14)', color: best ? '#0A0A0A' : NEON_T, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>→</span></span>
                                 </a>
                               )
                               return (
@@ -3179,7 +3184,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                                     <input value={slipStakes[l.pick] ?? ''} onChange={e => setSlipStakes(s => ({ ...s, [l.pick]: e.target.value }))} inputMode="decimal" placeholder="$ stake" style={{ width: '80px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
                                   </div>
                                   <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '5px' }}>{ls > 0 ? <>${ls.toFixed(0)} → <span style={{ color: NEON_T, fontWeight: 700 }}>${(ls * amToDec(bestOdds)).toFixed(2)}</span> · </> : null}tap a book to place</div>
-                                  {inReg.map((r, idx) => bookRow(r, idx === 0))}
+                                  {inReg.map((r, idx) => bookRow(r, idx === 0 && r.odds != null))}
                                   {outReg.length > 0 && exp && <><div style={{ ...lbl, fontSize: '8px', marginTop: '8px', opacity: 0.7 }}>Not in your region</div>{outReg.map(r => bookRow(r, false))}</>}
                                   {outReg.length > 0 && <button onClick={() => setStraightsExp(s => { const n = new Set(s); n.has(l.pick) ? n.delete(l.pick) : n.add(l.pick); return n })} style={{ width: '100%', marginTop: '6px', padding: '7px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{exp ? 'Show less ▴' : `+${outReg.length} more books ▾`}</button>}
                                 </div>
