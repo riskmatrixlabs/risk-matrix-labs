@@ -152,7 +152,7 @@ export function BetTicket({ bet, grade }) {
         <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{bet.title}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ fontFamily: R, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: `${t.overall.color}1f`, color: t.overall.color }}>{t.label}{t.overall.key === 'live' ? ' · LIVE' : ''}</span>
-          <Ring pct={comboProb} size={36} color={ringColor(t.overall)} />
+          <Ring pct={comboProb ?? grade?.winProb} size={36} color={ringColor(t.overall)} />
         </span>
       </div>
 

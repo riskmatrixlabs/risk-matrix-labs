@@ -9,7 +9,7 @@ import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_
 import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
-import { devigTwoWay, americanToImplied } from '../lib/devig.js'
+import { devigTwoWay, americanToImplied, americanToDecimal } from '../lib/devig.js'
 import { statProgress, totalProgress, scoreText, isMoneylineOrSpread, parseLine, shellBar } from '../lib/statProgress.js'
 import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
@@ -1399,10 +1399,44 @@ function TrackChannel({ bets, sport, token }) {
   const todayKey = todayStr()
   const visibleBets = useMemo(() => scopedBets.filter(statusOk), [scopedBets, statusFilter])
   const dateGroups = useMemo(() => groupByDate(visibleBets, todayKey), [visibleBets])
+  // Grade a parlay by grading each leg against its own event, then combining:
+  // CLV = mean of per-leg CLV; EV = (∏ leg true prob) × parlay decimal − 1 (needs every leg graded).
+  const decFromAm = (a) => a > 0 ? a / 100 + 1 : 100 / Math.abs(a) + 1
+  const gradeParlay = (b) => {
+    const legs = Array.isArray(b.legs) ? b.legs : []
+    if (legs.length < 2) return null
+    const per = legs.map(leg => {
+      const ev = events.find(e => matchBetToEvent({ sport: leg.sport || b.sport, event: leg.event, date: b.date }, e))
+      return ev ? evaluateBet({ pick: leg.pick, odds: leg.odds, sport: leg.sport || b.sport, event: leg.event, date: b.date }, ev, buildDvs(ev)) : null
+    })
+    if (!per.some(Boolean)) return null
+    const own = Number(b.odds)
+    let evPct = null, winProb = null, clvPct = null
+    const probs = per.map(g => g?.fairProb)
+    if (probs.every(p => p != null)) {
+      winProb = probs.reduce((a, p) => a * p, 1)
+      if (Number.isFinite(own)) evPct = (winProb * decFromAm(own) - 1) * 100
+    }
+    // Parlay CLV = the whole ticket's entry price vs the COMBINED closing line
+    // (product of each leg's current/closing decimal). Robust when per-leg odds weren't entered.
+    const closes = per.map(g => g?.currentAmerican)
+    const entryDec = Number.isFinite(own) ? americanToDecimal(own) : null
+    if (entryDec != null && closes.every(c => c != null)) {
+      const comboCloseDec = closes.reduce((a, c) => a * (americanToDecimal(c) || 1), 1)
+      if (comboCloseDec > 0) clvPct = (entryDec / comboCloseDec - 1) * 100
+    }
+    return (evPct != null || clvPct != null) ? { evPct, clvPct, winProb } : null
+  }
+
   const gradeFor = (b) => {
-    const g = graded.find(x => x.bet === b)
     const own = Number(b.odds)
     const fallbackWP = Number.isFinite(own) ? americanToImplied(own) : null
+    if (Array.isArray(b.legs) && b.legs.length >= 2) {
+      const pg = gradeParlay(b)
+      if (pg) return { ...pg, winProb: pg.winProb ?? fallbackWP }
+      return fallbackWP != null ? { winProb: fallbackWP } : null
+    }
+    const g = graded.find(x => x.bet === b)
     if (!g) return fallbackWP != null ? { winProb: fallbackWP } : null
     return { evPct: g.grade.evPct, clvPct: g.grade.clvPct, winProb: g.grade.fairProb ?? fallbackWP }
   }
