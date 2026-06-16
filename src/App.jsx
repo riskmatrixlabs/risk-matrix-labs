@@ -1256,7 +1256,7 @@ function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFlo
             {legs.map((leg, i) => (
               <div key={i} style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? '20px 1fr 72px 26px' : '22px 1fr 1fr 80px 26px',
+                gridTemplateColumns: isMobile ? '16px 1fr 56px 46px 20px' : '22px 1.6fr 96px 80px 26px',
                 gap: '6px', alignItems: 'center',
                 padding: '6px 8px',
                 background: leg.result === 'W' ? 'rgba(189,255,0,0.04)' : leg.result === 'L' ? 'rgba(255,59,59,0.04)' : 'var(--card2)',
@@ -1265,25 +1265,19 @@ function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFlo
               }}>
                 <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: 'var(--muted)', textAlign: 'center' }}>{i + 1}</span>
                 <input
+                  value={leg.pick || ''}
+                  onChange={e => setLeg(i, 'pick', e.target.value)}
+                  placeholder={isMobile ? 'Team / pick' : 'Team / pick (e.g. NYM Over 9.5)'}
+                  style={{ ...inputStyle, padding: '5px 8px', fontSize: '12px', fontWeight: 700, minWidth: 0 }}
+                />
+                <input
                   value={leg.odds}
                   onChange={e => setLeg(i, 'odds', e.target.value)}
-                  placeholder={isMobile ? '-110' : 'Odds e.g. -110'}
-                  type="number"
-                  style={{ ...inputStyle, padding: '4px 8px', fontSize: '12px' }}
+                  placeholder="-110"
+                  inputMode="text"
+                  title={leg.odds && parseInt(leg.odds) !== 0 ? `payout ${fmt$(stakePerCombo * toDecimal(parseInt(leg.odds)))}` : 'odds'}
+                  style={{ ...inputStyle, padding: '5px 4px', fontSize: '12px', textAlign: 'center' }}
                 />
-                {!isMobile && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
-                    {leg.pick && <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.pick}</span>}
-                    <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
-                      {leg.odds && parseInt(leg.odds) !== 0 ? `payout: ${fmt$(stakePerCombo * toDecimal(parseInt(leg.odds)))}` : 'enter odds'}
-                    </span>
-                    {leg.odds && parseInt(leg.odds) !== 0 && (
-                      <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)' }}>
-                        impl: {(parseInt(leg.odds) > 0 ? 10000 / (parseInt(leg.odds) + 100) : Math.abs(parseInt(leg.odds)) / (Math.abs(parseInt(leg.odds)) + 100) * 100).toFixed(1)}%
-                      </span>
-                    )}
-                  </div>
-                )}
                 <select
                   value={leg.result}
                   onChange={e => setLeg(i, 'result', e.target.value)}
