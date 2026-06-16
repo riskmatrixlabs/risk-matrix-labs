@@ -3085,7 +3085,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     const lbl = { fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, opacity: 0.85, marginTop: '12px', marginBottom: '4px' }
                     const bestForLeg = (l) => {
                       const ents = l.byBook ? Object.entries(l.byBook).filter(([bk]) => inRegion(bk)) : []
-                      if (!ents.length) return { book: l.book, odds: Number(l.odds) || 0 }
+                      // No per-book shopping data (e.g. a Spotlight lean) → fall back to the leg's book,
+                      // else the operator's home-state book so "place on <book>" still resolves.
+                      if (!ents.length) return { book: l.book || (allowed && allowed[0]) || null, odds: Number(l.odds) || 0 }
                       return ents.reduce((b, [bk, od]) => (!b || amToDec(od) > amToDec(b.odds)) ? { book: bk, odds: od } : b, null)
                     }
                     return (
