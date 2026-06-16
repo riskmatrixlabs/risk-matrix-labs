@@ -183,6 +183,49 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   )
 }
 
+// ── ⬡ SPOTLIGHT — scrolling ticker of today's STRONG model signals (O/U leans).
+// Self-fetches the free, server-cached game-info model per MLB game; keeps only `strong`.
+// Tap a signal → opens that game. Hidden entirely when there are no strong signals.
+function SpotlightTicker({ events = [], token, onOpen }) {
+  const [signals, setSignals] = useState([])
+  useEffect(() => {
+    if (!token) { setSignals([]); return }
+    const todays = events.filter(e => e.sport === 'MLB' && e.away_team && e.home_team
+      && e.status !== 'FT' && e.status !== 'AOT')
+    if (!todays.length) { setSignals([]); return }
+    let cancel = false
+    Promise.all(todays.map(async (ev) => {
+      try {
+        const iso = ev.start_time ? `&iso=${encodeURIComponent(ev.start_time)}` : ''
+        const r = await fetch(`/api/game-info?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!r.ok) return null
+        const j = await r.json()
+        return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
+      } catch { return null }
+    })).then(res => { if (!cancel) setSignals(res.filter(Boolean)) })
+    return () => { cancel = true }
+  }, [events, token])
+
+  if (!signals.length) return null
+  const loop = [...signals, ...signals]   // doubled for a seamless crawl
+  return (
+    <div style={{ border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)', padding: '9px 0 9px 12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <style>{`@keyframes rml-spot{from{transform:translateX(0)}to{transform:translateX(-50%)}}.rml-spot-track{display:inline-flex;gap:26px;white-space:nowrap;animation:rml-spot 40s linear infinite;will-change:transform}.rml-spot-track:hover{animation-play-state:paused}@media (prefers-reduced-motion:reduce){.rml-spot-track{animation:none}}`}</style>
+      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, flexShrink: 0, textTransform: 'uppercase' }}>⬡ Spotlight ({signals.length})</span>
+      <div style={{ overflow: 'hidden', flex: 1 }}>
+        <div className="rml-spot-track">
+          {loop.map(({ ev, ou }, i) => (
+            <button key={ev.id + '-' + i} onClick={() => onOpen?.(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+              {ev.away_abbr}@{ev.home_abbr}{' '}
+              <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Game card — Apple Sports horizontal layout ──────────────────────────────
 function GameCard({ event, onClick, showSport = false, token = null }) {
   const live  = isLiveEvent(event)
@@ -2431,7 +2474,6 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.08em', color: TEXT }}>GAME CENTER™</div>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, letterSpacing: '0.18em', color: MUTED, textTransform: 'uppercase' }}>Game → Position → Settlement</div>
         </div>
         {lastUpdated && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -2442,6 +2484,9 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
           </div>
         )}
       </div>
+
+      {/* ⬡ Spotlight signals ticker — today's strong model leans, scrolling like the CH1 TV crawl */}
+      <SpotlightTicker events={orderedEvents} token={token} onOpen={setSelectedId} />
 
       {/* Filters card — sport pills + date tabs grouped */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
