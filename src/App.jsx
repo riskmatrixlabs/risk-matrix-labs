@@ -3059,9 +3059,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                 <Ticket size={22} color="#0A0A0A" strokeWidth={2.2} />
                 {slip.length > 0 && <span style={{ fontSize: '15px', fontWeight: 700, color: '#0A0A0A' }}>{slip.length}</span>}
               </button>
-              {/* panel — opens upward from the FAB */}
+              {/* panel — centered on screen (easier on the eyes than the corner) */}
               {slipOpen && (
-                <div style={{ pointerEvents: 'auto', marginBottom: '10px', width: '320px', maxWidth: 'calc(100vw - 20px)', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
+                <div style={{ pointerEvents: 'auto', position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 152, width: '360px', maxWidth: 'calc(100vw - 24px)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '14px', boxShadow: '0 12px 48px rgba(0,0,0,0.7)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: 'rgba(189,255,0,0.06)' }}>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎟 Bet Matrix{slip.length ? ` · ${slip.length}` : ''}</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
