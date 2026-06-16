@@ -1,6 +1,7 @@
 // src/components/BetCard.jsx — the universal bet card. Pure presentational:
 // give it a normalized bet (from src/lib/betCard.js) + optional grade { evPct, clvPct, verdict }.
-import { Pencil } from 'lucide-react'
+import { useState } from 'react'
+import { Pencil, ChevronDown } from 'lucide-react'
 import { NEON, MUTED, BORDER, TEXT } from './botShared.jsx'
 import { ticketStatus, slipClv } from '../lib/betCard.js'
 
@@ -111,14 +112,22 @@ function StatBox({ label, value, valueSize = 15, flex = false, color = TEXT }) {
   )
 }
 
-// P&L box for the bet-log footer (green/red). Renders only when a pnl value is supplied.
+// P&L box — green when win, red when loss, uses GradeBadge style (colored border + bg).
 function PnlBox({ pnl }) {
   if (pnl == null) return null
-  const v = `${pnl >= 0 ? '+' : '-'}$${Math.abs(Math.round(pnl))}`
-  return <StatBox label="P&L" value={v} valueSize={13} color={pnl >= 0 ? NEON : '#FF3B3B'} />
+  const good = pnl >= 0
+  const c = good ? NEON : '#FF3B3B'
+  const v = `${good ? '+' : '-'}$${Math.abs(Math.round(pnl))}`
+  return (
+    <div style={{ textAlign: 'center', padding: '5px 9px', borderRadius: 8, background: `${c}14`, border: `1px solid ${c}59`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ fontFamily: R, fontSize: 8, color: MUTED, letterSpacing: '0.1em' }}>P&L</div>
+      <div style={{ fontFamily: R, fontSize: 13, fontWeight: 700, color: c, whiteSpace: 'nowrap' }}>{v}</div>
+    </div>
+  )
 }
 
 export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null }) {
+  const [open, setOpen] = useState(false)
   const st = bet.status
   const leg = bet.legs[0] || {}
   const winProb = grade?.winProb ?? leg.winProb ?? null
@@ -135,17 +144,24 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
         {bet.book && <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#1c1c1c', color: '#9a9a9a', alignSelf: 'flex-start' }}>{bet.book}</span>}
         <Ring pct={winProb} size={compact ? 32 : 40} color={ringColor(st)} />
       </div>
-      {/* Progress bar sits ABOVE the odds (always shown for over/under bets, empty pre-game). */}
       <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
       <ScoreChip text={leg.scoreLine} status={st} />
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, marginTop: 11 }}>
-        <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
-        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
-        <PnlBox pnl={pnl} />
-        <div style={{ flex: 1 }} />
-        <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
-        <GradeBadge label="CLV" value={grade?.clvPct != null ? `${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%` : '—'} good={grade?.clvPct != null && grade.clvPct >= 0} />
-        {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
+      {/* Collapse toggle row */}
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 10, cursor: 'pointer', gap: 5 }}>
+        <div style={{ flex: 1, height: 1, background: BORDER }} />
+        <ChevronDown size={13} color={open ? NEON : MUTED} style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none', flexShrink: 0 }} />
+        <div style={{ flex: 1, height: 1, background: BORDER }} />
+      </div>
+      {/* Collapsible footer */}
+      <div style={{ maxHeight: open ? '80px' : '0', overflow: 'hidden', transition: 'max-height 0.22s ease' }}>
+        <div style={{ paddingTop: 8, display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 7, flexWrap: 'nowrap' }}>
+          <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
+          {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
+          <PnlBox pnl={pnl} />
+          <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
+          <GradeBadge label="CLV" value={grade?.clvPct != null ? `${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%` : '—'} good={grade?.clvPct != null && grade.clvPct >= 0} />
+          {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
+        </div>
       </div>
     </div>
   )
@@ -172,6 +188,7 @@ function LegRow({ leg }) {
 }
 
 export function BetTicket({ bet, grade, pnl = null, onEdit = null }) {
+  const [open, setOpen] = useState(false)
   const t = ticketStatus(bet.legs)
   const clvVal = grade?.clvPct ?? slipClv(bet.legs.map(l => ({ entry: l.odds, close: l.close }))).clvPct
   const win = toWin(bet.odds, bet.stake)
@@ -195,15 +212,22 @@ export function BetTicket({ bet, grade, pnl = null, onEdit = null }) {
         {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} /></div>)}
       </div>
 
-      {/* Footer: ODDS | STAKE→WIN | P&L · spacer · EV | CLV | ✏ */}
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, padding: '0 13px 12px' }}>
-        <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
-        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
-        <PnlBox pnl={pnl} />
-        <div style={{ flex: 1 }} />
-        <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
-        <GradeBadge label="CLV" value={clvVal != null ? `${clvVal >= 0 ? '+' : ''}${clvVal.toFixed(1)}%` : '—'} good={clvVal != null && clvVal >= 0} />
-        {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
+      {/* Collapse toggle row */}
+      <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '6px 13px 0', cursor: 'pointer', gap: 5 }}>
+        <div style={{ flex: 1, height: 1, background: BORDER }} />
+        <ChevronDown size={13} color={open ? NEON : MUTED} style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none', flexShrink: 0 }} />
+        <div style={{ flex: 1, height: 1, background: BORDER }} />
+      </div>
+      {/* Collapsible footer */}
+      <div style={{ maxHeight: open ? '80px' : '0', overflow: 'hidden', transition: 'max-height 0.22s ease' }}>
+        <div style={{ padding: '8px 13px 12px', display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 7 }}>
+          <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
+          {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
+          <PnlBox pnl={pnl} />
+          <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
+          <GradeBadge label="CLV" value={clvVal != null ? `${clvVal >= 0 ? '+' : ''}${clvVal.toFixed(1)}%` : '—'} good={clvVal != null && clvVal >= 0} />
+          {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
+        </div>
       </div>
     </div>
   )
