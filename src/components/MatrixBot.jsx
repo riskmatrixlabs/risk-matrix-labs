@@ -338,12 +338,8 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
     if (anyError && !all.length) setErr(anyError)
   }
 
-  // LIVE: auto-refresh the feed every 2 min once we've scanned (server cache = cheap).
-  useEffect(() => {
-    if (!token) return
-    const id = setInterval(() => { if (feed.status === 'done') runScan(true) }, 120000)
-    return () => clearInterval(id)
-  }, [token, feed.status])
+  // NO auto-refresh — scanning costs Odds-API credits, so it only runs when the user taps
+  // RUN SCAN / REFRESH. (Was a 2-min force-refetch across all sports = a constant credit drain.)
 
   // Selecting PROPS in the gear IS the trigger — scan props once when it's first chosen.
   useEffect(() => {
@@ -547,7 +543,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
       </div>
 
       {token && status === 'done' && feed.credits != null && (
-        <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · auto-refreshing every 2 min</div>
+        <div style={{ textAlign: 'center', marginTop: '8px', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em' }}>{feed.credits} credits left · tap REFRESH to update</div>
       )}
     </>
   )
