@@ -775,7 +775,6 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [] }) {
   const normWithLogos = () => withLogos(normalizeBet(bet), null, [], null, events)
   const grade = gradeBet(bet, events)                     // EV/CLV so the footer fills like CH3
-  const [actionsOpen, setActionsOpen] = useState(false)   // settle/edit/share live in a collapsed drawer
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
 
@@ -823,9 +822,10 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
     return (
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: '5px', borderLeft: `3px solid ${YELLOW}` }}>
 
-        {/* Event label */}
-        <div style={{ padding: '7px 10px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {eventDisplay}
+        {/* Ladder badge + event label */}
+        <div style={{ padding: '7px 10px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.35)', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>🪜 LADDER</span>
+          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>{eventDisplay}</span>
         </div>
 
         {/* Main row: rung·pick + to-win */}
@@ -909,44 +909,16 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
       : { marginBottom: '9px' }}>
 
       {/* Event row — ladder only; the Wheeler card shows the matchup itself for normal bets */}
-      {eventLabel && isLadder && (
-        <div style={{ padding: '7px 10px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
-          {eventLabel}
+      {isLadder && (
+        <div style={{ padding: '7px 10px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.35)', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>🪜 LADDER</span>
+          {eventLabel && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>{eventLabel}</span>}
         </div>
       )}
 
-      {/* ── NON-LADDER: Wheeler card + sleek collapsed actions drawer ── */}
+      {/* ── NON-LADDER: clean card, pencil in footer opens edit modal ── */}
       {!isLadder ? (<>
-        {/* The card itself is the pull-down — tap anywhere to reveal actions. Subtle chevron = the only cue. */}
-        <div onClick={() => setActionsOpen(o => !o)} style={{ cursor: 'pointer' }}>
-          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} /> : <UniBetCard bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} /> })()}
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '2px', paddingBottom: '3px' }}>
-            <ChevronDown size={15} color={actionsOpen ? NEON_T : 'var(--border2)'} style={{ transform: actionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-          </div>
-        </div>
-        {/* max-height pull-down — animates reliably on iOS Safari (grid-rows did not) */}
-        <div style={{ maxHeight: actionsOpen ? '64px' : '0', overflow: 'hidden', transition: 'max-height 0.26s ease' }}>
-          {isOpen ? (
-            <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-              {[
-                { r: 'W', label: 'WIN ✓',  color: NEON_T, bg: 'rgba(189,255,0,0.07)' },
-                { r: 'L', label: 'LOSS ✗', color: RED,    bg: 'rgba(255,59,59,0.07)' },
-                { r: 'P', label: 'PUSH',   color: MUTED,  bg: 'transparent' },
-              ].map(({ r, label, color, bg }) => (
-                <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '9px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)', cursor: 'pointer', background: bg, color }}
-                  onTouchStart={e => e.currentTarget.style.opacity = '0.7'} onTouchEnd={e => e.currentTarget.style.opacity = '1'}>{label}</button>
-              ))}
-              <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>
-              <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center', borderLeft: '1px solid var(--border)' }}><Share2 size={12} /></button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
-              {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Share2 size={13} /> SHARE</button>}
-              {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Pencil size={13} /> EDIT</button>}
-              {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.5)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Trash2 size={13} /> DELETE</button>}
-            </div>
-          )}
-        </div>
+        {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} onEdit={onEdit ? () => onEdit(bet) : null} /> : <UniBetCard bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} onEdit={onEdit ? () => onEdit(bet) : null} /> })()}
       </>) : (<>
         {/* ── LADDER (settled) — original compact layout ── */}
         <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>

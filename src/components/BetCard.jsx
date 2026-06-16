@@ -1,5 +1,6 @@
 // src/components/BetCard.jsx — the universal bet card. Pure presentational:
 // give it a normalized bet (from src/lib/betCard.js) + optional grade { evPct, clvPct, verdict }.
+import { Pencil } from 'lucide-react'
 import { NEON, MUTED, BORDER, TEXT } from './botShared.jsx'
 import { ticketStatus, slipClv } from '../lib/betCard.js'
 
@@ -117,7 +118,7 @@ function PnlBox({ pnl }) {
   return <StatBox label="P&L" value={v} valueSize={13} color={pnl >= 0 ? NEON : '#FF3B3B'} />
 }
 
-export function BetCard({ bet, grade, compact = false, pnl = null }) {
+export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null }) {
   const st = bet.status
   const leg = bet.legs[0] || {}
   const winProb = grade?.winProb ?? leg.winProb ?? null
@@ -137,12 +138,14 @@ export function BetCard({ bet, grade, compact = false, pnl = null }) {
       {/* Progress bar sits ABOVE the odds (always shown for over/under bets, empty pre-game). */}
       <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
       <ScoreChip text={leg.scoreLine} status={st} />
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, marginTop: 11, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, marginTop: 11 }}>
         <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
-        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
+        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
         <PnlBox pnl={pnl} />
+        <div style={{ flex: 1 }} />
         <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
         <GradeBadge label="CLV" value={grade?.clvPct != null ? `${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%` : '—'} good={grade?.clvPct != null && grade.clvPct >= 0} />
+        {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
       </div>
     </div>
   )
@@ -168,7 +171,7 @@ function LegRow({ leg }) {
   )
 }
 
-export function BetTicket({ bet, grade, pnl = null }) {
+export function BetTicket({ bet, grade, pnl = null, onEdit = null }) {
   const t = ticketStatus(bet.legs)
   const clvVal = grade?.clvPct ?? slipClv(bet.legs.map(l => ({ entry: l.odds, close: l.close }))).clvPct
   const win = toWin(bet.odds, bet.stake)
@@ -192,13 +195,15 @@ export function BetTicket({ bet, grade, pnl = null }) {
         {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} /></div>)}
       </div>
 
-      {/* Bottom matches the single (Wheeler) card: separate ODDS box (label stacked) + STAKE→WIN box + EV + CLV. */}
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, padding: '0 13px 12px', flexWrap: 'wrap' }}>
+      {/* Footer: ODDS | STAKE→WIN | P&L · spacer · EV | CLV | ✏ */}
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 6, padding: '0 13px 12px' }}>
         <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
-        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
+        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
         <PnlBox pnl={pnl} />
+        <div style={{ flex: 1 }} />
         <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
         <GradeBadge label="CLV" value={clvVal != null ? `${clvVal >= 0 ? '+' : ''}${clvVal.toFixed(1)}%` : '—'} good={clvVal != null && clvVal >= 0} />
+        {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
       </div>
     </div>
   )
