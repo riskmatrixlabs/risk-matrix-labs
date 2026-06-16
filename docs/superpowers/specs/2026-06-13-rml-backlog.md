@@ -102,7 +102,18 @@ Local+UI clear but the Supabase copy survives and resurrects on reload. Confirme
 Bets resurrect after reset: they live in Supabase `bets` + localStorage + live React memory, and the load logic (App.jsx ~L2536) restores from whichever layer still has data → endless loop. Manual wipe done for owner (session 59). **TO FIX:** `resetSession` (App.jsx ~L2761) must guard-flag to suppress load-restore + sync-up, `setBets([])` FIRST, then delete cloud + clear localStorage, then re-enable sync; surface delete errors (silent now); make reset findable (buried in Matrix Bot ⚙ Settings). Consider split: "New Bankroll (keeps history)" vs "Nuke account." See memory `rml-reset-sync-loop`.
 
 ## 🎯 NEXT SESSION — start here (in order)
-**(Untouched by Session 58 — Spotlight + EV Brain are still the priority.)**
+
+### 🚨🚨 #0 — BET PLACEMENT TO HARD ROCK (owner stopped here frustrated — SW v331)
+Owner: "trying to place top 4 on Hard Rock, no link works. if i can't do that users won't use it." The "Place" buttons open the HR OneLink (app/homepage) but **don't pre-fill the pick** — no public betslip deep-link exists. **THIS is the #1 priority.** Fix paths: (a) Hard Rock **affiliate/data deal** with real betslip deep-links — code hook ready in `decorate()` (`src/lib/betLinks.js`, empty passthrough); (b) if no deal, **relabel "Open Hard Rock →"** + set expectations + **copy pick to clipboard** so user pastes/searches fast; (c) test if HR app has ANY share/betslip URL scheme on a real device. See memory `rml-bet-placement-blocker`.
+
+### 🧹 #0b — CLEAN TEST-DATA POLLUTION
+Owner bankroll inflated to ~$11k (unit $221.94) + 4 fake "live bets" from Claude's flow-testing. NOT real. Delete the test bets + reset bankroll to owner's real start (ASK the number). Delete/reset works now (cloud-sync bug fixed) — but close all sessions/tabs first (a live tab re-pushes; see `rml-reset-sync-loop`).
+
+### ✅ SHIPPED Session 59 (SW v293→v331)
+Spotlight (3-pillar ticker + panel, factors hidden, +Slip w/ real free odds), totals half-point default, cloud-sync delete/reset/bankroll FIX, slip centered + per-single stake/book chooser, slip↔ladder, RR Engine (single-col, team inputs, slate search, Float-to-RR, Combos Built/Novig sheet), universal card cleanup. Specs: `2026-06-17-slip-to-ladder-design.md`, `2026-06-17-rr-slip-integration-design.md`.
+
+### Then (was the priority before placement surfaced):
+**(Spotlight v0 shipped; EV Brain still queued.)**
 0. 🟢 **SPOTLIGHT v0 SHIPPED (session 59, SW v298)** — `SpotlightTicker` in LiveCenter.jsx: Game Center tagline replaced with a scrolling ⬡ SPOTLIGHT (N) ticker (CH1-TV-crawl style) of today's STRONG O/U leans (self-fetches free cached game-info per MLB game, `strong`-gated), tap-to-open the game. NEXT for Spotlight: add PHLT prop signals + EV edges (needs slate-wide prop cron = credits); snapshot-at-surface to track Spotlight win-rate; the real cross-type ranking still wants the EV Brain unified score.
 1. 🆕 **Spec SPOTLIGHT** (superseded by v0 above — extend it) (new idea, owner-approved concept) — dismissible, confidence-ranked panel of today's GREEN model signals (O/U leans + PHLT + EV edges) → clickable to game/log. NOT a moving marquee (off-brand/bad UX) — a pinned static panel `⬡ SPOTLIGHT (N)`. **It's the EV Brain's first surface** (real cross-type ranking needs the unified score). v0: `strong`-gate + factor-count + bullpen-priority + `edge` value-tag as lines move. Free O/U leans fill cheaply; prop signals need a slate-wide cron (credits). Future: snapshot at surface-time → track Spotlight win-rate. Frame as "leans/edges," never "picks." (Today's proven list: 5 strong OVERs — KC@WSH, PIT@ATH, COL@CHC, TB@LAD, DET@HOU.)
 2. ⚠️ **DECIDE 3 things** before EV Brain code (memory `rml-evbrain-spec`): (a) PHLT name collision → rename MLB hitter model; (b) ModelProb source → de-vig consensus; (c) "Play" label vs no-"play" brand rule.
