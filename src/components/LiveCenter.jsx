@@ -186,9 +186,14 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
 // ── ⬡ SPOTLIGHT — scrolling ticker of today's STRONG model signals (O/U leans).
 // Self-fetches the free, server-cached game-info model per MLB game; keeps only `strong`.
 // Tap a signal → opens that game. Hidden entirely when there are no strong signals.
-// Tiny confidence pill (factor count). Higher = more model factors aligned.
+// Confidence badge (factor count). Clearly separated so it doesn't read as an exponent on the total.
 function ConfDot({ n }) {
-  return <sup style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON, marginLeft: 2 }}>{n}</sup>
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, marginLeft: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
+      <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.06em', color: MUTED }}>CONF</span>
+      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>{n}</span>
+    </span>
+  )
 }
 
 function SpotlightTicker({ events = [], token, onOpen }) {
