@@ -61,10 +61,12 @@ export default function SpotlightTicker({ token, onOpen }) {
   if (!signals.length) return null
   const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))
   const loop = [...ranked, ...ranked]
+  // Conviction color: 3+ factors = green (strong), exactly 2 = white (weakest that still qualifies).
+  const leanColor = (ou) => (ou.confidence >= 3 ? NEON_T : TEXT)
   const Chip = ({ ev, ou, rank }) => (
     <button onClick={() => onOpen?.(ev)} style={{ background: 'none', border: 'none', cursor: onOpen ? 'pointer' : 'default', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
       {ev.away_abbr}@{ev.home_abbr}{' '}
-      <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+      <span style={{ color: leanColor(ou) }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
       <MoveArrow ou={ou} />
       <RankBadge rank={rank} />
     </button>
@@ -99,17 +101,16 @@ export default function SpotlightTicker({ token, onOpen }) {
                   <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{rank}</span>
                   <span style={{ minWidth: 0 }}>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: leanColor(ou) }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
                     <MoveArrow ou={ou} />
-                    {/* Quick-look = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
-                    {ou.total?.open != null && ou.total?.dir ? (
-                      <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '2px' }}>
-                        line <span style={{ color: TEXT }}>{ou.total.open} → {ou.total.current}</span>
-                        {ou.edge && <span style={{ fontWeight: 700, marginLeft: 8, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE' : 'LATE'}</span>}
-                      </span>
-                    ) : (
-                      <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '2px' }}>line {ou.total?.current != null ? ou.total.current : '—'} · no move since open</span>
-                    )}
+                    {/* Quick-look in its own box = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: '4px', padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                      {ou.total?.open != null && ou.total?.dir ? (
+                        <><span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{ou.total.open} → {ou.total.current}</span>{ou.edge && <span style={{ fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE' : 'LATE'}</span>}</>
+                      ) : (
+                        <><span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{ou.total?.current != null ? ou.total.current : '—'}</span><span style={{ color: MUTED }}>· no move yet</span></>
+                      )}
+                    </span>
                   </span>
                 </span>
                 <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
