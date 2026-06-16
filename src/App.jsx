@@ -1106,8 +1106,20 @@ function getCombos(arr, r) {
 
 const EMPTY_LEG = { odds: '', result: 'TBD' }
 
-function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFloatConsumed }) {
+function RREngine({ unitSize, darkMode, isDemo = false, token = null, floatPicks = null, onFloatConsumed }) {
   const { isMobile } = useMobile()
+  // Search the free slate to add picks (instead of typing every team by hand).
+  const [slate, setSlate] = useState([])
+  const [rrQuery, setRrQuery] = useState('')
+  useEffect(() => {
+    if (!token) return
+    let cancel = false
+    fetchBetEvents('mlb', 'today').then(({ data }) => { if (!cancel) setSlate(data || []) }).catch(() => {})
+    return () => { cancel = true }
+  }, [token])
+  const rrMatches = rrQuery.trim().length >= 2
+    ? slate.filter(e => `${e.away_team} ${e.home_team} ${e.away_abbr} ${e.home_abbr}`.toLowerCase().includes(rrQuery.toLowerCase())).slice(0, 6)
+    : []
   const DEMO_LEGS = [
     { odds: '-120', result: 'W' },
     { odds: '-140', result: 'L' },
@@ -1130,6 +1142,20 @@ function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFlo
 
   const setLeg = (i, k, v) => setLegs(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
   const addLeg    = () => legs.length < 10 && setLegs(p => [...p, { ...EMPTY_LEG }])
+  // Add a pick from the slate search → fills the next empty leg (or appends), with the over line + free juice.
+  const addPickFromSlate = (ev) => {
+    const totalRaw = ev.odds_total != null ? Number(ev.odds_total) : null
+    const total = (totalRaw != null && Number.isInteger(totalRaw)) ? totalRaw - 0.5 : totalRaw
+    const over = ev.metadata?.over_juice
+    const matchup = `${ev.away_abbr}@${ev.home_abbr}`
+    const newLeg = { odds: over != null ? String(over) : '', result: 'TBD', pick: `${matchup} Over${total != null ? ' ' + total : ''}`, event: matchup }
+    setLegs(prev => {
+      const emptyIdx = prev.findIndex(l => !l.pick && (!l.odds || l.odds === ''))
+      if (emptyIdx >= 0) return prev.map((l, i) => i === emptyIdx ? newLeg : l)
+      return prev.length < 10 ? [...prev, newLeg] : prev
+    })
+    setRrQuery('')
+  }
   const removeLeg = (i) => legs.length > 2  && setLegs(p => p.filter((_, idx) => idx !== i))
 
   const stakePerCombo = stakeMode === 'units'
@@ -1248,6 +1274,27 @@ function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFlo
                 <input value={stakeVal} onChange={e => setStakeVal(e.target.value)} placeholder={stakeMode === 'units' ? '1.0' : '10.00'} type="number" step="0.25" min="0"
                   style={{ ...inputStyle, padding: '5px 10px' }} />
               </div>
+            </div>
+          )}
+
+          {/* Search the slate to add a pick (free) */}
+          {token && (
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
+              <input value={rrQuery} onChange={e => setRrQuery(e.target.value)} placeholder="🔍 Search a team to add (free) — e.g. Yankees"
+                style={{ ...inputStyle, width: '100%', padding: '8px 10px', fontSize: '12px' }} />
+              {rrMatches.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, marginTop: '4px', background: 'var(--card)', border: `1px solid ${NEON}`, borderRadius: '8px', overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  {rrMatches.map((ev, i) => {
+                    const t = ev.odds_total != null ? (Number.isInteger(Number(ev.odds_total)) ? Number(ev.odds_total) - 0.5 : ev.odds_total) : null
+                    return (
+                      <button key={i} onClick={() => addPickFromSlate(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '9px 11px', border: 'none', borderBottom: i < rrMatches.length - 1 ? '1px solid var(--border)' : 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{ev.away_abbr}@{ev.home_abbr}</span>
+                        <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)' }}>{t != null ? `O ${t}` : 'add'} +</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1394,6 +1441,34 @@ function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFlo
           )}
         </div>
       </div>
+
+      {/* ── COMBOS BUILT — the actual parlays the RR generates (your place / Novig-rebuild list) ── */}
+      {n >= 2 && n >= rrType && totalCombos > 0 && (
+        <div style={{ ...cardStyle, padding: '14px 16px' }}>
+          <SectionLabel icon={Target}>Combos Built — {totalCombos} × {r}-leg parlay{totalCombos === 1 ? '' : 's'}</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '320px', overflowY: 'auto' }}>
+            {allCombos.map((combo, idx) => {
+              const cd = combo.reduce((p, i) => p * toDecimal(parseInt(validLegs[i].odds) || 0), 1)
+              const am = cd >= 2 ? `+${Math.round((cd - 1) * 100)}` : `${Math.round(-100 / (cd - 1))}`
+              const payout = stakePerCombo * cd
+              const picks = combo.map(i => validLegs[i].pick || `Leg ${i + 1}`)
+              return (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '8px 10px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px' }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: 'var(--muted)', marginRight: '6px' }}>#{idx + 1}</span>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{picks.join('  +  ')}</span>
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T }}>{am}</span>
+                    <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{fmt$(stakePerCombo)} → {fmt$(payout)}</span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '8px' }}>Each row is one parlay to place — exactly what to build on Novig (no auto-RR there).</div>
+        </div>
+      )}
 
       {/* ── OUTCOME MATRIX ── */}
       {n > 0 && totalCombos > 0 && (
@@ -4977,7 +5052,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ══ RR ENGINE ══ */}
-        {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} />}
+        {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
