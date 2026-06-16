@@ -1606,7 +1606,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
 
       {/* ── Top bar ── */}
       <div style={{ flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,10,10,0.95)' }}>
-      <div style={{ padding: '12px 16px 10px', paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '960px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div style={{ padding: '12px 16px 10px', paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '580px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase' }}>Back</span>
@@ -1633,7 +1633,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      <div style={{ maxWidth: '960px', width: '100%', margin: '0 auto' }}>
+      <div style={{ maxWidth: '580px', width: '100%', margin: '0 auto' }}>
 
         {/* ── HERO ── */}
         <div style={{ background: 'linear-gradient(180deg, rgba(189,255,0,0.03) 0%, transparent 100%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
