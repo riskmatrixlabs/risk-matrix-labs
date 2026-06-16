@@ -186,12 +186,11 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
 // ── ⬡ SPOTLIGHT — scrolling ticker of today's STRONG model signals (O/U leans).
 // Self-fetches the free, server-cached game-info model per MLB game; keeps only `strong`.
 // Tap a signal → opens that game. Hidden entirely when there are no strong signals.
-// Confidence badge (factor count). Clearly separated so it doesn't read as an exponent on the total.
-function ConfDot({ n }) {
+// Rank badge — #1 = strongest signal of the day (ordered by model confidence).
+function RankBadge({ rank }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, marginLeft: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
-      <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.06em', color: MUTED }}>CONF</span>
-      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>{n}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
+      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>#{rank}</span>
     </span>
   )
 }
@@ -215,19 +214,22 @@ function SpotlightTicker({ events = [], token, onOpen }) {
       } catch { return null }
     })).then(res => {
       if (cancel) return
-      // rank by confidence (factor count) desc
-      setSignals(res.filter(Boolean).sort((a, b) => (b.ou.confidence || 0) - (a.ou.confidence || 0)))
+      // rank by confidence desc; stable tiebreak by matchup so equal-confidence ranks don't shuffle between loads
+      setSignals(res.filter(Boolean).sort((a, b) =>
+        (b.ou.confidence || 0) - (a.ou.confidence || 0)
+        || `${a.ev.away_abbr}@${a.ev.home_abbr}`.localeCompare(`${b.ev.away_abbr}@${b.ev.home_abbr}`)))
     })
     return () => { cancel = true }
   }, [events, token])
 
   if (!signals.length) return null
-  const loop = [...signals, ...signals]   // doubled for a seamless crawl
-  const Chip = ({ ev, ou }) => (
+  const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))   // #1 = strongest (already sorted by confidence)
+  const loop = [...ranked, ...ranked]   // doubled for a seamless crawl
+  const Chip = ({ ev, ou, rank }) => (
     <button onClick={() => onOpen?.(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
       {ev.away_abbr}@{ev.home_abbr}{' '}
       <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-      <ConfDot n={ou.confidence} />
+      <RankBadge rank={rank} />
     </button>
   )
   return (
@@ -239,7 +241,7 @@ function SpotlightTicker({ events = [], token, onOpen }) {
         </button>
         <div style={{ overflow: 'hidden', flex: 1 }}>
           <div className="rml-spot-track">
-            {loop.map(({ ev, ou }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} /></span>)}
+            {loop.map(({ ev, ou, rank }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} rank={rank} /></span>)}
           </div>
         </div>
       </div>
@@ -247,16 +249,19 @@ function SpotlightTicker({ events = [], token, onOpen }) {
       {/* Reference panel — ranked today + yesterday/all-time record */}
       {open && (
         <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '8px' }}>⬡ Spotlight — Today, ranked by confidence</div>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '8px' }}>⬡ Spotlight — Today, ranked strongest first</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {signals.map(({ ev, ou }) => (
+            {ranked.map(({ ev, ou, rank }) => (
               <button key={ev.id} onClick={() => { onOpen?.(ev.id); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: 'pointer', textAlign: 'left' }}>
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
-                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-                  {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>{ou.reason}</span>}
+                <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                  <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{rank}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+                    {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ou.reason}</span>}
+                  </span>
                 </span>
-                <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: NEON, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}> CONF</span></span>
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> CONF</span></span>
               </button>
             ))}
           </div>
