@@ -4,7 +4,33 @@
 // (model is FREE — safe to poll, unlike paid scans). Tap a signal → onOpen(event) if provided.
 import { useState, useEffect } from 'react'
 import { fetchEvents } from '../lib/events'
+import { decorate } from '../lib/betLinks'
 import { NEON, NEON_T, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
+
+// Enrich a Spotlight leg with per-book odds from the FREE cached game-lines (same data Channel 2
+// uses) so the slip shows all books + places like a CH2 pick. Falls back to the bare leg if nothing
+// is cached. Zero credits (cacheOnly=1).
+async function enrichWithBooks(leg, ev, ou, token) {
+  if (!token) return leg
+  try {
+    const r = await fetch(`/api/game-lines?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}&cacheOnly=1`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!r.ok) return leg
+    const j = await r.json()
+    const tot = j?.markets?.totals
+    if (!tot?.rows?.length) return leg
+    const re = ou.lean === 'OVER' ? /^o/i : /^u/i
+    const name = (tot.outcomes || []).find(n => re.test(n))
+    if (!name) return leg
+    const byBook = {}, byBookLink = {}
+    for (const row of tot.rows) {
+      const pr = row.prices?.[name]; if (pr == null) continue
+      byBook[row.book] = pr
+      const dl = decorate(row.book, row.links?.[name]); if (dl) byBookLink[row.book] = dl
+    }
+    if (Object.keys(byBook).length) return { ...leg, byBook, byBookLink }
+  } catch { /* fall through to bare leg */ }
+  return leg
+}
 
 const R = 'Rajdhani, sans-serif'
 
@@ -130,7 +156,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                   <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.confidence >= 3 ? NEON : MUTED }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
-                  {onAddToSlip && <button onClick={e => { e.stopPropagation(); onAddToSlip(signalToLeg(ev, ou)) }} title="Add to slip" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T, background: 'rgba(189,255,0,0.1)', border: `1px solid ${NEON}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ SLIP</button>}
+                  {onAddToSlip && <button onClick={async e => { e.stopPropagation(); onAddToSlip(await enrichWithBooks(signalToLeg(ev, ou), ev, ou, token)) }} title="Add to slip" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T, background: 'rgba(189,255,0,0.1)', border: `1px solid ${NEON}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ SLIP</button>}
                 </span>
               </div>
             ))}
