@@ -345,7 +345,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
         <div style={{ marginTop: '8px', paddingTop: '7px', borderTop: `1px solid ${BORDER}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
           {[
             { label: event.away_abbr || 'Away', val: `ML ${fmtOdds(event.odds_ml_away)}` },
-            { label: 'O/U',                     val: event.odds_total != null ? `${event.odds_total}` : '—' },
+            { label: 'O/U',                     val: event.odds_total != null ? `${Number.isInteger(Number(event.odds_total)) ? Number(event.odds_total) - 0.5 : event.odds_total}` : '—' },
             { label: event.home_abbr || 'Home', val: `ML ${fmtOdds(event.odds_ml_home)}` },
           ].map(({ label, val }) => (
             <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>

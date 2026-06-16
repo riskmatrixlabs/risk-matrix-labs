@@ -32,12 +32,15 @@ async function totalAnchor(sport, away, home) {
     const matches = (evs || []).filter(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away))
     const ev = matches.find(e => e.odds_total != null) || matches[0]
     if (!ev) return null
-    const current = ev.odds_total != null ? Number(ev.odds_total) : null
+    // Books rarely post WHOLE-number totals (10, 8, 11) — the real line is the half-point below
+    // (9.5, 7.5, 10.5). Our synced total can come back rounded, so default whole numbers down to .5.
+    const halfBelow = (n) => (n == null ? null : (Number.isInteger(n) ? n - 0.5 : n))
+    const current = halfBelow(ev.odds_total != null ? Number(ev.odds_total) : null)
     let open = null
     const { data: hist } = await sb.from('odds_history')
       .select('point, captured_at').eq('external_event_id', String(ev.external_event_id))
       .eq('market', 'total').not('point', 'is', null).order('captured_at', { ascending: true }).limit(200)
-    if (hist?.length) open = Number(hist[0].point)
+    if (hist?.length) open = halfBelow(Number(hist[0].point))
     if (current == null && open == null) return null
     const dir = (current != null && open != null) ? Math.sign(current - open) : 0
     // Over/under juice (the price) — already synced FREE in the event row, so a lean can become
