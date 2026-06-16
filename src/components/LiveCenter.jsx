@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import html2canvas from 'html2canvas'
 import { fetchEvents, fetchLiveEvents, isLiveEvent } from '../lib/events'
+import SpotlightTicker from './SpotlightTicker.jsx'
 import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
@@ -177,104 +178,6 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
           {moveArrow && t?.open != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : '#FF3B3B' }}>{moveArrow} since open</span></span>}
           {bp && (bp.away != null || bp.home != null) && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>pens {bp.away ?? '—'}/{bp.home ?? '—'}</span>}
           {ou.edge && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge}</span>}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── ⬡ SPOTLIGHT — scrolling ticker of today's STRONG model signals (O/U leans).
-// Self-fetches the free, server-cached game-info model per MLB game; keeps only `strong`.
-// Tap a signal → opens that game. Hidden entirely when there are no strong signals.
-// Rank badge — #1 = strongest signal of the day (ordered by model confidence).
-function RankBadge({ rank }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
-      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>#{rank}</span>
-    </span>
-  )
-}
-
-function SpotlightTicker({ events = [], token, onOpen }) {
-  const [signals, setSignals] = useState([])
-  const [open, setOpen] = useState(false)   // reference panel (yesterday + all-time)
-  useEffect(() => {
-    if (!token) { setSignals([]); return }
-    let cancel = false
-    // O/U model = FREE (ESPN + server-cached), so it's safe to poll on a timer (unlike paid scans).
-    const load = async () => {
-      const todays = events.filter(e => e.sport === 'MLB' && e.away_team && e.home_team
-        && e.status !== 'FT' && e.status !== 'AOT')
-      if (!todays.length) { if (!cancel) setSignals([]); return }
-      const res = await Promise.all(todays.map(async (ev) => {
-        try {
-          const iso = ev.start_time ? `&iso=${encodeURIComponent(ev.start_time)}` : ''
-          const r = await fetch(`/api/game-info?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
-          if (!r.ok) return null
-          const j = await r.json()
-          return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
-        } catch { return null }
-      }))
-      if (cancel) return
-      // rank by factor count desc; stable tiebreak by matchup so equal-rank order doesn't shuffle
-      setSignals(res.filter(Boolean).sort((a, b) =>
-        (b.ou.confidence || 0) - (a.ou.confidence || 0)
-        || `${a.ev.away_abbr}@${a.ev.home_abbr}`.localeCompare(`${b.ev.away_abbr}@${b.ev.home_abbr}`)))
-    }
-    load()
-    const id = setInterval(load, 180000)   // refresh every 3 min (free model)
-    return () => { cancel = true; clearInterval(id) }
-  }, [events, token])
-
-  if (!signals.length) return null
-  const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))   // #1 = strongest (already sorted by confidence)
-  const loop = [...ranked, ...ranked]   // doubled for a seamless crawl
-  const Chip = ({ ev, ou, rank }) => (
-    <button onClick={() => onOpen?.(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-      {ev.away_abbr}@{ev.home_abbr}{' '}
-      <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-      <RankBadge rank={rank} />
-    </button>
-  )
-  return (
-    <div>
-      <div style={{ border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)', padding: '9px 0 9px 12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <style>{`@keyframes rml-spot{from{transform:translateX(0)}to{transform:translateX(-50%)}}.rml-spot-track{display:inline-flex;gap:26px;white-space:nowrap;animation:rml-spot 40s linear infinite;will-change:transform}.rml-spot-track:hover{animation-play-state:paused}@media (prefers-reduced-motion:reduce){.rml-spot-track{animation:none}}`}</style>
-        <button onClick={() => setOpen(o => !o)} title="Spotlight record — tap for details" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, flexShrink: 0, textTransform: 'uppercase' }}>
-          ⬡ Spotlight ({signals.length}) <span style={{ display: 'inline-block', fontSize: '8px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
-        </button>
-        <div style={{ overflow: 'hidden', flex: 1 }}>
-          <div className="rml-spot-track">
-            {loop.map(({ ev, ou, rank }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} rank={rank} /></span>)}
-          </div>
-        </div>
-      </div>
-
-      {/* Reference panel — ranked today + yesterday/all-time record */}
-      {open && (
-        <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>⬡ Spotlight — Today, ranked strongest first</div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '8px' }}>#1 = strongest · FACTORS = how many model signals stack (park · pitching · bullpen · weather)</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {ranked.map(({ ev, ou, rank }) => (
-              <button key={ev.id} onClick={() => { onOpen?.(ev.id); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: 'pointer', textAlign: 'left' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
-                  <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{rank}</span>
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-                    {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ou.reason}</span>}
-                  </span>
-                </span>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
-              </button>
-            ))}
-          </div>
-          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: '16px' }}>
-            <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Yesterday</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div></div>
-            <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>All-time</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div></div>
-            <div style={{ flex: 1, alignSelf: 'center', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', textAlign: 'right' }}>Tracking starts now — record builds as signals settle.</div>
-          </div>
         </div>
       )}
     </div>
@@ -2536,7 +2439,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
       )}
 
       {/* ⬡ Spotlight signals ticker — today's strong model leans, scrolling like the CH1 TV crawl */}
-      <SpotlightTicker events={orderedEvents} token={token} onOpen={setSelectedId} />
+      <SpotlightTicker token={token} onOpen={ev => setSelectedId(ev.id)} />
 
       {/* Filters card — sport pills + date tabs grouped */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>

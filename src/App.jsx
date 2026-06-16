@@ -13,6 +13,7 @@ function genUUID() {
 }
 import { useSwipeable } from 'react-swipeable'
 import { BetCard as UniBetCard, BetTicket as UniBetTicket } from './components/BetCard.jsx'
+import UniSpotlightTicker from './components/SpotlightTicker.jsx'
 import { normalizeBet } from './lib/betCard.js'
 import { gradeBet } from './lib/gradeBet.js'
 import { useMobile } from './hooks/useMobile'
@@ -4053,6 +4054,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           </div>
         )
       })()}
+
+      {/* ⬡ Spotlight — unified across pillars; on Dashboard a tap jumps to Game Center */}
+      {['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners'].includes(tab) && (
+        <div style={{ marginBottom: '10px' }}>
+          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} />
+        </div>
+      )}
 
       {/* OPEN BETS LIVE BANNER — overview tab */}
       {tab === 'overview' && stats.openBets > 0 && (
