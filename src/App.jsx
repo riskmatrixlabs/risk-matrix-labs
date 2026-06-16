@@ -773,6 +773,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
 function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [] }) {
   const normWithLogos = () => withLogos(normalizeBet(bet), null, [], null, events)
+  const [actionsOpen, setActionsOpen] = useState(false)   // settle/edit/share live in a collapsed drawer
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
 
@@ -908,75 +909,59 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
         </div>
       )}
 
-      {/* ── OPEN layout: Wheeler card (logos + ODDS/STAKE→WIN boxes) + settle buttons ── */}
-      {isOpen ? (<>
+      {/* ── NON-LADDER: Wheeler card + sleek collapsed actions drawer ── */}
+      {!isLadder ? (<>
         <div style={{ padding: '6px 8px 7px' }}>
-          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} /> : <UniBetCard bet={n} /> })()}
+          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} pnl={isOpen ? null : pnlDollar} /> : <UniBetCard bet={n} pnl={isOpen ? null : pnlDollar} /> })()}
         </div>
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[
-            { r: 'W', label: 'WIN ✓',  color: NEON_T,  bg: 'rgba(189,255,0,0.07)' },
-            { r: 'L', label: 'LOSS ✗', color: RED,   bg: 'rgba(255,59,59,0.07)' },
-            { r: 'P', label: 'PUSH',   color: MUTED, bg: 'transparent' },
-          ].map(({ r, label, color, bg }) => (
-            <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{
-              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
-              padding: '8px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)',
-              cursor: 'pointer', background: bg, color,
-            }}
-            onTouchStart={e => e.currentTarget.style.opacity = '0.7'}
-            onTouchEnd={e => e.currentTarget.style.opacity = '1'}
-            >{label}</button>
-          ))}
-          <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onTouchStart={e => e.currentTarget.style.color = NEON}
-            onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
-          ><Pencil size={11} /></button>
-          <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid var(--border)' }}
-            onTouchStart={e => e.currentTarget.style.color = NEON}
-            onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
-          ><Share2 size={11} /></button>
+        {/* slim toggle — keeps the card compact when closed */}
+        <button onClick={() => setActionsOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '5px 0', background: actionsOpen ? 'rgba(189,255,0,0.04)' : 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer', color: 'var(--muted)', fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+          {actionsOpen ? 'Close' : (isOpen ? 'Settle · Manage' : 'Manage')}
+          <ChevronDown size={11} style={{ transform: actionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </button>
+        <div style={{ display: 'grid', gridTemplateRows: actionsOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.22s ease' }}>
+          <div style={{ overflow: 'hidden' }}>
+            {isOpen ? (
+              <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+                {[
+                  { r: 'W', label: 'WIN ✓',  color: NEON_T, bg: 'rgba(189,255,0,0.07)' },
+                  { r: 'L', label: 'LOSS ✗', color: RED,    bg: 'rgba(255,59,59,0.07)' },
+                  { r: 'P', label: 'PUSH',   color: MUTED,  bg: 'transparent' },
+                ].map(({ r, label, color, bg }) => (
+                  <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '9px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)', cursor: 'pointer', background: bg, color }}
+                    onTouchStart={e => e.currentTarget.style.opacity = '0.7'} onTouchEnd={e => e.currentTarget.style.opacity = '1'}>{label}</button>
+                ))}
+                <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>
+                <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center', borderLeft: '1px solid var(--border)' }}><Share2 size={12} /></button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
+                {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Share2 size={13} /> SHARE</button>}
+                {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Pencil size={13} /> EDIT</button>}
+                {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.5)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Trash2 size={13} /> DELETE</button>}
+              </div>
+            )}
+          </div>
         </div>
       </>) : (<>
-
-      {/* ── SETTLED descriptive row — universal card for non-ladder bets ── */}
-      {!isLadder ? (
-        <div style={{ padding: '6px 8px 7px' }}>
-          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} pnl={pnlDollar} /> : <UniBetCard bet={n} pnl={pnlDollar} /> })()}
-        </div>
-      ) : (<>
-      <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {pickText}
+        {/* ── LADDER (settled) — original compact layout ── */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickText}</div>
+            {ParlayLegs}
+            <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{bet.date}</div>
           </div>
-          {ParlayLegs}
-          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{bet.date}</div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: pnlColor }}>
-            {(pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: pnlColor }}>{(pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}</div>
+            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>P&L</div>
           </div>
-          <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>P&L</div>
         </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '5px', flexWrap: 'nowrap', overflow: 'hidden' }}>
-        {badgePill(bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : 'PUSH', resultColor,
-          bet.result === 'W' ? 'rgba(189,255,0,0.08)' : bet.result === 'L' ? 'rgba(255,59,59,0.08)' : 'var(--card)',
-          bet.result === 'W' ? 'rgba(189,255,0,0.25)' : bet.result === 'L' ? 'rgba(255,59,59,0.25)' : 'var(--border)')}
-        {bet.sport && badgePill(bet.sport, 'var(--muted)', 'var(--card)', 'var(--border)')}
-        {bet.book  && badgePill(bet.book,  NEON, 'rgba(189,255,0,0.07)', 'rgba(189,255,0,0.2)')}
-        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON_T : 'var(--text-sub)', marginLeft: 'auto', flexShrink: 0 }}>{fmtOdds(bet.odds)}</span>
-        <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', flexShrink: 0 }}>
-          {isLadder ? fmt$(bet.stake) : `${bet.units}u${bet.stake > 0 ? ` · ${fmt$(bet.stake)}` : ''}`}
-        </span>
-        {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px', flexShrink: 0 }}>{'⭐'.repeat(bet.confidence)}</span>}
-      </div>
-      </>)}
-
-      {/* ── SETTLED FOOTER: stats bar (ladder only — the Wheeler card already shows ODDS/STAKE→WIN/P&L for non-ladder) + edit/delete ── */}
-      {!isOpen && (<>
-        {isLadder && (
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '5px', flexWrap: 'nowrap', overflow: 'hidden' }}>
+          {badgePill(bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : 'PUSH', resultColor, bet.result === 'W' ? 'rgba(189,255,0,0.08)' : bet.result === 'L' ? 'rgba(255,59,59,0.08)' : 'var(--card)', bet.result === 'W' ? 'rgba(189,255,0,0.25)' : bet.result === 'L' ? 'rgba(255,59,59,0.25)' : 'var(--border)')}
+          {bet.book && badgePill(bet.book, NEON, 'rgba(189,255,0,0.07)', 'rgba(189,255,0,0.2)')}
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON_T : 'var(--text-sub)', marginLeft: 'auto', flexShrink: 0 }}>{fmtOdds(bet.odds)}</span>
+          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', flexShrink: 0 }}>{fmt$(bet.stake)}</span>
+        </div>
         <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
           {[
             { label: 'ODDS',    val: fmtOdds(bet.odds),                                  color: bet.odds > 0 ? NEON_T : 'var(--text)' },
@@ -989,13 +974,11 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
             </div>
           ))}
         </div>
-        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderTop: '1px solid var(--border)' }}>
-          {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={12} /></button>}
-          {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={12} /></button>}
-          {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = RED}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(255,59,59,0.25)'}><Trash2 size={12} /></button>}
+          {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}><Share2 size={12} /></button>}
+          {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>}
+          {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}><Trash2 size={12} /></button>}
         </div>
-      </>)}
       </>)}
     </div>
     {isLadder && bet.result === 'W' && bet.pull && bet.pullNote && (
