@@ -61,8 +61,8 @@ export default function SpotlightTicker({ token, onOpen }) {
   if (!signals.length) return null
   const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))
   const loop = [...ranked, ...ranked]
-  // Conviction color: 3+ factors = green (strong), exactly 2 = white (weakest that still qualifies).
-  const leanColor = (ou) => (ou.confidence >= 3 ? NEON_T : TEXT)
+  // Conviction color: 3+ factors = bright NEON (strong), exactly 2 = white (weakest that still qualifies).
+  const leanColor = (ou) => (ou.confidence >= 3 ? NEON : TEXT)
   const Chip = ({ ev, ou, rank }) => (
     <button onClick={() => onOpen?.(ev)} style={{ background: 'none', border: 'none', cursor: onOpen ? 'pointer' : 'default', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
       {ev.away_abbr}@{ev.home_abbr}{' '}
