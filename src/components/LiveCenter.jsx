@@ -2515,20 +2515,15 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.08em', color: TEXT }}>GAME CENTER™</div>
+      {/* Header — live-updated time only (title removed) */}
+      {lastUpdated && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 6px #FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase' }}>
+            {lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+          </span>
         </div>
-        {lastUpdated && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF3B3B', boxShadow: '0 0 6px #FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase' }}>
-              {lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-            </span>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ⬡ Spotlight signals ticker — today's strong model leans, scrolling like the CH1 TV crawl */}
       <SpotlightTicker events={orderedEvents} token={token} onOpen={setSelectedId} />
