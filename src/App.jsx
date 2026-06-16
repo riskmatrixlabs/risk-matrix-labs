@@ -497,6 +497,14 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
   const potentialLoss = effectiveUnits
 
   const calcPnl = () => {
+    // Ladder bets track dollar P&L (stake-based), not unit-based — keep the math correct on settle.
+    if (form.ladder) {
+      const profit = odds > 0 ? stake$ * odds / 100 : stake$ * 100 / Math.abs(odds)
+      if (form.result === 'W') return profit
+      if (form.result === 'L') return -stake$
+      if (form.result === 'P') return 0
+      return profit
+    }
     const u = effectiveUnits
     const win  = odds > 0 ? u * odds / 100 : u * 100 / Math.abs(odds)
     const loss = u
@@ -789,182 +797,19 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
     ? bet.pnl
     : (bet.units > 0 && bet.stake > 0) ? bet.pnl * (bet.stake / bet.units) : bet.pnl * (unitSize || 1)
 
-  // To-win for open bets
-  const toWin = bet.stake > 0 && bet.odds
-    ? (bet.odds > 0 ? bet.stake * bet.odds / 100 : bet.stake * 100 / Math.abs(bet.odds))
-    : 0
-
-  const accentColor = bet.result === 'W' ? NEON : bet.result === 'L' ? RED : isOpen ? YELLOW : 'var(--border2)'
-  const pnlColor    = pnlDollar > 0 ? NEON_T : pnlDollar < 0 ? RED : MUTED
-  const resultColor = bet.result === 'W' ? NEON_T : bet.result === 'L' ? RED : MUTED
-
-  // Event label — ladder prepends rung
-  const eventLabel = isLadder
-    ? `RUNG ${bet.ladderId}${bet.event && !bet.event.toLowerCase().includes('rung') ? ` · ${bet.event}` : ''}`
-    : bet.event
-
-  const badgePill = (txt, color, bg, border) => (
-    <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color, background: bg, border: `1px solid ${border}`, padding: '1px 6px', borderRadius: '4px', flexShrink: 0 }}>{txt}</span>
-  )
-
-  // Parlay: show "N-Leg Parlay" as the headline + each leg listed (sportsbook-slip style).
-  const isParlay = Array.isArray(bet.legs) && bet.legs.length > 0
-  const pickText = isParlay ? `${bet.legs.length}-Leg Parlay` : (bet.pick || '—')
-  const ParlayLegs = isParlay ? (
-    <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-      {bet.legs.map((l, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontFamily: R, fontSize: '10px' }}>
-          <span style={{ color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>• {l.pick}</span>
-          <span style={{ flexShrink: 0, color: NEON_T, fontWeight: 700 }}>{(Number(l.odds) || 0) > 0 ? '+' : ''}{l.odds}</span>
-        </div>
-      ))}
-    </div>
-  ) : null
-
-  // ── Open Ladder Card (special layout) ──────────────────────────────────────
-  if (isOpen && isLadder) {
-    const rungLabel = `RUNG ${bet.ladderId} · ${bet.pick || 'TBD'}`
-    const eventDisplay = bet.event || `PHLT Ladder Rung ${bet.ladderId}`
-    return (
-      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: '5px', borderLeft: `3px solid ${YELLOW}` }}>
-
-        {/* Ladder badge + event label */}
-        <div style={{ padding: '7px 10px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.35)', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>🪜 LADDER</span>
-          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>{eventDisplay}</span>
-        </div>
-
-        {/* Main row: rung·pick + to-win */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 0', gap: '8px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: YELLOW, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {rungLabel}
-            </div>
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, lineHeight: 1, color: YELLOW }}>
-              {toWin > 0 ? `+${fmt$(toWin)}` : '—'}
-            </div>
-            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '1px', letterSpacing: '0.08em' }}>to win</div>
-          </div>
-        </div>
-
-        {/* Book + odds + ACTIVE badge row */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 10px 6px', gap: '6px' }}>
-          {badgePill('ACTIVE', YELLOW, 'rgba(245,166,35,0.12)', 'rgba(245,166,35,0.4)')}
-          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{bet.book || '—'}</span>
-          {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{'⭐'.repeat(bet.confidence)}</span>}
-          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON_T : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(bet.odds)}</span>
-        </div>
-
-        {/* Stats bar: STAKE | TO WIN | BANK */}
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[
-            { label: 'STAKE',  val: fmt$(bet.stake),                        color: 'var(--text)' },
-            { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—',   color: NEON_T },
-            { label: 'BANK',   val: bankIn != null ? fmt$(bankIn) : '—',    color: 'var(--text)' },
-          ].map(({ label, val, color }, idx) => (
-            <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
-              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer: WIN | LOSS | PUSH | EDIT */}
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[
-            { r: 'W', label: 'WIN ✓',  color: NEON_T,  bg: 'rgba(189,255,0,0.07)' },
-            { r: 'L', label: 'LOSS ✗', color: RED,   bg: 'rgba(255,59,59,0.07)' },
-            { r: 'P', label: 'PUSH',   color: MUTED, bg: 'transparent' },
-          ].map(({ r, label, color, bg }) => (
-            <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{
-              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
-              padding: '8px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)',
-              cursor: 'pointer', background: bg, color, transition: 'opacity 0.1s',
-            }}
-            onTouchStart={e => e.currentTarget.style.opacity = '0.7'}
-            onTouchEnd={e => e.currentTarget.style.opacity = '1'}
-            >{label}</button>
-          ))}
-          <button onClick={() => onEdit?.(bet)} style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)',
-            padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-          onTouchStart={e => e.currentTarget.style.color = NEON}
-          onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
-          ><Pencil size={11} /></button>
-          <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{
-            background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.3)',
-            padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderLeft: '1px solid var(--border)',
-          }}
-          onTouchStart={e => e.currentTarget.style.color = NEON}
-          onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.3)'}
-          ><Share2 size={11} /></button>
-        </div>
-      </div>
-    )
-  }
+  // 🪜 ladder badge (preserves rung #). BANK tile shown only for ladder rows that pass bankIn.
+  const badge = isLadder ? `🪜 RUNG ${bet.ladderId}` : null
+  const n = normWithLogos()
+  const editCb = onEdit ? () => onEdit(bet) : null
 
   return (<>
-    {/* Non-ladder bets ARE the Wheeler card (it has its own border + accent) — no outer frame.
-        Ladder cards keep the framed wrapper. */}
-    <div style={isLadder
-      ? { ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: bet.result === 'W' && bet.pull && bet.pullNote ? '0' : '5px', borderLeft: `3px solid ${accentColor}` }
-      : { marginBottom: '9px' }}>
-
-      {/* Event row — ladder only; the Wheeler card shows the matchup itself for normal bets */}
-      {isLadder && (
-        <div style={{ padding: '7px 10px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.35)', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>🪜 LADDER</span>
-          {eventLabel && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>{eventLabel}</span>}
-        </div>
-      )}
-
-      {/* ── NON-LADDER: clean card, pencil in footer opens edit modal ── */}
-      {!isLadder ? (<>
-        {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} onEdit={onEdit ? () => onEdit(bet) : null} /> : <UniBetCard bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} onEdit={onEdit ? () => onEdit(bet) : null} /> })()}
-      </>) : (<>
-        {/* ── LADDER (settled) — original compact layout ── */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickText}</div>
-            {ParlayLegs}
-            <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '2px' }}>{bet.date}</div>
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, lineHeight: 1, color: pnlColor }}>{(pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar)}</div>
-            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '2px', letterSpacing: '0.08em' }}>P&L</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px 7px', gap: '5px', flexWrap: 'nowrap', overflow: 'hidden' }}>
-          {badgePill(bet.result === 'W' ? 'WIN' : bet.result === 'L' ? 'LOSS' : 'PUSH', resultColor, bet.result === 'W' ? 'rgba(189,255,0,0.08)' : bet.result === 'L' ? 'rgba(255,59,59,0.08)' : 'var(--card)', bet.result === 'W' ? 'rgba(189,255,0,0.25)' : bet.result === 'L' ? 'rgba(255,59,59,0.25)' : 'var(--border)')}
-          {bet.book && badgePill(bet.book, NEON, 'rgba(189,255,0,0.07)', 'rgba(189,255,0,0.2)')}
-          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON_T : 'var(--text-sub)', marginLeft: 'auto', flexShrink: 0 }}>{fmtOdds(bet.odds)}</span>
-          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', flexShrink: 0 }}>{fmt$(bet.stake)}</span>
-        </div>
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[
-            { label: 'ODDS',    val: fmtOdds(bet.odds),                                  color: bet.odds > 0 ? NEON_T : 'var(--text)' },
-            { label: 'WAGERED', val: bet.stake > 0 ? fmt$(bet.stake) : `${bet.units}u`,  color: 'var(--text)' },
-            { label: 'P&L',     val: (pnlDollar >= 0 ? '+' : '') + fmt$(pnlDollar),      color: pnlColor },
-          ].map(({ label, val, color }, idx) => (
-            <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
-              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderTop: '1px solid var(--border)' }}>
-          {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}><Share2 size={12} /></button>}
-          {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>}
-          {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }}><Trash2 size={12} /></button>}
-        </div>
-      </>)}
+    <div style={{ marginBottom: '9px' }}>
+      {n.kind === 'parlay'
+        ? <UniBetTicket bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} onEdit={editCb} badge={badge} />
+        : <UniBetCard bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} onEdit={editCb} badge={badge} bankIn={isLadder ? bankIn : null} />}
     </div>
     {isLadder && bet.result === 'W' && bet.pull && bet.pullNote && (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', marginBottom: '5px', padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: '1px solid rgba(189,255,0,0.2)', borderLeft: '3px solid rgba(189,255,0,0.6)', borderRadius: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '-4px', marginBottom: '8px', padding: '8px 12px', background: 'rgba(189,255,0,0.06)', border: '1px solid rgba(189,255,0,0.2)', borderLeft: '3px solid rgba(189,255,0,0.6)', borderRadius: '4px' }}>
         <span style={{ fontSize: '13px', flexShrink: 0 }}>💰</span>
         <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, letterSpacing: '0.06em' }}>{bet.pullNote}</span>
       </div>

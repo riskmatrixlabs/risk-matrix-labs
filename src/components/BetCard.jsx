@@ -126,7 +126,13 @@ function PnlBox({ pnl }) {
   )
 }
 
-export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null }) {
+// Small pill (e.g. ladder badge). amber=ladder accent.
+function Badge({ text }) {
+  if (!text) return null
+  return <span style={{ fontFamily: R, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: AMBER, background: `${AMBER}1f`, border: `1px solid ${AMBER}59`, borderRadius: 4, padding: '1px 5px', flexShrink: 0, whiteSpace: 'nowrap' }}>{text}</span>
+}
+
+export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null, badge = null, bankIn = null }) {
   const [open, setOpen] = useState(false)
   const st = bet.status
   const leg = bet.legs[0] || {}
@@ -138,6 +144,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
       <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
         <Avatar headshot={leg.headshot} logo={leg.logo} logo2={leg.logo2} label={bet.subtitle || bet.title} status={st} size={compact ? 30 : 42} />
         <div style={{ flex: 1, minWidth: 0 }}>
+          {badge && <div style={{ marginBottom: 3 }}><Badge text={badge} /></div>}
           <div style={{ fontFamily: R, fontSize: compact ? 14 : 17, fontWeight: 700, color: TEXT, letterSpacing: '0.02em', textDecoration: st.key === 'lost' ? 'line-through' : 'none' }}>{bet.title}</div>
           {bet.subtitle && <div style={{ fontFamily: I, fontSize: 11, color: MUTED }}>{bet.subtitle}</div>}
         </div>
@@ -158,6 +165,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
           <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
           {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={12} />}
           <PnlBox pnl={pnl} />
+          {bankIn != null && <StatBox label="BANK" value={`$${Number(bankIn).toFixed(0)}`} valueSize={13} />}
           <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
           <GradeBadge label="CLV" value={grade?.clvPct != null ? `${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%` : '—'} good={grade?.clvPct != null && grade.clvPct >= 0} />
           {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
@@ -187,7 +195,7 @@ function LegRow({ leg }) {
   )
 }
 
-export function BetTicket({ bet, grade, pnl = null, onEdit = null }) {
+export function BetTicket({ bet, grade, pnl = null, onEdit = null, badge = null }) {
   const [open, setOpen] = useState(false)
   const t = ticketStatus(bet.legs)
   const clvVal = grade?.clvPct ?? slipClv(bet.legs.map(l => ({ entry: l.odds, close: l.close }))).clvPct
@@ -200,7 +208,10 @@ export function BetTicket({ bet, grade, pnl = null, onEdit = null }) {
       {/* Left status-color accent stripe, matching the single card. */}
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: t.overall.color, zIndex: 2 }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '11px 13px', borderBottom: '1px solid #1e1e1e' }}>
-        <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{bet.title}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <Badge text={badge} />
+          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{bet.title}</span>
+        </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ fontFamily: R, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: `${t.overall.color}1f`, color: t.overall.color }}>{t.label}{t.overall.key === 'live' ? ' · LIVE' : ''}</span>
           <Ring pct={comboProb ?? grade?.winProb} size={36} color={ringColor(t.overall)} />

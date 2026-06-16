@@ -91,6 +91,9 @@ Full CH3 redesign via brainstorm→spec→plan→subagent-driven build (spec+pla
 - ⚠️ **Round Robin** logged as ONE parlay ticket (option B) — owner never chose A (split into 3 real 2-leg sub-parlays). True RR grading = all-must-hit, NOT accurate; revisit if owner wants A.
 - 🟡 Open loose ends: player **headshots in the bet log** show league badge (team logos passed, not roster headshots — needs the per-sport roster fetch); branch still **NOT merged to main**.
 
+## 🐛 KNOWN BUG — Delete/Reset don't wipe cloud (found session 59)
+**Per-bet DELETE** (edit-modal trash + bet-log delete) clears local+UI but the Supabase row survives → resurrects on reload. Cloud delete (`deleteBet` supabase.js:63) is gated by `cloudSyncedRef.current` or fails silently (`.catch` swallows). Fix: await cloud delete, surface errors, don't clear local until cloud confirms. Same root family as Reset below — fix together.
+
 ## 🐛 KNOWN BUG — Reset doesn't stick (found session 59)
 Bets resurrect after reset: they live in Supabase `bets` + localStorage + live React memory, and the load logic (App.jsx ~L2536) restores from whichever layer still has data → endless loop. Manual wipe done for owner (session 59). **TO FIX:** `resetSession` (App.jsx ~L2761) must guard-flag to suppress load-restore + sync-up, `setBets([])` FIRST, then delete cloud + clear localStorage, then re-enable sync; surface delete errors (silent now); make reset findable (buried in Matrix Bot ⚙ Settings). Consider split: "New Bankroll (keeps history)" vs "Nuke account." See memory `rml-reset-sync-loop`.
 
