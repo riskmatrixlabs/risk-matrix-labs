@@ -442,7 +442,7 @@ function profitFromOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function AddBetModal({ onAdd, onClose, unitSize, initial }) {
+function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
   const { isMobile } = useMobile()
   const [form, setForm] = useState(initial
     ? { ...initial, odds: String(initial.odds), units: String(initial.units), stake: String(initial.stake),
@@ -589,11 +589,17 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
         {/* Scrollable form */}
         <form id="mbet" onSubmit={submit} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-          {/* ── DATE (top) ── */}
+          {/* ── DATE (top) + trash (edit only) ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 4px' }}>
             <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>Date</span>
             <input type="date" value={form.date} onChange={f('date')}
               style={{ background: 'var(--card2)', border: '1px solid var(--border2)', borderRadius: '20px', color: 'var(--muted)', fontFamily: R, fontSize: '11px', fontWeight: 700, padding: '7px 14px', outline: 'none' }} />
+            {isEdit && onDelete && (
+              <button type="button" onClick={() => { onDelete(form.id); onClose() }}
+                style={{ marginLeft: 'auto', background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.3)', borderRadius: '20px', color: RED, cursor: 'pointer', padding: '7px 11px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}>
+                <Trash2 size={12} /> DELETE
+              </button>
+            )}
           </div>
 
           {/* ── RESULT CARD ── */}
@@ -3474,6 +3480,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             }
           }}
           onClose={() => setEditingBet(null)}
+          onDelete={id => {
+            setBets(b => b.filter(x => x.id !== id))
+            setEditingBet(null)
+            if (userId && cloudSyncedRef.current) {
+              realtimeIgnoreUntil.current = Date.now() + 5000
+              dbDeleteBet(String(id), userId, tokenRef.current).catch(e => console.error('[RML] deleteBet:', e))
+            }
+          }}
           unitSize={stats.unitSize}
         />
       )}
