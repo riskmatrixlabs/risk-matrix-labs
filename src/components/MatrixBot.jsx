@@ -143,7 +143,8 @@ function OutputActions({ row, onAddToSlip, compact = false }) {
   const [added, setAdded] = useState(false)
   const add = (e) => { e.stopPropagation(); if (!onAddToSlip) return; onAddToSlip(legFromRow(row)); setAdded(true); setTimeout(() => setAdded(false), 1100) }
   const share = (e) => { e.stopPropagation(); shareNative(pickShareText(row, bookLabel), row.link || undefined) }
-  const ico = (active) => ({ width: '27px', height: '27px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: active ? NEON : 'transparent', border: `1px solid ${NEON}`, borderRadius: '7px', color: active ? '#0A0A0A' : NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, lineHeight: 1, flexShrink: 0 })
+  // Neutral by default (white/grey); neon only as the brief "added ✓" confirmation.
+  const ico = (active) => ({ width: '27px', height: '27px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: active ? NEON : 'transparent', border: `1px solid ${active ? NEON : BORDER}`, borderRadius: '7px', color: active ? '#0A0A0A' : MUTED, cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, lineHeight: 1, flexShrink: 0 })
   if (compact) return <button onClick={add} title="Add to slip" style={ico(added)}>{added ? '✓' : '+'}</button>
   return (
     <div style={{ display: 'flex', gap: '5px' }}>
@@ -502,7 +503,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
         })}
         {status === 'done' && rows.length > 0 && (
           <button onClick={() => shareNative(boardShareText(rows, bookLabel))} title="Share the whole board"
-            style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '8px', border: `1px solid rgba(189,255,0,0.4)`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>➦ Share Board</button>
+            style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '8px', border: `1px solid ${BORDER}`, background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>➦ Share Board</button>
         )}
         {status === 'done' && !rows.length && <Empty text="Market's efficient right now — we won't fake an edge." />}
         {status === 'scanning' && <div style={{ textAlign: 'center', padding: '8px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>de-vigging the sharp line…</div>}
@@ -589,7 +590,7 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
         <span style={{ color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.06em' }}>{edgeCount} EDGE{edgeCount === 1 ? '' : 'S'} · TAP A ROW FOR ALL BOOKS</span>
         <button onClick={() => shareNative(boardShareText(rows, bookLabel))} title="Share the whole board"
-          style={{ background: 'transparent', border: `1px solid rgba(189,255,0,0.4)`, borderRadius: '7px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px' }}>➦ Share</button>
+          style={{ background: 'transparent', border: `1px solid ${BORDER}`, borderRadius: '7px', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px' }}>➦ Share</button>
       </div>
     </div>
   )
