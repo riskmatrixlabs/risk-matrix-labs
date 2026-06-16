@@ -200,26 +200,30 @@ function SpotlightTicker({ events = [], token, onOpen }) {
   const [open, setOpen] = useState(false)   // reference panel (yesterday + all-time)
   useEffect(() => {
     if (!token) { setSignals([]); return }
-    const todays = events.filter(e => e.sport === 'MLB' && e.away_team && e.home_team
-      && e.status !== 'FT' && e.status !== 'AOT')
-    if (!todays.length) { setSignals([]); return }
     let cancel = false
-    Promise.all(todays.map(async (ev) => {
-      try {
-        const iso = ev.start_time ? `&iso=${encodeURIComponent(ev.start_time)}` : ''
-        const r = await fetch(`/api/game-info?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
-        if (!r.ok) return null
-        const j = await r.json()
-        return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
-      } catch { return null }
-    })).then(res => {
+    // O/U model = FREE (ESPN + server-cached), so it's safe to poll on a timer (unlike paid scans).
+    const load = async () => {
+      const todays = events.filter(e => e.sport === 'MLB' && e.away_team && e.home_team
+        && e.status !== 'FT' && e.status !== 'AOT')
+      if (!todays.length) { if (!cancel) setSignals([]); return }
+      const res = await Promise.all(todays.map(async (ev) => {
+        try {
+          const iso = ev.start_time ? `&iso=${encodeURIComponent(ev.start_time)}` : ''
+          const r = await fetch(`/api/game-info?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
+          if (!r.ok) return null
+          const j = await r.json()
+          return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
+        } catch { return null }
+      }))
       if (cancel) return
-      // rank by confidence desc; stable tiebreak by matchup so equal-confidence ranks don't shuffle between loads
+      // rank by factor count desc; stable tiebreak by matchup so equal-rank order doesn't shuffle
       setSignals(res.filter(Boolean).sort((a, b) =>
         (b.ou.confidence || 0) - (a.ou.confidence || 0)
         || `${a.ev.away_abbr}@${a.ev.home_abbr}`.localeCompare(`${b.ev.away_abbr}@${b.ev.home_abbr}`)))
-    })
-    return () => { cancel = true }
+    }
+    load()
+    const id = setInterval(load, 180000)   // refresh every 3 min (free model)
+    return () => { cancel = true; clearInterval(id) }
   }, [events, token])
 
   if (!signals.length) return null
@@ -249,7 +253,8 @@ function SpotlightTicker({ events = [], token, onOpen }) {
       {/* Reference panel — ranked today + yesterday/all-time record */}
       {open && (
         <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '8px' }}>⬡ Spotlight — Today, ranked strongest first</div>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>⬡ Spotlight — Today, ranked strongest first</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '8px' }}>#1 = strongest · FACTORS = how many model signals stack (park · pitching · bullpen · weather)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {ranked.map(({ ev, ou, rank }) => (
               <button key={ev.id} onClick={() => { onOpen?.(ev.id); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: 'pointer', textAlign: 'left' }}>
@@ -261,7 +266,7 @@ function SpotlightTicker({ events = [], token, onOpen }) {
                     {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ou.reason}</span>}
                   </span>
                 </span>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> CONF</span></span>
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
               </button>
             ))}
           </div>
