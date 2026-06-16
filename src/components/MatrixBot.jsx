@@ -71,14 +71,20 @@ export function withLogos(n, ev, players = [], boxStats = null, events = []) {
       const pl = parseLine(leg.title)
       if (pl) leg.statNow = shellBar(pl.line, pl.dir)
     }
-    let logo = null
-    if (gameEv) {
+    let logo = null, logo2 = null
+    const isTotalPick = !isMoneylineOrSpread(leg.title) && !!parseLine(leg.title)
+    if (gameEv && isTotalPick) {
+      // A total is about BOTH teams → show both crests, not one team or the league badge.
+      logo = gameEv.away_logo || null
+      logo2 = gameEv.home_logo || null
+    } else if (gameEv) {
       const side = teamSide(leg.title, gameEv) || teamSide(leg.subtitle, gameEv)
       if (side === 'away') logo = gameEv.away_logo
       else if (side === 'home') logo = gameEv.home_logo
     }
     if (!logo) logo = LEAGUE_LOGO[String(leg.sport || n.sport || '').toUpperCase()] || null
     leg.logo = logo
+    leg.logo2 = logo2
   }
   return n
 }

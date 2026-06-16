@@ -61,10 +61,21 @@ function ScoreChip({ text, status }) {
   )
 }
 
-export function Avatar({ headshot, logo, label, status, size = 42 }) {
+export function Avatar({ headshot, logo, logo2, label, status, size = 42 }) {
   const ring = status?.color || BORDER
   const common = { width: size, height: size, borderRadius: size > 34 ? 10 : 8, flexShrink: 0, objectFit: 'cover', border: `1px solid ${ring}55` }
   if (headshot) return <img src={headshot} alt="" style={common} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+  // Totals show BOTH teams — two overlapping crests instead of one team or the league badge.
+  if (logo && logo2) {
+    const s = Math.round(size * 0.66)
+    const crest = { width: s, height: s, objectFit: 'contain', background: '#15181c', borderRadius: 5, position: 'absolute' }
+    return (
+      <div style={{ width: size, height: size, position: 'relative', flexShrink: 0 }}>
+        <img src={logo}  alt="" style={{ ...crest, top: 0, left: 0 }}        onError={(e) => { e.currentTarget.style.display = 'none' }} />
+        <img src={logo2} alt="" style={{ ...crest, bottom: 0, right: 0, outline: '2px solid #0c0c0c' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+      </div>
+    )
+  }
   if (logo) return <img src={logo} alt="" style={{ ...common, objectFit: 'contain', background: '#141414' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
   return (
     <div style={{ ...common, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -110,7 +121,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null }) {
     <div style={{ position: 'relative', background: '#0d0d0d', border: `1px solid ${st.color}59`, borderRadius: 14, padding: compact ? '9px 11px' : 13, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: st.color }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-        <Avatar headshot={leg.headshot} logo={leg.logo} label={bet.subtitle || bet.title} status={st} size={compact ? 30 : 42} />
+        <Avatar headshot={leg.headshot} logo={leg.logo} logo2={leg.logo2} label={bet.subtitle || bet.title} status={st} size={compact ? 30 : 42} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: R, fontSize: compact ? 14 : 17, fontWeight: 700, color: TEXT, letterSpacing: '0.02em', textDecoration: st.key === 'lost' ? 'line-through' : 'none' }}>{bet.title}</div>
           {bet.subtitle && <div style={{ fontFamily: I, fontSize: 11, color: MUTED }}>{bet.subtitle}</div>}
@@ -137,7 +148,7 @@ function LegRow({ leg }) {
   // Name + detail stay light/readable; the bar (StatBar) carries the green/red status.
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', position: 'relative' }}>
-      <Avatar headshot={leg.headshot} logo={leg.logo} label={leg.subtitle || leg.title} status={st} size={30} />
+      <Avatar headshot={leg.headshot} logo={leg.logo} logo2={leg.logo2} label={leg.subtitle || leg.title} status={st} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, textDecoration: st.key === 'lost' ? 'line-through' : 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.title}</span>
