@@ -1183,7 +1183,8 @@ function RREngine({ unitSize, darkMode, isDemo = false }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
       {/* ── TOP ROW: Leg Inputs + Summary ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px' }}>
+      {/* Single column — the app room is ~580px, so a 2-col layout overflowed (summary cut off right). */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
 
         {/* Leg Inputs */}
         <div style={{ ...cardStyle, padding: '18px 18px' }}>
