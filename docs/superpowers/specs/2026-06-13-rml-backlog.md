@@ -91,7 +91,7 @@ Full CH3 redesign via brainstorm→spec→plan→subagent-driven build (spec+pla
 - ⚠️ **Round Robin** logged as ONE parlay ticket (option B) — owner never chose A (split into 3 real 2-leg sub-parlays). True RR grading = all-must-hit, NOT accurate; revisit if owner wants A.
 - 🟡 Open loose ends: player **headshots in the bet log** show league badge (team logos passed, not roster headshots — needs the per-sport roster fetch); branch still **NOT merged to main**.
 
-## 🐛 KNOWN BUG #1 PRE-LAUNCH — Cloud writes don't stick (3 symptoms, one root) (found session 59)
+## ✅ FIXED (session 59, SW v297) — Cloud writes now stick (was 3 symptoms, one root)
 Local+UI clear but the Supabase copy survives and resurrects on reload. Confirmed in THREE places, all one fix:
 1. **Per-bet DELETE** (edit-modal trash + bet-log) — `deleteBet` supabase.js:63 gated by `cloudSyncedRef.current` or fails silently (`.catch` swallows).
 2. **Reset All Data** — `resetSession` App.jsx (see below) hits the cloud↔local↔memory restore loop.
