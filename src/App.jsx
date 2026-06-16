@@ -1106,7 +1106,7 @@ function getCombos(arr, r) {
 
 const EMPTY_LEG = { odds: '', result: 'TBD' }
 
-function RREngine({ unitSize, darkMode, isDemo = false }) {
+function RREngine({ unitSize, darkMode, isDemo = false, floatPicks = null, onFloatConsumed }) {
   const { isMobile } = useMobile()
   const DEMO_LEGS = [
     { odds: '-120', result: 'W' },
@@ -1118,6 +1118,15 @@ function RREngine({ unitSize, darkMode, isDemo = false }) {
   const [stakeMode,    setStakeMode]    = useState(isDemo ? 'dollars' : 'units')
   const [stakeVal,     setStakeVal]     = useState(isDemo ? '30' : '1')
   const [showMBO,      setShowMBO]      = useState(false)  // Missed By One panel
+
+  // Picks "floated" in from the bet slip — pre-fill the legs with real picks + their odds.
+  useEffect(() => {
+    if (floatPicks && floatPicks.length) {
+      setLegs(floatPicks.map(p => ({ odds: p.odds != null ? String(p.odds) : '', result: 'TBD', pick: p.pick || '', event: p.event || '' })))
+      setRrType(2)
+      onFloatConsumed?.()
+    }
+  }, [floatPicks])
 
   const setLeg = (i, k, v) => setLegs(prev => prev.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
   const addLeg    = () => legs.length < 10 && setLegs(p => [...p, { ...EMPTY_LEG }])
@@ -1263,7 +1272,8 @@ function RREngine({ unitSize, darkMode, isDemo = false }) {
                   style={{ ...inputStyle, padding: '4px 8px', fontSize: '12px' }}
                 />
                 {!isMobile && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+                    {leg.pick && <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.pick}</span>}
                     <span style={{ fontFamily: R, fontSize: '8px', color: 'var(--text-dim)', letterSpacing: '0.06em' }}>
                       {leg.odds && parseInt(leg.odds) !== 0 ? `payout: ${fmt$(stakePerCombo * toDecimal(parseInt(leg.odds)))}` : 'enter odds'}
                     </span>
@@ -2888,6 +2898,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slipStake, setSlipStake] = useState('')
   const [slipStakes, setSlipStakes] = useState({})   // per-leg stake for Straights mode, keyed by pick
   const [straightsExp, setStraightsExp] = useState(new Set())   // per-single "show more books" toggle, keyed by pick
+  const [rrFloat, setRrFloat] = useState(null)   // picks "floated" from the slip into the RR Engine
   const legStakeOf = (l) => Number(slipStakes[l.pick] ?? slipStake) || 0
   const [slipMode, setSlipMode] = useState('parlay')      // 'parlay' | 'straights'
   const [showOutRegion, setShowOutRegion] = useState(false) // expand the "not in your region" list
@@ -3235,6 +3246,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           {payoutVal > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>{isStraights ? 'total ' : ''}→ ${payoutVal.toFixed(2)}</span>}
                         </div>
                         <button onClick={addAllToLadder} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'rgba(245,166,35,0.1)', color: '#F5A623', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🪜 Add all to Ladder</button>
+                        {enabled.length >= 2 && (
+                          <button onClick={() => { setRrFloat(enabled.map(l => ({ pick: l.pick, odds: l.odds, event: l.event }))); setSlipOpen(false); setTab('rr engine') }} style={{ width: '100%', marginTop: '8px', padding: '11px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🎲 Float to RR — see all combo results</button>
+                        )}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                           <button onClick={() => { setSlip([]); setSlipStake(''); setSlipStakes({}); setStraightsExp(new Set()); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
                           <button onClick={() => { logParlay(slipStake); setSlipStake('') }} disabled={!enabled.length} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: enabled.length ? 'pointer' : 'not-allowed', opacity: enabled.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{isStraights ? `Log ${enabled.length} Straight${enabled.length === 1 ? '' : 's'}` : enabled.length >= 2 ? `Log ${enabled.length}-Leg Parlay` : 'Log Bet'}</button>
@@ -4969,7 +4983,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ══ RR ENGINE ══ */}
-        {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} />}
+        {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
