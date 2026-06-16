@@ -8,6 +8,15 @@ import { NEON, NEON_T, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
 
 const R = 'Rajdhani, sans-serif'
 
+// Line-movement arrow vs the open total. ▲ = total climbed, ▼ = dropped since open.
+// Green when the move is "value" (line moved against the lean → better number); grey when "late".
+function MoveArrow({ ou }) {
+  const dir = ou?.total?.dir
+  if (!dir) return null
+  const good = ou?.edge && ou.edge.startsWith('value')
+  return <span title={ou.edge || (dir > 0 ? 'total up since open' : 'total down since open')} style={{ marginLeft: 4, fontSize: '10px', color: good ? NEON : MUTED }}>{dir > 0 ? '▲' : '▼'}</span>
+}
+
 function RankBadge({ rank }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
@@ -56,6 +65,7 @@ export default function SpotlightTicker({ token, onOpen }) {
     <button onClick={() => onOpen?.(ev)} style={{ background: 'none', border: 'none', cursor: onOpen ? 'pointer' : 'default', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
       {ev.away_abbr}@{ev.home_abbr}{' '}
       <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+      <MoveArrow ou={ou} />
       <RankBadge rank={rank} />
     </button>
   )
@@ -85,6 +95,8 @@ export default function SpotlightTicker({ token, onOpen }) {
                   <span style={{ minWidth: 0 }}>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+                    <MoveArrow ou={ou} />
+                    {ou.total?.open != null && ou.total?.dir ? <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginLeft: 5 }}>{ou.total.open} → {ou.total.current}</span> : null}
                     {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ou.reason}</span>}
                   </span>
                 </span>
