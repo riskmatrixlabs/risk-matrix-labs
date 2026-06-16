@@ -25,7 +25,20 @@ function RankBadge({ rank }) {
   )
 }
 
-export default function SpotlightTicker({ token, onOpen }) {
+// Build a fully-priced slip leg from a signal — uses the FREE synced over/under juice (zero credits).
+function signalToLeg(ev, ou) {
+  const side = ou.lean === 'OVER' ? 'Over' : 'Under'
+  const juice = ou.lean === 'OVER' ? ou.total?.overJuice : ou.total?.underJuice
+  return {
+    pick: `${side} ${ou.total?.current ?? ''}`.trim(),
+    odds: juice != null ? juice : -110,
+    sport: 'MLB',
+    event: `${ev.away_abbr}@${ev.home_abbr}`,
+    book: null,
+  }
+}
+
+export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   const [signals, setSignals] = useState([])
   const [open, setOpen] = useState(false)
 
@@ -96,7 +109,7 @@ export default function SpotlightTicker({ token, onOpen }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {ranked.map(({ ev, ou, rank }) => (
-              <button key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
+              <div key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                   <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{rank}</span>
                   <span style={{ minWidth: 0 }}>
@@ -113,8 +126,11 @@ export default function SpotlightTicker({ token, onOpen }) {
                     </span>
                   </span>
                 </span>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.confidence >= 3 ? NEON : MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
-              </button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.confidence >= 3 ? NEON : MUTED }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
+                  {onAddToSlip && <button onClick={e => { e.stopPropagation(); onAddToSlip(signalToLeg(ev, ou)) }} title="Add to slip" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T, background: 'rgba(189,255,0,0.1)', border: `1px solid ${NEON}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ SLIP</button>}
+                </span>
+              </div>
             ))}
           </div>
           <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: '16px' }}>

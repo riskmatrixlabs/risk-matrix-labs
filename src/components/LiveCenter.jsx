@@ -2439,7 +2439,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
       )}
 
       {/* ⬡ Spotlight signals ticker — today's strong model leans, scrolling like the CH1 TV crawl */}
-      <SpotlightTicker token={token} onOpen={ev => setSelectedId(ev.id)} />
+      <SpotlightTicker token={token} onOpen={ev => setSelectedId(ev.id)} onAddToSlip={onAddToSlip} />
 
       {/* Filters card — sport pills + date tabs grouped */}
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>

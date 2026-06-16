@@ -251,7 +251,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
     <div className="mbot-root" style={{ maxWidth: '100%', margin: '0 auto', padding: '14px 12px 90px' }}>
       {/* ⬡ Spotlight — unified across pillars; tap a signal → CH2 LOOK for that game */}
       <div style={{ marginBottom: '12px' }}>
-        <SpotlightTicker token={token} onOpen={ev => tuneTo({ away: ev.away_team, home: ev.home_team, away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, away_logo: ev.away_logo, home_logo: ev.home_logo, sport: 'MLB', external_event_id: ev.external_event_id, commenceTime: ev.start_time })} />
+        <SpotlightTicker token={token} onAddToSlip={onAddToSlip} onOpen={ev => tuneTo({ away: ev.away_team, home: ev.home_team, away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, away_logo: ev.away_logo, home_logo: ev.home_logo, sport: 'MLB', external_event_id: ev.external_event_id, commenceTime: ev.start_time })} />
       </div>
       {/* channel dial */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>

@@ -4058,7 +4058,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       {/* ⬡ Spotlight — unified across pillars; on Dashboard a tap jumps to Game Center */}
       {['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners'].includes(tab) && (
         <div style={{ marginBottom: '10px' }}>
-          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} />
+          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} onAddToSlip={addToSlip} />
         </div>
       )}
 

@@ -24,7 +24,7 @@ async function totalAnchor(sport, away, home) {
     // matchup repeats across a series, so an unbounded/unordered find grabbed the wrong
     // day's row (null or stale total). Prefer a row that actually carries a total.
     const { data: evs } = await sb.from('events')
-      .select('external_event_id, away_team, home_team, odds_total, start_time')
+      .select('external_event_id, away_team, home_team, odds_total, start_time, metadata')
       .eq('sport', sport)
       .gte('start_time', new Date(Date.now() - 8 * 3600e3).toISOString())
       .lte('start_time', new Date(Date.now() + 20 * 3600e3).toISOString())
@@ -40,7 +40,12 @@ async function totalAnchor(sport, away, home) {
     if (hist?.length) open = Number(hist[0].point)
     if (current == null && open == null) return null
     const dir = (current != null && open != null) ? Math.sign(current - open) : 0
-    return { current, open, dir }
+    // Over/under juice (the price) — already synced FREE in the event row, so a lean can become
+    // a fully-priced slip leg with zero credits.
+    const m = ev.metadata || {}
+    const overJuice  = m.over_juice  != null ? Number(m.over_juice)  : null
+    const underJuice = m.under_juice != null ? Number(m.under_juice) : null
+    return { current, open, dir, overJuice, underJuice }
   } catch { return null }
 }
 
