@@ -247,7 +247,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
   const tuneTo = (g, p = null) => { setGame(g); setPlayer(p); if (g.sport) setSport(g.sport); setChannel('look') }
 
   return (
-    <div className="mbot-root" style={{ maxWidth: '480px', margin: '0 auto', padding: '14px 12px 90px' }}>
+    <div className="mbot-root" style={{ maxWidth: '100%', margin: '0 auto', padding: '14px 12px 90px' }}>
       {/* channel dial */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
         {[['find', 'CH 1 · FIND'], ['look', 'CH 2 · LOOK'], ['track', 'CH 3 · TRACK']].map(([k, label]) => (
