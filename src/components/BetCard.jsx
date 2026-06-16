@@ -7,12 +7,13 @@ const R = "'Rajdhani',sans-serif"
 const I = "'Inter',sans-serif"
 
 // This app uses unicode/emoji glyphs (no Tabler webfont). Map status → glyph.
-const GLYPH = { won: '✓', lost: '✕', live: '◷', push: '–' }
+// live = no glyph (the fake-looking clock is gone; the orange ring already signals pending/live).
+const GLYPH = { won: '✓', lost: '✕', live: '', push: '–' }
 
 const fmtOdds = (o) => o == null ? '' : (o > 0 ? `+${o}` : `${o}`)
 const initials = (s) => String(s || '').replace(/[^A-Za-z ]/g, '').split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase()
 const toWin = (odds, stake) => (odds == null || !stake) ? null : (odds > 0 ? stake * odds / 100 : stake * 100 / Math.abs(odds))
-const AMBER = '#FFB800'
+const AMBER = '#FFAE2B'   // brighter, punchier orange for pending/live
 // Ring color by status: pending/live = orange, won = green, lost = red, push = gray.
 const ringColor = (status) => status?.key === 'won' ? NEON : status?.key === 'lost' ? '#FF3B3B' : status?.key === 'push' ? '#888780' : AMBER
 
@@ -65,13 +66,14 @@ export function Avatar({ headshot, logo, logo2, label, status, size = 42 }) {
   const ring = status?.color || BORDER
   const common = { width: size, height: size, borderRadius: size > 34 ? 10 : 8, flexShrink: 0, objectFit: 'cover', border: `1px solid ${ring}55` }
   if (headshot) return <img src={headshot} alt="" style={common} onError={(e) => { e.currentTarget.style.display = 'none' }} />
-  // Totals show BOTH teams — two overlapping crests instead of one team or the league badge.
+  // Totals show BOTH teams — two crests on a diagonal, spaced so neither blocks the other.
   if (logo && logo2) {
-    const s = Math.round(size * 0.66)
+    const box = Math.round(size * 1.18)               // a touch wider so the two crests breathe
+    const s = Math.round(size * 0.56)
     const crest = { width: s, height: s, objectFit: 'contain', background: '#15181c', borderRadius: 5, position: 'absolute' }
     return (
-      <div style={{ width: size, height: size, position: 'relative', flexShrink: 0 }}>
-        <img src={logo}  alt="" style={{ ...crest, top: 0, left: 0 }}        onError={(e) => { e.currentTarget.style.display = 'none' }} />
+      <div style={{ width: box, height: size, position: 'relative', flexShrink: 0 }}>
+        <img src={logo}  alt="" style={{ ...crest, top: 0, left: 0 }}                              onError={(e) => { e.currentTarget.style.display = 'none' }} />
         <img src={logo2} alt="" style={{ ...crest, bottom: 0, right: 0, outline: '2px solid #0c0c0c' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
       </div>
     )

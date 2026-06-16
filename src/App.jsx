@@ -900,7 +900,11 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
   }
 
   return (<>
-    <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: isLadder && bet.result === 'W' && bet.pull && bet.pullNote ? '0' : '5px', borderLeft: `3px solid ${accentColor}` }}>
+    {/* Non-ladder bets ARE the Wheeler card (it has its own border + accent) — no outer frame.
+        Ladder cards keep the framed wrapper. */}
+    <div style={isLadder
+      ? { ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: bet.result === 'W' && bet.pull && bet.pullNote ? '0' : '5px', borderLeft: `3px solid ${accentColor}` }
+      : { marginBottom: '9px' }}>
 
       {/* Event row — ladder only; the Wheeler card shows the matchup itself for normal bets */}
       {eventLabel && isLadder && (
@@ -912,9 +916,9 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
       {/* ── NON-LADDER: Wheeler card + sleek collapsed actions drawer ── */}
       {!isLadder ? (<>
         {/* The card itself is the pull-down — tap anywhere to reveal actions. Subtle chevron = the only cue. */}
-        <div onClick={() => setActionsOpen(o => !o)} style={{ cursor: 'pointer', padding: '6px 8px 0' }}>
+        <div onClick={() => setActionsOpen(o => !o)} style={{ cursor: 'pointer' }}>
           {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} pnl={isOpen ? null : pnlDollar} /> : <UniBetCard bet={n} pnl={isOpen ? null : pnlDollar} /> })()}
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3px', paddingBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '2px', paddingBottom: '3px' }}>
             <ChevronDown size={15} color={actionsOpen ? NEON_T : 'var(--border2)'} style={{ transform: actionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
           </div>
         </div>
@@ -3143,7 +3147,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   )
 
   return (
-    <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '960px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
+    <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '680px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
       {/* ── BET MATRIX (slip + line shopper) — persistent launcher on Game Center / Matrix Bot ── */}
       {(tab === 'live' || tab === 'bot') && (() => {
         const combo = slipComboOdds()
