@@ -98,6 +98,12 @@ export default function SpotlightTicker({ token, onOpen }) {
                     <MoveArrow ou={ou} />
                     {ou.total?.open != null && ou.total?.dir ? <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginLeft: 5 }}>{ou.total.open} → {ou.total.current}</span> : null}
                     {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ou.reason}</span>}
+                    {(ou.edge || (ou.bullpens && (ou.bullpens.away != null || ou.bullpens.home != null))) && (
+                      <span style={{ display: 'block', fontFamily: R, fontSize: '9px', marginTop: '2px' }}>
+                        {ou.edge && <span style={{ fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE — line moved against the lean' : 'LATE — line already moved your way'}</span>}
+                        {ou.bullpens && (ou.bullpens.away != null || ou.bullpens.home != null) && <span style={{ color: MUTED, marginLeft: ou.edge ? 8 : 0 }}>pen ERA {ou.bullpens.away != null ? ou.bullpens.away.toFixed(2) : '–'} / {ou.bullpens.home != null ? ou.bullpens.home.toFixed(2) : '–'}</span>}
+                      </span>
+                    )}
                   </span>
                 </span>
                 <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
