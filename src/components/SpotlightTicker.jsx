@@ -86,7 +86,12 @@ export default function SpotlightTicker({ token, onOpen }) {
       {open && (
         <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>⬡ Spotlight — Today, ranked strongest first</div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '8px' }}>#1 = strongest model lean · line = open → current (▲ market moving up, ▼ down)</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>#1 = strongest model lean · line = open → current (▲ market up, ▼ down)</div>
+          {/* KEY / legend for the market terms */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginBottom: '8px', fontFamily: R, fontSize: '9px' }}>
+            <span><b style={{ color: NEON_T }}>VALUE</b> <span style={{ color: MUTED }}>line moved against the lean — better number</span></span>
+            <span><b style={{ color: '#FF3B3B' }}>LATE</b> <span style={{ color: MUTED }}>line already moved your way — edge priced in</span></span>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {ranked.map(({ ev, ou, rank }) => (
               <button key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
