@@ -86,7 +86,7 @@ export default function SpotlightTicker({ token, onOpen }) {
       {open && (
         <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>⬡ Spotlight — Today, ranked strongest first</div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '8px' }}>#1 = strongest · FACTORS = how many model signals stack (park · pitching · bullpen · weather)</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '8px' }}>#1 = strongest model lean · line = open → current (▲ market moving up, ▼ down)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {ranked.map(({ ev, ou, rank }) => (
               <button key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
@@ -96,13 +96,14 @@ export default function SpotlightTicker({ token, onOpen }) {
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
                     <MoveArrow ou={ou} />
-                    {ou.total?.open != null && ou.total?.dir ? <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginLeft: 5 }}>{ou.total.open} → {ou.total.current}</span> : null}
-                    {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{ou.reason}</span>}
-                    {(ou.edge || (ou.bullpens && (ou.bullpens.away != null || ou.bullpens.home != null))) && (
-                      <span style={{ display: 'block', fontFamily: R, fontSize: '9px', marginTop: '2px' }}>
-                        {ou.edge && <span style={{ fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE — line moved against the lean' : 'LATE — line already moved your way'}</span>}
-                        {ou.bullpens && (ou.bullpens.away != null || ou.bullpens.home != null) && <span style={{ color: MUTED, marginLeft: ou.edge ? 8 : 0 }}>pen ERA {ou.bullpens.away != null ? ou.bullpens.away.toFixed(2) : '–'} / {ou.bullpens.home != null ? ou.bullpens.home.toFixed(2) : '–'}</span>}
+                    {/* Quick-look = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
+                    {ou.total?.open != null && ou.total?.dir ? (
+                      <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '2px' }}>
+                        line <span style={{ color: TEXT }}>{ou.total.open} → {ou.total.current}</span>
+                        {ou.edge && <span style={{ fontWeight: 700, marginLeft: 8, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE' : 'LATE'}</span>}
                       </span>
+                    ) : (
+                      <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '2px' }}>line {ou.total?.current != null ? ou.total.current : '—'} · no move since open</span>
                     )}
                   </span>
                 </span>
