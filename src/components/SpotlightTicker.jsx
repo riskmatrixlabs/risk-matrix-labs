@@ -113,7 +113,7 @@ export default function SpotlightTicker({ token, onOpen }) {
                     </span>
                   </span>
                 </span>
-                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
+                <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.confidence >= 3 ? NEON : MUTED, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
               </button>
             ))}
           </div>
