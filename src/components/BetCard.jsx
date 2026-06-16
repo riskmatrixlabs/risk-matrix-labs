@@ -134,7 +134,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null }) {
       {/* Progress bar sits ABOVE the odds (always shown for over/under bets, empty pre-game). */}
       <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
       <ScoreChip text={leg.scoreLine} status={st} />
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, marginTop: 11 }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, marginTop: 11, flexWrap: 'wrap' }}>
         <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
         {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
         <PnlBox pnl={pnl} />
@@ -190,7 +190,7 @@ export function BetTicket({ bet, grade, pnl = null }) {
       </div>
 
       {/* Bottom matches the single (Wheeler) card: separate ODDS box (label stacked) + STAKE→WIN box + EV + CLV. */}
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, padding: '0 13px 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, padding: '0 13px 12px', flexWrap: 'wrap' }}>
         <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
         {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
         <PnlBox pnl={pnl} />

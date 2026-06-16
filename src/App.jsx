@@ -14,6 +14,7 @@ function genUUID() {
 import { useSwipeable } from 'react-swipeable'
 import { BetCard as UniBetCard, BetTicket as UniBetTicket } from './components/BetCard.jsx'
 import { normalizeBet } from './lib/betCard.js'
+import { gradeBet } from './lib/gradeBet.js'
 import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
@@ -773,6 +774,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
 function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [] }) {
   const normWithLogos = () => withLogos(normalizeBet(bet), null, [], null, events)
+  const grade = gradeBet(bet, events)                     // EV/CLV so the footer fills like CH3
   const [actionsOpen, setActionsOpen] = useState(false)   // settle/edit/share live in a collapsed drawer
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
@@ -917,7 +919,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
       {!isLadder ? (<>
         {/* The card itself is the pull-down — tap anywhere to reveal actions. Subtle chevron = the only cue. */}
         <div onClick={() => setActionsOpen(o => !o)} style={{ cursor: 'pointer' }}>
-          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} pnl={isOpen ? null : pnlDollar} /> : <UniBetCard bet={n} pnl={isOpen ? null : pnlDollar} /> })()}
+          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} /> : <UniBetCard bet={n} grade={grade} pnl={isOpen ? null : pnlDollar} /> })()}
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '2px', paddingBottom: '3px' }}>
             <ChevronDown size={15} color={actionsOpen ? NEON_T : 'var(--border2)'} style={{ transform: actionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
           </div>

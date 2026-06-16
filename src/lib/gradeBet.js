@@ -1,0 +1,56 @@
+// Grade a logged bet (single OR parlay) → { evPct, clvPct, winProb } against matched events.
+// Same math CH3 uses, extracted so the Bets-tab cards grade identically.
+import { matchBetToEvent, evaluateBet } from './betMatch.js'
+import { devigTwoWay, americanToDecimal, americanToImplied } from './devig.js'
+
+function buildDvs(ev) {
+  const m = ev.metadata || {}
+  return {
+    dv:       (ev.odds_ml_away != null && ev.odds_ml_home != null) ? devigTwoWay(ev.odds_ml_away, ev.odds_ml_home) : null,
+    dvSpread: (m.spread_away_juice != null && m.spread_home_juice != null) ? devigTwoWay(m.spread_away_juice, m.spread_home_juice) : null,
+    dvTotal:  (m.over_juice != null && m.under_juice != null) ? devigTwoWay(m.over_juice, m.under_juice) : null,
+  }
+}
+
+const decFromAm = (a) => a > 0 ? a / 100 + 1 : 100 / Math.abs(a) + 1
+
+export function gradeBet(bet, events = []) {
+  if (!bet) return null
+  const legs = Array.isArray(bet.legs) ? bet.legs : null
+
+  // ── Parlay: grade each leg vs its own event, then combine ──
+  if (legs && legs.length >= 2) {
+    const per = legs.map(leg => {
+      const ev = events.find(e => matchBetToEvent({ sport: leg.sport || bet.sport, event: leg.event, date: bet.date }, e))
+      return ev ? evaluateBet({ pick: leg.pick, odds: leg.odds, sport: leg.sport || bet.sport, event: leg.event, date: bet.date }, ev, buildDvs(ev)) : null
+    })
+    if (!per.some(Boolean)) return fallback(bet)
+    const own = Number(bet.odds)
+    let evPct = null, winProb = null, clvPct = null
+    const probs = per.map(g => g?.fairProb)
+    if (probs.every(p => p != null)) {
+      winProb = probs.reduce((a, p) => a * p, 1)
+      if (Number.isFinite(own)) evPct = (winProb * decFromAm(own) - 1) * 100
+    }
+    const closes = per.map(g => g?.currentAmerican)
+    const entryDec = Number.isFinite(own) ? americanToDecimal(own) : null
+    if (entryDec != null && closes.every(c => c != null)) {
+      const comboCloseDec = closes.reduce((a, c) => a * (americanToDecimal(c) || 1), 1)
+      if (comboCloseDec > 0) clvPct = (entryDec / comboCloseDec - 1) * 100
+    }
+    return (evPct != null || clvPct != null || winProb != null) ? { evPct, clvPct, winProb } : fallback(bet)
+  }
+
+  // ── Single ──
+  const ev = events.find(e => matchBetToEvent(bet, e))
+  if (!ev) return fallback(bet)
+  const g = evaluateBet(bet, ev, buildDvs(ev))
+  if (!g) return fallback(bet)
+  return { evPct: g.evPct, clvPct: g.clvPct, winProb: g.fairProb ?? fallback(bet)?.winProb ?? null }
+}
+
+// No event match → at least a win-prob from the bet's own odds, so the ring still fills.
+function fallback(bet) {
+  const own = Number(bet.odds)
+  return Number.isFinite(own) ? { winProb: americanToImplied(own) } : null
+}
