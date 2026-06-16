@@ -171,8 +171,8 @@ function LegRow({ leg }) {
   const st = leg.status
   // Name + detail stay light/readable; the bar (StatBar) carries the green/red status.
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', position: 'relative' }}>
-      <Avatar headshot={leg.headshot} logo={leg.logo} logo2={leg.logo2} label={leg.subtitle || leg.title} status={st} size={30} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 13px', position: 'relative' }}>
+      <Avatar headshot={leg.headshot} logo={leg.logo} logo2={leg.logo2} label={leg.subtitle || leg.title} status={st} size={38} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, textDecoration: st.key === 'lost' ? 'line-through' : 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.title}</span>
@@ -208,7 +208,7 @@ export function BetTicket({ bet, grade, pnl = null, onEdit = null }) {
       </div>
 
       <div style={{ position: 'relative', padding: '4px 0' }}>
-        <div style={{ position: 'absolute', left: 27, top: 24, bottom: 24, width: 2, background: '#262626' }} />
+        <div style={{ position: 'absolute', left: 32, top: 28, bottom: 28, width: 2, background: '#262626' }} />
         {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} /></div>)}
       </div>
 
