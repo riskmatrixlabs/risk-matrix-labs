@@ -99,6 +99,7 @@ Never use the Vite dev server for Playwright testing — always prod build.
 - tremizy@gmail.com
 - j.willey2489@gmail.com
 - lauriesjeanpaul@gmail.com
+- tjoel6788@gmail.com
 
 ## WORKFLOW FOLDER
 ```

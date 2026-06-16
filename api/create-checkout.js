@@ -9,6 +9,7 @@ const TEAM_EMAILS = [
   'tremizy@gmail.com',
   'j.willey2489@gmail.com',
   'lauriesjeanpaul@gmail.com',
+  'tjoel6788@gmail.com',
 ]
 
 export default async function handler(req, res) {

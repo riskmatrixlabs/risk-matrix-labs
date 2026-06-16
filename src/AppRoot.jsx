@@ -263,6 +263,7 @@ export default function AppRoot() {
     'tremizy@gmail.com',
     'j.willey2489@gmail.com',
     'lauriesjeanpaul@gmail.com',
+    'tjoel6788@gmail.com',
   ]
   const isTeamMember = TEAM_EMAILS.includes(session.user.email?.toLowerCase())
 
