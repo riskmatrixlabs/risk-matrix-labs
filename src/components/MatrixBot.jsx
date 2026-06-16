@@ -231,7 +231,7 @@ function PlayerSearch({ token, onSelect, onClose }) {
   )
 }
 
-export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv' }) {
+export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv', sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
@@ -260,7 +260,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
           {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} />}
-          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} />}
+          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={goToBetLog} />}
         </div>
       )}
     </div>
@@ -1284,7 +1284,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
 }
 
 // ───────────────────────────── CH 3 · TRACK ─────────────────────────────
-function TrackChannel({ bets, sport, token }) {
+function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
@@ -1376,24 +1376,28 @@ function TrackChannel({ bets, sport, token }) {
 
   const [gearOpen, setGearOpen] = useState(false)
   const [scope, setScope] = useState('all')   // all | 30d | 7d | today
+  // SHARED bet filter (master = Bets tab): sport + result mirror across Bets / CH3 / Overview.
   const scopedBets = useMemo(() => {
-    if (scope === 'all') return bets || []
-    const days = scope === '30d' ? 30 : scope === '7d' ? 7 : 1
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - (days - 1))
-    const cutStr = cutoff.toISOString().slice(0, 10)
-    return (bets || []).filter(b => (b.date || '') >= cutStr)
-  }, [bets, scope])
+    let b = bets || []
+    if (sportFilter !== 'ALL') b = b.filter(x => x.sport === sportFilter)
+    if (scope !== 'all') {
+      const days = scope === '30d' ? 30 : scope === '7d' ? 7 : 1
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - (days - 1))
+      const cutStr = cutoff.toISOString().slice(0, 10)
+      b = b.filter(x => (x.date || '') >= cutStr)
+    }
+    return b
+  }, [bets, scope, sportFilter])
 
-  const [statusFilter, setStatusFilter] = useState('all')   // all | live | pending | settled
   const record = useMemo(() => computeRecord(scopedBets), [scopedBets])
   const statusOk = (b) => {
-    if (statusFilter === 'all') return true
-    if (statusFilter === 'settled') return ['W', 'L', 'P'].includes(b.result)
-    return b.result === 'Open'
+    if (resultFilter === 'ALL') return true
+    if (resultFilter === 'OPEN') return b.result === 'Open'
+    return b.result === resultFilter   // W | L | P
   }
 
   const todayKey = todayStr()
-  const visibleBets = useMemo(() => scopedBets.filter(statusOk), [scopedBets, statusFilter])
+  const visibleBets = useMemo(() => scopedBets.filter(statusOk), [scopedBets, resultFilter])
   const dateGroups = useMemo(() => groupByDate(visibleBets, todayKey), [visibleBets])
   // Grade a parlay by grading each leg against its own event, then combining:
   // CLV = mean of per-leg CLV; EV = (∏ leg true prob) × parlay decimal − 1 (needs every leg graded).
@@ -1488,19 +1492,23 @@ function TrackChannel({ bets, sport, token }) {
             <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>SOON</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
-          {[['all', 'ALL'], ['live', 'LIVE'], ['pending', 'PENDING'], ['settled', 'SETTLED']].map(([k, lbl]) => (
-            <button key={k} onClick={() => setStatusFilter(k)} style={pill(statusFilter === k)}>{lbl}</button>
+        {/* Shared filter — mirrors the Bets tab (master). Changing it here changes it there. */}
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {[['ALL', 'ALL'], ['OPEN', 'OPEN'], ['W', 'WON'], ['L', 'LOST'], ['P', 'PUSH']].map(([k, lbl]) => (
+            <button key={k} onClick={() => setResultFilter && setResultFilter(k)} style={pill(resultFilter === k)}>{lbl}</button>
           ))}
+          {sportFilter !== 'ALL' && (
+            <button onClick={() => setSportFilter && setSportFilter('ALL')} style={{ ...pill(true), display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{sportFilter} ✕</button>
+          )}
         </div>
         <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginTop: '10px' }}>
-          {graded.length > 0 ? `${board.tracked} TRACKED · CLV IS THE TRUTH — BEAT THE CLOSE > 50% = SHARP` : 'CLV IS THE TRUTH — log a play on CH 1/2 and it grades here.'}
+          {graded.length > 0 ? `${board.tracked} TRACKED · SYNCED WITH BETS TAB` : 'CLV IS THE TRUTH — log a play on CH 1/2 and it grades here.'}
         </div>
       </LookSection>
 
       {/* tracked positions — collapsible panel */}
       <LookSection label="TRACKED POSITIONS">
-        {!visibleBets.length && <Empty text={`No ${statusFilter === 'all' ? '' : statusFilter + ' '}positions yet. Log a play on CH 1/2 and it grades here.`} />}
+        {!visibleBets.length && <Empty text={`No ${resultFilter === 'ALL' ? '' : resultFilter === 'OPEN' ? 'open ' : resultFilter + ' '}positions${sportFilter !== 'ALL' ? ` for ${sportFilter}` : ''}. Log a play on CH 1/2 and it grades here.`} />}
         {dateGroups.map((grp) => (
           <div key={grp.date || 'undated'} style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2px 7px' }}>
