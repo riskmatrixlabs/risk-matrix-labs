@@ -77,9 +77,19 @@ export function Avatar({ headshot, logo, label, status, size = 42 }) {
 function GradeBadge({ label, value, good }) {
   const c = good ? NEON : '#FF3B3B'
   return (
-    <div style={{ textAlign: 'center', padding: '5px 9px', borderRadius: 8, background: `${c}14`, border: `1px solid ${c}59` }}>
+    <div style={{ textAlign: 'center', padding: '5px 9px', borderRadius: 8, background: `${c}14`, border: `1px solid ${c}59`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <div style={{ fontFamily: R, fontSize: 8, color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
       <div style={{ fontFamily: R, fontSize: 15, fontWeight: 700, color: c }}>{value}</div>
+    </div>
+  )
+}
+
+// Neutral boxed stat (label stacked on top of value), matching the EV/CLV badge shape.
+function StatBox({ label, value, valueSize = 15, flex = false }) {
+  return (
+    <div style={{ flex: flex ? 1 : '0 0 auto', minWidth: 0, textAlign: 'center', padding: '5px 9px', borderRadius: 8, background: '#141414', border: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ fontFamily: R, fontSize: 8, color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
+      <div style={{ fontFamily: R, fontSize: valueSize, fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>{value}</div>
     </div>
   )
 }
@@ -104,12 +114,9 @@ export function BetCard({ bet, grade, compact = false }) {
       {/* Progress bar sits ABOVE the odds (always shown for over/under bets, empty pre-game). */}
       <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
       <ScoreChip text={leg.scoreLine} status={st} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 11 }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#141414', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '7px 10px' }}>
-          <span style={{ fontFamily: R, fontSize: 9, color: MUTED, letterSpacing: '0.1em' }}>ODDS</span>
-          <span style={{ fontFamily: R, fontSize: 17, fontWeight: 700, color: TEXT }}>{fmtOdds(bet.odds)}</span>
-          {win != null && <span style={{ fontFamily: R, fontSize: 11, color: MUTED, marginLeft: 'auto' }}>${Number(bet.stake).toFixed(0)} → ${win.toFixed(0)}</span>}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, marginTop: 11 }}>
+        <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
+        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {grade?.clvPct != null && <GradeBadge label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
       </div>
@@ -161,13 +168,10 @@ export function BetTicket({ bet, grade }) {
         {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} /></div>)}
       </div>
 
-      {/* Bottom matches the single (Wheeler) card exactly: ODDS tile (odds + stake→win) + EV + CLV badges. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 13px 12px' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#141414', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '7px 10px' }}>
-          <span style={{ fontFamily: R, fontSize: 9, color: MUTED, letterSpacing: '0.1em' }}>ODDS</span>
-          <span style={{ fontFamily: R, fontSize: 17, fontWeight: 700, color: TEXT }}>{fmtOdds(bet.odds)}</span>
-          {win != null && <span style={{ fontFamily: R, fontSize: 11, color: MUTED, marginLeft: 'auto' }}>${Number(bet.stake).toFixed(0)} → ${win.toFixed(0)}</span>}
-        </div>
+      {/* Bottom matches the single (Wheeler) card: separate ODDS box (label stacked) + STAKE→WIN box + EV + CLV. */}
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, padding: '0 13px 12px' }}>
+        <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
+        {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {clvVal != null && <GradeBadge label="CLV" value={`${clvVal >= 0 ? '+' : ''}${clvVal.toFixed(1)}%`} good={clvVal >= 0} />}
       </div>
