@@ -4107,11 +4107,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
       {/* TABS — desktop only */}
       {!isMobile && (
-        <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 28px', display: 'flex', justifyContent: 'center', backgroundColor: 'var(--bg)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 12px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', backgroundColor: 'var(--bg)' }}>
           {[['live','Game Center'],['bot','Matrix Bot'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
-              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.22em',
-              textTransform: 'uppercase', padding: '11px 20px',
+              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
+              textTransform: 'uppercase', padding: '10px 13px',
               background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
               color: tab === t ? NEON_T : 'var(--text-dim)',
               borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
