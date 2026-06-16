@@ -46,7 +46,7 @@ function headshotFor(title, players) {
 
 // Give each leg a real image: a player headshot for player props, else the correct team
 // logo from the matched event, else the league logo. Mutates and returns the normalized bet.
-function withLogos(n, ev, players = [], boxStats = null, events = []) {
+export function withLogos(n, ev, players = [], boxStats = null, events = []) {
   for (const leg of n.legs) {
     // Each parlay leg can be a different game — match the leg to its OWN event (by its
     // event name) so ML/spread legs get real team logos + score, not the league fallback.

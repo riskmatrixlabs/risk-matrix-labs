@@ -85,16 +85,23 @@ function GradeBadge({ label, value, good }) {
 }
 
 // Neutral boxed stat (label stacked on top of value), matching the EV/CLV badge shape.
-function StatBox({ label, value, valueSize = 15, flex = false }) {
+function StatBox({ label, value, valueSize = 15, flex = false, color = TEXT }) {
   return (
     <div style={{ flex: flex ? 1 : '0 0 auto', minWidth: 0, textAlign: 'center', padding: '5px 9px', borderRadius: 8, background: '#141414', border: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <div style={{ fontFamily: R, fontSize: 8, color: MUTED, letterSpacing: '0.1em' }}>{label}</div>
-      <div style={{ fontFamily: R, fontSize: valueSize, fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>{value}</div>
+      <div style={{ fontFamily: R, fontSize: valueSize, fontWeight: 700, color, whiteSpace: 'nowrap' }}>{value}</div>
     </div>
   )
 }
 
-export function BetCard({ bet, grade, compact = false }) {
+// P&L box for the bet-log footer (green/red). Renders only when a pnl value is supplied.
+function PnlBox({ pnl }) {
+  if (pnl == null) return null
+  const v = `${pnl >= 0 ? '+' : '-'}$${Math.abs(Math.round(pnl))}`
+  return <StatBox label="P&L" value={v} valueSize={13} color={pnl >= 0 ? NEON : '#FF3B3B'} />
+}
+
+export function BetCard({ bet, grade, compact = false, pnl = null }) {
   const st = bet.status
   const leg = bet.legs[0] || {}
   const winProb = grade?.winProb ?? leg.winProb ?? null
@@ -117,6 +124,7 @@ export function BetCard({ bet, grade, compact = false }) {
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, marginTop: 11 }}>
         <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
         {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
+        <PnlBox pnl={pnl} />
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {grade?.clvPct != null && <GradeBadge label="CLV" value={`${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%`} good={grade.clvPct >= 0} />}
       </div>
@@ -144,7 +152,7 @@ function LegRow({ leg }) {
   )
 }
 
-export function BetTicket({ bet, grade }) {
+export function BetTicket({ bet, grade, pnl = null }) {
   const t = ticketStatus(bet.legs)
   const clvVal = grade?.clvPct ?? slipClv(bet.legs.map(l => ({ entry: l.odds, close: l.close }))).clvPct
   const win = toWin(bet.odds, bet.stake)
@@ -172,6 +180,7 @@ export function BetTicket({ bet, grade }) {
       <div style={{ display: 'flex', alignItems: 'stretch', gap: 7, padding: '0 13px 12px' }}>
         <StatBox label="ODDS" value={fmtOdds(bet.odds)} />
         {win != null && <StatBox label="STAKE → WIN" value={`$${Number(bet.stake).toFixed(0)} → $${win.toFixed(0)}`} valueSize={13} flex />}
+        <PnlBox pnl={pnl} />
         {grade?.evPct != null && <GradeBadge label="EV" value={`${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`} good={grade.evPct >= 0} />}
         {clvVal != null && <GradeBadge label="CLV" value={`${clvVal >= 0 ? '+' : ''}${clvVal.toFixed(1)}%`} good={clvVal >= 0} />}
       </div>

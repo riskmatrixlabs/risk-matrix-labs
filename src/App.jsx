@@ -30,7 +30,8 @@ import {
 import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio, Tv, Ticket } from 'lucide-react'
 import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
-import MatrixBot    from './components/MatrixBot'
+import MatrixBot, { withLogos } from './components/MatrixBot'
+import { fetchEvents as fetchBetEvents } from './lib/events.js'
 import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
@@ -770,7 +771,8 @@ function AddBetModal({ onAdd, onClose, unitSize, initial }) {
 }
 
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
-function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn }) {
+function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [] }) {
+  const normWithLogos = () => withLogos(normalizeBet(bet), null, [], null, events)
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
 
@@ -899,47 +901,17 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
   return (<>
     <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', marginBottom: isLadder && bet.result === 'W' && bet.pull && bet.pullNote ? '0' : '5px', borderLeft: `3px solid ${accentColor}` }}>
 
-      {/* Event row */}
-      {eventLabel && (
+      {/* Event row — ladder only; the Wheeler card shows the matchup itself for normal bets */}
+      {eventLabel && isLadder && (
         <div style={{ padding: '7px 10px 0', fontFamily: R, fontSize: '9px', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.06em' }}>
           {eventLabel}
         </div>
       )}
 
-      {/* ── OPEN layout: matches ladder card ── */}
+      {/* ── OPEN layout: Wheeler card (logos + ODDS/STAKE→WIN boxes) + settle buttons ── */}
       {isOpen ? (<>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 10px 0', gap: '8px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: YELLOW, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {pickText}
-            </div>
-            {ParlayLegs}
-          </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, lineHeight: 1, color: YELLOW }}>
-              {toWin > 0 ? `+${fmt$(toWin)}` : '—'}
-            </div>
-            <div style={{ fontFamily: R, fontSize: '8px', color: 'var(--muted)', marginTop: '1px', letterSpacing: '0.08em' }}>to win</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 10px 6px', gap: '6px' }}>
-          {badgePill('OPEN', YELLOW, 'rgba(245,166,35,0.12)', 'rgba(245,166,35,0.4)')}
-          <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{bet.book || '—'}</span>
-          {bet.sport && <span style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)' }}>{bet.sport}</span>}
-          {bet.confidence > 0 && <span style={{ fontSize: '9px', letterSpacing: '-1px' }}>{'⭐'.repeat(bet.confidence)}</span>}
-          <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: bet.odds > 0 ? NEON_T : 'var(--text-sub)', marginLeft: 'auto' }}>{fmtOdds(bet.odds)}</span>
-        </div>
-        <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-          {[
-            { label: 'STAKE', val: bet.stake > 0 ? fmt$(bet.stake) : '—',     color: 'var(--text)' },
-            { label: 'TO WIN', val: toWin > 0 ? `+${fmt$(toWin)}` : '—',      color: NEON_T },
-            { label: 'UNITS',  val: bet.units > 0 ? `${bet.units}u` : '—',    color: 'var(--text)' },
-          ].map(({ label, val, color }, idx) => (
-            <div key={label} style={{ flex: 1, padding: '5px 8px', borderRight: idx < 2 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontFamily: R, fontSize: '7px', fontWeight: 600, letterSpacing: '0.1em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '2px' }}>{label}</div>
-              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color, lineHeight: 1 }}>{val}</div>
-            </div>
-          ))}
+        <div style={{ padding: '6px 8px 7px' }}>
+          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} /> : <UniBetCard bet={n} /> })()}
         </div>
         <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
           {[
@@ -970,7 +942,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
       {/* ── SETTLED descriptive row — universal card for non-ladder bets ── */}
       {!isLadder ? (
         <div style={{ padding: '6px 8px 7px' }}>
-          {(() => { const n = normalizeBet(bet); return n.kind === 'parlay' ? <UniBetTicket bet={n} /> : <UniBetCard bet={n} /> })()}
+          {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} pnl={pnlDollar} /> : <UniBetCard bet={n} pnl={pnlDollar} /> })()}
         </div>
       ) : (<>
       <div style={{ display: 'flex', alignItems: 'center', padding: eventLabel ? '3px 10px 5px' : '8px 10px 5px', gap: '8px' }}>
@@ -1002,8 +974,9 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
       </div>
       </>)}
 
-      {/* ── SETTLED FOOTER: stats bar + edit/delete ── */}
+      {/* ── SETTLED FOOTER: stats bar (ladder only — the Wheeler card already shows ODDS/STAKE→WIN/P&L for non-ladder) + edit/delete ── */}
       {!isOpen && (<>
+        {isLadder && (
         <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
           {[
             { label: 'ODDS',    val: fmtOdds(bet.odds),                                  color: bet.odds > 0 ? NEON_T : 'var(--text)' },
@@ -1016,6 +989,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn })
             </div>
           ))}
         </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', padding: '3px 8px', borderTop: '1px solid var(--border)' }}>
           {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Share2 size={12} /></button>}
           {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.25)', padding: '3px', display: 'flex', alignItems: 'center' }} onTouchStart={e => e.currentTarget.style.color = NEON}    onTouchEnd={e => e.currentTarget.style.color = 'rgba(189,255,0,0.25)'}><Pencil size={12} /></button>}
@@ -2411,6 +2385,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [username,       setUsername]       = useState(isDemo ? 'OPERATOR' : (saved.current?.username ?? 'OPERATOR'))
   const [sportFilter,  setSportFilter]  = useState('ALL')
   const [resultFilter, setResultFilter] = useState('ALL')
+  // Today+yesterday events (FREE, Supabase) so bet-log cards resolve real team logos via withLogos.
+  const [betEvents, setBetEvents] = useState([])
+  useEffect(() => {
+    let on = true
+    const SP = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
+    Promise.all(SP.flatMap(s => [fetchBetEvents(s, 'today'), fetchBetEvents(s, 'yesterday')]))
+      .then(rs => { if (on) setBetEvents(rs.flatMap(r => r?.data || [])) })
+      .catch(() => {})
+    return () => { on = false }
+  }, [])
   const [sortCol,      setSortCol]      = useState('date')
   const [sortDir,      setSortDir]      = useState('desc')
   const [showAdd,      setShowAdd]      = useState(false)
@@ -4987,6 +4971,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     }}
                     onShare={setShareCardBet}
                     unitSize={stats.unitSize}
+                    events={betEvents}
                   />
                 ))}
                 {filtered.length === 0 && (
