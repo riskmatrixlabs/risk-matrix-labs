@@ -3190,7 +3190,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
                         {/* picks — each with an on/off toggle (keep a leg but leave it out) */}
                         <div style={{ ...lbl, color: MUTED }}>Your picks · {enabled.length}/{slip.length} on</div>
-                        {slip.map((l, i) => { const off = slipOff.has(l.pick); return (
+                        {slip.map((l, i) => { const off = slipOff.has(l.pick); const bf = bestForLeg(l); return (
                           <div key={i} style={{ padding: '9px 0', borderTop: '1px solid var(--border)', opacity: off ? 0.4 : 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
@@ -3206,7 +3206,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '2px', paddingLeft: '43px' }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                                <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
+                                <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {BOOK_NAMES[bf.book] || bf.book || '—'}{bf.odds ? ` ${fmt(bf.odds)}` : ''}</span>
                                 {l.evPct != null && <span title={l.consensus ? 'consensus edge (de-vig avg of all books)' : 'edge vs sharp (Pinnacle)'} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, padding: '1px 5px', borderRadius: '5px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)' }}>{l.consensus ? '~' : '+'}{Number(l.evPct).toFixed(1)}% edge</span>}
                               </span>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
