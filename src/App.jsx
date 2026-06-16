@@ -3049,8 +3049,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   return (
     <div data-theme={darkMode ? 'dark' : 'light'} style={{ backgroundColor: 'var(--bg)', minHeight: '100vh', fontFamily: R, overflowX: 'hidden', maxWidth: isMobile ? '100vw' : '580px', margin: isMobile ? '0' : '0 auto', boxShadow: isMobile ? 'none' : '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.5)' }}>
-      {/* ── BET MATRIX (slip + line shopper) — persistent launcher on Game Center / Matrix Bot ── */}
-      {(tab === 'live' || tab === 'bot') && (() => {
+      {/* ── BET MATRIX (slip + line shopper) — persistent launcher on Game Center · Dashboard · Matrix Bot ── */}
+      {(tab === 'live' || tab === 'bot' || ['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners'].includes(tab)) && (() => {
         const combo = slipComboOdds()
         const stk = Number(slipStake) || 0
         const payout = stk > 0 ? stk * amToDec(combo) : 0
