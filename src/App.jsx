@@ -911,37 +911,35 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
 
       {/* ── NON-LADDER: Wheeler card + sleek collapsed actions drawer ── */}
       {!isLadder ? (<>
-        <div style={{ padding: '6px 8px 7px' }}>
+        {/* The card itself is the pull-down — tap anywhere to reveal actions. Subtle chevron = the only cue. */}
+        <div onClick={() => setActionsOpen(o => !o)} style={{ cursor: 'pointer', padding: '6px 8px 0' }}>
           {(() => { const n = normWithLogos(); return n.kind === 'parlay' ? <UniBetTicket bet={n} pnl={isOpen ? null : pnlDollar} /> : <UniBetCard bet={n} pnl={isOpen ? null : pnlDollar} /> })()}
-        </div>
-        {/* slim toggle — keeps the card compact when closed */}
-        <button onClick={() => setActionsOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '5px 0', background: actionsOpen ? 'rgba(189,255,0,0.04)' : 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer', color: 'var(--muted)', fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
-          {actionsOpen ? 'Close' : (isOpen ? 'Settle · Manage' : 'Manage')}
-          <ChevronDown size={11} style={{ transform: actionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-        </button>
-        <div style={{ display: 'grid', gridTemplateRows: actionsOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.22s ease' }}>
-          <div style={{ overflow: 'hidden' }}>
-            {isOpen ? (
-              <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
-                {[
-                  { r: 'W', label: 'WIN ✓',  color: NEON_T, bg: 'rgba(189,255,0,0.07)' },
-                  { r: 'L', label: 'LOSS ✗', color: RED,    bg: 'rgba(255,59,59,0.07)' },
-                  { r: 'P', label: 'PUSH',   color: MUTED,  bg: 'transparent' },
-                ].map(({ r, label, color, bg }) => (
-                  <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '9px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)', cursor: 'pointer', background: bg, color }}
-                    onTouchStart={e => e.currentTarget.style.opacity = '0.7'} onTouchEnd={e => e.currentTarget.style.opacity = '1'}>{label}</button>
-                ))}
-                <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>
-                <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center', borderLeft: '1px solid var(--border)' }}><Share2 size={12} /></button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
-                {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Share2 size={13} /> SHARE</button>}
-                {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Pencil size={13} /> EDIT</button>}
-                {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.5)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Trash2 size={13} /> DELETE</button>}
-              </div>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3px', paddingBottom: '4px' }}>
+            <ChevronDown size={15} color={actionsOpen ? NEON_T : 'var(--border2)'} style={{ transform: actionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
           </div>
+        </div>
+        {/* max-height pull-down — animates reliably on iOS Safari (grid-rows did not) */}
+        <div style={{ maxHeight: actionsOpen ? '64px' : '0', overflow: 'hidden', transition: 'max-height 0.26s ease' }}>
+          {isOpen ? (
+            <div style={{ display: 'flex', borderTop: '1px solid var(--border)' }}>
+              {[
+                { r: 'W', label: 'WIN ✓',  color: NEON_T, bg: 'rgba(189,255,0,0.07)' },
+                { r: 'L', label: 'LOSS ✗', color: RED,    bg: 'rgba(255,59,59,0.07)' },
+                { r: 'P', label: 'PUSH',   color: MUTED,  bg: 'transparent' },
+              ].map(({ r, label, color, bg }) => (
+                <button key={r} onClick={() => onSettle?.(bet.id, r)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', padding: '9px 0', flex: 1, border: 'none', borderRight: '1px solid var(--border)', cursor: 'pointer', background: bg, color }}
+                  onTouchStart={e => e.currentTarget.style.opacity = '0.7'} onTouchEnd={e => e.currentTarget.style.opacity = '1'}>{label}</button>
+              ))}
+              <button onClick={() => onEdit?.(bet)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center' }}><Pencil size={12} /></button>
+              <button onClick={() => onShare?.({ ...bet, _bankIn: bankIn })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.4)', padding: '0 12px', display: 'flex', alignItems: 'center', borderLeft: '1px solid var(--border)' }}><Share2 size={12} /></button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
+              {onShare  && <button onClick={() => onShare({ ...bet, _bankIn: bankIn })}   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Share2 size={13} /> SHARE</button>}
+              {onEdit   && <button onClick={() => onEdit(bet)}    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(189,255,0,0.45)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Pencil size={13} /> EDIT</button>}
+              {onDelete && <button onClick={() => onDelete(bet.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,59,59,0.5)', padding: '3px', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}><Trash2 size={13} /> DELETE</button>}
+            </div>
+          )}
         </div>
       </>) : (<>
         {/* ── LADDER (settled) — original compact layout ── */}
