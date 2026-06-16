@@ -3836,7 +3836,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <img src="/brand/logos/logo-dashboard.png" alt="RML" style={{ height: isMobile ? '36px' : '50px' }} />
             <div>
-              <div style={{ fontFamily: R, fontWeight: 700, fontSize: isMobile ? '13px' : '17px', letterSpacing: '0.22em', color: 'var(--neon-title)', lineHeight: 1, textShadow: 'var(--neon-glow)' }}>RISK MATRIX LABS</div>
+              <div style={{ fontFamily: R, fontWeight: 700, fontSize: isMobile ? '13px' : '16px', letterSpacing: isMobile ? '0.22em' : '0.12em', color: 'var(--neon-title)', lineHeight: 1, textShadow: 'var(--neon-glow)', whiteSpace: 'nowrap' }}>RISK MATRIX LABS</div>
               <div style={{ fontFamily: R, fontWeight: 500, fontSize: '8px', letterSpacing: '0.32em', color: 'var(--neon-sub)', marginTop: '3px' }}>OPERATE WITH DISCIPLINE</div>
             </div>
           </div>
@@ -3931,7 +3931,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: isMobile ? '8px' : '8px', flexWrap: isMobile ? 'nowrap' : 'wrap' }}>
 
           {/* ── DESKTOP NAV: Live | ? | Theme | NEW | OPERATOR | Share ── */}
           {!isMobile && <>
@@ -4105,22 +4105,42 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         </div>
       </header>
 
-      {/* TABS — desktop only */}
-      {!isMobile && (
-        <div style={{ borderBottom: `1px solid var(--border)`, padding: '0 12px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', backgroundColor: 'var(--bg)' }}>
-          {[['live','Game Center'],['bot','Matrix Bot'],['overview','Analytics'],['ladder','Ladder'],['bet log','Bet Log'],['analytics','Overview'],['rr engine','RR Engine'],['session','Session'],['partners','Partners']].map(([t, label]) => (
-            <button key={t} onClick={() => setTab(t)} data-active={tab === t} style={{
-              fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em',
-              textTransform: 'uppercase', padding: '10px 13px',
-              background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
-              color: tab === t ? NEON_T : 'var(--text-dim)',
-              borderBottom: tab === t ? `2px solid ${NEON}` : '2px solid transparent',
-              marginBottom: '-1px', transition: 'color 0.15s',
-              textShadow: tab === t && darkMode ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
-            }}>{label}</button>
-          ))}
-        </div>
-      )}
+      {/* TABS — desktop only: 3-pillar primary + dashboard secondary (matches mobile's 3 doors) */}
+      {!isMobile && (() => {
+        const DASH = ['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners']
+        const inDash = DASH.includes(tab)
+        const primary = [['live', 'Game Center'], ['__dash__', 'Dashboard'], ['bot', 'Matrix Bot']]
+        const sub = [['overview', 'Analytics'], ['analytics', 'Overview'], ['ladder', 'Ladder'], ['bet log', 'Bet Log'], ['rr engine', 'RR Engine'], ['session', 'Session'], ['partners', 'Partners']]
+        const activePrimary = (t) => t === '__dash__' ? inDash : tab === t
+        return (
+          <>
+            <div style={{ borderBottom: `1px solid var(--border)`, display: 'flex', justifyContent: 'center', gap: '4px', backgroundColor: 'var(--bg)', padding: '0 12px' }}>
+              {primary.map(([t, label]) => (
+                <button key={t} onClick={() => setTab(t === '__dash__' ? 'overview' : t)} style={{
+                  fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase',
+                  padding: '13px 22px', background: 'none', border: 'none', cursor: 'pointer',
+                  color: activePrimary(t) ? NEON_T : 'var(--text-dim)',
+                  borderBottom: activePrimary(t) ? `2px solid ${NEON}` : '2px solid transparent', marginBottom: '-1px',
+                  transition: 'color 0.15s', textShadow: activePrimary(t) && darkMode ? '0 0 14px rgba(189,255,0,0.3)' : 'none',
+                }}>{label}</button>
+              ))}
+            </div>
+            {inDash && (
+              <div style={{ borderBottom: `1px solid var(--border)`, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '5px', backgroundColor: 'var(--card)', padding: '8px 12px' }}>
+                {sub.map(([t, label]) => (
+                  <button key={t} onClick={() => setTab(t)} style={{
+                    fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    padding: '6px 13px', borderRadius: '100px', cursor: 'pointer',
+                    border: `1px solid ${tab === t ? NEON : 'var(--border2)'}`,
+                    background: tab === t ? 'rgba(189,255,0,0.1)' : 'transparent',
+                    color: tab === t ? NEON_T : 'var(--text-dim)', transition: 'all 0.12s',
+                  }}>{label}</button>
+                ))}
+              </div>
+            )}
+          </>
+        )
+      })()}
 
       {/* TILT BANNER — sticky on mobile so it doesn't scroll away */}
       <div style={isMobile && tilt.level !== 'GREEN' && !tiltDismissed ? {
