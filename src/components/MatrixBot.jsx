@@ -116,23 +116,39 @@ async function shareNative(text, url = 'https://app.riskmatrixlabs.com') {
   } catch { /* user cancelled — ignore */ }
 }
 
-// + Slip / share controls hung on a bot output row. Additive only — stops propagation so the
-// row's own tap (→ analyze in CH2) still works.
-function OutputActions({ row, onAddToSlip, compact = false }) {
-  const added = useRef(false)
-  const [, force] = useState(0)
-  const add = (e) => { e.stopPropagation(); if (!onAddToSlip) return; onAddToSlip(legFromRow(row)); added.current = true; force(n => n + 1); setTimeout(() => { added.current = false; force(n => n + 1) }, 1100) }
-  const share = (e) => { e.stopPropagation(); shareNative(pickShareText(row, bookLabel), row.link || undefined) }
-  const btn = { background: 'transparent', border: `1px solid ${NEON}`, borderRadius: '7px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }
-  if (compact) {
-    return (
-      <button onClick={add} title="Add to slip" style={{ ...btn, padding: '6px 8px', fontSize: '13px', background: added.current ? NEON : 'transparent', color: added.current ? '#0A0A0A' : NEON_T }}>{added.current ? '✓' : '+'}</button>
-    )
-  }
+// Image for an output row: player headshot for props, else the matched team's logo
+// (side resolved from the pick), else the league badge as a clean fallback.
+function rowImage(r) {
+  const g = r.game || {}
+  if (r.isProp) return r.headshot || null
+  const side = teamSide(r.label, { away_abbr: g.away_abbr, home_abbr: g.home_abbr, away_team: g.away_team || g.away, home_team: g.home_team || g.home })
+  if (side === 'away') return g.away_logo || null
+  if (side === 'home') return g.home_logo || null
+  return null
+}
+
+function Avatar({ row, size = 38 }) {
+  const url = rowImage(row) || LEAGUE_LOGO[String(row.game?.sport || '').toUpperCase()]
+  if (!url) return <div style={{ width: size, height: size, flexShrink: 0 }} />
   return (
-    <div style={{ display: 'flex', gap: '6px', marginTop: '9px' }}>
-      <button onClick={add} title="Add to slip" style={{ ...btn, flex: 1, padding: '7px 0', fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', background: added.current ? NEON : 'transparent', color: added.current ? '#0A0A0A' : NEON_T }}>{added.current ? '✓ Added' : '+ Slip'}</button>
-      <button onClick={share} title="Share this pick" style={{ ...btn, padding: '7px 12px', fontSize: '13px' }}>➦</button>
+    <img src={url} alt="" width={size} height={size}
+      onError={e => { e.currentTarget.style.visibility = 'hidden' }}
+      style={{ width: size, height: size, borderRadius: row.isProp ? '50%' : '8px', background: '#15181c', objectFit: row.isProp ? 'cover' : 'contain', flexShrink: 0, border: `1px solid ${BORDER}` }} />
+  )
+}
+
+// Compact + Slip / share controls hung on a bot output row — small icons, not a full bar.
+// Additive only — stops propagation so the row's own tap (→ analyze in CH2) still works.
+function OutputActions({ row, onAddToSlip, compact = false }) {
+  const [added, setAdded] = useState(false)
+  const add = (e) => { e.stopPropagation(); if (!onAddToSlip) return; onAddToSlip(legFromRow(row)); setAdded(true); setTimeout(() => setAdded(false), 1100) }
+  const share = (e) => { e.stopPropagation(); shareNative(pickShareText(row, bookLabel), row.link || undefined) }
+  const ico = (active) => ({ width: '27px', height: '27px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: active ? NEON : 'transparent', border: `1px solid ${NEON}`, borderRadius: '7px', color: active ? '#0A0A0A' : NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '14px', fontWeight: 700, lineHeight: 1, flexShrink: 0 })
+  if (compact) return <button onClick={add} title="Add to slip" style={ico(added)}>{added ? '✓' : '+'}</button>
+  return (
+    <div style={{ display: 'flex', gap: '5px' }}>
+      <button onClick={add} title="Add to slip" style={ico(added)}>{added ? '✓' : '+'}</button>
+      <button onClick={share} title="Share this pick" style={ico(false)}>➦</button>
     </div>
   )
 }
@@ -288,7 +304,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
     return m
   }, [preGames])
 
-  const buildGame = (ev) => ({ away: ev.away_team, home: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, sport: ev._sport, external_event_id: ev.external_event_id, commenceTime: ev.start_time })
+  const buildGame = (ev) => ({ away: ev.away_team, home: ev.home_team, away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, away_logo: ev.away_logo, home_logo: ev.home_logo, sport: ev._sport, external_event_id: ev.external_event_id, commenceTime: ev.start_time })
   const resolveGame = (e) => {
     const ev = evByKey[gameKey(e.away, e.home)]
     return ev ? buildGame(ev) : { away: e.away, home: e.home, sport: e._sport, external_event_id: '', commenceTime: e.commenceTime }
@@ -367,7 +383,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
       .map(e => ({ key: `gl:${e._sport}:${gameKey(e)}:${e.market}:${e.outcome}:${e.point}`, label: pickLabel(e), book: e.best.book, sub: `${up(e.away)}@${up(e.home)}`, price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: resolveGame(e), link: e.best.link || null }))
     const pr = !showProps ? [] : (props?.edges || [])
       .filter(p => inSport(p._sport) && (propCat === 'ALL' || p.market === propCat) && (p.evPct == null ? minEv === 0 : p.evPct >= minEv))
-      .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game, link: p.best.link || null }))
+      .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game, link: p.best.link || null, headshot: p.headshot || null }))
     return [...gl, ...pr]
       .filter(r => bookF === 'ALL' || r.book === bookF)
       .sort((a, b) => (b.evPct ?? -1) - (a.evPct ?? -1))
@@ -470,16 +486,17 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
         {status === 'done' && rows.map((r, i) => {
           const top = i === 0
           return (
-            <div key={r.key} onClick={() => r.game && onPick(r.game)} style={{ cursor: 'pointer', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: 'rgba(189,255,0,0.04)', borderRadius: '0 8px 8px 0', padding: '11px 13px', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '2px' }}>PROP</span>}{r.label}</span>
-                <span className="tv-glow" style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON_T }}>{fmtAm(r.price)}</span>
+            <div key={r.key} onClick={() => r.game && onPick(r.game)} style={{ display: 'flex', alignItems: 'center', gap: '11px', cursor: 'pointer', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: 'rgba(189,255,0,0.04)', borderRadius: '0 8px 8px 0', padding: '11px 13px', marginBottom: '8px' }}>
+              <Avatar row={r} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '2px' }}>PROP</span>}{r.label}</div>
+                <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · bet $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
-                <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · bet $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</span>
-                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}% EDGE` : 'LINE SHOP'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                <OutputActions row={r} onAddToSlip={onAddToSlip} />
+                <span className="tv-glow" style={{ fontFamily: R, fontSize: '21px', fontWeight: 700, color: NEON_T, lineHeight: 1 }}>{fmtAm(r.price)}</span>
+                <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}% EDGE` : 'LINE SHOP'}</span>
               </div>
-              <OutputActions row={r} onAddToSlip={onAddToSlip} />
             </div>
           )
         })}
@@ -553,12 +570,15 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
         const top = i === 0
         return (
           <div key={r.key} onClick={() => r.game && onPickGame(r.game)} style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #111', borderLeft: `3px solid ${top ? NEON : 'transparent'}`, background: top ? 'rgba(189,255,0,0.04)' : 'transparent' }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '1px' }}>PROP</span>}
-                {r.label}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+              <Avatar row={r} size={26} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {r.isProp && <span style={{ fontSize: '8px', color: '#5DCAA5', border: '1px solid #5DCAA5', borderRadius: '3px', padding: '1px 4px', marginRight: '6px', verticalAlign: '1px' }}>PROP</span>}
+                  {r.label}
+                </div>
+                <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · BET $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</div>
               </div>
-              <div style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · BET $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</div>
             </div>
             <div style={{ textAlign: 'right', fontFamily: R, fontSize: '15px', fontWeight: 700, color: top ? NEON_T : TEXT }}>{fmtAm(r.price)}</div>
             <div style={{ textAlign: 'right', fontFamily: R, fontSize: '13px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}%` : 'SHOP'}</div>
