@@ -2912,6 +2912,43 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     setSlip(p => p.some(l => l.pick === leg.pick) ? p : [...p, { pick: leg.pick, odds: Number(leg.odds) || 0, book: leg.book || null, link: leg.link || null, byBook: leg.byBook || null, byBookLink: leg.byBookLink || null, evPct: leg.evPct ?? null, consensus: leg.consensus ?? null, sport: leg.sport || null, event: leg.event || null }])
   }
   const removeLeg = (i) => setSlip(p => p.filter((_, idx) => idx !== i))
+
+  // Fill the next open TBD ladder rung with a slip leg's CONTENT (pick · odds · book · event).
+  // Stake stays formula-driven (the rung's funding-from-winnings amount is untouched). Returns true if filled.
+  const addToLadder = (leg) => {
+    if (!leg?.pick) return false
+    const rungs = bets.filter(b => b.ladder && b.ladderSession === ladderSessionKey && b.result === 'Open')
+      .sort((a, z) => (a.ladderId ?? 999) - (z.ladderId ?? 999))
+    const target = rungs.find(b => !b.pick || b.pick === 'TBD')
+    if (!target) { alert('No open ladder rung to fill. Open Dashboard → Ladder and add a rung first.'); return false }
+    const updated = { ...target, pick: leg.pick, odds: Number(leg.odds) || target.odds, book: leg.book || target.book, event: leg.event || target.event, sport: leg.sport || target.sport, betType: 'Straight' }
+    setBets(p => p.map(b => b.id === target.id ? updated : b))
+    if (userId && cloudSyncedRef.current) {
+      realtimeIgnoreUntil.current = Date.now() + 5000
+      upsertBet(updated, userId, tokenRef.current).then(({ error }) => { if (error) console.error('[RML] addToLadder upsert:', error) }).catch(e => console.error('[RML] addToLadder threw:', e))
+    }
+    return true
+  }
+  const addAllToLadder = () => {
+    // Single pass (setBets batches — can't call addToLadder in a loop): match slip legs to open TBD rungs in order.
+    const rungs = bets.filter(b => b.ladder && b.ladderSession === ladderSessionKey && b.result === 'Open' && (!b.pick || b.pick === 'TBD'))
+      .sort((a, z) => (a.ladderId ?? 999) - (z.ladderId ?? 999))
+    if (!rungs.length) { alert('No open ladder rungs to fill. Open Dashboard → Ladder and add rungs first.'); return }
+    const n = Math.min(rungs.length, slip.length)
+    const updates = []
+    for (let i = 0; i < n; i++) {
+      const leg = slip[i], t = rungs[i]
+      updates.push({ ...t, pick: leg.pick, odds: Number(leg.odds) || t.odds, book: leg.book || t.book, event: leg.event || t.event, sport: leg.sport || t.sport, betType: 'Straight' })
+    }
+    const byId = Object.fromEntries(updates.map(u => [u.id, u]))
+    setBets(p => p.map(b => byId[b.id] || b))
+    if (userId && cloudSyncedRef.current) {
+      realtimeIgnoreUntil.current = Date.now() + 8000
+      updates.forEach(u => upsertBet(u, userId, tokenRef.current).catch(() => {}))
+    }
+    setSlip(p => p.slice(n)); setSlipOpen(false)
+    if (slip.length > n) alert(`Filled ${n} rung(s). ${slip.length - n} pick(s) left — no more open rungs.`)
+  }
   const amToDec = (a) => a == null ? 1 : (a > 0 ? 1 + a / 100 : 1 + 100 / -a)
   const decToAm = (d) => d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1))
   const enabledLegs = () => slip.filter(l => !slipOff.has(l.pick))
@@ -3143,7 +3180,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                                 <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>best: {l.book || '—'}</span>
                                 {l.evPct != null && <span title={l.consensus ? 'consensus edge (de-vig avg of all books)' : 'edge vs sharp (Pinnacle)'} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, padding: '1px 5px', borderRadius: '5px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)' }}>{l.consensus ? '~' : '+'}{Number(l.evPct).toFixed(1)}% edge</span>}
                               </span>
-                              {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                <button onClick={() => { if (addToLadder(l)) removeLeg(i) }} title="Send this pick to the next ladder rung" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: '5px', padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🪜 → Ladder</button>
+                                {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
+                              </span>
                             </div>
                           </div>
                         )})}
@@ -3154,6 +3194,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                             style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, outline: 'none' }} />
                           {payoutVal > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>→ ${payoutVal.toFixed(2)}</span>}
                         </div>
+                        <button onClick={addAllToLadder} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'rgba(245,166,35,0.1)', color: '#F5A623', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🪜 Add all to Ladder</button>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                           <button onClick={() => { setSlip([]); setSlipStake(''); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
                           <button onClick={() => { logParlay(slipStake); setSlipStake('') }} disabled={!enabled.length} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: enabled.length ? 'pointer' : 'not-allowed', opacity: enabled.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{isStraights ? `Log ${enabled.length} Straight${enabled.length === 1 ? '' : 's'}` : enabled.length >= 2 ? `Log ${enabled.length}-Leg Parlay` : 'Log Bet'}</button>

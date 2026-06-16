@@ -29,11 +29,13 @@ function RankBadge({ rank }) {
 function signalToLeg(ev, ou) {
   const side = ou.lean === 'OVER' ? 'Over' : 'Under'
   const juice = ou.lean === 'OVER' ? ou.total?.overJuice : ou.total?.underJuice
+  const matchup = `${ev.away_abbr}@${ev.home_abbr}`
   return {
-    pick: `${side} ${ou.total?.current ?? ''}`.trim(),
+    // Include the matchup so two games with the same total (e.g. both "Over 10") don't collide in the slip's dedup.
+    pick: `${matchup} ${side} ${ou.total?.current ?? ''}`.trim(),
     odds: juice != null ? juice : -110,
     sport: 'MLB',
-    event: `${ev.away_abbr}@${ev.home_abbr}`,
+    event: matchup,
     book: null,
   }
 }
