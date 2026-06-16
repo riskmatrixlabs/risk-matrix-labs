@@ -2885,6 +2885,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slip, setSlip] = useState([])           // legs: [{ pick, odds, book?, sport?, event? }]
   const [slipOpen, setSlipOpen] = useState(false)
   const [slipStake, setSlipStake] = useState('')
+  const [slipStakes, setSlipStakes] = useState({})   // per-leg stake for Straights mode, keyed by pick
+  const legStakeOf = (l) => Number(slipStakes[l.pick] ?? slipStake) || 0
   const [slipMode, setSlipMode] = useState('parlay')      // 'parlay' | 'straights'
   const [showOutRegion, setShowOutRegion] = useState(false) // expand the "not in your region" list
   const [slipOff, setSlipOff] = useState(() => new Set())  // picks toggled OFF (kept in slip, excluded from bet)
@@ -2966,23 +2968,26 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     const stk = Number(stake) || 0
     const mkUnits = () => (stats.unitSize ? stk / stats.unitSize : 0)
     if (slipMode === 'straights') {
-      // log each enabled leg as its own straight bet (stake applies to each)
-      legs.forEach((l, i) => commitBet({
-        id: Date.now() + i,
-        date: new Date().toISOString().slice(0, 10),
-        sport: l.sport || '',
-        book: l.book || '',
-        betType: 'Straight',
-        event: l.event || '',
-        pick: l.pick,
-        odds: Number(l.odds) || 0,
-        units: mkUnits(),
-        stake: stk,
-        result: 'Open',
-        pnl: 0,
-        legs: null,
-        notes: 'In-app bet slip (straight)',
-      }))
+      // log each enabled leg as its own straight bet — each with ITS OWN stake (falls back to the shared field)
+      legs.forEach((l, i) => {
+        const legStk = legStakeOf(l)
+        commitBet({
+          id: Date.now() + i,
+          date: new Date().toISOString().slice(0, 10),
+          sport: l.sport || '',
+          book: l.book || '',
+          betType: 'Straight',
+          event: l.event || '',
+          pick: l.pick,
+          odds: Number(l.odds) || 0,
+          units: stats.unitSize ? legStk / stats.unitSize : 0,
+          stake: legStk,
+          result: 'Open',
+          pnl: 0,
+          legs: null,
+          notes: 'In-app bet slip (straight)',
+        })
+      })
     } else {
       const isP = legs.length >= 2
       const odds = isP ? decToAm(legs.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)) : (Number(legs[0].odds) || 0)
@@ -3003,7 +3008,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         notes: 'In-app bet slip',
       })
     }
-    setSlip([]); setSlipOff(new Set()); setSlipOpen(false)
+    setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setSlipOpen(false)
   }
   // Share the slip — native share sheet (text + best deep link), clipboard fallback.
   const shareSlip = async () => {
@@ -3081,7 +3086,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     const allowed = booksForState(userState)
                     const inRegion = (bk) => !allowed || allowed.includes(bk) || OFFSHORE.includes(bk) || NATIONWIDE.includes(bk)
                     const comboDec = enabled.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)
-                    const payoutVal = stk > 0 ? (isStraights ? enabled.reduce((s, l) => s + stk * amToDec(Number(l.odds) || 0), 0) : stk * comboDec) : 0
+                    const payoutVal = isStraights
+                      ? enabled.reduce((s, l) => s + legStakeOf(l) * amToDec(Number(l.odds) || 0), 0)
+                      : (stk > 0 ? stk * comboDec : 0)
                     const lbl = { fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, opacity: 0.85, marginTop: '12px', marginBottom: '4px' }
                     const bestForLeg = (l) => {
                       const ents = l.byBook ? Object.entries(l.byBook).filter(([bk]) => inRegion(bk)) : []
@@ -3149,14 +3156,20 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           <div style={{ marginBottom: '4px' }}>
                             <div style={lbl}>Best book · each bet</div>
                             {enabled.length === 0 && <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, padding: '6px 0' }}>All legs off — toggle one on below.</div>}
-                            {enabled.map((l, i) => { const b = bestForLeg(l); const deep = l.byBookLink?.[b.book]; return (
-                              <a key={i} href={deep || placeLink(b.book) || l.link || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '11px 12px', marginTop: '7px', borderRadius: '11px', border: '1px solid var(--border)', textDecoration: 'none' }}>
-                                <span style={{ minWidth: 0 }}>
-                                  <span style={{ display: 'block', fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.pick}</span>
-                                  <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>place on {BOOK_NAMES[b.book] || b.book || '—'}{deep ? ' ↗' : ''}</span>
-                                </span>
-                                <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: NEON_T, flexShrink: 0 }}>{fmt(b.odds)}</span>
-                              </a>
+                            {enabled.map((l, i) => { const b = bestForLeg(l); const deep = l.byBookLink?.[b.book]; const href = deep || placeLink(b.book) || l.link || '#'; const ls = legStakeOf(l); return (
+                              <div key={i} style={{ padding: '10px 12px', marginTop: '7px', borderRadius: '11px', border: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                                  <span style={{ minWidth: 0 }}>
+                                    <span style={{ display: 'block', fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.pick}</span>
+                                    <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}><span style={{ color: NEON_T, fontWeight: 700 }}>{fmt(b.odds)}</span> · {BOOK_NAMES[b.book] || b.book || '—'}</span>
+                                  </span>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                    <input value={slipStakes[l.pick] ?? ''} onChange={e => setSlipStakes(s => ({ ...s, [l.pick]: e.target.value }))} inputMode="decimal" placeholder="$" style={{ width: '60px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                                    <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: '#0A0A0A', background: NEON, borderRadius: '7px', padding: '8px 11px', textDecoration: 'none', whiteSpace: 'nowrap' }}>Place →</a>
+                                  </span>
+                                </div>
+                                {ls > 0 && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '5px', textAlign: 'right' }}>${ls.toFixed(0)} → <span style={{ color: NEON_T, fontWeight: 700 }}>${(ls * amToDec(Number(l.odds) || 0)).toFixed(2)}</span></div>}
+                              </div>
                             )})}
                           </div>
                         )}
@@ -3190,15 +3203,17 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           </div>
                         )})}
 
-                        {/* stake + log */}
+                        {/* stake + log — singles enter their own stake per row above; parlay uses one stake */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
-                          <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder={isStraights ? 'Stake $ / bet' : 'Stake $'}
-                            style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, outline: 'none' }} />
-                          {payoutVal > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>→ ${payoutVal.toFixed(2)}</span>}
+                          {isStraights
+                            ? <span style={{ flex: 1, fontFamily: R, fontSize: '11px', color: MUTED }}>Enter each bet’s stake above ↑</span>
+                            : <input value={slipStake} onChange={e => setSlipStake(e.target.value)} inputMode="decimal" placeholder="Stake $"
+                                style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '15px', fontWeight: 700, outline: 'none' }} />}
+                          {payoutVal > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>{isStraights ? 'total ' : ''}→ ${payoutVal.toFixed(2)}</span>}
                         </div>
                         <button onClick={addAllToLadder} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'rgba(245,166,35,0.1)', color: '#F5A623', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🪜 Add all to Ladder</button>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                          <button onClick={() => { setSlip([]); setSlipStake(''); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
+                          <button onClick={() => { setSlip([]); setSlipStake(''); setSlipStakes({}); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
                           <button onClick={() => { logParlay(slipStake); setSlipStake('') }} disabled={!enabled.length} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: enabled.length ? 'pointer' : 'not-allowed', opacity: enabled.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{isStraights ? `Log ${enabled.length} Straight${enabled.length === 1 ? '' : 's'}` : enabled.length >= 2 ? `Log ${enabled.length}-Leg Parlay` : 'Log Bet'}</button>
                         </div>
                       </>

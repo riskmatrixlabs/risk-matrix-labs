@@ -41,7 +41,9 @@ export const BOOK_HOME = {
   betparx: 'https://www.betparx.com/', fliff: 'https://www.getfliff.com/', pinnacle: 'https://www.pinnacle.com/',
   novig: 'https://novig.us/', prophetx: 'https://prophetx.co/', rebet: 'https://www.rebet.app/', onyxodds: 'https://onyxodds.com/',
 }
-// Best place-link for a book: its decorated deep link if present, else its homepage.
+// Best place-link for a book: a real bet-slip deep link if the feed gave us one (decorated for
+// affiliate), else the book's OneLink/referral (deep-opens the app + credits the referral),
+// else the plain homepage. So "place on Hard Rock" opens the HR app via the owner's OneLink.
 export function placeLink(book, deepLink) {
-  return decorate(book, deepLink) || BOOK_HOME[book] || null
+  return decorate(book, deepLink) || SIGNUP_LINKS[book] || BOOK_HOME[book] || null
 }
