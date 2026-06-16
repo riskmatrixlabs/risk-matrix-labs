@@ -15,6 +15,7 @@ import { decorate } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
+import { legFromRow, pickShareText, boardShareText } from '../lib/botSlip.js'
 import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
@@ -103,6 +104,37 @@ const pill = (active) => ({ flexShrink: 0, padding: '6px 12px', borderRadius: '7
 
 function Empty({ text }) {
   return <div style={{ textAlign: 'center', padding: '20px 12px', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.04em' }}>{text}</div>
+}
+
+const bookLabel = (b) => BOOK_NAMES[b] || b
+
+// Native share sheet (text + optional deep link), clipboard fallback. Same pattern as the slip's share.
+async function shareNative(text, url = 'https://app.riskmatrixlabs.com') {
+  try {
+    if (navigator.share) await navigator.share({ title: 'Risk Matrix Labs', text, url })
+    else { await navigator.clipboard.writeText(`${text}\n${url}`); alert('Copied to clipboard') }
+  } catch { /* user cancelled — ignore */ }
+}
+
+// + Slip / share controls hung on a bot output row. Additive only — stops propagation so the
+// row's own tap (→ analyze in CH2) still works.
+function OutputActions({ row, onAddToSlip, compact = false }) {
+  const added = useRef(false)
+  const [, force] = useState(0)
+  const add = (e) => { e.stopPropagation(); if (!onAddToSlip) return; onAddToSlip(legFromRow(row)); added.current = true; force(n => n + 1); setTimeout(() => { added.current = false; force(n => n + 1) }, 1100) }
+  const share = (e) => { e.stopPropagation(); shareNative(pickShareText(row, bookLabel), row.link || undefined) }
+  const btn = { background: 'transparent', border: `1px solid ${NEON}`, borderRadius: '7px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }
+  if (compact) {
+    return (
+      <button onClick={add} title="Add to slip" style={{ ...btn, padding: '6px 8px', fontSize: '13px', background: added.current ? NEON : 'transparent', color: added.current ? '#0A0A0A' : NEON_T }}>{added.current ? '✓' : '+'}</button>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', gap: '6px', marginTop: '9px' }}>
+      <button onClick={add} title="Add to slip" style={{ ...btn, flex: 1, padding: '7px 0', fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', background: added.current ? NEON : 'transparent', color: added.current ? '#0A0A0A' : NEON_T }}>{added.current ? '✓ Added' : '+ Slip'}</button>
+      <button onClick={share} title="Share this pick" style={{ ...btn, padding: '7px 12px', fontSize: '13px' }}>➦</button>
+    </div>
+  )
 }
 
 function BetLink({ book, link }) {
@@ -204,6 +236,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
         <FindChannel token={token} bankroll={bankroll} initialView={initialView}
           showFilters={showFilters} setShowFilters={setShowFilters}
           showSearch={showSearch} setShowSearch={setShowSearch}
+          onAddToSlip={onAddToSlip}
           onPick={(g) => tuneTo(g)}
           onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} />
       </div>
@@ -224,7 +257,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
 const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // sports the provider supports today
 const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
-function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = false, setShowFilters, showSearch = false, setShowSearch, initialView = 'tv' }) {
+function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, showFilters = false, setShowFilters, showSearch = false, setShowSearch, initialView = 'tv' }) {
   const [events, setEvents]   = useState([])
   const [feed, setFeed]       = useState({ status: 'idle', edges: [], scanned: 0, credits: null })
   const [props, setProps]     = useState(null)
@@ -331,10 +364,10 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = 
     const showProps = marketF === 'ALL' || marketF === 'props'
     const gl = !showGL ? [] : (feed.edges || [])
       .filter(e => inSport(e._sport) && (marketF === 'ALL' || e.market === marketF) && (e.evPct ?? 0) >= minEv)
-      .map(e => ({ key: `gl:${e._sport}:${gameKey(e)}:${e.market}:${e.outcome}:${e.point}`, label: pickLabel(e), book: e.best.book, sub: `${up(e.away)}@${up(e.home)}`, price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: resolveGame(e) }))
+      .map(e => ({ key: `gl:${e._sport}:${gameKey(e)}:${e.market}:${e.outcome}:${e.point}`, label: pickLabel(e), book: e.best.book, sub: `${up(e.away)}@${up(e.home)}`, price: e.best.price, evPct: e.evPct, fairProb: e.fairProb, isProp: false, game: resolveGame(e), link: e.best.link || null }))
     const pr = !showProps ? [] : (props?.edges || [])
       .filter(p => inSport(p._sport) && (propCat === 'ALL' || p.market === propCat) && (p.evPct == null ? minEv === 0 : p.evPct >= minEv))
-      .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game }))
+      .map((p, i) => ({ key: `pr:${i}:${p.player}:${p.point}:${p.side}`, label: `${p.player} ${/^o/i.test(p.side) ? 'O' : 'U'}${p.point}`, book: p.best.book, sub: p.marketLabel, price: p.best.price, evPct: p.evPct, fairProb: p.fairProb, isProp: true, game: p._game, link: p.best.link || null }))
     return [...gl, ...pr]
       .filter(r => bookF === 'ALL' || r.book === bookF)
       .sort((a, b) => (b.evPct ?? -1) - (a.evPct ?? -1))
@@ -425,7 +458,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = 
 
       {view === 'board' && (
         <BoardView status={status} rows={rows} edgeCount={rows.length} bankroll={bankroll}
-          token={token} err={err} onPickGame={onPick}
+          token={token} err={err} onPickGame={onPick} onAddToSlip={onAddToSlip}
           props={props} onScanProps={scanProps} gameCount={preGames.length} />
       )}
 
@@ -446,9 +479,14 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = 
                 <span style={{ fontFamily: 'Courier New, monospace', fontSize: '10px', color: MUTED, textTransform: 'uppercase' }}>{BOOK_NAMES[r.book] || r.book} · {r.sub}{bankroll > 0 && r.fairProb != null ? ` · bet $${Math.round(kellyStake(r.price, r.fairProb, bankroll))}` : ''}</span>
                 <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}% EDGE` : 'LINE SHOP'}</span>
               </div>
+              <OutputActions row={r} onAddToSlip={onAddToSlip} />
             </div>
           )
         })}
+        {status === 'done' && rows.length > 0 && (
+          <button onClick={() => shareNative(boardShareText(rows, bookLabel))} title="Share the whole board"
+            style={{ width: '100%', marginTop: '4px', padding: '8px', borderRadius: '8px', border: `1px solid rgba(189,255,0,0.4)`, background: 'transparent', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>➦ Share Board</button>
+        )}
         {status === 'done' && !rows.length && <Empty text="Market's efficient right now — we won't fake an edge." />}
         {status === 'scanning' && <div style={{ textAlign: 'center', padding: '8px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>de-vigging the sharp line…</div>}
         {status === 'idle' && <Empty text={token ? 'Hit ▶ GO LIVE to read the board.' : 'Log in to summon the bot.'} />}
@@ -499,8 +537,8 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, showFilters = 
 
 // Dense OddsJam/Prop-Professor-style board — every +EV play (game lines AND props) on one
 // ranked table. Props scan on tap (per-game). Tap a row to drill into all books on CH 2.
-const GRID = '1fr 58px 54px'
-function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPickGame }) {
+const GRID = '1fr 54px 48px 34px'
+function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onPickGame, onAddToSlip }) {
   if (status === 'idle')     return <Empty text={token ? 'Hit ▶ GO LIVE to read the board.' : 'Log in to summon the bot.'} />
   if (status === 'scanning') return <div style={{ textAlign: 'center', padding: '24px', fontFamily: 'Courier New, monospace', fontSize: '12px', color: 'rgba(189,255,0,0.6)', letterSpacing: '0.1em' }}>SCANNING THE BOARD…</div>
   if (status === 'error')    return <Empty text={`Scan failed — ${err}`} />
@@ -509,7 +547,7 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
   return (
     <div style={{ background: '#0A0A0A', border: `1px solid ${BORDER}`, borderRadius: '14px', overflow: 'hidden' }}>
       <div style={{ display: 'grid', gridTemplateColumns: GRID, padding: '9px 14px', borderBottom: '1px solid #161616', color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.1em' }}>
-        <span>PICK / BOOK</span><span style={{ textAlign: 'right' }}>ODDS</span><span style={{ textAlign: 'right' }}>EV</span>
+        <span>PICK / BOOK</span><span style={{ textAlign: 'right' }}>ODDS</span><span style={{ textAlign: 'right' }}>EV</span><span style={{ textAlign: 'right' }}>+</span>
       </div>
       {rows.map((r, i) => {
         const top = i === 0
@@ -524,10 +562,15 @@ function BoardView({ status, rows = [], edgeCount, bankroll = 0, token, err, onP
             </div>
             <div style={{ textAlign: 'right', fontFamily: R, fontSize: '15px', fontWeight: 700, color: top ? NEON_T : TEXT }}>{fmtAm(r.price)}</div>
             <div style={{ textAlign: 'right', fontFamily: R, fontSize: '13px', fontWeight: 700, color: r.evPct == null ? MUTED : (top ? NEON_T : '#5DCAA5') }}>{r.evPct != null ? `+${r.evPct.toFixed(1)}%` : 'SHOP'}</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><OutputActions row={r} onAddToSlip={onAddToSlip} compact /></div>
           </div>
         )
       })}
-      <div style={{ padding: '10px 14px', color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.06em' }}>{edgeCount} EDGE{edgeCount === 1 ? '' : 'S'} · TAP A ROW FOR ALL BOOKS</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
+        <span style={{ color: '#5a5a5a', fontFamily: R, fontSize: '10px', letterSpacing: '0.06em' }}>{edgeCount} EDGE{edgeCount === 1 ? '' : 'S'} · TAP A ROW FOR ALL BOOKS</span>
+        <button onClick={() => shareNative(boardShareText(rows, bookLabel))} title="Share the whole board"
+          style={{ background: 'transparent', border: `1px solid rgba(189,255,0,0.4)`, borderRadius: '7px', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px' }}>➦ Share</button>
+      </div>
     </div>
   )
 }
