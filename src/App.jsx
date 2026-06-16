@@ -2886,6 +2886,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slipOpen, setSlipOpen] = useState(false)
   const [slipStake, setSlipStake] = useState('')
   const [slipStakes, setSlipStakes] = useState({})   // per-leg stake for Straights mode, keyed by pick
+  const [straightsExp, setStraightsExp] = useState(new Set())   // per-single "show more books" toggle, keyed by pick
   const legStakeOf = (l) => Number(slipStakes[l.pick] ?? slipStake) || 0
   const [slipMode, setSlipMode] = useState('parlay')      // 'parlay' | 'straights'
   const [showOutRegion, setShowOutRegion] = useState(false) // expand the "not in your region" list
@@ -3008,7 +3009,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         notes: 'In-app bet slip',
       })
     }
-    setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setSlipOpen(false)
+    setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setStraightsExp(new Set()); setSlipOpen(false)
   }
   // Share the slip — native share sheet (text + best deep link), clipboard fallback.
   const shareSlip = async () => {
@@ -3151,26 +3152,39 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           )
                         })()}
 
-                        {/* STRAIGHTS: shop each enabled leg to its own best book */}
+                        {/* STRAIGHTS: each single gets its OWN stake + its OWN book list (choose like the parlay tab) */}
                         {isStraights && (
                           <div style={{ marginBottom: '4px' }}>
-                            <div style={lbl}>Best book · each bet</div>
+                            <div style={lbl}>Each bet · your stake + choose a book</div>
                             {enabled.length === 0 && <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, padding: '6px 0' }}>All legs off — toggle one on below.</div>}
-                            {enabled.map((l, i) => { const b = bestForLeg(l); const deep = l.byBookLink?.[b.book]; const href = deep || placeLink(b.book) || l.link || '#'; const ls = legStakeOf(l); return (
-                              <div key={i} style={{ padding: '10px 12px', marginTop: '7px', borderRadius: '11px', border: '1px solid var(--border)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                                  <span style={{ minWidth: 0 }}>
-                                    <span style={{ display: 'block', fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.pick}</span>
-                                    <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}><span style={{ color: NEON_T, fontWeight: 700 }}>{fmt(b.odds)}</span> · {BOOK_NAMES[b.book] || b.book || '—'}</span>
-                                  </span>
-                                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                    <input value={slipStakes[l.pick] ?? ''} onChange={e => setSlipStakes(s => ({ ...s, [l.pick]: e.target.value }))} inputMode="decimal" placeholder="$" style={{ width: '60px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, outline: 'none', textAlign: 'center' }} />
-                                    <a href={href} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: '#0A0A0A', background: NEON, borderRadius: '7px', padding: '8px 11px', textDecoration: 'none', whiteSpace: 'nowrap' }}>Place →</a>
-                                  </span>
+                            {enabled.map((l, i) => {
+                              const ls = legStakeOf(l)
+                              const homeBooks = new Set(allowed || [])
+                              let rows = Object.keys(l.byBook || {}).map(bk => ({ book: bk, odds: l.byBook[bk], region: inRegion(bk), link: l.byBookLink?.[bk] }))
+                              if (!rows.length) { const b = bestForLeg(l); rows = [{ book: b.book, odds: b.odds, region: true, link: l.link }] }
+                              const inReg = rows.filter(r => r.region).sort((a, b) => { const ha = homeBooks.has(a.book) ? 1 : 0, hb = homeBooks.has(b.book) ? 1 : 0; if (ha !== hb) return hb - ha; return amToDec(b.odds) - amToDec(a.odds) })
+                              const outReg = rows.filter(r => !r.region).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
+                              const exp = straightsExp.has(l.pick)
+                              const bestOdds = (inReg[0]?.odds ?? Number(l.odds)) || 0
+                              const bookRow = (r, best) => (
+                                <a key={r.book} href={placeLink(r.book, r.link) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none' }}>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>{best && <span style={{ color: NEON_T, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em' }}>BEST</span>}<span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span></span>
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T }}>{fmt(r.odds)}</span><span style={{ width: '22px', height: '22px', borderRadius: '50%', background: best ? NEON : 'rgba(189,255,0,0.14)', color: best ? '#0A0A0A' : NEON_T, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>→</span></span>
+                                </a>
+                              )
+                              return (
+                                <div key={i} style={{ padding: '11px 12px', marginTop: '8px', borderRadius: '11px', border: '1px solid var(--border)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
+                                    <input value={slipStakes[l.pick] ?? ''} onChange={e => setSlipStakes(s => ({ ...s, [l.pick]: e.target.value }))} inputMode="decimal" placeholder="$ stake" style={{ width: '80px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
+                                  </div>
+                                  <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '5px' }}>{ls > 0 ? <>${ls.toFixed(0)} → <span style={{ color: NEON_T, fontWeight: 700 }}>${(ls * amToDec(bestOdds)).toFixed(2)}</span> · </> : null}tap a book to place</div>
+                                  {inReg.map((r, idx) => bookRow(r, idx === 0))}
+                                  {outReg.length > 0 && exp && <><div style={{ ...lbl, fontSize: '8px', marginTop: '8px', opacity: 0.7 }}>Not in your region</div>{outReg.map(r => bookRow(r, false))}</>}
+                                  {outReg.length > 0 && <button onClick={() => setStraightsExp(s => { const n = new Set(s); n.has(l.pick) ? n.delete(l.pick) : n.add(l.pick); return n })} style={{ width: '100%', marginTop: '6px', padding: '7px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{exp ? 'Show less ▴' : `+${outReg.length} more books ▾`}</button>}
                                 </div>
-                                {ls > 0 && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '5px', textAlign: 'right' }}>${ls.toFixed(0)} → <span style={{ color: NEON_T, fontWeight: 700 }}>${(ls * amToDec(Number(l.odds) || 0)).toFixed(2)}</span></div>}
-                              </div>
-                            )})}
+                              )
+                            })}
                           </div>
                         )}
 
@@ -3196,7 +3210,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                                 {l.evPct != null && <span title={l.consensus ? 'consensus edge (de-vig avg of all books)' : 'edge vs sharp (Pinnacle)'} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, padding: '1px 5px', borderRadius: '5px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)' }}>{l.consensus ? '~' : '+'}{Number(l.evPct).toFixed(1)}% edge</span>}
                               </span>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                <button onClick={() => { if (addToLadder(l)) removeLeg(i) }} title="Send this pick to the next ladder rung" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: '5px', padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🪜 → Ladder</button>
+                                {/* Per-leg ladder only in Straights — a parlay is one ticket (use "Add all to Ladder" at the bottom). */}
+                                {isStraights && <button onClick={() => { if (addToLadder(l)) removeLeg(i) }} title="Send this pick to the next ladder rung" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: '5px', padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🪜 → Ladder</button>}
                                 {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
                               </span>
                             </div>
@@ -3213,7 +3228,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         </div>
                         <button onClick={addAllToLadder} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'rgba(245,166,35,0.1)', color: '#F5A623', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🪜 Add all to Ladder</button>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                          <button onClick={() => { setSlip([]); setSlipStake(''); setSlipStakes({}); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
+                          <button onClick={() => { setSlip([]); setSlipStake(''); setSlipStakes({}); setStraightsExp(new Set()); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
                           <button onClick={() => { logParlay(slipStake); setSlipStake('') }} disabled={!enabled.length} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: enabled.length ? 'pointer' : 'not-allowed', opacity: enabled.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{isStraights ? `Log ${enabled.length} Straight${enabled.length === 1 ? '' : 's'}` : enabled.length >= 2 ? `Log ${enabled.length}-Leg Parlay` : 'Log Bet'}</button>
                         </div>
                       </>
