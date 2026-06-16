@@ -2399,7 +2399,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           const localSave = loadSession(userId)
           if (localSave) {
             if (localSave.ladderStarting) setLadderStarting(localSave.ladderStarting)
-            if (localSave.bankroll)       setBankroll(localSave.bankroll)
+            if (localSave.bankroll != null) setBankroll(localSave.bankroll)
             if (localSave.masterBrOverride != null) setMasterBrOverride(localSave.masterBrOverride)
             if (localSave.username)       setUsername(localSave.username)
             if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
@@ -2408,7 +2408,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         } else if (settings) {
           if (settings.ladder_starting)     setLadderStarting(settings.ladder_starting)
           if (settings.ladder_session_key)  setLadderSessionKey(settings.ladder_session_key)
-          if (settings.bankroll)            setBankroll(settings.bankroll)
+          if (settings.bankroll != null)    setBankroll(settings.bankroll)   // 0 is a valid (reset) bankroll — don't ignore it
           setMasterBrOverride(settings.master_br_override ?? null)
           if (settings.username)            setUsername(settings.username)
           if (settings.risk_settings)       setRiskSettings(settings.risk_settings)
@@ -2418,7 +2418,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           const localSave = loadSession(userId)
           if (localSave) {
             if (localSave.ladderStarting) setLadderStarting(localSave.ladderStarting)
-            if (localSave.bankroll)       setBankroll(localSave.bankroll)
+            if (localSave.bankroll != null) setBankroll(localSave.bankroll)
             if (localSave.masterBrOverride != null) setMasterBrOverride(localSave.masterBrOverride)
             if (localSave.username)       setUsername(localSave.username)
             if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
@@ -2602,10 +2602,35 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     setTimeout(() => setSaveStatus(null), 2400)
   }, [bets, bankroll, masterBrOverride, username, ladderStarting, riskSettings, darkMode])
 
-  // ── Reset session ──
+  // ── Reliable delete: clear cloud FIRST, only drop from local if the cloud delete confirms.
+  //    Supabase returns { error } (it does NOT throw on RLS/failure), so we must check it —
+  //    otherwise a failed delete silently leaves the row to resurrect on next reload. ──
+  const deleteBetReliable = useCallback(async (id) => {
+    if (userId && cloudSyncedRef.current) {
+      realtimeIgnoreUntil.current = Date.now() + 5000
+      const { error } = await dbDeleteBet(String(id), userId, tokenRef.current)
+      if (error) {
+        setSyncError(`Delete failed: ${error.message || error.code || 'unknown'}. Bet kept — try again.`)
+        return false   // keep it in local so the UI matches the cloud
+      }
+      setSyncError(null)
+    }
+    setBets(b => b.filter(x => x.id !== id))
+    return true
+  }, [userId])
+
+  // ── Reset session ── (clear cloud bets FIRST and verify before wiping local state)
   const resetSession = useCallback(async () => {
     if (!window.confirm('Reset everything to zero? All bets and data will be cleared. This cannot be undone.')) return
-    if (userId) await deleteAllBets(userId, token)
+    if (userId && cloudSyncedRef.current) {
+      realtimeIgnoreUntil.current = Date.now() + 10000   // ignore the delete echo while we reset
+      const { error } = await deleteAllBets(userId, tokenRef.current)
+      if (error) {
+        setSyncError(`Reset failed: ${error.message || error.code || 'unknown'}. Nothing was cleared — try again.`)
+        return   // abort: don't wipe local while the cloud still has the data (it would resurrect)
+      }
+      setSyncError(null)
+    }
     localStorage.removeItem(LS_KEY)
     setBets([])
     setBankroll(0)
@@ -2614,6 +2639,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     setUsername('OPERATOR')
     setLadderStarting(LADDER_STARTING_BR)
     setRiskSettings({ maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20, unitPct: 2 })
+    // the settings auto-sync (debounced) pushes bankroll=0 etc. to the cloud right after this.
   }, [userId, token])
 
   // ── Save template ──
@@ -3325,14 +3351,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             }
           }}
           onClose={() => setEditingBet(null)}
-          onDelete={id => {
-            setBets(b => b.filter(x => x.id !== id))
-            setEditingBet(null)
-            if (userId && cloudSyncedRef.current) {
-              realtimeIgnoreUntil.current = Date.now() + 5000
-              dbDeleteBet(String(id), userId, tokenRef.current).catch(e => console.error('[RML] deleteBet:', e))
-            }
-          }}
+          onDelete={deleteBetReliable}
           unitSize={stats.unitSize}
         />
       )}
@@ -4800,13 +4819,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     bet={bet}
                     onSettle={settleBet}
                     onEdit={setEditingBet}
-                    onDelete={id => {
-                      setBets(b => b.filter(x => x.id !== id))
-                      if (userId && cloudSyncedRef.current) {
-                        realtimeIgnoreUntil.current = Date.now() + 5000
-                        dbDeleteBet(String(id), userId, tokenRef.current).catch(e => console.error('[RML] deleteBet:', e))
-                      }
-                    }}
+                    onDelete={deleteBetReliable}
                     onShare={setShareCardBet}
                     unitSize={stats.unitSize}
                     events={betEvents}
