@@ -186,8 +186,14 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
 // ── ⬡ SPOTLIGHT — scrolling ticker of today's STRONG model signals (O/U leans).
 // Self-fetches the free, server-cached game-info model per MLB game; keeps only `strong`.
 // Tap a signal → opens that game. Hidden entirely when there are no strong signals.
+// Tiny confidence pill (factor count). Higher = more model factors aligned.
+function ConfDot({ n }) {
+  return <sup style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: NEON, marginLeft: 2 }}>{n}</sup>
+}
+
 function SpotlightTicker({ events = [], token, onOpen }) {
   const [signals, setSignals] = useState([])
+  const [open, setOpen] = useState(false)   // reference panel (yesterday + all-time)
   useEffect(() => {
     if (!token) { setSignals([]); return }
     const todays = events.filter(e => e.sport === 'MLB' && e.away_team && e.home_team
@@ -202,26 +208,60 @@ function SpotlightTicker({ events = [], token, onOpen }) {
         const j = await r.json()
         return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
       } catch { return null }
-    })).then(res => { if (!cancel) setSignals(res.filter(Boolean)) })
+    })).then(res => {
+      if (cancel) return
+      // rank by confidence (factor count) desc
+      setSignals(res.filter(Boolean).sort((a, b) => (b.ou.confidence || 0) - (a.ou.confidence || 0)))
+    })
     return () => { cancel = true }
   }, [events, token])
 
   if (!signals.length) return null
   const loop = [...signals, ...signals]   // doubled for a seamless crawl
+  const Chip = ({ ev, ou }) => (
+    <button onClick={() => onOpen?.(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+      {ev.away_abbr}@{ev.home_abbr}{' '}
+      <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+      <ConfDot n={ou.confidence} />
+    </button>
+  )
   return (
-    <div style={{ border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)', padding: '9px 0 9px 12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <style>{`@keyframes rml-spot{from{transform:translateX(0)}to{transform:translateX(-50%)}}.rml-spot-track{display:inline-flex;gap:26px;white-space:nowrap;animation:rml-spot 40s linear infinite;will-change:transform}.rml-spot-track:hover{animation-play-state:paused}@media (prefers-reduced-motion:reduce){.rml-spot-track{animation:none}}`}</style>
-      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, flexShrink: 0, textTransform: 'uppercase' }}>⬡ Spotlight ({signals.length})</span>
-      <div style={{ overflow: 'hidden', flex: 1 }}>
-        <div className="rml-spot-track">
-          {loop.map(({ ev, ou }, i) => (
-            <button key={ev.id + '-' + i} onClick={() => onOpen?.(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-              {ev.away_abbr}@{ev.home_abbr}{' '}
-              <span style={{ color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-            </button>
-          ))}
+    <div>
+      <div style={{ border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)', padding: '9px 0 9px 12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <style>{`@keyframes rml-spot{from{transform:translateX(0)}to{transform:translateX(-50%)}}.rml-spot-track{display:inline-flex;gap:26px;white-space:nowrap;animation:rml-spot 40s linear infinite;will-change:transform}.rml-spot-track:hover{animation-play-state:paused}@media (prefers-reduced-motion:reduce){.rml-spot-track{animation:none}}`}</style>
+        <button onClick={() => setOpen(o => !o)} title="Spotlight record — tap for details" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, flexShrink: 0, textTransform: 'uppercase' }}>
+          ⬡ Spotlight ({signals.length}) <span style={{ display: 'inline-block', fontSize: '8px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+        </button>
+        <div style={{ overflow: 'hidden', flex: 1 }}>
+          <div className="rml-spot-track">
+            {loop.map(({ ev, ou }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} /></span>)}
+          </div>
         </div>
       </div>
+
+      {/* Reference panel — ranked today + yesterday/all-time record */}
+      {open && (
+        <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '8px' }}>⬡ Spotlight — Today, ranked by confidence</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {signals.map(({ ev, ou }) => (
+              <button key={ev.id} onClick={() => { onOpen?.(ev.id); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.lean === 'OVER' ? NEON_T : '#FFB020' }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+                  {ou.reason && <span style={{ display: 'block', fontFamily: R, fontSize: '9px', color: MUTED, marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>{ou.reason}</span>}
+                </span>
+                <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: NEON, flexShrink: 0 }}>{ou.confidence}<span style={{ fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}> CONF</span></span>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: '16px' }}>
+            <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Yesterday</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div></div>
+            <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>All-time</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div></div>
+            <div style={{ flex: 1, alignSelf: 'center', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', textAlign: 'right' }}>Tracking starts now — record builds as signals settle.</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -253,7 +253,7 @@ export default async function handler(req, res) {
           if ((lean === 'OVER') === moveOver) edge = 'late — line already moved your way'
           else edge = 'value — line moved against the lean'
         }
-        ou = { lean, strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
+        ou = { lean, score, confidence: Math.abs(score), strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
           total: anchor || null, edge, weather: wx || null, bullpens: { away: aBp ?? null, home: hBp ?? null } }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
