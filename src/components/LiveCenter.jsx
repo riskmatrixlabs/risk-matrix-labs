@@ -7,7 +7,7 @@ import { computeClv } from '../lib/clv'
 import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { liveConsensus } from '../lib/liveConsensus'
-import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES } from '../lib/betLinks'
+import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES, copyPickAndOpen } from '../lib/betLinks'
 import { booksForState, OFFSHORE, NATIONWIDE, US_STATES, guessState } from '../lib/geoBooks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
@@ -1381,13 +1381,14 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
                               <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>
                                 Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?
                               </span>
+                              <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, textAlign: 'center', lineHeight: 1.4 }}>We'll copy your pick so you can paste it into {BOOK_NAMES[confirm.book] || confirm.book}'s search.</span>
                               <span style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                 {onAddToSlip && (
                                   <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, byBookLink: confirm.byBookLink, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setConfirm(null) }}
                                     style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>+ Slip</button>
                                 )}
-                                <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
-                                  style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log &amp; Open</button>
+                                <button onClick={() => { onLogPosition(event, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); copyPickAndOpen(`${confirm.pick} ${fmtAm(confirm.odds)}`, confirm.url); setConfirm(null) }}
+                                  style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log · Copy · Open →</button>
                                 <button onClick={() => setConfirm(null)}
                                   style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cancel</button>
                               </span>

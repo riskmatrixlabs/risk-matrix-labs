@@ -37,7 +37,7 @@ import { fetchEvents as fetchBetEvents } from './lib/events.js'
 import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
-import { placeLink } from './lib/betLinks'
+import { placeLink, copyPickAndOpen } from './lib/betLinks'
 
 const getKeys = (userId) => ({
   LS_KEY:   `rml_session_v1_${userId}`,
@@ -3211,7 +3211,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           const missing = rows.filter(r => r.n > 0 && r.n < total && r.region).sort((a, b) => b.n - a.n)
                           const region = rows.filter(r => !r.region && r.n > 0).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
                           const bookRow = (r, faded, best) => (
-                            <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
+                            <a key={r.book} href={placeLink(r.book) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => copyPickAndOpen(slip.map(l => l.pick).join(' + '))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                 {best && <span style={{ color: NEON_T, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}>PLACE ON</span>}
                                 <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>
@@ -3255,7 +3255,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               const exp = straightsExp.has(l.pick)
                               const bestOdds = (inReg.find(r => r.odds != null)?.odds ?? Number(l.odds)) || 0
                               const bookRow = (r, best) => (
-                                <a key={r.book} href={placeLink(r.book, r.link) || '#'} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none' }}>
+                                <a key={r.book} href={placeLink(r.book, r.link) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => copyPickAndOpen(l.pick)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none' }}>
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>{best && <span style={{ color: NEON_T, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em' }}>BEST</span>}<span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>{r.est && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>EST</span>}</span>
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: r.odds != null ? (r.est ? MUTED : NEON_T) : MUTED }}>{r.odds != null ? `${r.est ? '~' : ''}${fmt(r.odds)}` : '—'}</span><span style={{ width: '22px', height: '22px', borderRadius: '50%', background: best ? NEON : 'rgba(189,255,0,0.14)', color: best ? '#0A0A0A' : NEON_T, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>→</span></span>
                                 </a>
@@ -3300,7 +3300,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                 {/* Per-leg ladder only in Straights — a parlay is one ticket (use "Add all to Ladder" at the bottom). */}
                                 {isStraights && <button onClick={() => { if (addToLadder(l)) removeLeg(i) }} title="Send this pick to the next ladder rung" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', color: '#F5A623', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.4)', borderRadius: '5px', padding: '2px 7px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🪜 → Ladder</button>}
-                                {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Place →</a>}
+                                {l.link && <a href={l.link} target="_blank" rel="noopener noreferrer" onClick={() => copyPickAndOpen(l.pick)} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, textDecoration: 'none' }}>Copy · Place →</a>}
                               </span>
                             </div>
                           </div>

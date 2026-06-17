@@ -11,7 +11,7 @@ import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
 import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
 import { devigTwoWay, americanToImplied, americanToDecimal } from '../lib/devig.js'
 import { statProgress, totalProgress, scoreText, isMoneylineOrSpread, parseLine, shellBar } from '../lib/statProgress.js'
-import { decorate } from '../lib/betLinks.js'
+import { decorate, copyPickAndOpen } from '../lib/betLinks.js'
 import { groupEdgesByGame, applyFeedFilters, gameKey } from '../lib/botFeed.js'
 import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
@@ -701,13 +701,14 @@ function PlayerProps({ player, game, sport, token, onLogPosition, onAddToSlip })
       {confirm && (
         <div style={{ background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '9px', padding: '11px 12px', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>Bet <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span> at {BOOK_NAMES[confirm.book] || confirm.book}?</span>
+          <span style={{ width: '100%', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.02em' }}>We'll copy your pick so you can paste it into {BOOK_NAMES[confirm.book] || confirm.book}'s search.</span>
           <span style={{ display: 'flex', gap: '8px' }}>
             {onAddToSlip && (
               <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
                 style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
             )}
-            <button onClick={() => { onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
-              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
+            <button onClick={() => { onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); copyPickAndOpen(`${confirm.pick} ${fmtAm(confirm.odds)}`, confirm.url); setConfirm(null) }}
+              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Log · Copy · Open {BOOK_NAMES[confirm.book] || confirm.book} →</button>
             <button onClick={() => setConfirm(null)} style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
           </span>
         </div>
@@ -1278,13 +1279,14 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
         <div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.55)' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '360px', background: '#15171c', border: `1px solid ${NEON}`, borderRadius: '14px', padding: '18px 16px 16px', boxShadow: '0 14px 44px rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT, textAlign: 'center' }}>Add <span style={{ color: NEON_T }}>{confirm.pick} {fmtAm(confirm.odds)}</span>?</span>
+            <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, textAlign: 'center', lineHeight: 1.4 }}>We'll copy your pick so you can paste it into {BOOK_NAMES[confirm.book] || confirm.book}'s search.</span>
             <span style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
               {onAddToSlip && (
                 <button onClick={() => { onAddToSlip({ pick: confirm.pick, odds: confirm.odds, book: confirm.book, link: confirm.url, byBook: confirm.byBook, byBookLink: confirm.byBookLink, evPct: confirm.evPct, consensus: confirm.consensus, sport, event: `${game.away} vs ${game.home}` }); setConfirm(null) }}
                   style={{ padding: '9px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>+ Slip</button>
               )}
-              <button onClick={() => { onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); if (confirm.url) window.open(confirm.url, '_blank', 'noopener,noreferrer'); setConfirm(null) }}
-                style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>Log &amp; Open</button>
+              <button onClick={() => { onLogPosition && onLogPosition({ sport, away_team: game.away, home_team: game.home, league: sport, external_event_id: game.external_event_id || '', start_time: game.commenceTime }, { pick: confirm.pick, odds: confirm.odds, book: confirm.book }); copyPickAndOpen(`${confirm.pick} ${fmtAm(confirm.odds)}`, confirm.url); setConfirm(null) }}
+                style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>Log · Copy · Open →</button>
               <button onClick={() => setConfirm(null)} style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' }}>Cancel</button>
             </span>
           </div>

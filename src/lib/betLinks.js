@@ -47,3 +47,16 @@ export const BOOK_HOME = {
 export function placeLink(book, deepLink) {
   return decorate(book, deepLink) || SIGNUP_LINKS[book] || BOOK_HOME[book] || null
 }
+
+// No sportsbook exposes a public bet-slip deep-link, so opening a book can't pre-fill the pick.
+// Instead we copy the exact pick to the clipboard and THEN open the book, so the operator pastes it
+// into the book's search in ~2 seconds. Copy is best-effort — it never blocks the open if the
+// clipboard API is missing/denied. Returns true if the pick made it onto the clipboard.
+export async function copyPickAndOpen(pickText, url) {
+  let copied = false
+  try {
+    if (pickText && navigator?.clipboard?.writeText) { await navigator.clipboard.writeText(pickText); copied = true }
+  } catch { /* clipboard blocked — still open the book */ }
+  if (url) window.open(url, '_blank', 'noopener,noreferrer')
+  return copied
+}
