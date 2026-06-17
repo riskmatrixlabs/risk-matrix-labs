@@ -224,7 +224,9 @@ export default async function handler(req, res) {
       if (ap.eff != null && hp.eff != null) {
         const avg = (ap.eff + hp.eff) / 2, worst = Math.max(ap.eff, hp.eff)
         const tag = usingX ? 'xERA' : 'ERA'
+        const best = Math.min(ap.eff, hp.eff)
         if (avg <= 3.5) { score -= 1; why.push(`both arms sharp (${tag})`) }
+        else if (best <= 3.0) { score -= 1; why.push(`an ace arm (${tag})`) }   // mirrors 'a soft arm' → UNDER
         else if (worst >= 4.8) { score += 1; why.push(`a soft arm (${tag})`) }
         else if (avg >= 4.3) { score += 1; why.push(`weak pitching (${tag})`) }
       }
@@ -233,7 +235,7 @@ export default async function handler(req, res) {
         const xs = [ap.xba, hp.xba].filter(v => v != null)
         const worstXba = Math.max(...xs), bestXba = Math.min(...xs)
         if (worstXba >= 0.265) { score += 1; why.push('hard-hit arm (xBA)') }
-        else if (bestXba <= 0.215 && xs.length === 2) { score -= 1; why.push('tough contact (xBA)') }
+        else if (bestXba <= 0.215) { score -= 1; why.push('tough contact (xBA)') }   // one tough arm → UNDER (was: required both)
       }
       // Strikeout arms suppress balls in play → under; two contact arms → over.
       if (ap.kPct != null && hp.kPct != null) {
@@ -246,7 +248,8 @@ export default async function handler(req, res) {
         const worstBp = Math.max(aBp, hBp), bestBp = Math.min(aBp, hBp)
         if (aBp >= 4.6 && hBp >= 4.6) { score += 1; why.push('two weak pens') }
         else if (worstBp >= 4.7) { score += 1; why.push('a weak pen') }
-        else if (bestBp <= 3.3 && worstBp <= 3.7) { score -= 1; why.push('shutdown pens') }
+        else if (bestBp <= 3.3 && worstBp <= 3.7) { score -= 1; why.push('two shutdown pens') }
+        else if (bestBp <= 3.3) { score -= 1; why.push('a shutdown pen') }   // one elite pen → UNDER, mirrors 'a weak pen'
       }
       // Weather: hot air carries → over; cold → under (domed parks neutralized).
       if (wx && wx.note && !wx.dome) {
