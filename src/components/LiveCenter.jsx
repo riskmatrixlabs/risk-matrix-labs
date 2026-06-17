@@ -156,6 +156,17 @@ const BetaTag = ({ size = 7 }) => (
   <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, letterSpacing: '0.08em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '0 3px', flexShrink: 0, whiteSpace: 'nowrap' }}>BETA</span>
 )
 
+// Live result chip — running total vs the lean line, so the card checks itself off as the game goes,
+// same as the Spotlight panel (green ✓ once an Over cashes, red ✗ once an Under busts, amber ● alive).
+function LiveResultChip({ lean, line, total, size = 9 }) {
+  if (line == null || total == null) return null
+  const won = lean === 'OVER' && total > line
+  const lost = lean === 'UNDER' && total >= line
+  const c = won ? NEON_T : lost ? '#FF3B3B' : '#FFAE2B'
+  const mark = won ? '✓' : lost ? '✗' : '●'
+  return <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, color: c, whiteSpace: 'nowrap', flexShrink: 0 }}>{mark} {total} v {line}</span>
+}
+
 // ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
 // anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
 function OuFlag({ event, token, compact = false, mini = false, inline = false }) {
@@ -178,6 +189,10 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   // Finished & graded but the live model no longer returns a lean → show a grade-only chip from the
   // locked snapshot, so the card/detail still shows how the lean did.
   const isGraded = !!graded?.result
+  // Live, not yet graded → check the lean off in real time (running total vs the line), like the panel.
+  const live = isLiveEvent(event)
+  const liveTotal = (live && event?.home_score != null && event?.away_score != null) ? Number(event.home_score) + Number(event.away_score) : null
+  const liveLine = graded?.line ?? ou?.total?.current ?? null
   // Settled game (with or without a live lean still returning) → the clean lean→final→result line.
   if (!ou) {
     if (!isGraded) return null
@@ -197,7 +212,9 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
         {isGraded ? <GradedFlag g={graded} size={10} /> : (
           <>
             <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
-            {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ou.reason}</span> : null}
+            {liveTotal != null && ou.lean !== 'LEAN'
+              ? <LiveResultChip lean={ou.lean} line={liveLine} total={liveTotal} size={10} />
+              : (ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ou.reason}</span> : null)}
           </>
         )}
       </span>
@@ -223,7 +240,9 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
           {isGraded ? <GradedFlag g={graded} size={10} /> : (
             <>
               <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
-              {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{ou.reason}</span> : null}
+              {liveTotal != null && ou.lean !== 'LEAN'
+                ? <LiveResultChip lean={ou.lean} line={liveLine} total={liveTotal} size={10} />
+                : (ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{ou.reason}</span> : null)}
             </>
           )}
         </span>
@@ -239,6 +258,7 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
         {isGraded ? <GradedFlag g={graded} size={13} /> : (
           <>
             <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : TEXT, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` vs ${t.current}` : ''}</span>
+            {liveTotal != null && ou.lean !== 'LEAN' && <LiveResultChip lean={ou.lean} line={liveLine} total={liveTotal} size={11} />}
             <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{ou.reason}</span>
           </>
         )}
