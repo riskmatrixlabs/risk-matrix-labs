@@ -100,5 +100,6 @@ export async function fetchLiveEvents() {
 export function isLiveEvent(e, nowMs = Date.now()) {
   if (!e || (e.status !== 'IP' && e.status !== 'LIVE')) return false
   const t = Date.parse(e.start_time)
-  return Number.isNaN(t) ? true : t >= nowMs - 7 * 60 * 60 * 1000
+  // 30h (not 7h): a suspended game that resumes the next day is live ~19h after its original start.
+  return Number.isNaN(t) ? true : t >= nowMs - 30 * 60 * 60 * 1000
 }
