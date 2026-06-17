@@ -162,46 +162,31 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             <span><b style={{ color: NEON_T }}>VALUE</b> <span style={{ color: MUTED }}>line moved against the lean — better number</span></span>
             <span><b style={{ color: '#FF3B3B' }}>LATE</b> <span style={{ color: MUTED }}>line already moved your way — edge priced in</span></span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {ranked.map(({ ev, ou, rank }) => {
-              const g = record?.games?.[String(ev.external_event_id)] || null
-              const clv = g?.clv ?? null
-              const line = ou.total?.current
-              const moved = ou.total?.open != null && ou.total?.dir
-              const edgeC = Math.abs(ou.edgeRuns ?? 0) >= 1.5 ? NEON_T : (ou.edgeRuns != null ? TEXT : MUTED)
-              const tile = (label, value, valueColor, sub) => (
-                <div style={{ background: '#141414', borderRadius: 8, padding: '6px 8px', minWidth: 0 }}>
-                  <div style={{ fontFamily: R, fontSize: '7.5px', letterSpacing: '0.1em', color: MUTED }}>{label}</div>
-                  <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: valueColor || TEXT, whiteSpace: 'nowrap' }}>{value}</div>
-                  {sub && <div style={{ fontFamily: R, fontSize: '7.5px', color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
-                </div>
-              )
-              return (
-                <div key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ background: ou.strong ? 'rgba(189,255,0,0.06)' : 'rgba(255,255,255,0.015)', border: ou.strong ? `1px solid rgba(189,255,0,0.4)` : `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 11px', borderBottom: `1px solid ${BORDER}` }}>
-                    <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T }}>#{rank}</span>
-                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr} <span style={{ color: MUTED }}>@</span> {ev.home_abbr}</span>
-                    <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: 3, padding: '1px 4px' }}>BETA</span>
-                    {ou.strong && <span style={{ marginLeft: 'auto', fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', color: '#0d0d0d', background: NEON, borderRadius: 4, padding: '2px 7px' }}>★ STRONG</span>}
-                  </div>
-                  <div style={{ padding: '10px 11px', display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                      <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: leanColor(ou) }}>{ou.lean === 'OVER' ? 'Over' : ou.lean === 'UNDER' ? 'Under' : 'Lean'}{line != null ? ` ${line}` : ''}</span>
-                      <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>our lean</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                      {tile('EDGE', ou.edgeRuns != null ? `${ou.edgeRuns > 0 ? '+' : ''}${ou.edgeRuns}` : '—', edgeC, ou.proj != null ? `model ${ou.proj} v ${line ?? '—'}` : '')}
-                      {tile('LINE MOVE', moved ? `${ou.total.open}→${ou.total.current}` : (line != null ? `${line}` : '—'), TEXT, moved ? (ou.edge ? (ou.edge.startsWith('value') ? 'VALUE' : 'LATE') : 'moved') : 'flat since open')}
-                      {tile('CLV', clv != null ? `${clv > 0 ? '+' : ''}${clv}` : '—', clv != null ? (clv >= 0 ? NEON_T : '#FF3B3B') : MUTED, clv != null ? 'vs close' : 'grades at close')}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontFamily: R, fontSize: '9px', color: MUTED, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ou.reason || ''}</span>
-                      {onAddToSlip && <button onClick={async e => { e.stopPropagation(); onAddToSlip(await enrichWithBooks(signalToLeg(ev, ou), ev, ou, token)) }} title="Add to slip" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: '#0d0d0d', background: NEON, border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>+ Slip</button>}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {ranked.map(({ ev, ou, rank }) => (
+              <div key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: ou.strong ? 'rgba(189,255,0,0.08)' : 'rgba(189,255,0,0.02)', border: ou.strong ? `1px solid rgba(189,255,0,0.35)` : `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                  <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{rank}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
+                    <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: leanColor(ou) }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
+                    <MoveArrow ou={ou} />
+                    {/* Quick-look in its own box = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: '4px', padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                      {ou.total?.open != null && ou.total?.dir ? (
+                        <><span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{ou.total.open} → {ou.total.current}</span>{ou.edge && <span style={{ fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE' : 'LATE'}</span>}</>
+                      ) : (
+                        <><span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{ou.total?.current != null ? ou.total.current : '—'}</span><span style={{ color: MUTED }}>· no move yet</span></>
+                      )}
+                    </span>
+                  </span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.confidence >= 3 ? NEON : MUTED }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
+                  {onAddToSlip && <button onClick={async e => { e.stopPropagation(); onAddToSlip(await enrichWithBooks(signalToLeg(ev, ou), ev, ou, token)) }} title="Add to slip" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T, background: 'rgba(189,255,0,0.1)', border: `1px solid ${NEON}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ SLIP</button>}
+                </span>
+              </div>
+            ))}
           </div>
           {(() => {
             // Record panel as a labeled grid: rows = time period, columns = Spotlight (strong) vs
