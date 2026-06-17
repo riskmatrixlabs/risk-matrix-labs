@@ -132,14 +132,21 @@ function getLeanGames(token) {
   return _leanGamesPromise
 }
 
-// Small grade chip — ✓ HIT (green) / ✗ MISS (red) / PUSH (grey), with the final total vs the line.
-function GradeChip({ g, size = 10 }) {
+// Settled lean — reads left→right as one story: our lean (the LOCKED line we graded against)
+// → the final total → hit or miss. Uses graded.line, never the live line, so a game that moved
+// post-lock (lean shown at 8.5, line now 9.5) can't look like a contradiction. The "why" is dropped
+// once a game is final — the result speaks for itself.
+function GradedFlag({ g, size = 10 }) {
   if (!g?.result) return null
+  const arrow = g.lean === 'OVER' ? '📈' : g.lean === 'UNDER' ? '📉' : '➖'
+  const side  = g.lean === 'OVER' ? 'Over' : g.lean === 'UNDER' ? 'Under' : 'Lean'
   const c = g.result === 'W' ? NEON_T : g.result === 'L' ? '#FF3B3B' : MUTED
   const txt = g.result === 'W' ? '✓ HIT' : g.result === 'L' ? '✗ MISS' : 'PUSH'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '6px', border: `1px solid ${c}`, background: g.result === 'W' ? 'rgba(189,255,0,0.1)' : g.result === 'L' ? 'rgba(255,59,59,0.1)' : 'transparent', fontFamily: R, fontSize: `${size - 1}px`, fontWeight: 700, color: c, whiteSpace: 'nowrap' }}>
-      {txt}{g.finalTotal != null ? <span style={{ color: MUTED, fontSize: `${size - 2}px` }}>{g.finalTotal} v {g.line}</span> : null}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, color: TEXT }}>{arrow} {side} {g.line}</span>
+      {g.finalTotal != null && <span style={{ fontFamily: R, fontSize: `${size - 1}px`, fontWeight: 700, color: MUTED }}>→ {g.finalTotal}</span>}
+      <span style={{ fontFamily: R, fontSize: `${size - 1}px`, fontWeight: 700, color: c, padding: '1px 6px', borderRadius: '5px', border: `1px solid ${c}`, background: g.result === 'W' ? 'rgba(189,255,0,0.1)' : g.result === 'L' ? 'rgba(255,59,59,0.1)' : 'transparent' }}>{txt}</span>
     </span>
   )
 }
@@ -165,13 +172,13 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   }, [event?.away_team, event?.home_team, event?.sport, token])
   // Finished & graded but the live model no longer returns a lean → show a grade-only chip from the
   // locked snapshot, so the card/detail still shows how the lean did.
+  const isGraded = !!graded?.result
+  // Settled game (with or without a live lean still returning) → the clean lean→final→result line.
   if (!ou) {
-    if (!graded?.result) return null
-    const lab = graded.lean === 'OVER' ? '📈 OVER' : graded.lean === 'UNDER' ? '📉 UNDER' : '➖'
+    if (!isGraded) return null
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: inline || mini ? '2px 8px' : '4px 10px', borderRadius: '6px', border: `1px solid ${BORDER}`, ...(compact && !inline && !mini ? { margin: '0 auto 7px' } : {}) }}>
-        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap' }}>{lab} {graded.line}</span>
-        <GradeChip g={graded} />
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: inline || mini ? '2px 8px' : '4px 10px', borderRadius: '6px', border: `1px solid ${BORDER}`, ...(compact && !inline && !mini ? { margin: '0 auto 7px' } : {}) }}>
+        <GradedFlag g={graded} />
       </span>
     )
   }
@@ -181,9 +188,12 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   if (inline) {
     return (
       <span title={ou.reason} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 9px', borderRadius: '6px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent', minWidth: 0, maxWidth: '66%' }}>
-        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
-        <GradeChip g={graded} size={9} />
-        {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ou.reason}</span> : null}
+        {isGraded ? <GradedFlag g={graded} size={10} /> : (
+          <>
+            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
+            {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ou.reason}</span> : null}
+          </>
+        )}
       </span>
     )
   }
@@ -191,9 +201,11 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   if (mini) {
     const arrow = ou.lean === 'OVER' ? '📈' : ou.lean === 'UNDER' ? '📉' : '➖'
     const side = ou.lean === 'OVER' ? 'O' : ou.lean === 'UNDER' ? 'U' : '·'
+    // Graded → show the locked line we graded against (not the live line) + the result mark.
+    const lineShown = isGraded ? graded.line : t?.current
     return (
       <span title={ou.reason} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '6px', border: `1px solid ${ou.strong ? NEON : 'rgba(255,255,255,0.12)'}`, background: ou.strong ? 'rgba(189,255,0,0.1)' : 'transparent', fontFamily: R, fontSize: '9.5px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-        {arrow} {side}{t?.current != null ? ` ${t.current}` : ''}{graded?.result ? (graded.result === 'W' ? ' ✓' : graded.result === 'L' ? ' ✗' : ' =') : ''}
+        {arrow} {side}{lineShown != null ? ` ${lineShown}` : ''}{isGraded ? (graded.result === 'W' ? ' ✓' : graded.result === 'L' ? ' ✗' : ' =') : ''}
       </span>
     )
   }
@@ -201,9 +213,12 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
     return (
       <div style={{ marginBottom: '7px', display: 'flex', justifyContent: 'center' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '7px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent' }}>
-          <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
-          <GradeChip g={graded} size={9} />
-          {!graded?.result && ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{ou.reason}</span> : null}
+          {isGraded ? <GradedFlag g={graded} size={10} /> : (
+            <>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
+              {ou.reason ? <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{ou.reason}</span> : null}
+            </>
+          )}
         </span>
       </div>
     )
@@ -213,11 +228,14 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   return (
     <div style={{ margin: '0 16px 12px', padding: '11px 13px', borderRadius: '12px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.06)' : CARD }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : TEXT, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` vs ${t.current}` : ''}</span>
-        <GradeChip g={graded} size={11} />
-        <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{ou.reason}</span>
+        {isGraded ? <GradedFlag g={graded} size={13} /> : (
+          <>
+            <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : TEXT, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` vs ${t.current}` : ''}</span>
+            <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED }}>{ou.reason}</span>
+          </>
+        )}
       </div>
-      {(moveArrow || ou.edge || (bp && (bp.away != null || bp.home != null))) && (
+      {!isGraded && (moveArrow || ou.edge || (bp && (bp.away != null || bp.home != null))) && (
         <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
           {moveArrow && t?.open != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : '#FF3B3B' }}>{moveArrow} since open</span></span>}
           {bp && (bp.away != null || bp.home != null) && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>pens {bp.away ?? '—'}/{bp.home ?? '—'}</span>}

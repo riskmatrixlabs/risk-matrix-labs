@@ -182,24 +182,35 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             ))}
           </div>
           {(() => {
+            // Record panel as a labeled grid: rows = time period, columns = Spotlight (strong) vs
+            // All leans, each with its own win %. The column headers say which number is which, so
+            // you read it by position instead of decoding a sentence.
             const s = record?.strong, a = record?.all
             const fmtRec = (r) => r && (r.w + r.l + r.p) > 0 ? `${r.w}-${r.l}${r.p ? `-${r.p}` : ''}` : '—'
-            const pct = (r) => { const n = r ? r.w + r.l : 0; return n >= 3 ? ` · ${Math.round((r.w / n) * 100)}%` : '' }
-            const col = (label, strongR, allR, hot) => (
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{label}</div>
-                <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: hot ? NEON_T : TEXT }}>{fmtRec(strongR)}{pct(strongR)}</div>
-                <div style={{ fontFamily: R, fontSize: '8px', color: MUTED }}>all {fmtRec(allR)}</div>
+            const pct = (r) => { const n = r ? r.w + r.l : 0; return n >= 3 ? `${Math.round((r.w / n) * 100)}%` : '' }
+            const cell = (rec, color) => (
+              <div style={{ textAlign: 'center', borderTop: `1px solid ${BORDER}`, paddingTop: '7px' }}>
+                <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color }}>{fmtRec(rec)}</span>
+                {pct(rec) && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, marginLeft: '4px' }}>{pct(rec)}</span>}
               </div>
             )
+            const periodLabel = (txt) => (
+              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, borderTop: `1px solid ${BORDER}`, paddingTop: '7px' }}>{txt}</div>
+            )
+            const grid = { display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr', gap: '5px 10px', alignItems: 'center' }
             return (
               <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {col('Today', s?.today, a?.today, true)}
-                  {col('Yesterday', s?.yesterday, a?.yesterday, false)}
-                  {col('All-time', s?.allTime, a?.allTime, false)}
+                <div style={grid}>
+                  <div />
+                  <div style={{ textAlign: 'center', fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, lineHeight: 1.3 }}>SPOTLIGHT<br /><span style={{ color: MUTED }}>(strong)</span></div>
+                  <div style={{ textAlign: 'center', fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED, lineHeight: 1.3 }}>ALL<br /><span style={{ color: MUTED }}>leans</span></div>
+                  {periodLabel('Today')}     {cell(s?.today, NEON_T)}     {cell(a?.today, TEXT)}
+                  {periodLabel('Yesterday')} {cell(s?.yesterday, TEXT)}  {cell(a?.yesterday, TEXT)}
+                  {periodLabel('All-time')}  {cell(s?.allTime, TEXT)}    {cell(a?.allTime, TEXT)}
                 </div>
-                <div style={{ marginTop: '6px', fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.04em' }}>Spotlight (strong) leans · "all" = every lean</div>
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, fontFamily: R, fontSize: '8.5px', color: MUTED, letterSpacing: '0.03em', lineHeight: 1.5 }}>
+                  <span style={{ color: NEON_T }}>Spotlight</span> = high-confidence leans we feature · <span style={{ color: TEXT }}>All</span> = every model lean
+                </div>
               </div>
             )
           })()}
