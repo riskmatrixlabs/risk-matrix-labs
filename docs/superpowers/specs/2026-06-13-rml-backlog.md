@@ -121,6 +121,32 @@ Root cause: `syncAllBets` is upsert-only (supabase.js:69), and the debounced bet
 - 🟢 **Phase 2 slice 1** — `verdictFromBetGrade` adapter feeds gradeBet.js's real evPct/clvPct/winProb (de-vig consensus closing lines) → **verdict pill on every BetCard + BetTicket header**. Grades on EV+CLV today; PHLT/discipline weights renormalize until those feeds land. Deployed, bundle healthy.
 - ⬜ **Phase 2 remaining:** wire PHLT components (live MLB model) + discipline/operator (bet-log behavior) into the verdict; CH3 OPERATOR tile (already built, empty — feed operatorRating); tooltips; Spotlight ranking by final score. NOTE: verdict pill only renders when a bet is on screen — wasn't visually confirmed live (owner account had 0 bets; didn't log a test bet on the real account).
 
+### ✅ SHIPPED Session 61 (SW v341→v360 · ~29 commits · all verified live in Chrome)
+The model went from "looks broken / oversold" → honest, tracked, and surfaced everywhere. Themes:
+
+**O/U model quality & honesty:**
+- 🟢 **OVER-bias fix** — each factor's UNDER trigger made symmetric with its OVER trigger (ace arm / one shutdown pen / one tough-contact arm now push UNDER). Was 68% OVER leans @ 46%.
+- 🟢 **Rating rebuilt as EDGE, not factor-count** — `game-info.js` now builds an INDEPENDENT projected total (park·starters·pens·offense·weather) and rates by `proj − market line`. `strong` = ≥1.5-run gap (rare, real). Backtest on yesterday was honest (3-5) — coefficients are a hypothesis, validated by the tracked record over time.
+- 🟢 **BETA labeling** — amber BETA tag on the Spotlight ticker + every O/U flag + a panel disclaimer ("experimental, calibrating, not advice"). Positioning locked: **data, not picks.**
+- ⚠️ **Rating is non-predictive on the current sample** (hi-conf 50%, lo-conf 57% over ~19) — known; needs weeks of data. Real fix = historical backtest (not tweakable tonight).
+
+**Lean tracking / grading (now works end-to-end):**
+- 🟢 **Self-heal from ESPN** — `cron-grade-leans` fetches the true final from ESPN when our `events` row is stale/frozen at IP (the overnight freeze). Captures **closing line + CLV** too (new `closing_line`/`clv` cols).
+- 🟢 **Grades during the day** — cron widened `*/30 13-23 + 0-9 UTC` (was overnight + 14 UTC only), so afternoon/evening finals grade within 30 min.
+- 🟢 **Result floats onto game cards** — `LiveResultChip` checks the lean off live (✓ Over cashed / ✗ Under bust / ● alive vs line), matching the Spotlight panel; locks to ✓HIT/✗MISS when final.
+- 🟢 Spotlight rows: dead "no move yet" → **game time + model EDGE + live/graded result**; record panel = labeled grid (strong vs all, win % on both).
+
+**Bad-data patches:**
+- 🟢 `odds_total` 0/null → no longer becomes a fake `-0.5` line (game-info guard + sync guards write 0 as null + carry forward last good total). Manually set COL@CHC & SD@STL to their real 10.
+- 🟢 Resumed/suspended games now show as LIVE (`fetchLiveEvents`/`isLiveEvent` 7h→30h) + stale "will resume" note hidden once live (fixed app showing 5 live vs Apple's 6).
+
+**CH2 player-props flow (search → player):**
+- 🟢 Killed the duplicate all-markets card (had the repeated Home Runs). Player season + last-5 **stats now sit on top of the PHLT card** (free ESPN; roster id map so every card can pull them).
+- 🟢 Search lands clean: searched player **first**, **only their card open**, default team = their team + stat = first prop. All other cards **closed by default** (open on tap) so switching filters stays tidy.
+- 🟢 **PLAYER PROPS moved up** — right under the today's-games slider, above Line Movement & Compare Books.
+
+**Also:** EV Brain Phase 1 + verdict pill (see #0b above), reset-doesn't-stick fix (#0 above).
+
 ### ✅ SHIPPED Session 59 (SW v293→v331)
 Spotlight (3-pillar ticker + panel, factors hidden, +Slip w/ real free odds), totals half-point default, cloud-sync delete/reset/bankroll FIX, slip centered + per-single stake/book chooser, slip↔ladder, RR Engine (single-col, team inputs, slate search, Float-to-RR, Combos Built/Novig sheet), universal card cleanup. Specs: `2026-06-17-slip-to-ladder-design.md`, `2026-06-17-rr-slip-integration-design.md`.
 
