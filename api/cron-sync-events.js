@@ -419,7 +419,7 @@ async function fetchSport({ key, sport, league }, dateStr) {
       odds_ml_away:     awayMLRaw != null ? parseAmerican(String(awayMLRaw)) : null,
       odds_spread_home: parseDecimal(spreadLine),
       odds_spread_away: spreadLine ? parseDecimal(String(-parseFloat(spreadLine))) : null,
-      odds_total:       parseDecimal(totalLine),
+      odds_total:       ((t) => (t != null && t > 0 ? t : null))(parseDecimal(totalLine)),  // 0/neg = no total, not a real line
       metadata:    meta,
       updated_at:  new Date().toISOString(),
     }
@@ -486,8 +486,8 @@ export default async function handler(req, res) {
         row.odds_spread_home = prev.odds_spread_home
         row.odds_spread_away = prev.odds_spread_away
       }
-      if (row.odds_total == null && prev.odds_total != null) {
-        row.odds_total = prev.odds_total
+      if ((row.odds_total == null || row.odds_total <= 0) && prev.odds_total != null && prev.odds_total > 0) {
+        row.odds_total = prev.odds_total   // keep the last good total instead of clobbering with 0/null
       }
       // Never overwrite rich metadata with a bare blob: when this run failed to
       // fetch detailed stats (summary fetch errored), keep the existing rich
