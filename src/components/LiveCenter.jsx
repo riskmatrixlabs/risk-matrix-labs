@@ -291,6 +291,8 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
       {/* Event subtitle — series/round name (e.g. "Stanley Cup Final · Game 5", "Commissioner's Cup") */}
       {(event.metadata?.event_note || event.metadata?.series_summary) && (() => {
         const raw = event.metadata.event_note || event.metadata.series_summary
+        // A resumed game is live now — drop a stale "will resume / suspended" note (keep real series names).
+        if (live && /resume|suspend|delay|postpone/i.test(raw)) return null
         const clean = raw.replace(new RegExp(`^${event.league}\\s*`, 'i'), '').replace(/\s*-\s*/g, ' · ').trim()
         return (
           <div style={{ textAlign: 'center', marginBottom: '10px', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
