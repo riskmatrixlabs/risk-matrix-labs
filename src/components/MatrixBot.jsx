@@ -1132,6 +1132,19 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
     return () => clearTimeout(t)
   }, [searchedPlayer?.name, data])
 
+  // Free roster (ESPN, cached) → name→ESPN id, so EVERY player card can show stats, not just the
+  // searched one. Keeps all the cards identical instead of one-with-stats / rest-without.
+  const [roster, setRoster] = useState({})
+  useEffect(() => {
+    if (!token) return
+    let live = true
+    fetch(`/api/player-search?sport=${encodeURIComponent(sport)}&all=1`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (!live || !j?.players) return; const m = {}; for (const p of j.players) if (p.id) m[pnorm(p.player)] = p.id; setRoster(m) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [sport, token])
+
   // PHLT v2.2 — once props load, score every hitter's chance to record a HIT (FREE Statcast + ESPN
   // form, all server-side & cached). MLB only. Auto-runs on game open (Savant ≠ Odds-API credits).
   useEffect(() => {
@@ -1258,7 +1271,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
               : shownPlayers.map((P, i) => {
         const open = !collapsed.has(P.player)
         return (
-        <div key={i} ref={el => { if (el) cardRefs.current[P.player] = el }} style={{ background: '#101114', border: `1px solid ${isSearched(P.player) ? NEON : P.phlt?.faded ? 'rgba(255,59,59,0.4)' : P.phlt?.tier === 'A' ? NEON : P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, boxShadow: isSearched(P.player) ? `0 0 0 1px ${NEON}` : 'none', borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
+        <div key={i} ref={el => { if (el) cardRefs.current[P.player] = el }} style={{ background: '#101114', border: `1px solid ${P.phlt?.faded ? 'rgba(255,59,59,0.4)' : P.phlt?.tier === 'A' ? NEON : P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
           {/* collapsed row — tap to open this player's board */}
           <button onClick={() => toggleCard(P.player)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', background: open ? 'rgba(189,255,0,0.05)' : 'transparent', border: 'none' }}>
@@ -1274,7 +1287,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
           </button>
           {open && (
             <div style={{ padding: '2px 12px 12px' }}>
-              <PlayerStats id={P.id || (isSearched(P.player) ? searchedPlayer?.id : null)} sport={sport} token={token} />
+              <PlayerStats id={P.id || roster[pnorm(P.player)] || (isSearched(P.player) ? searchedPlayer?.id : null)} sport={sport} token={token} />
               {P.phlt && P.phlt.score != null && (() => {
                 const v = P.phlt, c = PHLT_C[v.tier] || MUTED, exp = phltOpen.has(P.player)
                 return (

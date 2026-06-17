@@ -107,7 +107,7 @@ export default async function handler(req, res) {
       for (const row of payload.index || []) {
         if (!row.headshot || seen.has(row.player)) continue
         seen.add(row.player)
-        players.push({ player: row.player, headshot: row.headshot, team: row.team, sport: row.sport })
+        players.push({ player: row.player, headshot: row.headshot, team: row.team, sport: row.sport, id: row.id ?? null })
       }
     }
     return res.status(200).json({ players })
