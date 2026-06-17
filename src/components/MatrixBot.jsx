@@ -1123,7 +1123,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
   const isSearched = (name) => { if (!searchedPlayer?.name) return false; const a = pnorm(name), b = pnorm(searchedPlayer.name); return a.includes(b) || b.includes(a) }
   useEffect(() => {
     if (!searchedPlayer?.name) return
-    setStatF('ALL')
+    setStatF('ALL'); setTeamF('ALL')   // neither the stat tab nor the team filter may hide the searched player
     setCollapsed(s => { const n = new Set(s); for (const k of [...n]) if (isSearched(k)) n.delete(k); return n })
     const t = setTimeout(() => {
       const key = Object.keys(cardRefs.current).find(isSearched)
