@@ -261,16 +261,43 @@ export default async function handler(req, res) {
       // (score 0) when lineups/data are unavailable, so the lean never regresses below today's model.
       if (off?.offense?.score) { score += off.offense.score; why.push(off.offense.reason) }
       if (off?.form?.score)    { score += off.form.score;    why.push(off.form.reason) }
+      // ── Independent run-environment projection (NOT anchored to the market line) ──
+      // The rating must reflect EDGE = our own projected total vs the market's line — not how many
+      // factors agree with the market, which just mirrors a line the market already set. We build an
+      // independent expected total from the same inputs (park · starters · pens · offense · weather).
+      // The coefficients are run estimates (a hypothesis) — the graded record validates them over time.
+      const LG_TOTAL = 8.6, LG_XERA = 4.0, LG_PEN = 4.1
+      let proj = LG_TOTAL * pf
+      if (ap.eff != null && hp.eff != null) proj += ((ap.eff + hp.eff) / 2 - LG_XERA) * 0.9   // starters (~5-6 IP)
+      if (aBp != null && hBp != null)       proj += ((aBp + hBp) / 2 - LG_PEN) * 0.5           // bullpens (~3-4 IP)
+      if (off?.offense?.score)              proj += off.offense.score * 0.45                   // lineup xwOBA
+      if (off?.form?.score)                 proj += off.form.score * 0.30                      // recent scoring
+      if (wx && !wx.dome && wx.boost)       proj += wx.boost                                   // weather (in runs)
+      proj = Math.round(proj * 10) / 10
+
       if (why.length || anchor?.current != null) {
-        const lean = score >= 1 ? 'OVER' : score <= -1 ? 'UNDER' : 'LEAN'
-        // Value vs the market: lean agrees with the move = late; line moved against the lean = value.
+        const line = anchor?.current ?? null
+        let lean, edgeRuns = null, confidence, strong
+        if (line != null) {
+          // EDGE = our projection − the market line. The rating is the size of that gap, in runs.
+          edgeRuns = Math.round((proj - line) * 10) / 10
+          const mag = Math.abs(edgeRuns)
+          lean = edgeRuns >= 0.5 ? 'OVER' : edgeRuns <= -0.5 ? 'UNDER' : 'LEAN'  // <0.5-run gap = no real edge → pass
+          confidence = mag >= 2 ? 4 : mag >= 1.5 ? 3 : mag >= 1 ? 2 : 1
+          strong = mag >= 1.5 && lean !== 'LEAN'   // only a real model-vs-market gap surfaces as "strong"
+        } else {
+          // No market line to compare against → fall back to the raw factor lean, never "strong".
+          lean = score >= 1 ? 'OVER' : score <= -1 ? 'UNDER' : 'LEAN'
+          confidence = 1; strong = false
+        }
+        // Market-move context (value vs late): does the line's move agree with our lean?
         let edge = null
         if (anchor && anchor.dir !== 0 && lean !== 'LEAN') {
           const moveOver = anchor.dir > 0   // total climbing
           if ((lean === 'OVER') === moveOver) edge = 'late — line already moved your way'
           else edge = 'value — line moved against the lean'
         }
-        ou = { lean, score, confidence: Math.abs(score), strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
+        ou = { lean, score, proj, edgeRuns, confidence, strong, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
           total: anchor || null, edge, weather: wx || null, bullpens: { away: aBp ?? null, home: hBp ?? null }, offenseSource: off?.source || 'none' }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
