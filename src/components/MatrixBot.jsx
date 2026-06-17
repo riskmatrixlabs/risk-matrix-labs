@@ -1087,10 +1087,10 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
   const firstStat = (sp) => (PROP_MARKETS[sp] || []).map(labelFor)[0] || 'ALL'
   const [statF, setStatF]   = useState(() => firstStat(sport))   // default to the FIRST prop tab, not ALL
   const [confirm, setConfirm] = useState(null)
-  // All player cards open by default (full board, like a sportsbook). Tap a header to collapse one;
-  // we track only the manually-collapsed players so new scans default everyone open again.
-  const [collapsed, setCollapsed] = useState(() => new Set())
-  const toggleCard = (name) => setCollapsed(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
+  // All player cards CLOSED by default (clean, scannable list). Tap a header to open one. We track
+  // only the manually-opened players, so switching team/stat filters keeps everything tidy & closed.
+  const [expanded, setExpanded] = useState(() => new Set())
+  const toggleCard = (name) => setExpanded(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
   const [teamF, setTeamF] = useState('ALL')            // filter players by team (shortens the scroll)
   const [phlt, setPhlt] = useState({})                 // PHLT v2.2 hitter-HIT verdicts, by player name (MLB)
   const [phltOpen, setPhltOpen] = useState(() => new Set()) // which players' PHLT breakdown is expanded
@@ -1127,7 +1127,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
     if (searchedPlayer.team) setTeamF(searchedPlayer.team)  // default team filter = the player's team
     // Open ONLY the searched player's card; collapse everyone else.
     const names = [...new Set([...(data?.edges || []), ...(data?.lineShopOnly || [])].map(p => p.player).filter(Boolean))]
-    setCollapsed(new Set(names.filter(n => !isSearched(n))))
+    setExpanded(new Set(names.filter(isSearched)))   // open ONLY the searched player's card
     const t = setTimeout(() => {
       const key = Object.keys(cardRefs.current).find(isSearched)
       if (key && cardRefs.current[key]) cardRefs.current[key].scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1272,7 +1272,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
             : !shownPlayers.length
               ? <Empty text={`No ${statF} props on the board right now.`} />
               : shownPlayers.map((P, i) => {
-        const open = !collapsed.has(P.player)
+        const open = expanded.has(P.player)
         return (
         <div key={i} ref={el => { if (el) cardRefs.current[P.player] = el }} style={{ background: '#101114', border: `1px solid ${P.phlt?.faded ? 'rgba(255,59,59,0.4)' : P.phlt?.tier === 'A' ? NEON : P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
           {/* collapsed row — tap to open this player's board */}
