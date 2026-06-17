@@ -901,8 +901,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
           </LookSection>
 
           <LookSection label="PLAYER PROPS" defaultOpen={true}>
-            {player && <PlayerProps player={player} game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />}
-            <PropsPanel game={game} sport={game.sport || sport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
+            <PropsPanel game={game} sport={game.sport || sport} token={token} searchedPlayer={player} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />
           </LookSection>
         </div>
       )}
@@ -1050,7 +1049,38 @@ function BookChips({ cmp, sideName }) {
 
 // Props sub-panel — per-game on-demand prop scan (credit-disciplined).
 // PrizePicks-style: one card per player+line, big line number, More (Over) / Less (Under) buttons.
-function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
+// Player's season + last-5 line — FREE (ESPN), shown on top of their prop card so you read the
+// player, not just a name. Self-fetches by ESPN id; renders nothing until it has real stats.
+function PlayerStats({ id, sport, token }) {
+  const [pstats, setPstats] = useState(null)
+  useEffect(() => {
+    if (!id || !token) { setPstats(null); return }
+    let live = true
+    fetch(`/api/player-stats?sport=${encodeURIComponent(sport)}&id=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (live) setPstats(j?.found ? j : null) }).catch(() => {})
+    return () => { live = false }
+  }, [id, sport, token])
+  if (!pstats || !(pstats.season?.length > 0)) return null
+  const SHOW = ({ MLB: ['H', 'HR', 'RBI', 'R', 'SB'], NBA: ['PTS', 'REB', 'AST'], WNBA: ['PTS', 'REB', 'AST'], NHL: ['G', 'A', 'SOG'] }[sport]) || []
+  const pick = (arr) => SHOW.map(lbl => (arr || []).find(s => s.label === lbl)).filter(Boolean)
+  const seasonC = pick(pstats.season), l5 = pick(pstats.last5)
+  if (!seasonC.length) return null
+  const keyRates = (pstats.rates || []).filter(r => /^(AVG|OPS|ERA|FG%|PTS|SV%)$/i.test(r.label)).slice(0, 2)
+  const lbl = { fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '5px' }
+  const chip = (s, i) => <span key={i} style={{ display: 'inline-flex', gap: '4px', alignItems: 'baseline', fontFamily: R, fontSize: '12px', fontWeight: 700, background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '6px', padding: '3px 8px' }}><span style={{ fontSize: '8px', color: MUTED }}>{s.label}</span><span style={{ color: TEXT }}>{s.value}</span></span>
+  return (
+    <div style={{ marginBottom: '10px' }}>
+      <div style={lbl}>Season{pstats.games ? ` · ${pstats.games} GP` : ''}{keyRates.length ? ` · ${keyRates.map(r => `${r.value} ${r.label}`).join(' · ')}` : ''}</div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: l5.length ? '9px' : 0 }}>{seasonC.map(chip)}</div>
+      {l5.length > 0 && <>
+        <div style={lbl}>Last {pstats.last5games} games</div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>{l5.map((s, i) => <span key={i} style={{ display: 'inline-flex', gap: '4px', alignItems: 'baseline', fontFamily: R, fontSize: '12px', fontWeight: 700, background: 'rgba(189,255,0,0.06)', border: `1px solid ${NEON}`, borderRadius: '6px', padding: '3px 8px' }}><span style={{ fontSize: '8px', color: MUTED }}>{s.label}</span><span style={{ color: NEON_T }}>{s.value}</span></span>)}</div>
+      </>}
+    </div>
+  )
+}
+
+function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, onAddToSlip }) {
   const [status, setStatus] = useState('idle')
   const [data, setData]     = useState(null)
   const [err, setErr]       = useState('')
@@ -1086,6 +1116,22 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   // Reset the stat filter to the first prop tab on each new game/sport (so it opens focused, not on ALL).
   useEffect(() => { setStatF(firstStat(sport)) }, [game?.away, game?.home, sport])
 
+  // Came in via a CH1 player search → land on THAT player: show all their props (ALL tab so the stat
+  // filter can't hide them), make sure their card is open, and scroll it into view.
+  const cardRefs = useRef({})
+  const pnorm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const isSearched = (name) => { if (!searchedPlayer?.name) return false; const a = pnorm(name), b = pnorm(searchedPlayer.name); return a.includes(b) || b.includes(a) }
+  useEffect(() => {
+    if (!searchedPlayer?.name) return
+    setStatF('ALL')
+    setCollapsed(s => { const n = new Set(s); for (const k of [...n]) if (isSearched(k)) n.delete(k); return n })
+    const t = setTimeout(() => {
+      const key = Object.keys(cardRefs.current).find(isSearched)
+      if (key && cardRefs.current[key]) cardRefs.current[key].scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 450)
+    return () => clearTimeout(t)
+  }, [searchedPlayer?.name, data])
+
   // PHLT v2.2 — once props load, score every hitter's chance to record a HIT (FREE Statcast + ESPN
   // form, all server-side & cached). MLB only. Auto-runs on game open (Savant ≠ Odds-API credits).
   useEffect(() => {
@@ -1102,10 +1148,11 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
   // Group props BY PLAYER → one card per player holding ALL their lines (scan player by player).
   const pmap = new Map()
   for (const p of [...(data?.edges || []), ...(data?.lineShopOnly || [])]) {
-    if (!pmap.has(p.player)) pmap.set(p.player, { player: p.player, lines: new Map(), ev: null, headshot: p.headshot || null, team: p.team || null })
+    if (!pmap.has(p.player)) pmap.set(p.player, { player: p.player, lines: new Map(), ev: null, headshot: p.headshot || null, team: p.team || null, id: p.id || null })
     const P = pmap.get(p.player)
     if (!P.headshot && p.headshot) P.headshot = p.headshot
     if (!P.team && p.team) P.team = p.team
+    if (!P.id && p.id) P.id = p.id
     const lk = `${p.market}|${p.point}`
     if (!P.lines.has(lk)) P.lines.set(lk, { marketLabel: p.marketLabel, point: p.point, sides: {}, ev: null })
     const L = P.lines.get(lk)
@@ -1211,7 +1258,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
               : shownPlayers.map((P, i) => {
         const open = !collapsed.has(P.player)
         return (
-        <div key={i} style={{ background: '#101114', border: `1px solid ${P.phlt?.faded ? 'rgba(255,59,59,0.4)' : P.phlt?.tier === 'A' ? NEON : P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
+        <div key={i} ref={el => { if (el) cardRefs.current[P.player] = el }} style={{ background: '#101114', border: `1px solid ${isSearched(P.player) ? NEON : P.phlt?.faded ? 'rgba(255,59,59,0.4)' : P.phlt?.tier === 'A' ? NEON : P.ev != null ? 'rgba(189,255,0,0.35)' : BORDER}`, boxShadow: isSearched(P.player) ? `0 0 0 1px ${NEON}` : 'none', borderRadius: '12px', marginBottom: '8px', overflow: 'hidden' }}>
           {/* collapsed row — tap to open this player's board */}
           <button onClick={() => toggleCard(P.player)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', cursor: 'pointer', background: open ? 'rgba(189,255,0,0.05)' : 'transparent', border: 'none' }}>
@@ -1227,6 +1274,7 @@ function PropsPanel({ game, sport, token, onLogPosition, onAddToSlip }) {
           </button>
           {open && (
             <div style={{ padding: '2px 12px 12px' }}>
+              <PlayerStats id={P.id || (isSearched(P.player) ? searchedPlayer?.id : null)} sport={sport} token={token} />
               {P.phlt && P.phlt.score != null && (() => {
                 const v = P.phlt, c = PHLT_C[v.tier] || MUTED, exp = phltOpen.has(P.player)
                 return (

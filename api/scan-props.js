@@ -20,7 +20,7 @@ async function rosterMap(sport) {
     const byFull = {}, byLast = {}
     for (const r of index || []) {
       const n = norm(r.player)
-      const v = { headshot: r.headshot || null, team: r.team || null }
+      const v = { headshot: r.headshot || null, team: r.team || null, id: r.id ?? null }
       byFull[n] = v
       byLast[n.split(/\s+/).pop()] = v
     }
@@ -89,7 +89,7 @@ export async function scanGameProps({ sport, away, home, full = false, cacheOnly
   const opens = await fetchPropOpens(match.id)
   const withShot = (p) => {
     const n = norm(p.player); const hit = roster.byFull[n] || roster.byLast[n.split(/\s+/).pop()] || {}
-    return { ...p, headshot: hit.headshot || null, team: hit.team || null, openPrice: opens[`${p.player}|${p.market}|${p.point}|${p.side}`] ?? null }
+    return { ...p, headshot: hit.headshot || null, team: hit.team || null, id: hit.id ?? null, openPrice: opens[`${p.player}|${p.market}|${p.point}|${p.side}`] ?? null }
   }
   const payload = {
     found: true, away: game.away_team, home: game.home_team,
