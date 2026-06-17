@@ -151,6 +151,11 @@ function GradedFlag({ g, size = 10 }) {
   )
 }
 
+// Small amber BETA tag — the O/U model is experimental/being calibrated; mark it everywhere it shows.
+const BetaTag = ({ size = 7 }) => (
+  <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, letterSpacing: '0.08em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '0 3px', flexShrink: 0, whiteSpace: 'nowrap' }}>BETA</span>
+)
+
 // ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
 // anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
 function OuFlag({ event, token, compact = false, mini = false, inline = false }) {
@@ -188,6 +193,7 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   if (inline) {
     return (
       <span title={ou.reason} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 9px', borderRadius: '6px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent', minWidth: 0, maxWidth: '66%' }}>
+        <BetaTag />
         {isGraded ? <GradedFlag g={graded} size={10} /> : (
           <>
             <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
@@ -213,6 +219,7 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
     return (
       <div style={{ marginBottom: '7px', display: 'flex', justifyContent: 'center' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '7px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.08)' : 'transparent' }}>
+          <BetaTag />
           {isGraded ? <GradedFlag g={graded} size={10} /> : (
             <>
               <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : MUTED, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` ${t.current}` : ''}</span>
@@ -228,6 +235,7 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   return (
     <div style={{ margin: '0 16px 12px', padding: '11px 13px', borderRadius: '12px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.06)' : CARD }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <BetaTag size={8} />
         {isGraded ? <GradedFlag g={graded} size={13} /> : (
           <>
             <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', color: ou.strong ? NEON_T : TEXT, whiteSpace: 'nowrap' }}>{label}{t?.current != null ? ` vs ${t.current}` : ''}</span>
