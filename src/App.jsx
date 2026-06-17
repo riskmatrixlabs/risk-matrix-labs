@@ -5188,7 +5188,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       {!isMobile && (
         <footer style={{ borderTop: `1px solid var(--border)`, backgroundColor: 'var(--bg)', marginTop: '18px', padding: '10px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '9px', color: 'rgba(255,255,255,0.18)', lineHeight: 1.5 }}>
-            Please gamble responsibly. If you need help: <a href="https://www.ncpgambling.org" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>NCPG</a> · 1-800-522-4700
+            Please bet responsibly. If you need help: <a href="https://www.ncpgambling.org" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>NCPG</a> · 1-800-522-4700
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

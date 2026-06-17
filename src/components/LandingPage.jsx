@@ -855,7 +855,7 @@ export default function LandingPage({ onLogin }) {
           </div>
           <div style={{ marginTop: '10px', textAlign: 'center' }}>
             <span style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.14)', lineHeight: 1.6 }}>
-              Please gamble responsibly. If you or someone you know has a gambling problem, help is available 24/7 at{' '}
+              Please bet responsibly. If you or someone you know has a gambling problem, help is available 24/7 at{' '}
               <a href="https://www.ncpgambling.org" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.24)', textDecoration: 'underline' }}>ncpgambling.org</a>
               {' '}or call the National Problem Gambling Helpline: <strong style={{ color: 'rgba(255,255,255,0.22)' }}>1-800-522-4700</strong>
             </span>
