@@ -78,11 +78,19 @@ async function hitterForm(id) {
   const iH = idx('H'), iAB = idx('AB'), iBB = idx('BB')
   if (iH < 0 || iAB < 0) return null
 
+  // Gather EVERY game across all seasonTypes/categories, then sort by the real game date (newest
+  // first). ESPN groups events by month/seasonType in no guaranteed order, so taking seasonTypes[0]
+  // returned a stale/partial slice (e.g. games 2+ weeks old) — that silently floored Form & Streak.
+  const meta = gl.events || {}
   const evs = []
-  for (const st of (gl.seasonTypes || []).slice(0, 1))
+  for (const st of (gl.seasonTypes || []))
     for (const cat of (st.categories || []))
-      for (const e of (cat.events || [])) if (Array.isArray(e.stats)) evs.push(e)
+      for (const e of (cat.events || [])) if (Array.isArray(e.stats)) {
+        const d = meta[e.eventId]?.gameDate || meta[e.id]?.gameDate || null
+        evs.push({ ...e, _d: d ? Date.parse(d) : 0 })
+      }
   if (!evs.length) return null
+  evs.sort((a, b) => b._d - a._d) // newest game first by actual date, not ESPN's grouping order
 
   const H = (e) => toNum(e.stats[iH]) || 0
   const AB = (e) => toNum(e.stats[iAB]) || 0
