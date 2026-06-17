@@ -38,10 +38,14 @@ async function totalAnchor(sport, away, home) {
     const halfBelow = (n) => (n == null ? null : (Number.isInteger(n) ? n - 0.5 : n))
     const current = halfBelow(ev.odds_total != null ? Number(ev.odds_total) : null)
     let open = null
+    // The free whole-slate sync (cron-sync-live) stores the total LINE in `value`, not `point`
+    // (point is for the paid per-book path). Read `value` so since-open movement lights up for the
+    // whole slate, not just games whose paid lines were fetched. (>0 drops junk 0-line snapshots.)
     const { data: hist } = await sb.from('odds_history')
-      .select('point, captured_at').eq('external_event_id', String(ev.external_event_id))
-      .eq('market', 'total').not('point', 'is', null).order('captured_at', { ascending: true }).limit(200)
-    if (hist?.length) open = halfBelow(Number(hist[0].point))
+      .select('value, captured_at').eq('external_event_id', String(ev.external_event_id))
+      .eq('market', 'total').not('value', 'is', null).gt('value', 0)
+      .order('captured_at', { ascending: true }).limit(200)
+    if (hist?.length) open = halfBelow(Number(hist[0].value))
     if (current == null && open == null) return null
     const dir = (current != null && open != null) ? Math.sign(current - open) : 0
     // Over/under juice (the price) — already synced FREE in the event row, so a lean can become
