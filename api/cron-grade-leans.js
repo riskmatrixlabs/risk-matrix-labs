@@ -54,9 +54,21 @@ export default async function handler(req, res) {
 
   const ids = [...new Set(pending.map(p => p.external_event_id).filter(Boolean))]
   const { data: evs } = await sb.from('events')
-    .select('external_event_id, status, home_score, away_score').in('external_event_id', ids)
+    .select('external_event_id, status, home_score, away_score, start_time').in('external_event_id', ids)
   const byId = {}
   for (const e of evs || []) byId[String(e.external_event_id)] = e
+
+  // Closing total = the last total-line snapshot at/before first pitch. CLV = how far the market
+  // moved toward our lean after we locked it (the sharpest signal: was the model right, win or lose).
+  const halfBelow = (n) => (n == null ? null : (Number.isInteger(n) ? n - 0.5 : n))
+  async function closingTotal(eid, startIso) {
+    let q = sb.from('odds_history').select('value, captured_at')
+      .eq('external_event_id', String(eid)).eq('market', 'total')
+      .not('value', 'is', null).gt('value', 0).order('captured_at', { ascending: false }).limit(1)
+    if (startIso) q = q.lte('captured_at', startIso)
+    const { data } = await q
+    return data?.length ? halfBelow(Number(data[0].value)) : null
+  }
 
   let graded = 0, healed = 0, espnCalls = 0
   for (const p of pending) {
@@ -86,8 +98,14 @@ export default async function handler(req, res) {
     if (total === line) result = 'P'
     else if (p.lean === 'OVER') result = total > line ? 'W' : 'L'
     else result = total < line ? 'W' : 'L'
+    // CLV: did the closing line move toward our lean? (Over → line up = +CLV; Under → line down = +CLV.)
+    const close = await closingTotal(p.external_event_id, e?.start_time || null)
+    let clv = null
+    if (close != null && Number.isFinite(line)) {
+      clv = Math.round((p.lean === 'OVER' ? close - line : line - close) * 10) / 10
+    }
     const { error } = await sb.from('lean_results')
-      .update({ final_total: total, result, graded_at: new Date().toISOString() })
+      .update({ final_total: total, result, closing_line: close, clv, graded_at: new Date().toISOString() })
       .eq('id', p.id)
     if (!error) graded++
   }

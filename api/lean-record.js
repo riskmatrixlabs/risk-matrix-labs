@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
   const today = etDate(0), yesterday = etDate(1)
   const { data: all } = await sb.from('lean_results')
-    .select('external_event_id, game_date, lean, total_line, confidence, strong, result, final_total')
+    .select('external_event_id, game_date, lean, total_line, confidence, strong, result, final_total, closing_line, clv')
     .order('game_date', { ascending: false }).limit(2000)
   const rows = all || []
 
@@ -48,6 +48,7 @@ export default async function handler(req, res) {
     games[r.external_event_id] = {
       lean: r.lean, line: r.total_line, strong: r.strong,
       result: r.result || null, finalTotal: r.final_total ?? null, date: r.game_date,
+      closingLine: r.closing_line ?? null, clv: r.clv ?? null,
     }
   }
 
