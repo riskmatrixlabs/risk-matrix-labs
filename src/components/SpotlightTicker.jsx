@@ -185,13 +185,21 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             const s = record?.strong, a = record?.all
             const fmtRec = (r) => r && (r.w + r.l + r.p) > 0 ? `${r.w}-${r.l}${r.p ? `-${r.p}` : ''}` : '—'
             const pct = (r) => { const n = r ? r.w + r.l : 0; return n >= 3 ? ` · ${Math.round((r.w / n) * 100)}%` : '' }
+            const col = (label, strongR, allR, hot) => (
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: hot ? NEON_T : TEXT }}>{fmtRec(strongR)}{pct(strongR)}</div>
+                <div style={{ fontFamily: R, fontSize: '8px', color: MUTED }}>all {fmtRec(allR)}</div>
+              </div>
+            )
             return (
-              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Yesterday</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmtRec(s?.yesterday)}</div></div>
-                <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>All-time</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T }}>{fmtRec(s?.allTime)}{pct(s?.allTime)}</div></div>
-                <div style={{ flex: 1, alignSelf: 'flex-start', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', textAlign: 'right', lineHeight: 1.5 }}>
-                  Spotlight (strong) leans{a ? <><br/>All leans: <span style={{ color: TEXT }}>{fmtRec(a.allTime)}{pct(a.allTime)}</span></> : ''}
+              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {col('Today', s?.today, a?.today, true)}
+                  {col('Yesterday', s?.yesterday, a?.yesterday, false)}
+                  {col('All-time', s?.allTime, a?.allTime, false)}
                 </div>
+                <div style={{ marginTop: '6px', fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.04em' }}>Spotlight (strong) leans · "all" = every lean</div>
               </div>
             )
           })()}
