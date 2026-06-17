@@ -69,6 +69,14 @@ function signalToLeg(ev, ou) {
 export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   const [signals, setSignals] = useState([])
   const [open, setOpen] = useState(false)
+  const [record, setRecord] = useState(null)  // model lean track record (strong subset = Spotlight)
+
+  // Pull the graded record when the panel opens (free DB read).
+  useEffect(() => {
+    if (!open || !token || record) return
+    fetch('/api/lean-record', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (j?.ok) setRecord(j) }).catch(() => {})
+  }, [open, token, record])
 
   useEffect(() => {
     if (!token) { setSignals([]); return }
@@ -86,6 +94,12 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
           const r = await fetch(`/api/game-info?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
           if (!r.ok) return null
           const j = await r.json()
+          // Snapshot every directional lean (not just strong) so we can grade the model's record
+          // after the game finishes. Fire-and-forget; the endpoint locks the first pre-game lean/day.
+          if ((j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER') && (ev.external_event_id || ev.id)) {
+            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time }) }).catch(() => {})
+          }
           return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
         } catch { return null }
       }))
@@ -161,11 +175,20 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: '16px' }}>
-            <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Yesterday</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div></div>
-            <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>All-time</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>—</div></div>
-            <div style={{ flex: 1, alignSelf: 'center', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', textAlign: 'right' }}>Tracking starts now — record builds as signals settle.</div>
-          </div>
+          {(() => {
+            const s = record?.strong, a = record?.all
+            const fmtRec = (r) => r && (r.w + r.l + r.p) > 0 ? `${r.w}-${r.l}${r.p ? `-${r.p}` : ''}` : '—'
+            const pct = (r) => { const n = r ? r.w + r.l : 0; return n >= 3 ? ` · ${Math.round((r.w / n) * 100)}%` : '' }
+            return (
+              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}`, display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Yesterday</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmtRec(s?.yesterday)}</div></div>
+                <div><div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase' }}>All-time</div><div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: NEON_T }}>{fmtRec(s?.allTime)}{pct(s?.allTime)}</div></div>
+                <div style={{ flex: 1, alignSelf: 'flex-start', fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.04em', textAlign: 'right', lineHeight: 1.5 }}>
+                  Spotlight (strong) leans{a ? <><br/>All leans: <span style={{ color: TEXT }}>{fmtRec(a.allTime)}{pct(a.allTime)}</span></> : ''}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>
