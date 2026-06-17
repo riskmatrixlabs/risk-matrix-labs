@@ -31,12 +31,15 @@ async function totalAnchor(sport, away, home) {
       .lte('start_time', new Date(Date.now() + 20 * 3600e3).toISOString())
       .order('start_time', { ascending: true }).limit(60)
     const matches = (evs || []).filter(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away))
-    const ev = matches.find(e => e.odds_total != null) || matches[0]
+    // A synced total of 0 (or null) = no real total — don't let it through, or halfBelow turns 0 into
+    // a fake -0.5 line. Prefer a match that actually carries a positive total.
+    const hasTotal = (e) => e.odds_total != null && Number(e.odds_total) > 0
+    const ev = matches.find(hasTotal) || matches[0]
     if (!ev) return null
     // Books rarely post WHOLE-number totals (10, 8, 11) — the real line is the half-point below
     // (9.5, 7.5, 10.5). Our synced total can come back rounded, so default whole numbers down to .5.
     const halfBelow = (n) => (n == null ? null : (Number.isInteger(n) ? n - 0.5 : n))
-    const current = halfBelow(ev.odds_total != null ? Number(ev.odds_total) : null)
+    const current = hasTotal(ev) ? halfBelow(Number(ev.odds_total)) : null
     let open = null
     // The free whole-slate sync (cron-sync-live) stores the total LINE in `value`, not `point`
     // (point is for the paid per-book path). Read `value` so since-open movement lights up for the
