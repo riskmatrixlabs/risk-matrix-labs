@@ -7,6 +7,7 @@ import ws from 'ws'
 import { getSavantMaps } from './savant.js'
 import { fetchWeather } from './lib/weather.js'
 import { readScan, writeScan, isFresh, todayStr } from './_lib/scanStore.js'
+import { getOffense } from './_lib/offense.js'
 
 export const config = { maxDuration: 20 }
 
@@ -197,11 +198,12 @@ export default async function handler(req, res) {
   let ou = null
   if (sport === 'MLB') {
     try {
-      const [ae, he, sav, anchor, wx, aBp, hBp] = await Promise.all([
+      const [ae, he, sav, anchor, wx, aBp, hBp, off] = await Promise.all([
         pitcherEra(cfg, aSide.pitcherId), pitcherEra(cfg, hSide.pitcherId),
         getSavantMaps().catch(() => null), totalAnchor(sport, away, home).catch(() => null),
         gameWeather(hSide.abbr, iso).catch(() => null),
         bullpenEra(aSide.abbr).catch(() => null), bullpenEra(hSide.abbr).catch(() => null),
+        getOffense({ away, home, awayId: MLB_TEAM_ID[String(aSide.abbr || '').toUpperCase()], homeId: MLB_TEAM_ID[String(hSide.abbr || '').toUpperCase()] }).catch(() => null),
       ])
       aSide.era = ae; hSide.era = he
       // Statcast skill read per starter: xERA (fallback raw ERA), xBA-against (contact quality —
@@ -252,6 +254,10 @@ export default async function handler(req, res) {
         else if (wx.boost <= -0.5) { score -= 1; why.push(wx.note) }
         else if (wx.note) why.push(wx.note)   // mild/wind: show context without moving the lean
       }
+      // Offense (lineup xwOBA) + recent scoring form — the under/over balancer. Additive; sits out
+      // (score 0) when lineups/data are unavailable, so the lean never regresses below today's model.
+      if (off?.offense?.score) { score += off.offense.score; why.push(off.offense.reason) }
+      if (off?.form?.score)    { score += off.form.score;    why.push(off.form.reason) }
       if (why.length || anchor?.current != null) {
         const lean = score >= 1 ? 'OVER' : score <= -1 ? 'UNDER' : 'LEAN'
         // Value vs the market: lean agrees with the move = late; line moved against the lean = value.
@@ -262,7 +268,7 @@ export default async function handler(req, res) {
           else edge = 'value — line moved against the lean'
         }
         ou = { lean, score, confidence: Math.abs(score), strong: Math.abs(score) >= 2, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
-          total: anchor || null, edge, weather: wx || null, bullpens: { away: aBp ?? null, home: hBp ?? null } }
+          total: anchor || null, edge, weather: wx || null, bullpens: { away: aBp ?? null, home: hBp ?? null }, offenseSource: off?.source || 'none' }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
   }
