@@ -415,7 +415,8 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           <span style={{ fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.18em', color: 'rgba(189,255,0,0.6)', textTransform: 'uppercase' }}>Tap for Insights</span>
           <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="rgba(189,255,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
-        {preGame && <OuFlag event={event} token={token} inline />}
+        {/* Pre-game: show the lean. Live/final: OuFlag shows the lean + the ✓HIT/✗MISS grade once settled. */}
+        <OuFlag event={event} token={token} inline />
       </div>
     </div>
   )
