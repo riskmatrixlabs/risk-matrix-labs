@@ -61,14 +61,18 @@ export function evScore(modelProb, americanOdds, stake = 100) {
   const profit = americanOdds > 0 ? (americanOdds / 100) * stake : (100 / Math.abs(americanOdds)) * stake
   const evDollars = modelProb * profit - (1 - modelProb) * stake
   const evPct = (evDollars / stake) * 100
-  // Tiered score per spec; below +1% is a pass (graded sub-50 by how negative it is).
-  let score
-  if (evPct >= 8) score = 100
-  else if (evPct >= 5) score = 85
-  else if (evPct >= 3) score = 70
-  else if (evPct >= 1) score = 55
-  else score = clamp(48 + evPct * 4) // <1%: glide down through 0 so −EV reads clearly sub-pass
-  return { implied, edge, evPct, score, isPass: evPct < 1 }
+  return { implied, edge, evPct, score: evScoreFromPct(evPct), isPass: evPct < 1 }
+}
+
+// Map a raw EV% to the tiered score (spec). Below +1% glides down through 0 so −EV
+// reads clearly sub-pass. Reused when a grade already carries evPct (e.g. gradeBet.js).
+export function evScoreFromPct(evPct) {
+  if (!isNum(evPct)) return null
+  if (evPct >= 8) return 100
+  if (evPct >= 5) return 85
+  if (evPct >= 3) return 70
+  if (evPct >= 1) return 55
+  return clamp(48 + evPct * 4)
 }
 
 // ── CLV — entry price vs closing price (did you beat the close?) ──
@@ -77,9 +81,15 @@ export function clvScore(entryAmerican, closeAmerican) {
   const entryDec = americanToDecimal(entryAmerican)
   const closeDec = americanToDecimal(closeAmerican)
   if (!isNum(entryDec) || !isNum(closeDec) || closeDec <= 0) return null
-  const beatPct = (entryDec / closeDec - 1) * 100 // >0 = you got a better price than it closed
+  return clvScoreFromBeatPct((entryDec / closeDec - 1) * 100)
+}
+
+// Map a "beat the close" percent (>0 = got a better price than it closed) to a score.
+// Reused when a grade already carries clvPct (e.g. gradeBet.js / slip CLV).
+export function clvScoreFromBeatPct(beatPct) {
+  if (!isNum(beatPct)) return null
   if (beatPct >= 2) return clamp(90 + Math.min(beatPct - 2, 10))   // strong beat → 90–100
-  if (beatPct >= 0.25) return clamp(70 + (beatPct / 2) * 19 / 1)   // small beat → 70–89
+  if (beatPct >= 0.25) return clamp(70 + (beatPct / 2) * 19)       // small beat → 70–89
   if (beatPct > -0.25) return 60                                    // flat → middle of 50–69
   return clamp(50 + beatPct * 6)                                    // moved against → <50
 }
@@ -168,4 +178,19 @@ export function gradeBetQuality(input = {}) {
   })
 
   return { ev, clv, phlt, discipline, final }
+}
+
+// ── Adapter: turn a logged-bet grade ({ evPct, clvPct, winProb }) into a verdict ──
+// This is the Phase-2 glue. We grade on the feeds we actually have today (EV + CLV from
+// gradeBet.js / de-vig consensus); PHLT and discipline aren't passed yet so weightedScore
+// renormalizes over what's present. Returns null when there's nothing real to grade on.
+export function verdictFromBetGrade(grade, americanOdds) {
+  if (!grade) return null
+  const ev = isNum(grade.evPct) ? evScoreFromPct(grade.evPct)
+    : (isNum(grade.winProb) && isNum(americanOdds)) ? evScore(grade.winProb, americanOdds)?.score ?? null
+    : null
+  const clv = isNum(grade.clvPct) ? clvScoreFromBeatPct(grade.clvPct) : null
+  if (ev == null && clv == null) return null
+  const final = finalBetScore({ phlt: null, ev, clvProj: clv, ladderRRFit: null, discipline: null })
+  return final ? { ...final, evScore: ev, clvScore: clv } : null
 }

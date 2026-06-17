@@ -4,6 +4,18 @@ import { useState } from 'react'
 import { Pencil, ChevronDown } from 'lucide-react'
 import { NEON, MUTED, BORDER, TEXT } from './botShared.jsx'
 import { ticketStatus, slipClv } from '../lib/betCard.js'
+import { verdictFromBetGrade } from '../lib/evBrain.js'
+
+// EV-Brain verdict → pill color. Prime=neon, Strong=green, Lean=amber, Pass=muted.
+const VERDICT_COLOR = { neon: '#BDFF00', green: '#5BD16B', amber: '#FFAE2B', muted: '#888780' }
+function VerdictPill({ verdict, size = 'md' }) {
+  if (!verdict) return null
+  const c = VERDICT_COLOR[verdict.tone] || MUTED
+  const fs = size === 'sm' ? 8 : 9
+  return (
+    <span title="EV-Brain bet grade (EV + CLV)" style={{ fontFamily: R, fontSize: fs, fontWeight: 700, letterSpacing: '0.12em', color: c, background: `${c}1f`, border: `1px solid ${c}59`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase' }}>{verdict.label}</span>
+  )
+}
 
 const R = "'Rajdhani',sans-serif"
 const I = "'Inter',sans-serif"
@@ -138,6 +150,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
   const leg = bet.legs[0] || {}
   const winProb = grade?.winProb ?? leg.winProb ?? null
   const win = toWin(bet.odds, bet.stake)
+  const verdict = grade?.verdict ?? verdictFromBetGrade(grade, bet.odds)?.verdict
   return (
     <div style={{ position: 'relative', background: '#0d0d0d', border: `1px solid ${st.color}59`, borderRadius: 14, padding: compact ? '9px 11px' : 13, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: st.color }} />
@@ -149,6 +162,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
           {bet.subtitle && <div style={{ fontFamily: I, fontSize: 11, color: MUTED }}>{bet.subtitle}</div>}
         </div>
         {bet.book && <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#1c1c1c', color: '#9a9a9a', alignSelf: 'flex-start' }}>{bet.book}</span>}
+        {verdict && <VerdictPill verdict={verdict} size={compact ? 'sm' : 'md'} />}
         <Ring pct={winProb} size={compact ? 32 : 40} color={ringColor(st)} />
       </div>
       <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
@@ -203,6 +217,7 @@ export function BetTicket({ bet, grade, pnl = null, onEdit = null, badge = null 
   // Combined parlay win probability = product of each leg's win prob (independent legs).
   const legProbs = bet.legs.map(l => l.winProb).filter(p => p != null && !Number.isNaN(p))
   const comboProb = legProbs.length === bet.legs.length && legProbs.length ? legProbs.reduce((a, b) => a * b, 1) : null
+  const verdict = grade?.verdict ?? verdictFromBetGrade({ evPct: grade?.evPct, clvPct: clvVal, winProb: comboProb ?? grade?.winProb }, bet.odds)?.verdict
   return (
     <div style={{ position: 'relative', border: `1px solid ${t.overall.color}59`, borderRadius: 14, background: '#0c0c0c', overflow: 'hidden' }}>
       {/* Left status-color accent stripe, matching the single card. */}
@@ -213,6 +228,7 @@ export function BetTicket({ bet, grade, pnl = null, onEdit = null, badge = null 
           <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{bet.title}</span>
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          {verdict && <VerdictPill verdict={verdict} size="sm" />}
           <span style={{ fontFamily: R, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: `${t.overall.color}1f`, color: t.overall.color }}>{t.label}{t.overall.key === 'live' ? ' · LIVE' : ''}</span>
           <Ring pct={comboProb ?? grade?.winProb} size={36} color={ringColor(t.overall)} />
         </span>

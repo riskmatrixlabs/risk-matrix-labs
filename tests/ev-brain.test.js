@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  evScore, clvScore, weightedScore, phltScore, disciplineScore,
-  operatorRating, ladderScore, roundRobinScore, finalBetScore,
-  verdictFor, phltGradeFor, operatorLabelFor, gradeBetQuality,
-  WEIGHTS,
+  evScore, evScoreFromPct, clvScore, clvScoreFromBeatPct, weightedScore,
+  phltScore, disciplineScore, operatorRating, ladderScore, roundRobinScore,
+  finalBetScore, verdictFor, phltGradeFor, operatorLabelFor,
+  gradeBetQuality, verdictFromBetGrade, WEIGHTS,
 } from '../src/lib/evBrain.js'
 
 describe('evScore', () => {
@@ -138,6 +138,41 @@ describe('weights are coherent', () => {
       const sum = Object.values(set).reduce((a, b) => a + b, 0)
       expect(sum, name).toBeCloseTo(1, 6)
     }
+  })
+})
+
+describe('percent-based scorers (reused by the gradeBet adapter)', () => {
+  it('evScoreFromPct mirrors evScore tiers', () => {
+    expect(evScoreFromPct(9)).toBe(100)
+    expect(evScoreFromPct(6)).toBe(85)
+    expect(evScoreFromPct(4)).toBe(70)
+    expect(evScoreFromPct(2)).toBe(55)
+    expect(evScoreFromPct(-3)).toBeLessThan(50)
+    expect(evScoreFromPct(null)).toBeNull()
+  })
+  it('clvScoreFromBeatPct mirrors clvScore tiers', () => {
+    expect(clvScoreFromBeatPct(5)).toBeGreaterThanOrEqual(90)
+    expect(clvScoreFromBeatPct(0)).toBe(60)
+    expect(clvScoreFromBeatPct(-5)).toBeLessThan(50)
+    expect(clvScoreFromBeatPct(null)).toBeNull()
+  })
+})
+
+describe('verdictFromBetGrade (Phase-2 glue)', () => {
+  it('grades a logged bet on EV + CLV alone (PHLT/discipline absent)', () => {
+    const v = verdictFromBetGrade({ evPct: 9, clvPct: 5, winProb: 0.6 }, -110)
+    // EV 100 + CLV ~100, other components null → renormalize → high verdict
+    expect(v.score).toBeGreaterThan(85)
+    expect(v.verdict.key).toBe('PRIME')
+    expect(v.evScore).toBe(100)
+  })
+  it('passes a -EV, line-moved-against bet', () => {
+    const v = verdictFromBetGrade({ evPct: -4, clvPct: -5, winProb: 0.45 }, -110)
+    expect(v.verdict.key).toBe('PASS')
+  })
+  it('returns null when there is nothing real to grade on', () => {
+    expect(verdictFromBetGrade({ winProb: 0.5 }, null)).toBeNull()
+    expect(verdictFromBetGrade(null, -110)).toBeNull()
   })
 })
 
