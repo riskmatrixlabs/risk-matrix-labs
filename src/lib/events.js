@@ -50,7 +50,10 @@ export async function fetchEvents(sport, date = 'today') {
 
   if (date === 'today') {
     const { from, to } = etWindow(etDate(0), etDate(1))
-    query = query.gte('start_time', from).lte('start_time', to)
+    const liveFrom = etWindow(etDate(-1), etDate(0)).from   // yesterday 04:00Z
+    // Today's slate OR a game that's LIVE now but started earlier — a suspended game that resumes
+    // the next day keeps its original date yet is in progress today (Apple Sports shows it; so must we).
+    query = query.or(`and(start_time.gte.${from},start_time.lte.${to}),and(start_time.gte.${liveFrom},start_time.lt.${from},status.eq.IP)`)
   } else if (date === 'yesterday') {
     const { from, to } = etWindow(etDate(-1), etDate(0))
     query = query.gte('start_time', from).lte('start_time', to)
