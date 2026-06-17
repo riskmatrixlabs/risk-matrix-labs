@@ -111,8 +111,9 @@ Bets resurrect after reset: they live in Supabase `bets` + localStorage + live R
 
 ## 🎯 NEXT SESSION — start here (in order)
 
-### 🚨 #0 — FINISH "RESET DOESN'T STICK" (#4, witnessed live session 60)
-The bankroll wipe only stuck after CLOSING the browser tab — the live tab's React memory re-pushed deleted bets to Supabase on every delete (syncAllBets upsert-only). `resetSession` (App.jsx ~L2761) needs a guard flag to suppress load-restore + sync-up during reset, surface delete errors, and a real reset UI. See memory `rml-reset-sync-loop`. localStorage key is `rml_session_v1_<userId>` (30KB bet cache) — must be cleared too.
+### ✅ #0 — RESET DOESN'T STICK — FIXED (session 61, SW v341, deployed)
+Root cause: `syncAllBets` is upsert-only (supabase.js:69), and the debounced bets auto-sync (App.jsx:2528) had NO outbound suppression — only `realtimeIgnoreUntil` (inbound echo). A stale `syncAllBets(oldBets)` timer firing during the awaited cloud delete re-created the just-deleted rows (why the wipe only stuck after closing the tab). FIX: added `syncSuspendedRef` — set true before any cloud delete in `resetSession` + `deleteBetReliable`, checked in the auto-sync effect, cleared 100ms after the empty state settles. Build clean, deployed to app.riskmatrixlabs.com, verified live (v341, no console errors). NOTE: full add→reset→reload behavioral test NOT run on owner's live account (resetSession zeroes bankroll = destructive to real data) — verify on a throwaway account or after owner OK.
+**STILL OPEN (separate, needs a product decision):** real reset UI + CH3 "RESET SCOREBOARD" stub (MatrixBot.jsx:1469) — decide bets-only vs nuke-everything (the "New Bankroll keeps history" vs "Nuke account" split) before wiring.
 
 ### 🆕 #0b — EV BRAIN (decide 3 → Phase 1/2)
 Decide: (a) rename the MLB hitter "PHLT" model (collision with owner's EV-Brain "PHLT"), (b) ModelProb source = de-vig consensus, (c) "Play" label vs brand rule. Then Phase 1 `evBrain.ts` core, Phase 2 wire feeds. Memory `rml-evbrain-spec`. The lean-tracking foundation (session 60) feeds CLV/discipline.
