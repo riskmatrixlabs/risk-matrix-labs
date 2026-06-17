@@ -1123,8 +1123,11 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
   const isSearched = (name) => { if (!searchedPlayer?.name) return false; const a = pnorm(name), b = pnorm(searchedPlayer.name); return a.includes(b) || b.includes(a) }
   useEffect(() => {
     if (!searchedPlayer?.name) return
-    setStatF('ALL'); setTeamF('ALL')   // neither the stat tab nor the team filter may hide the searched player
-    setCollapsed(s => { const n = new Set(s); for (const k of [...n]) if (isSearched(k)) n.delete(k); return n })
+    setStatF(firstStat(sport))                              // default stat tab = first prop (e.g. HITS)
+    if (searchedPlayer.team) setTeamF(searchedPlayer.team)  // default team filter = the player's team
+    // Open ONLY the searched player's card; collapse everyone else.
+    const names = [...new Set([...(data?.edges || []), ...(data?.lineShopOnly || [])].map(p => p.player).filter(Boolean))]
+    setCollapsed(new Set(names.filter(n => !isSearched(n))))
     const t = setTimeout(() => {
       const key = Object.keys(cardRefs.current).find(isSearched)
       if (key && cardRefs.current[key]) cardRefs.current[key].scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1179,7 +1182,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
   const phltRank = (P) => { const v = P.phlt; if (!v || v.score == null) return -1; return v.faded ? -2 : v.score }
   const players = [...pmap.values()]
     .map(P => ({ ...P, lines: [...P.lines.values()], phlt: phlt[P.player] || null }))
-    .sort((a, b) => phltRank(b) - phltRank(a) || (b.ev ?? -99) - (a.ev ?? -99))
+    .sort((a, b) => (isSearched(b.player) - isSearched(a.player)) || phltRank(b) - phltRank(a) || (b.ev ?? -99) - (a.ev ?? -99))
   // Tabs = the sport's STANDARD prop categories — always pinned on top, even before any props load.
   const tabLabels = (PROP_MARKETS[sport] || []).map(labelFor)
   const teams = [...new Set(players.map(P => P.team).filter(Boolean))]
