@@ -82,7 +82,9 @@ export async function fetchEvent(id) {
 // Freshness guard: a game can't truly be live if it started more than ~7h ago — that's a
 // stale 'IP' row the status sync never finalized. Window it so those don't show as live.
 export async function fetchLiveEvents() {
-  const sinceIso = new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
+  // 30h window (not 7h): a suspended game that resumes the NEXT day is live ~19h after its original
+  // start, so a tight floor dropped it from the live view while Apple Sports still showed it.
+  const sinceIso = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString()
   const result = await supabase
     .from('events')
     .select('*')
