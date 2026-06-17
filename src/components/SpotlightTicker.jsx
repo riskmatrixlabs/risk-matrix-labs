@@ -172,7 +172,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: leanColor(ou) }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
                     <MoveArrow ou={ou} />
                     {/* Quick-look in its own box = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: '4px', padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', padding: '3px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
                       {(() => {
                         const ts = ev.start_time ? Date.parse(ev.start_time) : null
                         const live = ts != null && ts <= Date.now()
@@ -180,11 +180,24 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                         const line = ou.total?.current
                         const edge = ou.edgeRuns
                         const strong = edge != null && Math.abs(edge) >= 1.5
+                        // Result: graded (✓HIT/✗MISS), or live total-so-far vs the line (cashing/busted/alive).
+                        const g = record?.games?.[String(ev.external_event_id)] || null
+                        const liveTotal = (ev.home_score != null && ev.away_score != null) ? Number(ev.home_score) + Number(ev.away_score) : null
+                        let result = null
+                        if (g?.result) {
+                          const win = g.result === 'W', push = g.result === 'P'
+                          result = { c: win ? NEON_T : push ? MUTED : '#FF3B3B', t: `${win ? '✓ HIT' : push ? 'PUSH' : '✗ MISS'}${g.finalTotal != null ? ` ${g.finalTotal}` : ''}` }
+                        } else if (live && liveTotal != null && line != null) {
+                          const won = ou.lean === 'OVER' && liveTotal > line
+                          const lost = ou.lean === 'UNDER' && liveTotal >= line
+                          result = { c: won ? NEON_T : lost ? '#FF3B3B' : '#FFAE2B', t: `${won ? '✓' : lost ? '✗' : '●'} ${liveTotal} v ${line}` }
+                        }
                         return (
                           <>
                             {timeLabel && <span style={{ color: live ? '#FF3B3B' : MUTED, fontWeight: 700 }}>{timeLabel}</span>}
                             <span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{line != null ? line : '—'}</span>
                             <span style={{ color: MUTED }}>EDGE</span><span style={{ color: strong ? NEON_T : TEXT, fontWeight: 700 }}>{edge != null ? `${edge > 0 ? '+' : ''}${edge}` : '—'}</span>
+                            {result && <span style={{ color: result.c, fontWeight: 700 }}>{result.t}</span>}
                           </>
                         )
                       })()}
