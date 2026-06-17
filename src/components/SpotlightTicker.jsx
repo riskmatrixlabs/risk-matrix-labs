@@ -173,11 +173,21 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                     <MoveArrow ou={ou} />
                     {/* Quick-look in its own box = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: '4px', padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
-                      {ou.total?.open != null && ou.total?.dir ? (
-                        <><span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{ou.total.open} → {ou.total.current}</span>{ou.edge && <span style={{ fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : '#FF3B3B' }}>{ou.edge.startsWith('value') ? 'VALUE' : 'LATE'}</span>}</>
-                      ) : (
-                        <><span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{ou.total?.current != null ? ou.total.current : '—'}</span><span style={{ color: MUTED }}>· no move yet</span></>
-                      )}
+                      {(() => {
+                        const ts = ev.start_time ? Date.parse(ev.start_time) : null
+                        const live = ts != null && ts <= Date.now()
+                        const timeLabel = ts == null ? null : (live ? 'LIVE' : new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
+                        const line = ou.total?.current
+                        const edge = ou.edgeRuns
+                        const strong = edge != null && Math.abs(edge) >= 1.5
+                        return (
+                          <>
+                            {timeLabel && <span style={{ color: live ? '#FF3B3B' : MUTED, fontWeight: 700 }}>{timeLabel}</span>}
+                            <span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{line != null ? line : '—'}</span>
+                            <span style={{ color: MUTED }}>EDGE</span><span style={{ color: strong ? NEON_T : TEXT, fontWeight: 700 }}>{edge != null ? `${edge > 0 ? '+' : ''}${edge}` : '—'}</span>
+                          </>
+                        )
+                      })()}
                     </span>
                   </span>
                 </span>
