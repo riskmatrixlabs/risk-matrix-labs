@@ -100,7 +100,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time }) }).catch(() => {})
           }
-          return (j?.ou?.lean && j.ou.strong) ? { ev, ou: j.ou } : null
+          return (j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER') ? { ev, ou: j.ou } : null
         } catch { return null }
       }))
       if (cancel) return
@@ -114,8 +114,10 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   }, [token])
 
   if (!signals.length) return null
+  const strongSignals = signals.filter(s => s.ou.strong)
   const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))
-  const loop = [...ranked, ...ranked]
+  const strongRanked = strongSignals.map((s, i) => ({ ...s, rank: ranked.find(r => r.ev.id === s.ev.id)?.rank ?? i + 1 }))
+  const loop = [...strongRanked, ...strongRanked]
   // Conviction color: 3+ factors = bright NEON (strong), exactly 2 = white (weakest that still qualifies).
   const leanColor = (ou) => (ou.confidence >= 3 ? NEON : TEXT)
   const Chip = ({ ev, ou, rank }) => (
@@ -131,13 +133,17 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
       <div style={{ border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)', padding: '9px 0 9px 12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <style>{`@keyframes rml-spot{from{transform:translateX(0)}to{transform:translateX(-50%)}}.rml-spot-track{display:inline-flex;gap:26px;white-space:nowrap;animation:rml-spot 40s linear infinite;will-change:transform}.rml-spot-track:hover{animation-play-state:paused}@media (prefers-reduced-motion:reduce){.rml-spot-track{animation:none}}`}</style>
         <button onClick={() => setOpen(o => !o)} title="Spotlight — tap for the ranked list" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, flexShrink: 0, textTransform: 'uppercase' }}>
-          ⬡ Spotlight ({signals.length}) <span style={{ display: 'inline-block', fontSize: '8px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+          ⬡ Spotlight ({strongSignals.length}) <span style={{ display: 'inline-block', fontSize: '8px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
         </button>
-        <div style={{ overflow: 'hidden', flex: 1 }}>
-          <div className="rml-spot-track">
-            {loop.map(({ ev, ou, rank }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} rank={rank} /></span>)}
+        {strongSignals.length > 0 ? (
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <div className="rml-spot-track">
+              {loop.map(({ ev, ou, rank }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} rank={rank} /></span>)}
+            </div>
           </div>
-        </div>
+        ) : (
+          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, flex: 1 }}>tap for all leans ▾</span>
+        )}
       </div>
 
       {open && (
@@ -151,7 +157,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {ranked.map(({ ev, ou, rank }) => (
-              <div key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
+              <div key={ev.id} onClick={() => { onOpen?.(ev); setOpen(false) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: ou.strong ? 'rgba(189,255,0,0.08)' : 'rgba(189,255,0,0.02)', border: ou.strong ? `1px solid rgba(189,255,0,0.35)` : `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default', textAlign: 'left' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                   <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{rank}</span>
                   <span style={{ minWidth: 0 }}>
