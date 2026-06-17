@@ -16,8 +16,16 @@ Give the model an **offense read** so it can lean UNDER when the bats are weak/c
 
 - No full re-tune of existing thresholds/weights (revisit after a week of data).
 - No raw batter-vs-pitcher (BvP) history (too small a sample; lineup xwOBA is the stable version).
-- No new UI — the existing Spotlight record + card grade chips already surface results.
 - No paid data (umpire, etc. stay out).
+
+## Also in scope: Spotlight panel shows ALL leans
+
+Today `SpotlightTicker.jsx` filters to **strong** leans for both the scrolling ticker and the expanded panel. Change: keep the **ticker = strong only** (the highlight reel) but make the **expanded panel list ALL directional leans (OVER/UNDER) ranked by conviction, with strong ones flagged** (e.g. the existing neon highlight / a ★). The header count `⬡ Spotlight (N)` stays the strong count.
+
+- In the load loop, keep every game whose `ou.lean` is OVER/UNDER (not just `strong`); derive the ticker list as the `strong` subset and the panel list as all.
+- Rank the panel by `confidence` desc (strong floats up), then matchup.
+- The lean snapshot already records all directional leans, so the `strong` vs `all` records (already split in `lean-record`) tell us which filter performs better — surface both in the panel footer (already shows strong + all-time).
+- Tap behavior, +Slip, movement arrows unchanged.
 
 ## Architecture
 
