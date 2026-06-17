@@ -101,13 +101,21 @@ Local+UI clear but the Supabase copy survives and resurrects on reload. Confirme
 ## 🐛 KNOWN BUG — Reset doesn't stick (found session 59)
 Bets resurrect after reset: they live in Supabase `bets` + localStorage + live React memory, and the load logic (App.jsx ~L2536) restores from whichever layer still has data → endless loop. Manual wipe done for owner (session 59). **TO FIX:** `resetSession` (App.jsx ~L2761) must guard-flag to suppress load-restore + sync-up, `setBets([])` FIRST, then delete cloud + clear localStorage, then re-enable sync; surface delete errors (silent now); make reset findable (buried in Matrix Bot ⚙ Settings). Consider split: "New Bankroll (keeps history)" vs "Nuke account." See memory `rml-reset-sync-loop`.
 
+## ✅ SHIPPED Session 60 (SW v331→v340 · branch MERGED to main)
+- 🟢 **MODEL LEAN TRACKING + AUTO-GRADING** (new): `lean_results` table + `api/snapshot-lean` (pre-game lock) + `api/cron-grade-leans` (*/30 1-9 + 14:00 UTC) + `api/lean-record`. ✓HIT/✗MISS chips on Game Center cards (outside+detail), Spotlight footer Today/Yesterday/All-time, split strong-vs-all. Spec/plan in docs/superpowers.
+- 🟢 **O/U OFFENSE UPGRADE** (`api/_lib/offense.js`, tested): lineup xwOBA (platoon-adj) + recent scoring form added to game-info.js O/U score → can lean UNDER now, not just over. Built test-first (subagent-driven). Verified live (offenseSource=lineup). Spec+plan committed. Watch the tracked record ~1wk, tune `OFF` constants if needed.
+- 🟢 **Spotlight** panel = ALL leans (ticker stays strong).
+- 🟢 **#0 BET PLACEMENT (interim DONE):** `copyPickAndOpen()` copies the pick to clipboard + opens book on every path, relabeled "Log·Copy·Open →". Real HR betslip deep-link still needs an affiliate deal (decorate() hook ready).
+- 🟢 **#0b TEST-DATA CLEAN (DONE):** wiped 89 test bets, bankroll set to **$500**. Had to CLOSE the tab — live React memory re-pushed on every delete (the #4 bug, live). 
+- 🟢 **CREDIT-LEAK FIX:** `api/cron-warm-props.js` warms slate props us-only, floored 1500cr (was ~1.1k/day bleed). 🟢 **PHLT stale-gamelog bug FIXED** (form/streak now fresh). 🟢 whitelisted tjoel6788@gmail.com. 🟢 footer "gamble"→"bet" responsibly.
+
 ## 🎯 NEXT SESSION — start here (in order)
 
-### 🚨🚨 #0 — BET PLACEMENT TO HARD ROCK (owner stopped here frustrated — SW v331)
-Owner: "trying to place top 4 on Hard Rock, no link works. if i can't do that users won't use it." The "Place" buttons open the HR OneLink (app/homepage) but **don't pre-fill the pick** — no public betslip deep-link exists. **THIS is the #1 priority.** Fix paths: (a) Hard Rock **affiliate/data deal** with real betslip deep-links — code hook ready in `decorate()` (`src/lib/betLinks.js`, empty passthrough); (b) if no deal, **relabel "Open Hard Rock →"** + set expectations + **copy pick to clipboard** so user pastes/searches fast; (c) test if HR app has ANY share/betslip URL scheme on a real device. See memory `rml-bet-placement-blocker`.
+### 🚨 #0 — FINISH "RESET DOESN'T STICK" (#4, witnessed live session 60)
+The bankroll wipe only stuck after CLOSING the browser tab — the live tab's React memory re-pushed deleted bets to Supabase on every delete (syncAllBets upsert-only). `resetSession` (App.jsx ~L2761) needs a guard flag to suppress load-restore + sync-up during reset, surface delete errors, and a real reset UI. See memory `rml-reset-sync-loop`. localStorage key is `rml_session_v1_<userId>` (30KB bet cache) — must be cleared too.
 
-### 🧹 #0b — CLEAN TEST-DATA POLLUTION
-Owner bankroll inflated to ~$11k (unit $221.94) + 4 fake "live bets" from Claude's flow-testing. NOT real. Delete the test bets + reset bankroll to owner's real start (ASK the number). Delete/reset works now (cloud-sync bug fixed) — but close all sessions/tabs first (a live tab re-pushes; see `rml-reset-sync-loop`).
+### 🆕 #0b — EV BRAIN (decide 3 → Phase 1/2)
+Decide: (a) rename the MLB hitter "PHLT" model (collision with owner's EV-Brain "PHLT"), (b) ModelProb source = de-vig consensus, (c) "Play" label vs brand rule. Then Phase 1 `evBrain.ts` core, Phase 2 wire feeds. Memory `rml-evbrain-spec`. The lean-tracking foundation (session 60) feeds CLV/discipline.
 
 ### ✅ SHIPPED Session 59 (SW v293→v331)
 Spotlight (3-pillar ticker + panel, factors hidden, +Slip w/ real free odds), totals half-point default, cloud-sync delete/reset/bankroll FIX, slip centered + per-single stake/book chooser, slip↔ladder, RR Engine (single-col, team inputs, slate search, Float-to-RR, Combos Built/Novig sheet), universal card cleanup. Specs: `2026-06-17-slip-to-ladder-design.md`, `2026-06-17-rr-slip-integration-design.md`.
