@@ -39,6 +39,8 @@
     { "path": "/api/cron-capture-book-odds", "schedule": "*/30 13-23 * * *" },
     { "path": "/api/cron-capture-book-odds", "schedule": "*/30 0-4 * * *" },
     { "path": "/api/cron-warm-lines",        "schedule": "*/15 13-23 * * *" },
-    { "path": "/api/cron-warm-lines",        "schedule": "*/15 0-4 * * *" }
+    { "path": "/api/cron-warm-lines",        "schedule": "*/15 0-4 * * *" },
+    { "path": "/api/cron-warm-props",        "schedule": "*/30 13-23 * * *" },
+    { "path": "/api/cron-warm-props",        "schedule": "*/30 0-4 * * *" }
   ]
 }
