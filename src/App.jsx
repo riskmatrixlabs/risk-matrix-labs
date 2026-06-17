@@ -2523,11 +2523,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
   // Guard: timestamp until which we ignore realtime events (our own saves)
   const realtimeIgnoreUntil = useRef(0)
+  // Guard: when true, suppress the OUTBOUND bets auto-sync upsert. Set during reset/delete
+  // so a stale debounced `syncAllBets(oldBets)` can't re-create rows we just deleted from
+  // the cloud (syncAllBets is upsert-only — see supabase.js — so a stale snapshot resurrects).
+  const syncSuspendedRef = useRef(false)
 
   // ── Auto-sync bets to Supabase (debounced 2s) ──
   useEffect(() => {
     if (!userId || !cloudSynced) return
     const t = setTimeout(() => {
+      if (syncSuspendedRef.current) return // reset/delete in flight — don't resurrect rows
       realtimeIgnoreUntil.current = Date.now() + 5000 // ignore own save's realtime echo
       syncAllBets(bets, userId, token).then(({ error }) => {
         if (error) {
@@ -2688,13 +2693,19 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   //    otherwise a failed delete silently leaves the row to resurrect on next reload. ──
   const deleteBetReliable = useCallback(async (id) => {
     if (userId && cloudSyncedRef.current) {
+      syncSuspendedRef.current = true                  // block any in-flight stale upsert during the delete
       realtimeIgnoreUntil.current = Date.now() + 5000
       const { error } = await dbDeleteBet(String(id), userId, tokenRef.current)
       if (error) {
+        syncSuspendedRef.current = false
         setSyncError(`Delete failed: ${error.message || error.code || 'unknown'}. Bet kept — try again.`)
         return false   // keep it in local so the UI matches the cloud
       }
       setSyncError(null)
+      setBets(b => b.filter(x => x.id !== id))
+      // re-enable outbound sync after the setBets-triggered effect has cancelled the stale timer
+      setTimeout(() => { syncSuspendedRef.current = false }, 100)
+      return true
     }
     setBets(b => b.filter(x => x.id !== id))
     return true
@@ -2703,10 +2714,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // ── Reset session ── (clear cloud bets FIRST and verify before wiping local state)
   const resetSession = useCallback(async () => {
     if (!window.confirm('Reset everything to zero? All bets and data will be cleared. This cannot be undone.')) return
+    syncSuspendedRef.current = true                      // block any in-flight stale upsert BEFORE we delete
     if (userId && cloudSyncedRef.current) {
       realtimeIgnoreUntil.current = Date.now() + 10000   // ignore the delete echo while we reset
       const { error } = await deleteAllBets(userId, tokenRef.current)
       if (error) {
+        syncSuspendedRef.current = false
         setSyncError(`Reset failed: ${error.message || error.code || 'unknown'}. Nothing was cleared — try again.`)
         return   // abort: don't wipe local while the cloud still has the data (it would resurrect)
       }
@@ -2714,6 +2727,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }
     localStorage.removeItem(LS_KEY)
     setBets([])
+    // re-enable outbound sync once the empty state has settled (stale timer cancelled by the effect re-run)
+    setTimeout(() => { syncSuspendedRef.current = false }, 100)
     setBankroll(0)
     setMasterBrOverride(null)
     setMasterBrInput('')
