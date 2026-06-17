@@ -276,7 +276,11 @@ export default async function handler(req, res) {
       proj = Math.round(proj * 10) / 10
 
       if (why.length || anchor?.current != null) {
-        const line = anchor?.current ?? null
+        // Only trust a plausible MLB game total (~6–13 runs). A value outside this is a mis-sourced
+        // market (e.g. a -0.5 run line leaking in) — comparing our projection to it gives a garbage
+        // edge, so treat it as no line and fall back rather than surface a false "strong".
+        const rawLine = anchor?.current ?? null
+        const line = (rawLine != null && rawLine >= 5 && rawLine <= 15) ? rawLine : null
         let lean, edgeRuns = null, confidence, strong
         if (line != null) {
           // EDGE = our projection − the market line. The rating is the size of that gap, in runs.
