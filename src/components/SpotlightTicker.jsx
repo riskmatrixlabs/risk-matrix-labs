@@ -100,7 +100,10 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time }) }).catch(() => {})
           }
-          return (j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER') ? { ev, ou: j.ou } : null
+          // Only SURFACE a lean that has a real market total to anchor to — a lean with no line
+          // ("OVER —") isn't actionable and breaks +Slip. (We still snapshot it above for grading.)
+          const hasLine = j?.ou?.total?.current != null
+          return ((j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER') && hasLine) ? { ev, ou: j.ou } : null
         } catch { return null }
       }))
       if (cancel) return
