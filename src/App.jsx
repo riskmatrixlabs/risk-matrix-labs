@@ -3017,7 +3017,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [straightsExp, setStraightsExp] = useState(new Set())   // per-single "show more books" toggle, keyed by pick
   const [rrFloat, setRrFloat] = useState(null)   // picks "floated" from the slip into the RR Engine
   const legStakeOf = (l) => Number(slipStakes[l.pick] ?? slipStake) || 0
-  const [slipMode, setSlipMode] = useState('parlay')      // 'parlay' | 'straights'
+  const [slipMode, setSlipMode] = useState('parlay')      // 'straights' | 'parlay' | 'sgp' | 'rr'
+  const [rrSize, setRrSize]     = useState(2)             // round-robin combo size (by 2s/3s…)
+  const [rrStake, setRrStake]   = useState('')           // per-combo stake for round robin
+  const [sgpStakes, setSgpStakes] = useState({})         // per-game SGP stake, keyed by game
+  const [sgpOdds, setSgpOdds]   = useState({})           // per-game SGP odds OVERRIDE (book's real number), keyed by game
   const [showOutRegion, setShowOutRegion] = useState(false) // expand the "not in your region" list
   const [slipOff, setSlipOff] = useState(() => new Set())  // picks toggled OFF (kept in slip, excluded from bet)
   // Hand-off confirmation: a link can't pre-fill a sportsbook slip, so when the operator taps a book
@@ -3173,6 +3177,56 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     if (oneLeg) { setSlip(p => p.filter(x => x.pick !== oneLeg.pick)); setSlipOff(s => { const n = new Set(s); n.delete(oneLeg.pick); return n }); setSlipStakes(s => { const n = { ...s }; delete n[oneLeg.pick]; return n }) }
     else { setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setStraightsExp(new Set()); setSlipOpen(false) }
   }
+  // ── 4-way slip helpers: Same Game Parlay + Round Robin ──
+  const gameKey = (l) => `${l.sport || ''}|${l.event || ''}`
+  // k-combinations of an array (round-robin combos)
+  const kCombos = (arr, k) => {
+    const res = []
+    const rec = (start, combo) => {
+      if (combo.length === k) { res.push(combo.slice()); return }
+      for (let i = start; i < arr.length; i++) { combo.push(arr[i]); rec(i + 1, combo); combo.pop() }
+    }
+    rec(0, [])
+    return res
+  }
+  // Log one game's same-game parlay → a Parlay bet (odds = book override if entered, else naive EST).
+  const logSgpGroup = (key, legs) => {
+    if (legs.length < 2) return
+    const stk = Number(sgpStakes[key]) || 0
+    const naive = decToAm(legs.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1))
+    const ov = sgpOdds[key]
+    const odds = (ov != null && ov !== '') ? Number(ov) : naive
+    commitBet({
+      id: Date.now(), date: new Date().toISOString().slice(0, 10), sport: legs[0]?.sport || '',
+      book: legs[0]?.book || '', betType: 'Parlay', event: legs[0]?.event || `${legs.length}-Leg SGP`,
+      pick: legs.map(l => l.pick).join('  +  '), odds, units: stats.unitSize ? stk / stats.unitSize : 0,
+      stake: stk, result: 'Open', pnl: 0,
+      legs: legs.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })),
+      notes: 'Same Game Parlay',
+    })
+    setSlip(p => p.filter(x => !legs.some(l => l.pick === x.pick)))
+    setSgpStakes(s => { const n = { ...s }; delete n[key]; return n })
+  }
+  // Log a round robin → one Parlay bet per combo of size rrSize (each combo same per-combo stake).
+  const logRoundRobin = () => {
+    const legs = enabledLegs()
+    const cs = kCombos(legs, rrSize)
+    if (!cs.length) return
+    const per = Number(rrStake) || 0
+    const date = new Date().toISOString().slice(0, 10)
+    cs.forEach((combo, i) => {
+      const odds = decToAm(combo.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1))
+      commitBet({
+        id: Date.now() + i, date, sport: combo[0]?.sport || '', book: '', betType: 'Parlay',
+        event: `Round Robin (by ${rrSize}s)`, pick: combo.map(l => l.pick).join('  +  '), odds,
+        units: stats.unitSize ? per / stats.unitSize : 0, stake: per, result: 'Open', pnl: 0,
+        legs: combo.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: l.book || null, sport: l.sport || null, event: l.event || null })),
+        notes: `Round Robin (by ${rrSize}s)`,
+      })
+    })
+    setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setRrStake(''); setSlipOpen(false)
+  }
+
   // Share the slip — native share sheet (text + best deep link), clipboard fallback.
   const shareSlip = async () => {
     const legs = enabledLegs()
@@ -3256,7 +3310,16 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   {slip.length > 0 && (() => {
                     const fmt = (a) => `${(Number(a) || 0) > 0 ? '+' : ''}${a}`
                     const enabled = slip.filter(l => !slipOff.has(l.pick))
-                    const isStraights = slipMode === 'straights'
+                    // group enabled legs by game → drives Same Game Parlay + Round Robin eligibility
+                    const gMap = enabled.reduce((m, l) => { (m[gameKey(l)] ||= []).push(l); return m }, {})
+                    const gGroups = Object.entries(gMap)                       // [ [key, legs[]], ... ]
+                    const sgpGroups = gGroups.filter(([, ls]) => ls.length >= 2)
+                    const sgpOk = sgpGroups.length > 0                         // at least one game has 2+ legs
+                    const oneLegPerGame = gGroups.every(([, ls]) => ls.length === 1)
+                    const rrOk = oneLegPerGame && enabled.length >= 3          // RR needs ≥3 legs, one per game
+                    // fall back to Parlay if the active tab isn't valid for the current slip
+                    const mode = (slipMode === 'rr' && !rrOk) ? 'parlay' : (slipMode === 'sgp' && !sgpOk) ? 'parlay' : slipMode
+                    const isStraights = mode === 'straights'
                     const stk = Number(slipStake) || 0
                     let userState = ''; try { userState = localStorage.getItem('rml_state') || '' } catch {}
                     const allowed = booksForState(userState)
@@ -3275,15 +3338,22 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     }
                     return (
                       <>
-                        {/* Parlay / Straights — treat your picks as one combined ticket, or shop each on its own */}
-                        <div style={{ display: 'flex', gap: '4px', margin: '2px 0 12px', background: 'var(--bg)', borderRadius: '9px', padding: '3px' }}>
-                          {[['parlay', 'Parlay'], ['straights', 'Straights']].map(([k, label]) => (
-                            <button key={k} onClick={() => setSlipMode(k)} style={{ flex: 1, padding: '8px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.04em', border: 'none', background: slipMode === k ? NEON : 'transparent', color: slipMode === k ? '#0A0A0A' : MUTED }}>{label}</button>
+                        {/* 4-way bet slip: Straight · Parlay · Same Game · Round Robin (like the books) */}
+                        <div style={{ display: 'flex', gap: '3px', margin: '2px 0 4px', background: 'var(--bg)', borderRadius: '9px', padding: '3px' }}>
+                          {[['straights', 'Straight', true], ['parlay', 'Parlay', true], ['sgp', 'Same Game', sgpOk], ['rr', 'Round Robin', rrOk]].map(([k, label, ok]) => (
+                            <button key={k} disabled={!ok} onClick={() => ok && setSlipMode(k)} title={!ok ? (k === 'rr' ? 'Round Robin needs ≥3 picks, one per game' : 'Same Game needs 2+ picks from one game') : ''}
+                              style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: ok ? 'pointer' : 'not-allowed', opacity: ok ? 1 : 0.35, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', border: 'none', background: mode === k ? NEON : 'transparent', color: mode === k ? '#0A0A0A' : MUTED }}>{label}</button>
                           ))}
+                        </div>
+                        <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, opacity: 0.7, marginBottom: '10px', textAlign: 'center' }}>
+                          {mode === 'sgp' ? 'Same Game Parlay — combines picks from one game (odds = estimate, edit to the book’s number)'
+                            : mode === 'rr' ? 'Round Robin — every combo of your picks as its own parlay'
+                            : mode === 'straights' ? 'Each pick logged as its own straight bet'
+                            : 'All picks as one combined parlay ticket'}
                         </div>
 
                         {/* PARLAY: combined price across books, best to PLACE ON */}
-                        {!isStraights && (() => {
+                        {mode === 'parlay' && (() => {
                           const shop = enabled.filter(l => l.byBook && Object.keys(l.byBook).length)
                           if (!shop.length) return null
                           const total = shop.length
@@ -3376,6 +3446,66 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           </div>
                         )}
 
+                        {/* SAME GAME PARLAY: one card per game with 2+ legs; odds = naive EST, editable to book's */}
+                        {mode === 'sgp' && (
+                          <div style={{ marginBottom: '4px' }}>
+                            <div style={lbl}>Same Game Parlays</div>
+                            {sgpGroups.map(([key, legs]) => {
+                              const naive = decToAm(legs.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1))
+                              const ov = sgpOdds[key]
+                              const shownOdds = (ov != null && ov !== '') ? Number(ov) : naive
+                              const stk = Number(sgpStakes[key]) || 0
+                              const pay = stk > 0 ? stk * amToDec(shownOdds) : 0
+                              return (
+                                <div key={key} style={{ padding: '11px 12px', marginTop: '8px', borderRadius: '11px', border: '1px solid var(--border)' }}>
+                                  <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>{legs[0]?.event || 'Same Game'}</div>
+                                  {legs.map((l, i) => (
+                                    <div key={i} style={{ fontFamily: R, fontSize: '11px', color: MUTED, marginBottom: '3px' }}>• {l.pick} <span style={{ color: NEON_T }}>{fmt(l.odds)}</span></div>
+                                  ))}
+                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+                                    <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>SGP odds</span>
+                                    <input value={ov ?? ''} onChange={e => setSgpOdds(s => ({ ...s, [key]: e.target.value }))} inputMode="numeric" placeholder={`${fmt(naive)} EST`} style={{ width: '92px', padding: '7px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '13px', fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+                                    <input value={sgpStakes[key] ?? ''} onChange={e => setSgpStakes(s => ({ ...s, [key]: e.target.value }))} inputMode="decimal" placeholder="$ stake" style={{ width: '78px', padding: '7px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '13px', fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+                                  </div>
+                                  <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '6px' }}>{(ov == null || ov === '') ? 'estimate — edit to the book’s SGP price · ' : ''}{pay > 0 ? <>→ <span style={{ color: NEON_T, fontWeight: 700 }}>${pay.toFixed(2)}</span></> : null}</div>
+                                  <button onClick={() => logSgpGroup(key, legs)} style={{ width: '100%', marginTop: '8px', padding: '11px', borderRadius: '8px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log {legs.length}-Leg SGP</button>
+                                </div>
+                              )
+                            })}
+                            {gGroups.some(([, ls]) => ls.length === 1) && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '8px' }}>Picks that are the only one from their game aren’t shown here — add 2+ from the same game to build an SGP.</div>}
+                          </div>
+                        )}
+
+                        {/* ROUND ROBIN: every combo of the picks as its own parlay */}
+                        {mode === 'rr' && (() => {
+                          const cs = kCombos(enabled, rrSize)
+                          const per = Number(rrStake) || 0
+                          const totalRisk = cs.length * per
+                          const sizes = []; for (let s = 2; s <= enabled.length - 1; s++) sizes.push(s)
+                          return (
+                            <div style={{ marginBottom: '4px' }}>
+                              <div style={lbl}>Round Robin · {enabled.length} picks</div>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                {sizes.map(s => (
+                                  <button key={s} onClick={() => setRrSize(s)} style={{ padding: '7px 12px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, border: 'none', background: rrSize === s ? NEON : 'var(--bg)', color: rrSize === s ? '#0A0A0A' : MUTED }}>By {s}s</button>
+                                ))}
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                                <input value={rrStake} onChange={e => setRrStake(e.target.value)} inputMode="decimal" placeholder="$ / combo" style={{ width: '100px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+                                <span style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>{cs.length} combo{cs.length === 1 ? '' : 's'} · risk <span style={{ color: NEON_T, fontWeight: 700 }}>${totalRisk.toFixed(2)}</span></span>
+                              </div>
+                              <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '8px' }}>
+                                {cs.map((combo, i) => (
+                                  <div key={i} style={{ fontFamily: R, fontSize: '10px', color: MUTED, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
+                                    {combo.map(l => l.pick).join('  +  ')} <span style={{ color: NEON_T }}>{fmt(decToAm(combo.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)))}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <button onClick={logRoundRobin} disabled={!cs.length} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: cs.length ? 'pointer' : 'not-allowed', opacity: cs.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log {cs.length} Combo{cs.length === 1 ? '' : 's'}</button>
+                            </div>
+                          )
+                        })()}
+
                         {/* picks — each with an on/off toggle (keep a leg but leave it out) */}
                         <div style={{ ...lbl, color: MUTED }}>Your picks · {enabled.length}/{slip.length} on</div>
                         {slip.map((l, i) => { const off = slipOff.has(l.pick); const bf = bestForLeg(l); return (
@@ -3406,7 +3536,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           </div>
                         )})}
 
-                        {/* stake + log — singles enter their own stake per row above; parlay uses one stake */}
+                        {/* stake + log — singles enter their own stake per row above; parlay uses one stake.
+                            SGP & Round Robin log from their own cards above, so hide this generic footer there. */}
+                        {(mode === 'parlay' || mode === 'straights') && <>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
                           {isStraights
                             ? <span style={{ flex: 1, fontFamily: R, fontSize: '11px', color: MUTED }}>Enter each bet’s stake above ↑</span>
@@ -3422,6 +3554,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           <button onClick={() => { setSlip([]); setSlipStake(''); setSlipStakes({}); setStraightsExp(new Set()); setSlipOff(new Set()) }} style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>Clear</button>
                           <button onClick={() => { logParlay(slipStake); setSlipStake('') }} disabled={!enabled.length} style={{ flex: 1, padding: '13px', borderRadius: '8px', border: 'none', cursor: enabled.length ? 'pointer' : 'not-allowed', opacity: enabled.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '13px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{isStraights ? `Log ${enabled.length} Straight${enabled.length === 1 ? '' : 's'}` : enabled.length >= 2 ? `Log ${enabled.length}-Leg Parlay` : 'Log Bet'}</button>
                         </div>
+                        </>}
                       </>
                     )
                   })()}
