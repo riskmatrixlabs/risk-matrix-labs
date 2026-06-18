@@ -1903,6 +1903,11 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 {meta.weather.humidityPct != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>HUMIDITY</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.humidityPct}%</div></span>}
                 {meta.weather.precipPct != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>RAIN</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: meta.weather.precipPct >= 50 ? '#FF3B3B' : TEXT }}>{meta.weather.precipPct}%</div></span>}
               </div>
+              {meta.weather.retractable && (
+                <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', padding: '0 14px 10px' }}>
+                  Retractable roof — conditions shown for reference; not factored into the model.
+                </div>
+              )}
             </Collapsible>
           )}
 

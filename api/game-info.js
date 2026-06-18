@@ -76,17 +76,18 @@ export const PARK = {
   ATH: 0.94, OAK: 0.94, MIA: 0.92, SEA: 0.92, SF: 0.91,
 }
 
-// MLB park coords by HOME abbr → [lat, lon, dome?]. Domed/retractable parks neutralize weather
-// (roof usually closed in heat/cold/rain) so we don't fake a wind/temp edge indoors.
+// MLB park coords by HOME abbr → [lat, lon, roof?]. roof: 1 = fixed dome (no weather shown),
+// 2 = retractable (usually OPEN in summer → SHOW weather as info, but neutralize the model boost
+// since we can't know the roof's state from the feed). Open-air parks have no flag.
 export const PARK_GEO = {
-  ARI: [33.4455, -112.0667, 1], ATL: [33.8908, -84.4678], BAL: [39.2839, -76.6217],
+  ARI: [33.4455, -112.0667, 2], ATL: [33.8908, -84.4678], BAL: [39.2839, -76.6217],
   BOS: [42.3467, -71.0972], CHC: [41.9484, -87.6553], CWS: [41.8299, -87.6338], CHW: [41.8299, -87.6338],
   CIN: [39.0975, -84.5069], CLE: [41.4962, -81.6852], COL: [39.7559, -104.9942], DET: [42.3390, -83.0485],
-  HOU: [29.7572, -95.3556, 1], KC: [39.0517, -94.4803], LAA: [33.8003, -117.8827], LAD: [34.0739, -118.2400],
-  MIA: [25.7781, -80.2197, 1], MIL: [43.0280, -87.9712, 1], MIN: [44.9817, -93.2776], NYM: [40.7571, -73.8458],
+  HOU: [29.7572, -95.3556, 2], KC: [39.0517, -94.4803], LAA: [33.8003, -117.8827], LAD: [34.0739, -118.2400],
+  MIA: [25.7781, -80.2197, 2], MIL: [43.0280, -87.9712, 2], MIN: [44.9817, -93.2776], NYM: [40.7571, -73.8458],
   NYY: [40.8296, -73.9262], ATH: [38.5802, -121.5132], OAK: [37.7516, -122.2005], PHI: [39.9061, -75.1665],
-  PIT: [40.4469, -80.0057], SD: [32.7073, -117.1566], SF: [37.7786, -122.3893], SEA: [47.5914, -122.3325, 1],
-  STL: [38.6226, -90.1928], TB: [27.7683, -82.6534, 1], TEX: [32.7473, -97.0832, 1], TOR: [43.6414, -79.3894, 1],
+  PIT: [40.4469, -80.0057], SD: [32.7073, -117.1566], SF: [37.7786, -122.3893], SEA: [47.5914, -122.3325, 2],
+  STL: [38.6226, -90.1928], TB: [27.7683, -82.6534, 1], TEX: [32.7473, -97.0832, 2], TOR: [43.6414, -79.3894, 2],
   WSH: [38.8730, -77.0074],
 }
 
@@ -117,7 +118,8 @@ async function bullpenEra(abbr) {
 export async function gameWeather(homeAbbr, iso) {
   const geo = PARK_GEO[String(homeAbbr || '').toUpperCase()]
   if (!geo) return null
-  if (geo[2]) return { dome: true, boost: 0, note: 'roof' }   // controlled environment
+  if (geo[2] === 1) return { dome: true, boost: 0, note: 'roof' }   // fixed dome — no weather
+  const retractable = geo[2] === 2                                    // roof usually open in summer
   const w = await fetchWeather(geo[0], geo[1], iso || new Date().toISOString()).catch(() => null)
   if (!w || w.tempF == null) return null
   let boost = 0; const parts = []
@@ -126,7 +128,9 @@ export async function gameWeather(homeAbbr, iso) {
   else if (w.tempF <= 48) { boost -= 0.7; parts.push(`cold ${w.tempF}°`) }
   else if (w.tempF <= 57) { boost -= 0.35; parts.push(`cool ${w.tempF}°`) }
   if (w.windMph >= 15) parts.push(`wind ${w.windMph}mph ${w.windDir}`)   // shown; direction-vs-park is a later refinement
-  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, precipPct: w.precipPct, humidityPct: w.humidityPct, feelsF: w.feelsF, boost: Math.max(-1, Math.min(1, boost)), note: parts.join(' · ') }
+  // Retractable roof: show the conditions as info, but neutralize the model boost (roof state unknown).
+  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, precipPct: w.precipPct, humidityPct: w.humidityPct, feelsF: w.feelsF, retractable: retractable || undefined,
+    boost: retractable ? 0 : Math.max(-1, Math.min(1, boost)), note: retractable ? 'retractable roof' : parts.join(' · ') }
 }
 
 async function getJson(url, ms = 6000) {
