@@ -3319,7 +3319,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   </div>
                   <div style={{ padding: '10px 14px 14px', maxHeight: '70vh', overflowY: 'auto' }}>
                   {ocrBusy && <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T, textAlign: 'center', padding: '6px 0 10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Reading slip…</div>}
-                  {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No selections yet — tap a price to add one, or upload a slip photo (📷 Pic).</div>}
+                  {slip.length === 0 && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, textAlign: 'center', padding: '6px 0 2px' }}>No legs yet — tap a price to add one, or upload a slip photo (📷 Pic).</div>}
 
                   {slip.length > 0 && (() => {
                     const fmt = (a) => `${(Number(a) || 0) > 0 ? '+' : ''}${a}`
@@ -3351,15 +3351,15 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                         {/* 4-way bet slip: Straight · Parlay · Same Game · Round Robin (like the books) */}
                         <div style={{ display: 'flex', gap: '3px', margin: '2px 0 4px', background: 'var(--bg)', borderRadius: '9px', padding: '3px' }}>
                           {[['straights', 'Straight', true], ['parlay', 'Parlay', true], ['sgp', 'Same Game', sgpOk]].map(([k, label, ok]) => (
-                            <button key={k} disabled={!ok} onClick={() => ok && setSlipMode(k)} title={!ok ? (k === 'rr' ? 'Round Robin needs ≥3 selections, one per game' : 'Same Game needs 2+ selections from one game') : ''}
+                            <button key={k} disabled={!ok} onClick={() => ok && setSlipMode(k)} title={!ok ? (k === 'rr' ? 'Round Robin needs ≥3 legs, one per game' : 'Same Game needs 2+ legs from one game') : ''}
                               style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: ok ? 'pointer' : 'not-allowed', opacity: ok ? 1 : 0.35, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', border: 'none', background: mode === k ? NEON : 'transparent', color: mode === k ? '#0A0A0A' : MUTED }}>{label}</button>
                           ))}
                         </div>
                         <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, opacity: 0.7, marginBottom: '10px', textAlign: 'center' }}>
-                          {mode === 'sgp' ? 'Same Game Parlay — combines selections from one game (odds = estimate, edit to the book’s number)'
-                            : mode === 'rr' ? 'Round Robin — every combo of your selections as its own parlay'
-                            : mode === 'straights' ? 'Each selection logged as its own straight bet'
-                            : 'All selections as one combined parlay ticket'}
+                          {mode === 'sgp' ? 'Same Game Parlay — combines legs from one game (odds = estimate, edit to the book’s number)'
+                            : mode === 'rr' ? 'Round Robin — every combo of your legs as its own parlay'
+                            : mode === 'straights' ? 'Each leg logged as its own straight bet'
+                            : 'All legs as one combined parlay ticket'}
                         </div>
 
                         {/* PARLAY: combined price across books, best to PLACE ON */}
@@ -3482,12 +3482,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                                 </div>
                               )
                             })}
-                            {gGroups.some(([, ls]) => ls.length === 1) && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '8px' }}>Selections that are the only one from their game aren’t shown here — add 2+ from the same game to build an SGP.</div>}
+                            {gGroups.some(([, ls]) => ls.length === 1) && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '8px' }}>Legs that are the only one from their game aren’t shown here — add 2+ from the same game to build an SGP.</div>}
                           </div>
                         )}
 
-                        {/* selections — each with an on/off toggle (keep a leg but leave it out) */}
-                        <div style={{ ...lbl, color: MUTED }}>Your selections · {enabled.length}/{slip.length} on</div>
+                        {/* legs — each with an on/off toggle (keep a leg but leave it out) */}
+                        <div style={{ ...lbl, color: MUTED }}>Your legs · {enabled.length}/{slip.length} on</div>
                         {slip.map((l, i) => { const off = slipOff.has(l.pick); const bf = bestForLeg(l); return (
                           <div key={i} style={{ padding: '9px 0', borderTop: '1px solid var(--border)', opacity: off ? 0.4 : 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
