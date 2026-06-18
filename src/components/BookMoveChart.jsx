@@ -134,7 +134,7 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
   const W = 340, H = 208, padL = 30, padR = 12, padT = 14, padB = 18
   const min = Math.min(...all), max = Math.max(...all), range = (max - min) || 1
   const x = (i, n) => padL + (n <= 1 ? (W - padL - padR) : (i / (n - 1)) * (W - padL - padR))
-  const yD = (dec) => padT + (1 - (dec - min) / range) * (H - padT - padB)   // decimal → y
+  const yD = (dec) => padT + ((dec - min) / range) * (H - padT - padB)   // decimal → y (favorite/shorter price on TOP)
   const y = (am) => { const d = decT(am); return d == null ? null : yD(d) }   // American → y
   const amFromDec = (d) => d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1))
   const ticks = Array.from({ length: 5 }, (_, i) => min + range * i / 4)
