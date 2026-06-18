@@ -2029,7 +2029,8 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>Live odds · multi-book consensus</span>
                       </div>
                     )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px', alignItems: 'center' }}>
+                      <div />
                       {[spreadLabel, 'Total', 'ML'].map(l => <div key={l} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center' }}>{l}</div>)}
                     </div>
                     {[
@@ -2044,7 +2045,8 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                         hasML     ? { line: fmtOdds(mlHome), juice: null, pick: `${event.home_abbr} ML`, odds: mlHome, market: 'ml', side: 'home' } : null,
                       ]},
                     ].map(({ label, cells }) => (
-                      <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div key={label} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                        <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT, textAlign: 'center', letterSpacing: '0.04em' }}>{label}</div>
                         {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} market={c.market} side={c.side} /> : <OddsCard key={i} empty />)}
                       </div>
                     ))}
