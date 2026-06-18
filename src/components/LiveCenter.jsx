@@ -1607,7 +1607,10 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
   useEffect(() => {
     if (!token || !event.external_event_id || !event.sport) return
     let cancelled = false
-    fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}`,
+    // FREE on open: cacheOnly serves the cron-warmed multi-book cache if present, else nothing —
+    // then the reader falls back to the free ESPN line (event.odds_* via cron-sync-events).
+    // The paid live multi-book pull happens only on the LineShop ↻ REFRESH tap.
+    fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}&cacheOnly=1`,
       { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(j => { if (!cancelled && j && j.found && j.markets) setLiveLines(j.markets) })
