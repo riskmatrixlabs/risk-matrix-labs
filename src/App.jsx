@@ -2751,6 +2751,26 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     // the settings auto-sync (debounced) pushes bankroll=0 etc. to the cloud right after this.
   }, [userId, token])
 
+  // Bets-only reset — clears tracked bets but KEEPS bankroll/settings ("New Bankroll, keep history").
+  // Same sync-suppression guard as resetSession so the cloud copy can't resurrect the deleted bets.
+  const resetBetsOnly = useCallback(async () => {
+    if (!window.confirm('Clear your tracked bets? Your bankroll and settings are kept. This cannot be undone.')) return false
+    syncSuspendedRef.current = true
+    if (userId && cloudSyncedRef.current) {
+      realtimeIgnoreUntil.current = Date.now() + 10000
+      const { error } = await deleteAllBets(userId, tokenRef.current)
+      if (error) {
+        syncSuspendedRef.current = false
+        setSyncError(`Reset failed: ${error.message || error.code || 'unknown'}. Nothing was cleared — try again.`)
+        return false
+      }
+      setSyncError(null)
+    }
+    setBets([])   // local session auto-save persists empty bets but keeps bankroll/settings
+    setTimeout(() => { syncSuspendedRef.current = false }, 100)
+    return true
+  }, [userId, token])
+
   // ── Save template ──
   const saveTemplate = useCallback(() => {
     const name = window.prompt('Template name:', `${username} Setup`)
@@ -5137,7 +5157,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
         {tab === 'bot'  && <MatrixBot initialView={botView} onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll}
-          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} />}
+          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} />}
 
       </div>
 

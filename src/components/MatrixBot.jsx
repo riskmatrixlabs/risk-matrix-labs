@@ -238,7 +238,7 @@ function PlayerSearch({ token, onSelect, onClose }) {
   )
 }
 
-export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv', sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog }) {
+export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv', sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
@@ -271,7 +271,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
           {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} />}
-          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={goToBetLog} />}
+          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={goToBetLog} onResetBets={onResetBets} />}
         </div>
       )}
     </div>
@@ -1361,7 +1361,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
 }
 
 // ───────────────────────────── CH 3 · TRACK ─────────────────────────────
-function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog }) {
+function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
@@ -1539,9 +1539,9 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
             style={{ width: '100%', padding: '9px', marginBottom: '8px', background: 'transparent', border: `1px solid ${NEON}59`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T }}>
             SHARE RECORD
           </button>
-          <button onClick={() => { if (confirm('Reset your tracked record? This cannot be undone.')) { /* TODO(ev-track): wire reset handler when bet-log mutation is available */ } }}
+          <button onClick={async () => { if (onResetBets) { const ok = await onResetBets(); if (ok) setGearOpen(false) } }}
             style={{ width: '100%', padding: '9px', background: 'transparent', border: `1px solid ${DANGER}59`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: DANGER }}>
-            RESET SCOREBOARD
+            RESET SCOREBOARD <span style={{ color: MUTED, fontWeight: 400 }}>· bets only, keeps bankroll</span>
           </button>
         </div>
       )}
