@@ -34,7 +34,7 @@ const CAPPERS = [
 
 const TOOLS = [
   { id: 'discord',    name: 'RML Discord',    icon: Users,      iconColor: '#5865F2', desc: 'Community for disciplined bettors. No picks. No hype. Strategy only.',                               cta: 'Join Free',  url: 'https://discord.gg/smHv7CHc4p' },
-  { id: 'newsletter', name: 'RML Newsletter', icon: Newspaper,  iconColor: NEON,      desc: 'Weekly bankroll tips and platform updates straight to your inbox.',                                   cta: 'Subscribe',  url: 'https://riskmatrixlabs.beehiiv.com/subscribe' },
+  { id: 'newsletter', name: 'RML Newsletter', icon: Newspaper,  iconColor: NEON,      desc: 'Weekly bankroll insights and platform updates straight to your inbox.',                                   cta: 'Subscribe',  url: 'https://riskmatrixlabs.beehiiv.com/subscribe' },
   { id: 'oddsjam',    name: 'OddsJam',        icon: TrendingUp, iconColor: '#00C896', desc: 'Real-time odds comparison across all major books. Shopping lines is free edge.',                      cta: 'Coming Soon', url: '#', comingSoon: true },
   { id: 'pikkit',     name: 'Pikkit',         icon: Star,       iconColor: '#FF8C00', desc: 'All-in-one sports betting hub with odds, promos, and a community feed.',                              cta: 'Coming Soon', url: '#', comingSoon: true },
   { id: 'propswap',   name: 'PropSwap',       icon: BookOpen,   iconColor: '#A855F7', desc: 'Buy and sell winning tickets. The only secondary market for sports betting.',                         cta: 'Coming Soon', url: '#', comingSoon: true },

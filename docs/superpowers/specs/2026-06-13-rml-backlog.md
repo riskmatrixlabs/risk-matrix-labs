@@ -1,4 +1,27 @@
-# Risk Matrix Labs — Master Backlog (snapshot 2026-06-13, session 50)
+# Risk Matrix Labs — Master Backlog
+
+> ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
+> The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
+
+## 🟢 CURRENT STATE — Session 63 (SW v378+, branch `chore/backlog-gear-brand-sweep`)
+Session 62 (merged to main, SW v378) shipped: onboarding re-fire fix, bet hand-off (FanDuel/DK/Caesars/MGM/ESPN/BetRivers deep-link; HR/Novig app-open only — needs affiliate), 4-way slip (RR → RR Engine), RR Engine⇄slip two-way, bets-only reset, Spotlight always-renders, 24/7 event sync.
+
+**Session 63 (this branch):** CH3 sport-selector buttons added (gear share/reset/result-filter were already done in S62); brand-word sweep on slip UI ("picks" → "selections", "tips" → "insights", "auto-picks" → "auto-selects"); this backlog refreshed.
+
+### 🎯 OPEN NOW — start here (in priority order)
+1. 🟡 **EV Brain Phase 2** *(biggest remaining build)* — wire PHLT components (live MLB model) + discipline/operator (bet-log behavior) into the verdict; feed the empty CH3 OPERATOR tile (`operatorRating`); tooltips; Spotlight ranking by final score. Phase 1 + verdict-pill slice already shipped (`src/lib/evBrain.js`). ⚠️ Verdict pill never visually confirmed live (owner acct had 0 bets — log a test bet).
+2. 🟡 **Hard Rock affiliate outreach** *(business step, blocks real HR bet pre-fill)* — only path to a true HR betslip deep-link. `decorate()` hook is ready in code. Claude can draft the outreach.
+3. 🟡 **Bet-to-line** — CH2/Insights chart shows the line for the bet's *actual* market (F5/total/spread), not just game ML.
+4. 🟡 **Bet log redesign** — team logos + read multi-leg parlays like a sportsbook slip. Headshots in the bet log still show a league badge (needs per-sport roster fetch). Per-leg box-score for cross-game parlay prop legs.
+5. 🟡 **Reset UI product decision** — bets-only (done) vs a full "Nuke account" split; decide before wiring more.
+6. 🟡 **Stale tests (tech debt)** — `tests/events.test.js` (isLiveEvent 7h→30h window changed in S61) + `tests/book-move-chart.test.js` (curateBooks line-cap) fail against current impl; update the expectations.
+7. 🟡 **Perf/credit polish** — speed up Insights (parallelize 3 Supabase queries + cache); faster per-book capture inside 3h of game; pre-game odds in EV; tighten `cron-sync-events` (15-min board staleness); demo safety-net slate; odds push alerts.
+
+**Blocked/pending:** ANTHROPIC_API_KEY (OCR, owner-pending) · NFL support · umpire+lineups for O/U (no free data) · bullpen FATIGUE (needs daily IP accumulation).
+
+---
+
+# 📜 HISTORICAL LOG (session 50 → 61, snapshot 2026-06-13)
 
 Single view of everything pending + the new "3-pillar" vision. Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
