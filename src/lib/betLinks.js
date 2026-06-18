@@ -48,6 +48,19 @@ export function placeLink(book, deepLink) {
   return decorate(book, deepLink) || SIGNUP_LINKS[book] || BOOK_HOME[book] || null
 }
 
+// Books whose only link is an app-open link (AppsFlyer/OneLink or DFS/exchange app) — these CANNOT
+// land the operator on a pre-filled bet slip; tapping just opens the app. Classified by book (not by
+// parsing the URL host, which is unreliable). Everything else that has a real feed link deep-links
+// straight to the bet (FanDuel/DraftKings/Caesars/BetMGM/ESPN BET/BetRivers — verified working).
+const APP_OPEN_ONLY = new Set(['hardrockbet', 'novig', 'underdog', 'dabble', 'prizepicks', 'onyx', 'onyxodds'])
+
+// True when tapping this book lands the operator ON the actual bet (real web bet-slip deep link).
+// False when it only opens the app (app-open-only book, or no per-selection link → homepage fallback).
+export function deepLinksToBet(book, deepLink) {
+  if (APP_OPEN_ONLY.has(book)) return false
+  return !!decorate(book, deepLink)   // a real per-selection feed link → the bet is loaded
+}
+
 // Copy text to the clipboard — best-effort and NON-INTRUSIVE.
 // CRITICAL: do NOT create/focus/select a hidden <textarea> here. On iOS, grabbing focus inside the
 // tap that also follows a book's universal link cancels the app-open and dumps the user on the
