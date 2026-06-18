@@ -46,10 +46,13 @@ export default async function handler(req, res) {
         if (mlH != null) odds.odds_ml_home = mlH
         if (src.spread != null && Number.isFinite(Number(src.spread))) odds.odds_spread_home = Number(src.spread)
         if (src.overUnder != null && Number.isFinite(Number(src.overUnder))) odds.odds_total = Number(src.overUnder)
-        metadata.spread_away_juice = am(src.awayTeamOdds?.spreadOdds)
-        metadata.spread_home_juice = am(src.homeTeamOdds?.spreadOdds)
-        metadata.over_juice  = am(src.overOdds)
-        metadata.under_juice = am(src.underOdds)
+        // Spread/total PRICE: live, ESPN drops awayTeamOdds.spreadOdds but still carries the price
+        // under pointSpread/total.{side}.close.odds — read that fallback (same as cron-sync-events).
+        // Only emit when present so we never clobber a good cron value with null.
+        const saj = am(src.awayTeamOdds?.spreadOdds ?? src.pointSpread?.away?.close?.odds); if (saj != null) metadata.spread_away_juice = saj
+        const shj = am(src.homeTeamOdds?.spreadOdds ?? src.pointSpread?.home?.close?.odds); if (shj != null) metadata.spread_home_juice = shj
+        const oj  = am(src.overOdds  ?? src.total?.over?.close?.odds);  if (oj  != null) metadata.over_juice  = oj
+        const uj  = am(src.underOdds ?? src.total?.under?.close?.odds); if (uj  != null) metadata.under_juice = uj
       }
     }
 
