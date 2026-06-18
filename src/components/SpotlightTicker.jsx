@@ -113,7 +113,8 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
     return () => { cancel = true; clearInterval(id) }
   }, [token])
 
-  if (!signals.length) return null
+  // Spotlight ALWAYS lives at the top of Game Center — even with no directional leans it stays put
+  // (an honest empty state), rather than vanishing and looking broken.
   const strongSignals = signals.filter(s => s.ou.strong)
   const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))
   const strongRanked = strongSignals.map((s, i) => ({ ...s, rank: ranked.find(r => r.ev.id === s.ev.id)?.rank ?? i + 1 }))
@@ -144,7 +145,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             </div>
           </div>
         ) : (
-          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, flex: 1 }}>tap for all leans ▾</span>
+          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, flex: 1 }}>{signals.length ? 'tap for all leans ▾' : 'no strong leans yet today — model stays neutral until there’s an edge'}</span>
         )}
       </div>
 
