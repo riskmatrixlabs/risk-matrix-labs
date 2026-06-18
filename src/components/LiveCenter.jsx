@@ -1018,8 +1018,8 @@ function useLiveGame(propEvent) {
   // Reset when the user switches to a different game
   useEffect(() => { setEvt(propEvent) }, [propEvent?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (!propEvent?.external_event_id || !propEvent?.sport) return
     const isLive = propEvent?.status === 'IP' || propEvent?.status === 'LIVE'
-    if (!isLive || !propEvent?.external_event_id || !propEvent?.sport) return
     let cancelled = false
     const tick = async () => {
       try {
@@ -1029,15 +1029,20 @@ function useLiveGame(propEvent) {
         if (cancelled || !d || d.notFound || d.error) return
         setEvt(prev => ({
           ...prev,
-          status:     d.status     ?? prev.status,
-          home_score: d.home_score ?? prev.home_score,
-          away_score: d.away_score ?? prev.away_score,
+          status:           d.status           ?? prev.status,
+          home_score:       d.home_score       ?? prev.home_score,
+          away_score:       d.away_score       ?? prev.away_score,
+          // FREE live ESPN line — keeps the odds reader current on open + while watching.
+          odds_ml_away:     d.odds_ml_away      ?? prev.odds_ml_away,
+          odds_ml_home:     d.odds_ml_home      ?? prev.odds_ml_home,
+          odds_spread_home: d.odds_spread_home  ?? prev.odds_spread_home,
+          odds_total:       d.odds_total        ?? prev.odds_total,
           metadata:   { ...(prev.metadata ?? {}), ...(d.metadata ?? {}) },
         }))
       } catch { /* network blip — keep last good data */ }
     }
-    tick()
-    const iv = setInterval(tick, 25000)
+    tick()                                          // fetch the live line immediately on open (free)
+    const iv = setInterval(tick, isLive ? 25000 : 60000)   // live games refresh faster
     return () => { cancelled = true; clearInterval(iv) }
   }, [propEvent?.external_event_id, propEvent?.status, propEvent?.sport])
   return evt
@@ -2101,7 +2106,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB, oA: fair(dvSpread.fairAmericanA), oB: fair(dvSpread.fairAmericanB), pLabel: 'cover' },
                     dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB,  oA: fair(dvTotal.fairAmericanA),  oB: fair(dvTotal.fairAmericanB),  pLabel: '' },
                   ].filter(Boolean)
-                  return <WinProbability markets={wpMarkets} live={isLive} />
+                  return <WinProbability markets={wpMarkets} live={event.status === 'IP' || event.status === 'LIVE'} />
                 })()}
 
                 <BonusButton />
