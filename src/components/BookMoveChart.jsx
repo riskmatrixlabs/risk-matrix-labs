@@ -109,21 +109,31 @@ export function BookLineMovement({ event, title = true, collapsible = false }) {
 
 export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, onSide, mode: modeProp, onMode }) {
   const [modeInner, setModeInner] = useState('books')  // 'books' = By Sportsbook | 'best' = Best Available
+  const [picked, setPicked] = useState(null)           // null = default (top 2); Set = the books the user tapped to compare
   const mode = modeProp ?? modeInner                    // parent may lift this into the settings gear
   const setMode = onMode ?? setModeInner
   const decT = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
   const byBook = curateBooks(rawByBook)              // reputable US books only, capped & ordered
   const colored = Object.entries(byBook).map(([book, m], i) => ({ book, m, color: BOOK_LINE_COLORS[i % BOOK_LINE_COLORS.length] }))
   const best = computeBestAvailable(rawByBook)
-  // Series feeding the y-axis scale depends on the active view.
-  const all = mode === 'best' ? (best?.series || []).filter(v => v != null) : colored.flatMap(c => c.m.series)
+  const chips = [...colored].sort((a, b) => (decT(b.m.current) ?? 0) - (decT(a.m.current) ?? 0))
+  // Tap chips to choose which books to compare. Default = top 2 by current price (clean 2-line compare).
+  const defaultPicks = chips.slice(0, 2).map(c => c.book)
+  const activeBooks = (picked && picked.size) ? picked : new Set(defaultPicks)
+  const drawn = colored.filter(c => activeBooks.has(c.book))
+  const toggleBook = (book) => {
+    const cur = (picked && picked.size) ? new Set(picked) : new Set(defaultPicks)
+    cur.has(book) ? cur.delete(book) : cur.add(book)
+    setPicked(cur)
+  }
+  // Series feeding the y-axis scale: only the books being compared (fall back to all if none drawn).
+  const all = mode === 'best' ? (best?.series || []).filter(v => v != null) : (drawn.length ? drawn : colored).flatMap(c => c.m.series)
   if (!all.length) return null
   const W = 320, H = 160, padL = 36, padR = 10, padT = 12, padB = 16
   const min = Math.min(...all), max = Math.max(...all), range = (max - min) || 1
   const x = (i, n) => padL + (n <= 1 ? (W - padL - padR) : (i / (n - 1)) * (W - padL - padR))
   const y = (v) => padT + (1 - (v - min) / range) * (H - padT - padB)
   const bestBook = colored.reduce((b, c) => (!b || (decT(c.m.current) ?? 0) > (decT(byBook[b].current) ?? 0)) ? c.book : b, null)
-  const chips = [...colored].sort((a, b) => (decT(b.m.current) ?? 0) - (decT(a.m.current) ?? 0))
   const Toggle = ({ val, label }) => (
     <button onClick={() => setMode(val)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', border: `1px solid ${mode === val ? NEON : BORDER}`, background: mode === val ? 'rgba(189,255,0,0.1)' : 'transparent', color: mode === val ? NEON_T : MUTED }}>{label}</button>
   )
@@ -161,7 +171,7 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
               {n > 0 && <circle cx={x(n - 1, n)} cy={y(s[n - 1])} r="3.5" fill={NEON} />}
             </g>
           )
-        })() : colored.map(({ book, m, color }) => {
+        })() : drawn.map(({ book, m, color }) => {
           const n = m.series.length
           const pts = m.series.map((v, i) => `${x(i, n).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
           return (
@@ -180,14 +190,22 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
           </span>
         </div>
       ) : (
-        <div className="tv-ticker" style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-          {chips.map(({ book, m, color }) => (
-            <span key={book} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 9px', borderRadius: '7px', border: `1px solid ${book === bestBook ? NEON : BORDER}`, background: book === bestBook ? 'rgba(189,255,0,0.08)' : '#0d0d0d' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
-              <span style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: MUTED, textTransform: 'uppercase' }}>{bookTag(book)}</span>
-              <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: book === bestBook ? NEON_T : TEXT }}>{fmtAm(m.current)}</span>
-            </span>
-          ))}
+        <div>
+          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase', textAlign: 'center', marginTop: '8px', marginBottom: '6px' }}>
+            Tap books to compare · {activeBooks.size} on
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {chips.map(({ book, m, color }) => {
+              const on = activeBooks.has(book)
+              return (
+                <button key={book} onClick={() => toggleBook(book)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 9px', borderRadius: '7px', cursor: 'pointer', border: `1px solid ${on ? color : BORDER}`, background: on ? 'rgba(255,255,255,0.07)' : '#0d0d0d', opacity: on ? 1 : 0.45, transition: 'opacity 0.15s' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
+                  <span style={{ fontFamily: 'Courier New, monospace', fontSize: '9px', color: MUTED, textTransform: 'uppercase' }}>{bookTag(book)}</span>
+                  <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: on ? TEXT : MUTED }}>{fmtAm(m.current)}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
