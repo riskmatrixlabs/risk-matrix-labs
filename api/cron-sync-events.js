@@ -37,9 +37,10 @@ function etDateStr(offsetDays = 0) {
 }
 
 // Run 9am–midnight ET (13:00–04:00 UTC) to cover early day games
+// Sync runs whenever the cron fires (incl. overnight) so tomorrow's slate is always loaded.
+// It's free (ESPN + Open-Meteo, 0 Odds-API credits), so there's no reason to gate by hour.
 function inGameWindow() {
-  const h = new Date().getUTCHours()
-  return h >= 13 || h < 4
+  return true
 }
 
 function mapStatus(statusName, statusDetail) {

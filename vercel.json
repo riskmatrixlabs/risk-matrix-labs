@@ -34,6 +34,7 @@
     { "path": "/api/cron-reengagement",     "schedule": "0 13 * * *" },
     { "path": "/api/cron-sync-events",      "schedule": "*/15 13-23 * * *" },
     { "path": "/api/cron-sync-events",      "schedule": "*/15 0-4 * * *" },
+    { "path": "/api/cron-sync-events",      "schedule": "0 5-12 * * *" },
     { "path": "/api/cron-sync-live",        "schedule": "*/2 13-23 * * *" },
     { "path": "/api/cron-sync-live",        "schedule": "*/2 0-4 * * *" },
     { "path": "/api/cron-capture-book-odds", "schedule": "*/30 13-23 * * *" },
