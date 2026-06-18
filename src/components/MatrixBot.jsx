@@ -1466,6 +1466,8 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
     return b
   }, [bets, scope, sportFilter])
 
+  // Distinct sports present in the whole log — powers the CH3 sport selector (so you can scope here, not just on the Bets tab).
+  const sportsInLog = useMemo(() => [...new Set((bets || []).map(b => b.sport).filter(Boolean))].sort(), [bets])
   const record = useMemo(() => computeRecord(scopedBets), [scopedBets])
   const statusOk = (b) => {
     if (resultFilter === 'ALL') return true
@@ -1583,10 +1585,16 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
           {[['ALL', 'ALL'], ['OPEN', 'OPEN'], ['W', 'WON'], ['L', 'LOST'], ['P', 'PUSH']].map(([k, lbl]) => (
             <button key={k} onClick={() => setResultFilter && setResultFilter(k)} style={pill(resultFilter === k)}>{lbl}</button>
           ))}
-          {sportFilter !== 'ALL' && (
-            <button onClick={() => setSportFilter && setSportFilter('ALL')} style={{ ...pill(true), display: 'inline-flex', alignItems: 'center', gap: '4px' }}>{sportFilter} ✕</button>
-          )}
         </div>
+        {/* Sport selector — derived from the sports present in the log; tap a sport to scope, tap again to clear. */}
+        {sportsInLog.length > 1 && (
+          <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 600, letterSpacing: '0.16em', color: MUTED, alignSelf: 'center' }}>🏟️</span>
+            {sportsInLog.map(s => (
+              <button key={s} onClick={() => setSportFilter && setSportFilter(sportFilter === s ? 'ALL' : s)} style={pill(sportFilter === s)}>{s}</button>
+            ))}
+          </div>
+        )}
         <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.06em', textAlign: 'center', marginTop: '10px' }}>
           {graded.length > 0 ? `${board.tracked} TRACKED · SYNCED WITH BETS TAB` : 'CLV IS THE TRUTH — log a play on CH 1/2 and it grades here.'}
         </div>

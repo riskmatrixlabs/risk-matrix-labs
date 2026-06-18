@@ -1504,7 +1504,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
             {allowSet && rows.length === 0 && (
               <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, textAlign: 'center', marginTop: '10px' }}>No regulated books in {userState} — use the sign-up options below (DFS / Novig / Hard Rock).</div>
             )}
-            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>tap a price to add it to your slip (auto-picks the best book) · green = best price{userState ? ` · 📍 ${userState}` : ''}</div>
+            <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, textAlign: 'center', marginTop: '8px', letterSpacing: '0.06em' }}>tap a price to add it to your slip (auto-selects the best book) · green = best price{userState ? ` · 📍 ${userState}` : ''}</div>
           </div>
         </>
       )
