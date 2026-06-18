@@ -2015,7 +2015,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     dvTotal  && { name: 'Total', aL: `Over ${totalPt}`, bL: `Under ${totalPt}`, a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
-                    <Collapsible title="Fair Value" sub={`${isLive ? 'live' : 'pre-game'} · honest price`} tip={GLOSSARY.fairValue}>
+                    <Collapsible title="Fair Value" sub={`${(event.status === 'IP' || event.status === 'LIVE') ? 'live' : 'pre-game'} · honest price`} tip={GLOSSARY.fairValue}>
                       {rows.map((m, i) => (
                         <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span>
