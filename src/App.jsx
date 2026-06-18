@@ -38,7 +38,7 @@ import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
 import { placeLink, copyPickAndOpen, copyTextSync, deepLinksToBet } from './lib/betLinks'
-import { gameKey, kCombos, slipEligibility } from './lib/slipModes'
+import { gameKey, kCombos, slipEligibility, validRoundRobinCombos } from './lib/slipModes'
 
 const getKeys = (userId) => ({
   LS_KEY:   `rml_session_v1_${userId}`,
@@ -3200,7 +3200,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   // Log a round robin → one Parlay bet per combo of size rrSize (each combo same per-combo stake).
   const logRoundRobin = () => {
     const legs = enabledLegs()
-    const cs = kCombos(legs, rrSize)
+    const size = Math.min(rrSize, slipEligibility(legs).maxRrSize)   // can't exceed # of games
+    const cs = validRoundRobinCombos(legs, size)   // cross-game combos only (excludes same-game pairs)
     if (!cs.length) return
     const per = Number(rrStake) || 0
     const date = new Date().toISOString().slice(0, 10)
@@ -3301,7 +3302,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     const fmt = (a) => `${(Number(a) || 0) > 0 ? '+' : ''}${a}`
                     const enabled = slip.filter(l => !slipOff.has(l.pick))
                     // group enabled legs by game → drives Same Game Parlay + Round Robin eligibility
-                    const { groups: gGroups, sgpGroups, sgpOk, oneLegPerGame, rrOk } = slipEligibility(enabled)
+                    const { groups: gGroups, sgpGroups, sgpOk, oneLegPerGame, rrOk, maxRrSize } = slipEligibility(enabled)
                     // fall back to Parlay if the active tab isn't valid for the current slip
                     const mode = (slipMode === 'rr' && !rrOk) ? 'parlay' : (slipMode === 'sgp' && !sgpOk) ? 'parlay' : slipMode
                     const isStraights = mode === 'straights'
@@ -3463,13 +3464,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
                         {/* ROUND ROBIN: every combo of the picks as its own parlay */}
                         {mode === 'rr' && (() => {
-                          const cs = kCombos(enabled, rrSize)
+                          const size = Math.min(rrSize, maxRrSize)               // can't exceed # of games
+                          const cs = validRoundRobinCombos(enabled, size)         // cross-game combos only
                           const per = Number(rrStake) || 0
                           const totalRisk = cs.length * per
-                          const sizes = []; for (let s = 2; s <= enabled.length - 1; s++) sizes.push(s)
+                          const sizes = []; for (let s = 2; s <= maxRrSize; s++) sizes.push(s)
                           return (
                             <div style={{ marginBottom: '4px' }}>
-                              <div style={lbl}>Round Robin · {enabled.length} picks</div>
+                              <div style={lbl}>Round Robin · {enabled.length} picks across {maxRrSize} games</div>
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                                 {sizes.map(s => (
                                   <button key={s} onClick={() => setRrSize(s)} style={{ padding: '7px 12px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, border: 'none', background: rrSize === s ? NEON : 'var(--bg)', color: rrSize === s ? '#0A0A0A' : MUTED }}>By {s}s</button>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gameKey, groupByGame, kCombos, slipEligibility } from '../src/lib/slipModes.js'
+import { gameKey, groupByGame, kCombos, slipEligibility, validRoundRobinCombos } from '../src/lib/slipModes.js'
 
 const leg = (pick, event, sport = 'MLB') => ({ pick, event, sport })
 
@@ -29,24 +29,41 @@ describe('groupByGame / gameKey', () => {
 })
 
 describe('slipEligibility', () => {
-  it('Same Game ON when a game has 2+ legs; Round Robin OFF (same-game correlation)', () => {
-    const legs = [leg('A ML', 'A vs B'), leg('Over 8', 'A vs B'), leg('C ML', 'C vs D')]
+  it('Round Robin ON with 2-and-2 across two games (combos exclude same-game pairs)', () => {
+    const legs = [leg('A1', 'A vs B'), leg('A2', 'A vs B'), leg('C1', 'C vs D'), leg('C2', 'C vs D')]
     const e = slipEligibility(legs)
-    expect(e.sgpOk).toBe(true)
-    expect(e.sgpGroups.length).toBe(1)
-    expect(e.rrOk).toBe(false)        // two legs share "A vs B"
-    expect(e.oneLegPerGame).toBe(false)
+    expect(e.rrOk).toBe(true)            // 4 legs across 2 games → RR allowed
+    expect(e.distinctGames).toBe(2)
+    expect(e.maxRrSize).toBe(2)          // a valid combo can't exceed # of games
+    expect(e.sgpOk).toBe(true)           // each game has 2 legs → SGP also available
   })
-  it('Round Robin ON with 3 legs from 3 different games; Same Game OFF', () => {
-    const legs = [leg('A ML', 'A vs B'), leg('C ML', 'C vs D'), leg('E ML', 'E vs F')]
+  it('Round Robin ON with 3 legs from 3 different games', () => {
+    const legs = [leg('A', 'A vs B'), leg('C', 'C vs D'), leg('E', 'E vs F')]
     const e = slipEligibility(legs)
     expect(e.rrOk).toBe(true)
-    expect(e.oneLegPerGame).toBe(true)
+    expect(e.distinctGames).toBe(3)
     expect(e.sgpOk).toBe(false)
   })
-  it('2 legs different games → no RR (needs 3), no SGP', () => {
-    const e = slipEligibility([leg('A ML', 'A vs B'), leg('C ML', 'C vs D')])
+  it('Round Robin OFF when all legs are from ONE game (no cross-game combo)', () => {
+    const legs = [leg('A1', 'A vs B'), leg('A2', 'A vs B'), leg('A3', 'A vs B')]
+    const e = slipEligibility(legs)
     expect(e.rrOk).toBe(false)
-    expect(e.sgpOk).toBe(false)
+    expect(e.sgpOk).toBe(true)
+  })
+  it('2 legs different games → no RR (needs 3)', () => {
+    expect(slipEligibility([leg('A', 'A vs B'), leg('C', 'C vs D')]).rrOk).toBe(false)
+  })
+})
+
+describe('validRoundRobinCombos', () => {
+  it('excludes same-game pairs (2-and-2 by 2s → only the 4 cross-game combos)', () => {
+    const legs = [leg('A1', 'A vs B'), leg('A2', 'A vs B'), leg('C1', 'C vs D'), leg('C2', 'C vs D')]
+    const cs = validRoundRobinCombos(legs, 2)
+    expect(cs.length).toBe(4)   // A1C1, A1C2, A2C1, A2C2 — NOT A1A2 or C1C2
+    expect(cs.every(c => new Set(c.map(gameKey)).size === c.length)).toBe(true)
+  })
+  it('by 3s across only 2 games → 0 valid (any 3 must repeat a game)', () => {
+    const legs = [leg('A1', 'A vs B'), leg('A2', 'A vs B'), leg('C1', 'C vs D')]
+    expect(validRoundRobinCombos(legs, 3).length).toBe(0)
   })
 })

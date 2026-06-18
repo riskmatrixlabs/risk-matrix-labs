@@ -22,19 +22,29 @@ export function kCombos(arr, k) {
   return res
 }
 
+// Round-robin combos of size k, EXCLUDING any combo with two legs from the same game
+// (same-game legs are correlated → not allowed in a standard parlay combo).
+export function validRoundRobinCombos(legs, k) {
+  return kCombos(legs || [], k).filter(c => new Set(c.map(gameKey)).size === c.length)
+}
+
 // Which slip modes are valid for these enabled legs:
 //  - Same Game Parlay needs ≥1 game with 2+ legs
-//  - Round Robin needs ≥3 legs AND one leg per game (no same-game correlation)
+//  - Round Robin needs ≥3 legs spanning ≥2 different games (combos are built cross-game only;
+//    same-game pairings are excluded, so 2-and-2 across two games is valid).
 export function slipEligibility(legs) {
   const list = legs || []
   const groups = groupByGame(list)
   const sgpGroups = groups.filter(([, ls]) => ls.length >= 2)
-  const oneLegPerGame = groups.length > 0 && groups.every(([, ls]) => ls.length === 1)
+  const distinctGames = groups.length
+  const oneLegPerGame = distinctGames > 0 && groups.every(([, ls]) => ls.length === 1)
   return {
     groups,
     sgpGroups,
+    distinctGames,
     sgpOk: sgpGroups.length > 0,
     oneLegPerGame,
-    rrOk: oneLegPerGame && list.length >= 3,
+    rrOk: list.length >= 3 && distinctGames >= 2,
+    maxRrSize: distinctGames,   // a valid combo can't be larger than the number of games
   }
 }
