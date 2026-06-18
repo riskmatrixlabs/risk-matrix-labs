@@ -70,7 +70,7 @@ export function computeBestAvailable(byBook) {
 export function BookLineMovement({ event, title = true, collapsible = false }) {
   const [byBook, setByBook] = useState({})
   const [side, setSide] = useState('away')
-  const [open, setOpen] = useState(!collapsible)   // collapsible → starts closed
+  const [open, setOpen] = useState(true)   // open by default (data fills lazily; free to render)
   useEffect(() => {
     if (!event?.external_event_id) { setByBook({}); return }
     let live = true
@@ -117,22 +117,27 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
   const colored = Object.entries(byBook).map(([book, m], i) => ({ book, m, color: BOOK_LINE_COLORS[i % BOOK_LINE_COLORS.length] }))
   const best = computeBestAvailable(rawByBook)
   const chips = [...colored].sort((a, b) => (decT(b.m.current) ?? 0) - (decT(a.m.current) ?? 0))
-  // Tap chips to choose which books to compare. Default = top 2 by current price (clean 2-line compare).
-  const defaultPicks = chips.slice(0, 2).map(c => c.book)
+  // All books shown by default; tap a chip to hide/show its line (picked = the user's custom set).
+  const defaultPicks = chips.map(c => c.book)
   const activeBooks = (picked && picked.size) ? picked : new Set(defaultPicks)
   const drawn = colored.filter(c => activeBooks.has(c.book))
   const toggleBook = (book) => {
     const cur = (picked && picked.size) ? new Set(picked) : new Set(defaultPicks)
     cur.has(book) ? cur.delete(book) : cur.add(book)
-    setPicked(cur)
+    setPicked(cur.size ? cur : new Set([book]))   // never leave the chart empty
   }
-  // Series feeding the y-axis scale: only the books being compared (fall back to all if none drawn).
-  const all = mode === 'best' ? (best?.series || []).filter(v => v != null) : (drawn.length ? drawn : colored).flatMap(c => c.m.series)
+  // Scale by DECIMAL odds (continuous & monotonic) so the line never jumps at the +100/-100
+  // boundary the way raw American odds do; axis ticks are labelled back in American.
+  const decSeries = (arr) => arr.map(decT).filter(v => v != null)
+  const all = mode === 'best' ? decSeries((best?.series || []).filter(v => v != null)) : (drawn.length ? drawn : colored).flatMap(c => decSeries(c.m.series))
   if (!all.length) return null
-  const W = 320, H = 160, padL = 36, padR = 10, padT = 12, padB = 16
+  const W = 340, H = 208, padL = 30, padR = 12, padT = 14, padB = 18
   const min = Math.min(...all), max = Math.max(...all), range = (max - min) || 1
   const x = (i, n) => padL + (n <= 1 ? (W - padL - padR) : (i / (n - 1)) * (W - padL - padR))
-  const y = (v) => padT + (1 - (v - min) / range) * (H - padT - padB)
+  const yD = (dec) => padT + (1 - (dec - min) / range) * (H - padT - padB)   // decimal → y
+  const y = (am) => { const d = decT(am); return d == null ? null : yD(d) }   // American → y
+  const amFromDec = (d) => d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1))
+  const ticks = Array.from({ length: 5 }, (_, i) => min + range * i / 4)
   const bestBook = colored.reduce((b, c) => (!b || (decT(c.m.current) ?? 0) > (decT(byBook[b].current) ?? 0)) ? c.book : b, null)
   const Toggle = ({ val, label }) => (
     <button onClick={() => setMode(val)} style={{ flex: 1, padding: '6px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', border: `1px solid ${mode === val ? NEON : BORDER}`, background: mode === val ? 'rgba(189,255,0,0.1)' : 'transparent', color: mode === val ? NEON_T : MUTED }}>{label}</button>
@@ -157,10 +162,19 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
           })}
         </div>
       )}
+      {game && (
+        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', textAlign: 'center', marginBottom: '6px' }}>
+          {up(game.away)} @ {up(game.home)} · line movement
+        </div>
+      )}
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
-        <text x="3" y={y(max) + 3} fill={MUTED} fontSize="8" fontFamily="Rajdhani">{fmtAm(Math.round(max))}</text>
-        <text x="3" y={y(min) + 3} fill={MUTED} fontSize="8" fontFamily="Rajdhani">{fmtAm(Math.round(min))}</text>
-        <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="rgba(189,255,0,0.12)" strokeWidth="1" />
+        {/* gridlines at even decimal steps, labelled back in American odds */}
+        {ticks.map((d, i) => (
+          <g key={i}>
+            <line x1={padL} y1={yD(d)} x2={W - padR} y2={yD(d)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="2 3" />
+            <text x="2" y={yD(d) + 3} fill={MUTED} fontSize="8" fontFamily="Rajdhani">{fmtAm(amFromDec(d))}</text>
+          </g>
+        ))}
         {mode === 'best' ? (() => {
           const s = (best?.series || []).filter(v => v != null)
           const n = s.length
@@ -168,16 +182,17 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
           return (
             <g>
               <polyline points={pts} fill="none" stroke={NEON} strokeWidth={2.6} strokeLinejoin="round" strokeLinecap="round" />
-              {n > 0 && <circle cx={x(n - 1, n)} cy={y(s[n - 1])} r="3.5" fill={NEON} />}
+              {s.map((v, i) => <circle key={i} cx={x(i, n)} cy={y(v)} r={i === n - 1 ? 3.5 : 1.8} fill={NEON} />)}
             </g>
           )
         })() : drawn.map(({ book, m, color }) => {
           const n = m.series.length
+          const isSharp = book === 'pinnacle'                                   // sharp book → dashed
           const pts = m.series.map((v, i) => `${x(i, n).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
           return (
             <g key={book}>
-              <polyline points={pts} fill="none" stroke={color} strokeWidth={book === bestBook ? 2.5 : 1.6} strokeLinejoin="round" strokeLinecap="round" />
-              <circle cx={x(n - 1, n)} cy={y(m.series[n - 1])} r="3" fill={color} />
+              <polyline points={pts} fill="none" stroke={color} strokeWidth={isSharp || book === bestBook ? 2.4 : 1.7} strokeDasharray={isSharp ? '5 4' : 'none'} strokeLinejoin="round" strokeLinecap="round" />
+              {m.series.map((v, i) => <circle key={i} cx={x(i, n)} cy={y(v)} r={i === n - 1 ? 3 : 1.6} fill={color} />)}
             </g>
           )
         })}
@@ -192,7 +207,7 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
       ) : (
         <div>
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED, textTransform: 'uppercase', textAlign: 'center', marginTop: '8px', marginBottom: '6px' }}>
-            Tap books to compare · {activeBooks.size} on
+            Tap a book to show/hide · {activeBooks.size}/{chips.length} shown{chips.some(c => c.book === 'pinnacle') ? ' · dashed = sharp (Pinnacle)' : ''}
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
             {chips.map(({ book, m, color }) => {
