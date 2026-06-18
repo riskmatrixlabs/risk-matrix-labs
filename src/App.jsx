@@ -3263,7 +3263,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           // A single-leg "parlay" CAN deep-link to that one selection (use its per-book
                           // feed link). A true multi-leg parlay has no single deep link → homepage/app.
                           const soleLeg = enabled.length === 1 ? enabled[0] : null
-                          const soleDeep = (bk) => soleLeg ? (soleLeg.byBookLink?.[bk] || soleLeg.link || null) : null
+                          // ONLY this book's own deep link — never another book's link. Missing → null,
+                          // so placeLink falls back to the book's app-open link (opens the app).
+                          const soleDeep = (bk) => soleLeg ? (soleLeg.byBookLink?.[bk] || null) : null
                           const bookRow = (r, faded, best) => (
                             <a key={r.book} href={placeLink(r.book, soleDeep(r.book)) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => placeOn(r.book, enabled.map(l => l.pick).join(' + '), soleDeep(r.book))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -3302,7 +3304,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               if (!rows.length) { const b = bestForLeg(l); if (b.book) rows = [{ book: b.book, odds: b.odds, region: true, link: l.link }] }
                               // Always offer the operator's home-state book(s) (e.g. Hard Rock in FL) — even when the odds feed didn't carry a price.
                               // Use the consensus line odds as an ESTIMATE (est:true) so there's a number to see; marked + never "best".
-                              for (const hb of (allowed || [])) { if (!rows.some(r => r.book === hb)) rows.push({ book: hb, odds: Number(l.odds) || null, region: true, link: l.byBookLink?.[hb] || l.link || null, est: true }) }
+                              for (const hb of (allowed || [])) { if (!rows.some(r => r.book === hb)) rows.push({ book: hb, odds: Number(l.odds) || null, region: true, link: l.byBookLink?.[hb] || null, est: true }) }
                               // Real feed prices first (best on top), then estimated home book(s).
                               const inReg = rows.filter(r => r.region).sort((a, b) => { const pa = (a.odds != null && !a.est) ? 1 : 0, pb = (b.odds != null && !b.est) ? 1 : 0; if (pa !== pb) return pb - pa; return (amToDec(b.odds) || 0) - (amToDec(a.odds) || 0) })
                               const outReg = rows.filter(r => !r.region && r.odds != null).sort((a, b) => amToDec(b.odds) - amToDec(a.odds))
