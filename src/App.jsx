@@ -38,6 +38,7 @@ import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
 import { placeLink, copyPickAndOpen, copyTextSync, deepLinksToBet } from './lib/betLinks'
+import { gameKey, kCombos, slipEligibility } from './lib/slipModes'
 
 const getKeys = (userId) => ({
   LS_KEY:   `rml_session_v1_${userId}`,
@@ -3177,18 +3178,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     if (oneLeg) { setSlip(p => p.filter(x => x.pick !== oneLeg.pick)); setSlipOff(s => { const n = new Set(s); n.delete(oneLeg.pick); return n }); setSlipStakes(s => { const n = { ...s }; delete n[oneLeg.pick]; return n }) }
     else { setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setStraightsExp(new Set()); setSlipOpen(false) }
   }
-  // ── 4-way slip helpers: Same Game Parlay + Round Robin ──
-  const gameKey = (l) => `${l.sport || ''}|${l.event || ''}`
-  // k-combinations of an array (round-robin combos)
-  const kCombos = (arr, k) => {
-    const res = []
-    const rec = (start, combo) => {
-      if (combo.length === k) { res.push(combo.slice()); return }
-      for (let i = start; i < arr.length; i++) { combo.push(arr[i]); rec(i + 1, combo); combo.pop() }
-    }
-    rec(0, [])
-    return res
-  }
+  // ── 4-way slip: Same Game Parlay + Round Robin (pure helpers in src/lib/slipModes.js) ──
   // Log one game's same-game parlay → a Parlay bet (odds = book override if entered, else naive EST).
   const logSgpGroup = (key, legs) => {
     if (legs.length < 2) return
@@ -3311,12 +3301,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     const fmt = (a) => `${(Number(a) || 0) > 0 ? '+' : ''}${a}`
                     const enabled = slip.filter(l => !slipOff.has(l.pick))
                     // group enabled legs by game → drives Same Game Parlay + Round Robin eligibility
-                    const gMap = enabled.reduce((m, l) => { (m[gameKey(l)] ||= []).push(l); return m }, {})
-                    const gGroups = Object.entries(gMap)                       // [ [key, legs[]], ... ]
-                    const sgpGroups = gGroups.filter(([, ls]) => ls.length >= 2)
-                    const sgpOk = sgpGroups.length > 0                         // at least one game has 2+ legs
-                    const oneLegPerGame = gGroups.every(([, ls]) => ls.length === 1)
-                    const rrOk = oneLegPerGame && enabled.length >= 3          // RR needs ≥3 legs, one per game
+                    const { groups: gGroups, sgpGroups, sgpOk, oneLegPerGame, rrOk } = slipEligibility(enabled)
                     // fall back to Parlay if the active tab isn't valid for the current slip
                     const mode = (slipMode === 'rr' && !rrOk) ? 'parlay' : (slipMode === 'sgp' && !sgpOk) ? 'parlay' : slipMode
                     const isStraights = mode === 'straights'
