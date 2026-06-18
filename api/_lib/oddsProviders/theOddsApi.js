@@ -26,12 +26,16 @@ function normalizeGame(g) {
     commence_time: g.commence_time,
     home_team: g.home_team,
     away_team: g.away_team,
+    // event-level sid/link (includeSids/includeLinks) — useful to construct our own deep links
+    sid: g.sid, link: g.link,
     bookmakers: (g.bookmakers || []).map(b => ({
       key: b.key,
       last_update: b.last_update,
+      sid: b.sid, link: b.link,
       markets: (b.markets || []).map(m => ({
         key: m.key,
-        outcomes: (m.outcomes || []).map(o => ({ name: o.name, price: o.price, point: o.point, description: o.description, link: o.link })),
+        sid: m.sid, link: m.link,
+        outcomes: (m.outcomes || []).map(o => ({ name: o.name, price: o.price, point: o.point, description: o.description, link: o.link, sid: o.sid })),
       })),
     })),
   }
@@ -41,7 +45,7 @@ export async function fetchOdds({ sport, markets = ['h2h'], regions = ['us', 'eu
   if (!apiKey) throw new Error('ODDS_API_KEY missing')
   const sportKey = SPORT_KEYS[sport] || sport
   const url = `${BASE}/sports/${sportKey}/odds/?apiKey=${apiKey}`
-    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true`
+    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true&includeSids=true`
 
   const res = await fetch(url)
   if (!res.ok) {
@@ -99,7 +103,7 @@ export async function fetchEventOdds({ sport, eventId, markets, regions = ['us',
   if (!apiKey) throw new Error('ODDS_API_KEY missing')
   const sportKey = SPORT_KEYS[sport] || sport
   const url = `${BASE}/sports/${sportKey}/events/${eventId}/odds/?apiKey=${apiKey}`
-    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true`
+    + `&regions=${regions.join(',')}&markets=${markets.join(',')}&oddsFormat=american&includeLinks=true&includeSids=true`
   // Optional hard timeout so a slow/hung call can't blow the serverless function's budget.
   const ctrl = timeoutMs > 0 ? new AbortController() : null
   const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null

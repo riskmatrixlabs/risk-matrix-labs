@@ -4,8 +4,11 @@ const AFFILIATE = {}   // e.g. { draftkings: (url) => `${url}?wpcid=RML` }
 
 export function decorate(book, url) {
   if (!url) return null
+  // Novig deep links carry a literal `{wager}` stake placeholder (…/oddsapi/{wager}).
+  // Strip it so the URL is valid; the app loads the selection and the operator sets the stake.
+  let clean = url.includes('{wager}') ? url.replace(/\/?\{wager\}/g, '') : url
   const fn = AFFILIATE[book]
-  return fn ? fn(url) : url
+  return fn ? fn(clean) : clean
 }
 
 // SIGN-UP / referral links — shown to operators who don't have a book yet (or for books our
@@ -48,17 +51,12 @@ export function placeLink(book, deepLink) {
   return decorate(book, deepLink) || SIGNUP_LINKS[book] || BOOK_HOME[book] || null
 }
 
-// Books whose only link is an app-open link (AppsFlyer/OneLink or DFS/exchange app) — these CANNOT
-// land the operator on a pre-filled bet slip; tapping just opens the app. Classified by book (not by
-// parsing the URL host, which is unreliable). Everything else that has a real feed link deep-links
-// straight to the bet (FanDuel/DraftKings/Caesars/BetMGM/ESPN BET/BetRivers — verified working).
-const APP_OPEN_ONLY = new Set(['hardrockbet', 'novig', 'underdog', 'dabble', 'prizepicks', 'onyx', 'onyxodds'])
-
-// True when tapping this book lands the operator ON the actual bet (real web bet-slip deep link).
-// False when it only opens the app (app-open-only book, or no per-selection link → homepage fallback).
+// True when tapping this book lands the operator ON the actual bet — i.e. the feed gave us a real
+// per-selection deep link. This is the case for FanDuel/DraftKings/Caesars/BetMGM/ESPN BET/BetRivers
+// AND Hard Rock (app.hardrock.bet/?deep_link_value=betslip/<sid>) AND Novig (novig.com/events/<sid>).
+// False only when there is NO per-selection link → we fall back to the book's homepage/app-open link.
 export function deepLinksToBet(book, deepLink) {
-  if (APP_OPEN_ONLY.has(book)) return false
-  return !!decorate(book, deepLink)   // a real per-selection feed link → the bet is loaded
+  return !!decorate(book, deepLink)
 }
 
 // Copy text to the clipboard — best-effort and NON-INTRUSIVE.

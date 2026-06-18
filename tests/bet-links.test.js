@@ -18,12 +18,13 @@ describe('deepLinksToBet', () => {
     expect(deepLinksToBet('williamhill_us', 'https://caesars.com/x')).toBe(true)
     expect(deepLinksToBet('betmgm', 'https://sports.betmgm.com/x')).toBe(true)
   })
-  it('FALSE for app-open-only books even when a link is present (Hard Rock, Novig)', () => {
-    expect(deepLinksToBet('hardrockbet', 'https://hrb.onelink.me/aSsa/x?deep_link_value=y')).toBe(false)
-    expect(deepLinksToBet('novig', 'https://novig.onelink.me/JHQQ/x')).toBe(false)
+  it('TRUE for Hard Rock & Novig when the feed gives a real per-selection deep link', () => {
+    expect(deepLinksToBet('hardrockbet', 'https://app.hardrock.bet/?deep_link_value=betslip/123')).toBe(true)
+    expect(deepLinksToBet('novig', 'https://novig.com/events/abc/oddsapi/{wager}')).toBe(true)
   })
   it('FALSE when there is no per-selection feed link (homepage/referral fallback)', () => {
     expect(deepLinksToBet('fanduel', null)).toBe(false)
     expect(deepLinksToBet('draftkings', undefined)).toBe(false)
+    expect(deepLinksToBet('hardrockbet', null)).toBe(false)
   })
 })
