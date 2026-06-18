@@ -126,7 +126,7 @@ export async function gameWeather(homeAbbr, iso) {
   else if (w.tempF <= 48) { boost -= 0.7; parts.push(`cold ${w.tempF}°`) }
   else if (w.tempF <= 57) { boost -= 0.35; parts.push(`cool ${w.tempF}°`) }
   if (w.windMph >= 15) parts.push(`wind ${w.windMph}mph ${w.windDir}`)   // shown; direction-vs-park is a later refinement
-  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, precipPct: w.precipPct, boost: Math.max(-1, Math.min(1, boost)), note: parts.join(' · ') }
+  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, precipPct: w.precipPct, humidityPct: w.humidityPct, feelsF: w.feelsF, boost: Math.max(-1, Math.min(1, boost)), note: parts.join(' · ') }
 }
 
 async function getJson(url, ms = 6000) {
