@@ -1107,8 +1107,9 @@ function getCombos(arr, r) {
 
 const EMPTY_LEG = { odds: '', result: 'TBD' }
 
-function RREngine({ unitSize, darkMode, isDemo = false, token = null, floatPicks = null, onFloatConsumed }) {
+function RREngine({ unitSize, darkMode, isDemo = false, token = null, floatPicks = null, onFloatConsumed, onAddToSlip }) {
   const { isMobile } = useMobile()
+  const [slipMsg, setSlipMsg] = useState('')   // transient "added to slip" confirmation
   // Search the free slate to add picks (instead of typing every team by hand).
   const [slate, setSlate] = useState([])
   const [rrQuery, setRrQuery] = useState('')
@@ -1355,6 +1356,22 @@ function RREngine({ unitSize, darkMode, isDemo = false, token = null, floatPicks
             }}>
               <Plus size={11} /> Add Leg
             </button>
+
+            {/* Send these legs to the bet slip → build Straight/Parlay/SGP/Round Robin there (0 tokens) */}
+            {onAddToSlip && (() => {
+              const ready = legs.filter(l => l.pick && l.pick.trim() && l.odds !== '' && parseInt(l.odds) !== 0)
+              return (
+                <button onClick={() => {
+                    if (!ready.length) { setSlipMsg('Add a pick + odds first'); setTimeout(() => setSlipMsg(''), 2500); return }
+                    ready.forEach(l => onAddToSlip({ pick: l.pick.trim(), odds: Number(l.odds) || 0, sport: 'MLB', event: l.event || '' }))
+                    setSlipMsg(`✓ Added ${ready.length} to slip`); setTimeout(() => setSlipMsg(''), 3000)
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '9px', width: '100%', marginTop: '6px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  🎟 Add to Slip
+                </button>
+              )
+            })()}
+            {slipMsg && <div style={{ textAlign: 'center', fontFamily: R, fontSize: '10px', color: NEON_T, marginTop: '6px' }}>{slipMsg}</div>}
           </div>
         </div>
 
@@ -5272,7 +5289,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ══ RR ENGINE ══ */}
-        {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} />}
+        {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} onAddToSlip={addToSlip} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
