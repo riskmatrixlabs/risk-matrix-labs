@@ -21,8 +21,12 @@ describe('isLiveEvent', () => {
   it('is live when IP and started recently', () => {
     expect(isLiveEvent({ status: 'IP', start_time: '2026-06-13T19:00:00Z' }, now)).toBe(true)
   })
-  it('is NOT live when IP but started over 7h ago (stale status row)', () => {
-    expect(isLiveEvent({ status: 'IP', start_time: '2026-06-12T20:00:00Z' }, now)).toBe(false)
+  it('is NOT live when IP but started over 30h ago (stale status row)', () => {
+    // 30h window keeps resumed/suspended games "live"; beyond that a stuck IP row is treated as stale.
+    expect(isLiveEvent({ status: 'IP', start_time: '2026-06-11T20:00:00Z' }, now)).toBe(false)
+  })
+  it('is still live when IP and started within the 30h window (resumed/suspended games)', () => {
+    expect(isLiveEvent({ status: 'IP', start_time: '2026-06-12T20:00:00Z' }, now)).toBe(true)
   })
   it('is not live for finished/scheduled status', () => {
     expect(isLiveEvent({ status: 'FT', start_time: '2026-06-13T19:00:00Z' }, now)).toBe(false)

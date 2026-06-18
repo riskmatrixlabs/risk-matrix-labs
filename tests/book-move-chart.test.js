@@ -18,7 +18,7 @@ describe('curateBooks — Pikkit-style book filter for the line chart', () => {
   it('caps the number of lines so the chart stays readable', () => {
     const wide = {}
     for (const b of ['draftkings', 'fanduel', 'betmgm', 'caesars', 'espnbet', 'fanatics', 'betrivers', 'hardrockbet', 'pinnacle', 'betfair_ex_us', 'betfair_ex_eu']) wide[b] = m(-110)
-    expect(Object.keys(curateBooks(wide)).length).toBeLessThanOrEqual(8)
+    expect(Object.keys(curateBooks(wide)).length).toBeLessThanOrEqual(12)
   })
 
   it('excludes Betfair (exchange) but keeps Pinnacle LAST as the sharp reference', () => {

@@ -16,6 +16,8 @@ export function pickHour(hourly, gameStartIso) {
     windMph: Math.round(hourly.wind_speed_10m?.[idx]),
     windDir: degToCompass(hourly.wind_direction_10m?.[idx] ?? 0),
     precipPct: hourly.precipitation_probability?.[idx] ?? null,
+    humidityPct: hourly.relative_humidity_2m?.[idx] ?? null,
+    feelsF: hourly.apparent_temperature?.[idx] != null ? Math.round(hourly.apparent_temperature[idx]) : null,
   }
 }
 
@@ -34,7 +36,7 @@ export async function geocode(city) {
 // Open-Meteo free hourly forecast (no key) → values at the game hour.
 export async function fetchWeather(lat, lon, gameStartIso) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=2`
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_direction_10m,relative_humidity_2m,apparent_temperature&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=2`
     const r = await fetch(url)
     if (!r.ok) return null
     const j = await r.json()
