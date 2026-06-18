@@ -110,6 +110,7 @@ export function BookLineMovement({ event, title = true, collapsible = false }) {
 export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, onSide, mode: modeProp, onMode }) {
   const [modeInner, setModeInner] = useState('books')  // 'books' = By Sportsbook | 'best' = Best Available
   const [picked, setPicked] = useState(null)           // null = default (top 2); Set = the books the user tapped to compare
+  const [showHelp, setShowHelp] = useState(false)      // "how to read this" explainer
   const mode = modeProp ?? modeInner                    // parent may lift this into the settings gear
   const setMode = onMode ?? setModeInner
   const decT = (p) => p == null ? null : (p > 0 ? 1 + p / 100 : 1 + 100 / -p)
@@ -163,8 +164,20 @@ export function BookMoveChart({ byBook: rawByBook, game, market = 'ml', side, on
         </div>
       )}
       {game && (
-        <div style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase', textAlign: 'center', marginBottom: '6px' }}>
-          {up(game.away)} @ {up(game.home)} · line movement
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '6px' }}>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.16em', color: MUTED, textTransform: 'uppercase' }}>
+            {up(game.away)} @ {up(game.home)} · line movement
+          </span>
+          <button onClick={() => setShowHelp(h => !h)} aria-label="How to read this chart"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '14px', height: '14px', borderRadius: '50%', border: `1px solid ${showHelp ? NEON : BORDER}`, background: showHelp ? 'rgba(189,255,0,0.12)' : 'transparent', color: showHelp ? NEON_T : MUTED, cursor: 'pointer', fontFamily: R, fontSize: '9px', fontWeight: 700, lineHeight: 1, padding: 0 }}>i</button>
+        </div>
+      )}
+      {showHelp && (
+        <div style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '9px', padding: '10px 12px', marginBottom: '10px', fontFamily: R, fontSize: '11px', lineHeight: 1.55, color: 'var(--text-sub)' }}>
+          <div style={{ marginBottom: '4px' }}><span style={{ color: NEON_T, fontWeight: 700 }}>← → time.</span> Far left = the opening line; the dot on the right = the price now.</div>
+          <div style={{ marginBottom: '4px' }}><span style={{ color: NEON_T, fontWeight: 700 }}>↑ ↓ price.</span> Top = shorter / more favored (−); bottom = longer (+). Numbers on the left are the odds at that height.</div>
+          <div style={{ marginBottom: '4px' }}><span style={{ color: NEON_T, fontWeight: 700 }}>Each line = a book.</span> Tap the chips to show/hide. The <b>dashed line is the sharp book (Pinnacle)</b> — watch it move first.</div>
+          <div><span style={{ color: NEON_T, fontWeight: 700 }}>The read:</span> books bunching the same way = real market steam; the sharp line leading = the tell. The spread on the right edge = where the best number is.</div>
         </div>
       )}
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
