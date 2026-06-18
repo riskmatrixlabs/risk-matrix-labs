@@ -1530,6 +1530,15 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
               <button key={k} onClick={() => setScope(k)} style={pill(scope === k)}>{lbl}</button>
             ))}
           </div>
+          <button onClick={async () => {
+              const sc = scope === 'all' ? 'all-time' : scope === '30d' ? 'last 30 days' : scope === '7d' ? 'last 7 days' : 'today'
+              const line = `${record.w}-${record.l}${record.p ? `-${record.p}` : ''} · ${record.units >= 0 ? '+' : ''}${record.units.toFixed(1)}u${record.roi != null ? ` · ROI ${record.roi >= 0 ? '+' : ''}${record.roi.toFixed(1)}%` : ''}`
+              const text = `📊 My record (${sc}): ${line}\n\nOperate with discipline. riskmatrixlabs.com`
+              try { if (navigator.share) await navigator.share({ title: 'Risk Matrix Labs', text }); else { await navigator.clipboard.writeText(text); alert('Record copied to clipboard') } } catch { /* share cancelled */ }
+            }}
+            style={{ width: '100%', padding: '9px', marginBottom: '8px', background: 'transparent', border: `1px solid ${NEON}59`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: NEON_T }}>
+            SHARE RECORD
+          </button>
           <button onClick={() => { if (confirm('Reset your tracked record? This cannot be undone.')) { /* TODO(ev-track): wire reset handler when bet-log mutation is available */ } }}
             style={{ width: '100%', padding: '9px', background: 'transparent', border: `1px solid ${DANGER}59`, borderRadius: '8px', cursor: 'pointer', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: DANGER }}>
             RESET SCOREBOARD
