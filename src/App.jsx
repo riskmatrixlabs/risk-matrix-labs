@@ -1470,8 +1470,13 @@ function RREngine({ unitSize, darkMode, isDemo = false, token = null, floatPicks
               const am = cd >= 2 ? `+${Math.round((cd - 1) * 100)}` : `${Math.round(-100 / (cd - 1))}`
               const payout = stakePerCombo * cd
               const picks = combo.map(i => validLegs[i].pick || `Leg ${i + 1}`)
+              const addCombo = () => {
+                if (!onAddToSlip) return
+                combo.forEach(i => onAddToSlip({ pick: validLegs[i].pick || `Leg ${i + 1}`, odds: Number(validLegs[i].odds) || 0, sport: 'MLB', event: validLegs[i].event || '' }))
+                setSlipMsg(`✓ Combo #${idx + 1} added to slip`); setTimeout(() => setSlipMsg(''), 3000)
+              }
               return (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '8px 10px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px' }}>
+                <div key={idx} onClick={onAddToSlip ? addCombo : undefined} title={onAddToSlip ? 'Tap to add this combo to your slip' : ''} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '8px 10px', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: '2px', cursor: onAddToSlip ? 'pointer' : 'default' }}>
                   <span style={{ minWidth: 0 }}>
                     <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: 'var(--muted)', marginRight: '6px' }}>#{idx + 1}</span>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>{picks.join('  +  ')}</span>
@@ -1484,7 +1489,8 @@ function RREngine({ unitSize, darkMode, isDemo = false, token = null, floatPicks
               )
             })}
           </div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '8px' }}>Each row is one parlay to place — exactly what to build on Novig (no auto-RR there).</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: 'var(--muted)', marginTop: '8px' }}>{onAddToSlip ? 'Tap any combo to add it to your slip · ' : ''}Each row is one parlay to place — exactly what to build on Novig (no auto-RR there).</div>
+          {slipMsg && <div style={{ textAlign: 'center', fontFamily: R, fontSize: '10px', color: NEON_T, marginTop: '6px' }}>{slipMsg}</div>}
         </div>
       )}
 
