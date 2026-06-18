@@ -3327,7 +3327,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     // group enabled legs by game → drives Same Game Parlay + Round Robin eligibility
                     const { groups: gGroups, sgpGroups, sgpOk, oneLegPerGame, rrOk, maxRrSize } = slipEligibility(enabled)
                     // fall back to Parlay if the active tab isn't valid for the current slip
-                    const mode = (slipMode === 'rr' && !rrOk) ? 'parlay' : (slipMode === 'sgp' && !sgpOk) ? 'parlay' : slipMode
+                    // Round Robin lives in the RR Engine (Float to RR / Add to Slip), not the slip tabs.
+                    const mode = (slipMode === 'rr') ? 'parlay' : (slipMode === 'sgp' && !sgpOk) ? 'parlay' : slipMode
                     const isStraights = mode === 'straights'
                     const stk = Number(slipStake) || 0
                     let userState = ''; try { userState = localStorage.getItem('rml_state') || '' } catch {}
@@ -3349,7 +3350,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                       <>
                         {/* 4-way bet slip: Straight · Parlay · Same Game · Round Robin (like the books) */}
                         <div style={{ display: 'flex', gap: '3px', margin: '2px 0 4px', background: 'var(--bg)', borderRadius: '9px', padding: '3px' }}>
-                          {[['straights', 'Straight', true], ['parlay', 'Parlay', true], ['sgp', 'Same Game', sgpOk], ['rr', 'Round Robin', rrOk]].map(([k, label, ok]) => (
+                          {[['straights', 'Straight', true], ['parlay', 'Parlay', true], ['sgp', 'Same Game', sgpOk]].map(([k, label, ok]) => (
                             <button key={k} disabled={!ok} onClick={() => ok && setSlipMode(k)} title={!ok ? (k === 'rr' ? 'Round Robin needs ≥3 picks, one per game' : 'Same Game needs 2+ picks from one game') : ''}
                               style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', cursor: ok ? 'pointer' : 'not-allowed', opacity: ok ? 1 : 0.35, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', border: 'none', background: mode === k ? NEON : 'transparent', color: mode === k ? '#0A0A0A' : MUTED }}>{label}</button>
                           ))}
@@ -3484,37 +3485,6 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                             {gGroups.some(([, ls]) => ls.length === 1) && <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '8px' }}>Picks that are the only one from their game aren’t shown here — add 2+ from the same game to build an SGP.</div>}
                           </div>
                         )}
-
-                        {/* ROUND ROBIN: every combo of the picks as its own parlay */}
-                        {mode === 'rr' && (() => {
-                          const size = Math.min(rrSize, maxRrSize)               // can't exceed # of games
-                          const cs = validRoundRobinCombos(enabled, size)         // cross-game combos only
-                          const per = Number(rrStake) || 0
-                          const totalRisk = cs.length * per
-                          const sizes = []; for (let s = 2; s <= maxRrSize; s++) sizes.push(s)
-                          return (
-                            <div style={{ marginBottom: '4px' }}>
-                              <div style={lbl}>Round Robin · {enabled.length} picks across {maxRrSize} games</div>
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                {sizes.map(s => (
-                                  <button key={s} onClick={() => setRrSize(s)} style={{ padding: '7px 12px', borderRadius: '7px', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, border: 'none', background: rrSize === s ? NEON : 'var(--bg)', color: rrSize === s ? '#0A0A0A' : MUTED }}>By {s}s</button>
-                                ))}
-                              </div>
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                                <input value={rrStake} onChange={e => setRrStake(e.target.value)} inputMode="decimal" placeholder="$ / combo" style={{ width: '100px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, textAlign: 'center', outline: 'none' }} />
-                                <span style={{ fontFamily: R, fontSize: '11px', color: MUTED }}>{cs.length} combo{cs.length === 1 ? '' : 's'} · risk <span style={{ color: NEON_T, fontWeight: 700 }}>${totalRisk.toFixed(2)}</span></span>
-                              </div>
-                              <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '8px' }}>
-                                {cs.map((combo, i) => (
-                                  <div key={i} style={{ fontFamily: R, fontSize: '10px', color: MUTED, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
-                                    {combo.map(l => l.pick).join('  +  ')} <span style={{ color: NEON_T }}>{fmt(decToAm(combo.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1)))}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <button onClick={logRoundRobin} disabled={!cs.length} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: cs.length ? 'pointer' : 'not-allowed', opacity: cs.length ? 1 : 0.5, background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Log {cs.length} Combo{cs.length === 1 ? '' : 's'}</button>
-                            </div>
-                          )
-                        })()}
 
                         {/* picks — each with an on/off toggle (keep a leg but leave it out) */}
                         <div style={{ ...lbl, color: MUTED }}>Your picks · {enabled.length}/{slip.length} on</div>
