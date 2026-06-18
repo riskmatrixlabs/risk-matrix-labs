@@ -85,6 +85,7 @@ export function BookLineMovement({ event, title = true, collapsible = false }) {
     return (
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
         <button onClick={() => setOpen(o => !o)} style={{ width: '100%', padding: '10px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          {(() => { const lv = event.status === 'IP' || event.status === 'LIVE'; const fn = event.status === 'FT' || event.status === 'AOT' || event.status === 'F'; return <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '5px', border: `1px solid ${lv ? '#FF3B3B' : BORDER}`, color: lv ? '#FF3B3B' : MUTED, whiteSpace: 'nowrap' }}>{lv ? '● LIVE' : fn ? 'FINAL' : 'PRE-GAME'}</span> })()}
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement <span style={{ color: 'rgba(255,255,255,0.3)' }}>· by sportsbook</span></span>
           <span style={{ position: 'absolute', right: '14px', color: open ? NEON_T : MUTED, fontSize: '10px' }}>{open ? '▾' : '▸'}</span>
         </button>

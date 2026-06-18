@@ -871,12 +871,22 @@ const GLOSSARY = {
 // ── Win Probability split — both teams' no-vig implied %, all three markets. ──
 // markets: [{ label, aLabel, bLabel, pA, pB }] — pA/pB are 0–1 fair probabilities.
 // Reusable collapsible card — header toggles, open by default. For the inline Insights sections.
-function Collapsible({ title, sub, tip, defaultOpen = true, children }) {
+// Shared status pill so every data section reads the SAME way: grey PRE-GAME → red ● LIVE → FINAL.
+// So the user always knows whether they're looking at live or pre-game data.
+export function StatusPill({ status }) {
+  const live  = status === 'IP' || status === 'LIVE'
+  const final = status === 'FT' || status === 'AOT' || status === 'F' || status === 'STATUS_FINAL'
+  const label = live ? '● LIVE' : final ? 'FINAL' : 'PRE-GAME'
+  return <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '5px', border: `1px solid ${live ? '#FF3B3B' : BORDER}`, color: live ? '#FF3B3B' : MUTED, whiteSpace: 'nowrap' }}>{label}</span>
+}
+
+function Collapsible({ title, sub, tip, status, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
   const head = <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{title}{sub ? <span style={{ color: 'rgba(255,255,255,0.3)' }}> · {sub}</span> : ''}</span>
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
       <div onClick={() => setOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {status != null && <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}><StatusPill status={status} /></span>}
         {tip ? <InfoLabel center tip={tip} label={head} /> : head}
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </div>
@@ -1903,7 +1913,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
           {/* O/U model — full breakdown (Statcast + bullpen + weather, anchored to total) */}
           <OuFlag event={event} token={token} />
           {meta.weather && (
-            <Collapsible title="Weather">
+            <Collapsible title="Weather" status={event.status}>
               <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>
                 {meta.weather.tempF != null && <span style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, color: TEXT }}>{meta.weather.tempF}°F</span>}
                 {meta.weather.feelsF != null && <span style={{ textAlign: 'center' }}><div style={{ fontFamily: R, fontSize: '9px', color: MUTED, letterSpacing: '0.1em' }}>FEELS</div><div style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{meta.weather.feelsF}°F</div></span>}
@@ -2015,7 +2025,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     dvTotal  && { name: 'Total', aL: `Over ${totalPt}`, bL: `Under ${totalPt}`, a: fair(dvTotal.fairAmericanA),  b: fair(dvTotal.fairAmericanB),  hold: dvTotal.holdPct,  pA: dvTotal.fairA,  pB: dvTotal.fairB,  pLabel: '' },
                   ].filter(Boolean)
                   return (
-                    <Collapsible title="Fair Value" sub={`${(event.status === 'IP' || event.status === 'LIVE') ? 'live' : 'pre-game'} · honest price`} tip={GLOSSARY.fairValue}>
+                    <Collapsible title="Fair Value" sub="honest price" status={event.status} tip={GLOSSARY.fairValue}>
                       {rows.map((m, i) => (
                         <div key={m.name} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '11px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <span>
@@ -2039,12 +2049,10 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 {/* 3) Odds table (+ LIVE badge) */}
                 {hasAnyOdds && (
                   <div>
-                    {isLive && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '6px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON, boxShadow: `0 0 6px ${NEON}` }} />
-                        <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>Live odds · multi-book consensus</span>
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px', marginBottom: '8px' }}>
+                      <StatusPill status={event.status} />
+                      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>Odds{isLive ? ' · multi-book' : ''}</span>
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr', gap: '8px', marginBottom: '4px', padding: '0 2px', alignItems: 'center' }}>
                       <div />
                       {[spreadLabel, 'Total', 'ML'].map(l => <div key={l} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center' }}>{l}</div>)}
@@ -2115,6 +2123,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                 {moved.length > 0 && (
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
                     <div onClick={() => setLineMoveOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: lineMoveOpen ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }}><StatusPill status={event.status} /></span>
                       <InfoLabel center tip={GLOSSARY.lineMove} label={
                         <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Line Movement <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {final ? 'open → close' : 'how the price is moving'}</span></span>
                       } />
