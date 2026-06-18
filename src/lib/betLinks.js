@@ -48,15 +48,38 @@ export function placeLink(book, deepLink) {
   return decorate(book, deepLink) || SIGNUP_LINKS[book] || BOOK_HOME[book] || null
 }
 
+// Copy text to the clipboard RELIABLY, synchronously, inside a user gesture.
+// iOS Safari / standalone PWA frequently drop `navigator.clipboard.writeText` when a new tab/app
+// opens in the same tap (focus shifts before the async promise resolves). So we fire the async API
+// (best-effort) AND do a synchronous execCommand('copy') fallback that works in those contexts.
+// Returns true if the synchronous path reports success.
+export function copyTextSync(text) {
+  if (!text) return false
+  let ok = false
+  try { navigator?.clipboard?.writeText?.(text) } catch { /* fall through to execCommand */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.top = '-9999px'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    ta.setSelectionRange(0, text.length)
+    ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+  } catch { /* clipboard fully blocked — caller still opens the book */ }
+  return ok
+}
+
 // No sportsbook exposes a public bet-slip deep-link, so opening a book can't pre-fill the pick.
 // Instead we copy the exact pick to the clipboard and THEN open the book, so the operator pastes it
-// into the book's search in ~2 seconds. Copy is best-effort — it never blocks the open if the
-// clipboard API is missing/denied. Returns true if the pick made it onto the clipboard.
-export async function copyPickAndOpen(pickText, url) {
-  let copied = false
-  try {
-    if (pickText && navigator?.clipboard?.writeText) { await navigator.clipboard.writeText(pickText); copied = true }
-  } catch { /* clipboard blocked — still open the book */ }
+// into the book's search in ~2 seconds. Copy is best-effort — it never blocks the open.
+// Returns true if the pick made it onto the clipboard.
+export function copyPickAndOpen(pickText, url) {
+  const copied = copyTextSync(pickText)
   if (url) window.open(url, '_blank', 'noopener,noreferrer')
   return copied
 }
