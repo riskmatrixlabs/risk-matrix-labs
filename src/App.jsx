@@ -2441,6 +2441,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         const { data: betRows, error: betErr } = await fetchBets(userId, token)
         const localSave = loadSession(userId)
         const localBets = localSave?.bets || []
+        // Onboarding decision is deferred until AFTER settings load — a returning user with a
+        // saved bankroll but no bets must NOT be re-onboarded (was the "re-onboards every sign-in"
+        // bug: the gate keyed only off bets + a localStorage flag that dies on sign-out / new device).
+        let cloudBetsEmpty = false
 
         if (betErr) {
           console.error('[RML] fetchBets error:', betErr)
@@ -2460,20 +2464,23 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           }
           setBets(merged)
         } else {
-          // Cloud empty — check localStorage before showing welcome
+          // Cloud empty — check localStorage before deciding anything
           if (localBets.length > 0) {
             // User had data locally (e.g. session expired mid-session) — restore it
             setBets(localBets)
             console.log('[RML] restored bets from localStorage (cloud was empty):', localBets.length)
           } else {
-            // Truly new user — show welcome
-            const welcomed = localStorage.getItem(`rml_welcomed_v1_${userId}`)
-            if (!welcomed) setShowWelcome(true)
+            // No bets anywhere — candidate for onboarding, but only if they have NO cloud
+            // settings either (decided after settings load below).
+            cloudBetsEmpty = true
           }
         }
 
         // Load settings from cloud
         const { data: settings, error: settErr } = await fetchSettings(userId, token)
+        // A cloud settings row = this account has used the app before → never re-onboard it,
+        // regardless of bets or this device's localStorage.
+        const hasCloudSettings = !!settings
         if (settErr && settErr.code !== 'PGRST116') {
           console.error('[RML] fetchSettings error:', settErr)
           // Cloud failed — fall back to localStorage settings
@@ -2505,6 +2512,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
             if (localSave.darkMode !== undefined) setDarkMode(localSave.darkMode)
           }
+        }
+
+        // Onboarding gate (deferred): show the welcome ONLY for a genuinely new account —
+        // no bets (cloud + local) AND no cloud settings row AND not already welcomed on this device.
+        if (cloudBetsEmpty && !hasCloudSettings && !localStorage.getItem(`rml_welcomed_v1_${userId}`)) {
+          setShowWelcome(true)
         }
 
         // Load templates from cloud
