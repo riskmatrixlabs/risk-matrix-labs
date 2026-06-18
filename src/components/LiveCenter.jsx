@@ -1958,7 +1958,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
               if (!b) return null
               return { book: b.book, price: b.price, link: b.link ? decorate(b.book, b.link) : null }
             }
-            const OddsCard = ({ line, juice, pick, odds, market, side, empty }) => (
+            const OddsCard = ({ line, juice, pick, odds, market, side, tag, empty }) => (
               <div
                 onClick={() => { if (!empty && onLogPosition) setOddsConfirm({ pick, odds, market, side, best: bestFor(market, side) }) }}
                 style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '66px', cursor: (!empty && onLogPosition) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
@@ -1967,6 +1967,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
               >
                 {empty ? <span style={{ fontFamily: R, fontSize: '18px', color: 'rgba(255,255,255,0.15)' }}>—</span> : (
                   <>
+                    {tag && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: MUTED, textTransform: 'uppercase', lineHeight: 1 }}>{tag}</span>}
                     <span style={{ fontFamily: R, fontSize: '20px', fontWeight: 700, color: TEXT, letterSpacing: '-0.01em', lineHeight: 1 }}>{line}</span>
                     {juice != null && <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: NEON_T }}>{fmtOdds(juice)}</span>}
                   </>
@@ -2038,18 +2039,18 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     {[
                       { label: event.away_abbr, cells: [
                         hasSpread ? { line: spreadAway, juice: spAwayJ, pick: `${event.away_abbr} ${spreadLabel} ${spreadAway}`, odds: spAwayJ ?? spreadAway, market: 'spread', side: 'away' } : null,
-                        hasTotal  ? { line: `O ${totalPt}`, juice: overJ, pick: `Over ${totalPt}`, odds: overJ ?? `O ${totalPt}`, market: 'total', side: 'over' } : null,
+                        hasTotal  ? { line: totalPt, tag: 'Over', juice: overJ, pick: `Over ${totalPt}`, odds: overJ ?? `O ${totalPt}`, market: 'total', side: 'over' } : null,
                         hasML     ? { line: fmtOdds(mlAway), juice: null, pick: `${event.away_abbr} ML`, odds: mlAway, market: 'ml', side: 'away' } : null,
                       ]},
                       { label: event.home_abbr, cells: [
                         hasSpread ? { line: spreadHome, juice: spHomeJ, pick: `${event.home_abbr} ${spreadLabel} ${spreadHome}`, odds: spHomeJ ?? spreadHome, market: 'spread', side: 'home' } : null,
-                        hasTotal  ? { line: `U ${totalPt}`, juice: underJ, pick: `Under ${totalPt}`, odds: underJ ?? `U ${totalPt}`, market: 'total', side: 'under' } : null,
+                        hasTotal  ? { line: totalPt, tag: 'Under', juice: underJ, pick: `Under ${totalPt}`, odds: underJ ?? `U ${totalPt}`, market: 'total', side: 'under' } : null,
                         hasML     ? { line: fmtOdds(mlHome), juice: null, pick: `${event.home_abbr} ML`, odds: mlHome, market: 'ml', side: 'home' } : null,
                       ]},
                     ].map(({ label, cells }) => (
                       <div key={label} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
                         <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT, textAlign: 'center', letterSpacing: '0.04em' }}>{label}</div>
-                        {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} juice={c.juice} pick={c.pick} odds={c.odds} market={c.market} side={c.side} /> : <OddsCard key={i} empty />)}
+                        {cells.map((c, i) => c ? <OddsCard key={i} line={c.line} tag={c.tag} juice={c.juice} pick={c.pick} odds={c.odds} market={c.market} side={c.side} /> : <OddsCard key={i} empty />)}
                       </div>
                     ))}
                     {oddsConfirm && (() => {
