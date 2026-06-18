@@ -3002,12 +3002,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slipOff, setSlipOff] = useState(() => new Set())  // picks toggled OFF (kept in slip, excluded from bet)
   // Hand-off confirmation: a link can't pre-fill a sportsbook slip, so when the operator taps a book
   // we copy the exact pick + flash "pick copied — paste into <book> search" so the expectation is honest.
-  const [copyToast, setCopyToast] = useState(null)   // { book, pick, lands } | null
-  const placeOn = (bookKey, pickText, deepLink) => {
+  const [copyToast, setCopyToast] = useState(null)   // { book, pick, lands, logged } | null
+  const placeOn = (bookKey, pickText, deepLink, logged = false) => {
     const lands = deepLinksToBet(bookKey, deepLink)
     if (!lands) copyTextSync(pickText)   // only needed for app-open-only books; best-effort, non-intrusive
-    setCopyToast({ book: BOOK_NAMES[bookKey] || bookKey, pick: pickText, lands })
-    setTimeout(() => setCopyToast(null), lands ? 3500 : 8000)
+    setCopyToast({ book: BOOK_NAMES[bookKey] || bookKey, pick: pickText, lands, logged })
+    setTimeout(() => setCopyToast(null), lands ? 4500 : 8000)
   }
   const toggleLeg = (pick) => setSlipOff(s => { const n = new Set(s); n.has(pick) ? n.delete(pick) : n.add(pick); return n })
   const [ocrBusy, setOcrBusy] = useState(false)
@@ -3129,6 +3129,30 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     }
     setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setStraightsExp(new Set()); setSlipOpen(false)
   }
+  // Tap a book in the slip → LOG the play to the tracker (book = the one tapped) AND open the book.
+  // oneLeg set (straights row) → log just that leg; else log the whole ticket (single or parlay).
+  const placeAndLog = (bookKey, deepLink, oneLeg = null) => {
+    const legs = oneLeg ? [oneLeg] : enabledLegs()
+    if (!legs.length) return
+    const date = new Date().toISOString().slice(0, 10)
+    const isP = !oneLeg && slipMode === 'parlay' && legs.length >= 2
+    let pickText
+    if (isP) {
+      const odds = decToAm(legs.reduce((a, l) => a * amToDec(Number(l.odds) || 0), 1))
+      const stk = Number(slipStake) || 0
+      pickText = legs.map(l => l.pick).join('  +  ')
+      commitBet({ id: Date.now(), date, sport: legs[0]?.sport || '', book: bookKey, betType: 'Parlay', event: `${legs.length}-Leg Parlay`, pick: pickText, odds, units: stats.unitSize ? stk / stats.unitSize : 0, stake: stk, result: 'Open', pnl: 0, legs: legs.map(l => ({ pick: l.pick, odds: Number(l.odds) || 0, book: bookKey, sport: l.sport || null, event: l.event || null })), notes: 'Slip → placed on book' })
+    } else {
+      legs.forEach((l, i) => {
+        const legStk = (slipMode === 'straights' || oneLeg) ? legStakeOf(l) : (Number(slipStake) || 0)
+        commitBet({ id: Date.now() + i, date, sport: l.sport || '', book: bookKey, betType: 'Straight', event: l.event || '', pick: l.pick, odds: Number(l.odds) || 0, units: stats.unitSize ? legStk / stats.unitSize : 0, stake: legStk, result: 'Open', pnl: 0, legs: null, notes: 'Slip → placed on book' })
+      })
+      pickText = legs.map(l => l.pick).join('  +  ')
+    }
+    placeOn(bookKey, pickText, deepLink, true)
+    if (oneLeg) { setSlip(p => p.filter(x => x.pick !== oneLeg.pick)); setSlipOff(s => { const n = new Set(s); n.delete(oneLeg.pick); return n }); setSlipStakes(s => { const n = { ...s }; delete n[oneLeg.pick]; return n }) }
+    else { setSlip([]); setSlipOff(new Set()); setSlipStakes({}); setStraightsExp(new Set()); setSlipOpen(false) }
+  }
   // Share the slip — native share sheet (text + best deep link), clipboard fallback.
   const shareSlip = async () => {
     const legs = enabledLegs()
@@ -3171,7 +3195,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBetSlipPhoto} />
             {copyToast && (
               <div onClick={() => setCopyToast(null)} style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: isMobile ? 'calc(78px + env(safe-area-inset-bottom))' : '78px', zIndex: 300, maxWidth: 'calc(100vw - 28px)', background: '#0A0A0A', border: `1px solid ${NEON}`, borderRadius: '12px', padding: '12px 16px', boxShadow: '0 8px 28px rgba(0,0,0,0.5)', cursor: 'pointer' }}>
-                <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T }}>Opening {copyToast.book} →</div>
+                <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T }}>{copyToast.logged ? '✓ Logged to tracker · ' : ''}Opening {copyToast.book} →</div>
                 {copyToast.lands ? (
                   <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-sub)', marginTop: '3px', lineHeight: 1.4 }}>Your bet is loaded on the slip — just confirm your stake.</div>
                 ) : (
@@ -3267,7 +3291,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           // so placeLink falls back to the book's app-open link (opens the app).
                           const soleDeep = (bk) => soleLeg ? (soleLeg.byBookLink?.[bk] || null) : null
                           const bookRow = (r, faded, best) => (
-                            <a key={r.book} href={placeLink(r.book, soleDeep(r.book)) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => placeOn(r.book, enabled.map(l => l.pick).join(' + '), soleDeep(r.book))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
+                            <a key={r.book} href={placeLink(r.book, soleDeep(r.book)) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => placeAndLog(r.book, soleDeep(r.book))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px', marginTop: '7px', borderRadius: '11px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none', opacity: faded ? 0.45 : 1 }}>
                               <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                 {best && <span style={{ color: NEON_T, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em' }}>PLACE ON</span>}
                                 <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>
@@ -3282,7 +3306,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           )
                           return (
                             <div style={{ marginBottom: '4px' }}>
-                              <div style={{ ...lbl, color: MUTED, opacity: 0.7 }}>Tap a book to place this parlay there</div>
+                              <div style={{ ...lbl, color: MUTED, opacity: 0.7 }}>Tap a book → logs it to your tracker + opens the book</div>
                               {avail.length > 0 && <><div style={lbl}>✓ Best book · all {total} legs</div>{avail.map((r, i) => bookRow(r, false, i === 0))}</>}
                               {missing.length > 0 && <><div style={lbl}>Missing some legs</div>{missing.map(r => bookRow(r))}</>}
                               {region.length > 0 && <><div style={lbl}>Not in your region</div>{(showOutRegion ? region : region.slice(0, 2)).map(r => bookRow(r, true))}{region.length > 2 && (
@@ -3311,7 +3335,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                               const exp = straightsExp.has(l.pick)
                               const bestOdds = (inReg.find(r => r.odds != null)?.odds ?? Number(l.odds)) || 0
                               const bookRow = (r, best) => (
-                                <a key={r.book} href={placeLink(r.book, r.link) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => placeOn(r.book, l.pick, r.link)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none' }}>
+                                <a key={r.book} href={placeLink(r.book, r.link) || '#'} target="_blank" rel="noopener noreferrer" onClick={() => placeAndLog(r.book, r.link, l)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 11px', marginTop: '6px', borderRadius: '9px', border: `1px solid ${best ? NEON : 'var(--border)'}`, background: best ? 'rgba(189,255,0,0.08)' : 'transparent', textDecoration: 'none' }}>
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>{best && <span style={{ color: NEON_T, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em' }}>BEST</span>}<span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{BOOK_NAMES[r.book] || r.book}</span>{r.est && <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, color: MUTED, letterSpacing: '0.06em' }}>EST</span>}</span>
                                   <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: r.odds != null ? (r.est ? MUTED : NEON_T) : MUTED }}>{r.odds != null ? `${r.est ? '~' : ''}${fmt(r.odds)}` : '—'}</span><span style={{ width: '22px', height: '22px', borderRadius: '50%', background: best ? NEON : 'rgba(189,255,0,0.14)', color: best ? '#0A0A0A' : NEON_T, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>→</span></span>
                                 </a>
@@ -3322,7 +3346,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.pick}</span>
                                     <input value={slipStakes[l.pick] ?? ''} onChange={e => setSlipStakes(s => ({ ...s, [l.pick]: e.target.value }))} inputMode="decimal" placeholder="$ stake" style={{ width: '80px', padding: '8px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: R, fontSize: '14px', fontWeight: 700, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
                                   </div>
-                                  <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '5px' }}>{ls > 0 ? <>${ls.toFixed(0)} → <span style={{ color: NEON_T, fontWeight: 700 }}>${(ls * amToDec(bestOdds)).toFixed(2)}</span> · </> : null}tap a book to place</div>
+                                  <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '5px' }}>{ls > 0 ? <>${ls.toFixed(0)} → <span style={{ color: NEON_T, fontWeight: 700 }}>${(ls * amToDec(bestOdds)).toFixed(2)}</span> · </> : null}tap a book → logs it + opens the book</div>
                                   {inReg.map((r, idx) => bookRow(r, idx === 0 && r.odds != null))}
                                   {outReg.length > 0 && exp && <><div style={{ ...lbl, fontSize: '8px', marginTop: '8px', opacity: 0.7 }}>Not in your region</div>{outReg.map(r => bookRow(r, false))}</>}
                                   {outReg.length > 0 && <button onClick={() => setStraightsExp(s => { const n = new Set(s); n.has(l.pick) ? n.delete(l.pick) : n.add(l.pick); return n })} style={{ width: '100%', marginTop: '6px', padding: '7px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: MUTED, cursor: 'pointer', fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{exp ? 'Show less ▴' : `+${outReg.length} more books ▾`}</button>}
