@@ -3002,11 +3002,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [slipOff, setSlipOff] = useState(() => new Set())  // picks toggled OFF (kept in slip, excluded from bet)
   // Hand-off confirmation: a link can't pre-fill a sportsbook slip, so when the operator taps a book
   // we copy the exact pick + flash "pick copied — paste into <book> search" so the expectation is honest.
-  const [copyToast, setCopyToast] = useState(null)   // { book, ok } | null
+  const [copyToast, setCopyToast] = useState(null)   // { book, pick } | null
   const placeOn = (bookKey, pickText) => {
-    const ok = copyTextSync(pickText)
-    setCopyToast({ book: BOOK_NAMES[bookKey] || bookKey, ok })
-    setTimeout(() => setCopyToast(null), 6000)
+    copyTextSync(pickText)   // best-effort, non-intrusive — never blocks the book opening
+    setCopyToast({ book: BOOK_NAMES[bookKey] || bookKey, pick: pickText })
+    setTimeout(() => setCopyToast(null), 8000)
   }
   const toggleLeg = (pick) => setSlipOff(s => { const n = new Set(s); n.has(pick) ? n.delete(pick) : n.add(pick); return n })
   const [ocrBusy, setOcrBusy] = useState(false)
@@ -3170,8 +3170,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBetSlipPhoto} />
             {copyToast && (
               <div onClick={() => setCopyToast(null)} style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: isMobile ? 'calc(78px + env(safe-area-inset-bottom))' : '78px', zIndex: 300, maxWidth: 'calc(100vw - 28px)', background: '#0A0A0A', border: `1px solid ${NEON}`, borderRadius: '12px', padding: '12px 16px', boxShadow: '0 8px 28px rgba(0,0,0,0.5)', cursor: 'pointer' }}>
-                <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T }}>{copyToast.ok ? '📋 Pick copied' : '⚠️ Copy blocked'}</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-sub)', marginTop: '3px', lineHeight: 1.4 }}>{copyToast.ok ? <>Opening {copyToast.book} — <b style={{ color: 'var(--text)' }}>paste it into the book's search</b> to find your bet (no book lets a link pre-load the slip).</> : <>Couldn't copy automatically. {copyToast.book} is opening — search your pick there manually.</>}</div>
+                <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T }}>Opening {copyToast.book} →</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--text-sub)', marginTop: '3px', lineHeight: 1.4 }}>Search this in {copyToast.book} (copied to your clipboard):</div>
+                <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginTop: '4px', wordBreak: 'break-word' }}>{copyToast.pick}</div>
               </div>
             )}
             {slipOpen && <div onClick={() => setSlipOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.45)' }} />}

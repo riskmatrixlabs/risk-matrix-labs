@@ -48,30 +48,14 @@ export function placeLink(book, deepLink) {
   return decorate(book, deepLink) || SIGNUP_LINKS[book] || BOOK_HOME[book] || null
 }
 
-// Copy text to the clipboard RELIABLY, synchronously, inside a user gesture.
-// iOS Safari / standalone PWA frequently drop `navigator.clipboard.writeText` when a new tab/app
-// opens in the same tap (focus shifts before the async promise resolves). So we fire the async API
-// (best-effort) AND do a synchronous execCommand('copy') fallback that works in those contexts.
-// Returns true if the synchronous path reports success.
+// Copy text to the clipboard — best-effort and NON-INTRUSIVE.
+// CRITICAL: do NOT create/focus/select a hidden <textarea> here. On iOS, grabbing focus inside the
+// tap that also follows a book's universal link cancels the app-open and dumps the user on the
+// App Store "download" page. The async clipboard API doesn't touch focus, so the book still opens.
+// Copy is a bonus; opening the book is the job. Returns true optimistically when the API exists.
 export function copyTextSync(text) {
   if (!text) return false
-  let ok = false
-  try { navigator?.clipboard?.writeText?.(text) } catch { /* fall through to execCommand */ }
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'fixed'
-    ta.style.top = '-9999px'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.focus()
-    ta.select()
-    ta.setSelectionRange(0, text.length)
-    ok = document.execCommand('copy')
-    document.body.removeChild(ta)
-  } catch { /* clipboard fully blocked — caller still opens the book */ }
-  return ok
+  try { navigator?.clipboard?.writeText?.(text); return true } catch { return false }
 }
 
 // No sportsbook exposes a public bet-slip deep-link, so opening a book can't pre-fill the pick.
