@@ -82,12 +82,23 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   // MLB is dark, so it fills the overnight Spotlight slot. Projection model, no market line yet (BETA).
   const [kbo, setKbo] = useState([])
   const [kboOpen, setKboOpen] = useState(false)   // collapsed by default — tap to expand
+  const [kboView, setKboView] = useState('today') // 'today' (live scan) | 'yesterday' (locked grades)
+  const [kboYest, setKboYest] = useState(null)     // { games, record } from /api/kbo-record (DB truth)
   useEffect(() => {
     let cancel = false
     fetch('/api/kbo-scan').then(r => r.ok ? r.json() : null)
       .then(j => { if (!cancel) setKbo(j?.games || []) }).catch(() => {})
     return () => { cancel = true }
   }, [])
+  // Yesterday = LOCKED grades from the DB (never a live re-scan — that's what caused phantom losses).
+  // KST yesterday: the scan reports its date; fall back to UTC+9 math if not loaded yet.
+  useEffect(() => {
+    if (kboView !== 'yesterday' || kboYest) return
+    const kstNow = new Date(Date.now() + 9 * 3600e3)
+    const y = new Date(kstNow.getTime() - 86400e3).toISOString().slice(0, 10)
+    fetch(`/api/kbo-record?date=${y}`).then(r => r.ok ? r.json() : null)
+      .then(j => setKboYest(j || { games: [], record: { w: 0, l: 0, p: 0 } })).catch(() => {})
+  }, [kboView, kboYest])
 
   useEffect(() => {
     if (!token) { setSignals([]); return }
@@ -226,50 +237,105 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
               </div>
             ))}
           </div>
-          {kbo.length > 0 && (
+          {(kbo.length > 0 || kboView === 'yesterday') && (() => {
+            // ONE source per view: Today = live scan; Yesterday = LOCKED DB grades (no re-scan, so
+            // no phantom W/L). Both normalize to the same row shape, so the renderer is identical.
+            const src = kboView === 'yesterday' ? (kboYest?.games || []) : kbo
+            const rows = [...src].sort((a, b) => {
+              const ax = a.lean !== 'LEAN' ? Math.abs(a.edge || 0) : -1
+              const bx = b.lean !== 'LEAN' ? Math.abs(b.edge || 0) : -1
+              return bx - ax
+            })
+            const pickCount = src.filter(g => g.lean !== 'LEAN').length
+            const rec = kboYest?.record
+            // Lean = a real side taken (OVER or UNDER) → GREEN. LEAN = no pick → grey. (One color = "we picked".)
+            const leanColor = (lean) => (lean === 'OVER' || lean === 'UNDER') ? NEON_T : MUTED
+            return (
             <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
               <button onClick={() => setKboOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ KBO — Overnight (Korea) ({kbo.filter(g => g.lean !== 'LEAN').length})</span>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ KBO — Overnight (Korea) ({pickCount})</span>
                 <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
                 <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: kboOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </button>
               {kboOpen && (<>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '4px 0 6px' }}>free projection model · park + weather · no market line yet · calibrating</div>
+              {/* Today / Yesterday switch — Yesterday shows the locked, already-graded results. */}
+              <div style={{ display: 'flex', gap: '6px', margin: '8px 0 6px' }}>
+                {['today', 'yesterday'].map(v => (
+                  <button key={v} onClick={() => setKboView(v)} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: '6px', cursor: 'pointer', color: kboView === v ? NEON_T : MUTED, background: kboView === v ? 'rgba(189,255,0,0.1)' : 'transparent', border: `1px solid ${kboView === v ? NEON : BORDER}` }}>{v}</button>
+                ))}
+                {kboView === 'yesterday' && rec && (
+                  <span style={{ marginLeft: 'auto', alignSelf: 'center', fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T }}>
+                    {rec.w}-{rec.l}{rec.p ? `-${rec.p}` : ''}<span style={{ fontSize: '8px', color: MUTED, fontWeight: 400 }}> record</span>
+                  </span>
+                )}
+              </div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>
+                {kboView === 'yesterday'
+                  ? 'graded results · green = we picked a side · grey = no pick (not counted)'
+                  : '#1 = strongest projection edge · park + weather model · no market line yet'}
+              </div>
+              {rows.length === 0 ? (
+                <div style={{ fontFamily: R, fontSize: '11px', color: MUTED, padding: '8px 2px' }}>{kboView === 'yesterday' ? 'No graded KBO games for yesterday.' : 'No KBO games today.'}</div>
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {kbo.map((g) => {
-                  // Once a game is final, show what happened, plainly: actual total · error vs the
-                  // projection · result (HIT/MISS vs the KBO baseline — no market line on the free model).
+                {rows.map((g, i) => {
+                  const noPick = g.lean === 'LEAN'
+                  const rank = i + 1
+                  const strong = Math.abs(g.edge) >= 0.5
                   const fin = g.finalTotal
-                  const err = fin != null ? Math.round((Number(fin) - Number(g.projTotal)) * 10) / 10 : null
+                  const err = (fin != null && g.projTotal != null) ? Math.round((Number(fin) - Number(g.projTotal)) * 10) / 10 : null
+                  // RESULT: never for a no-pick. Yesterday = the locked DB grade; Today = live vs baseline.
                   let result = null
-                  if (fin != null && g.lean !== 'LEAN') {
-                    const base = Number(g.baseline ?? 9.8)
-                    result = Number(fin) === base ? { t: 'PUSH', c: MUTED }
-                      : (g.lean === 'OVER' ? Number(fin) > base : Number(fin) < base) ? { t: '✓ HIT', c: NEON_T } : { t: '✗ MISS', c: '#FF3B3B' }
+                  if (!noPick) {
+                    if (kboView === 'yesterday') {
+                      result = g.result === 'W' ? { t: '✓ W', c: NEON_T }
+                        : g.result === 'L' ? { t: '✗ L', c: '#FF3B3B' }
+                        : g.result === 'P' ? { t: 'PUSH', c: MUTED } : null
+                    } else if (fin != null) {
+                      const base = Number(g.baseline ?? 9.8)
+                      result = Number(fin) === base ? { t: 'PUSH', c: MUTED }
+                        : (g.lean === 'OVER' ? Number(fin) > base : Number(fin) < base) ? { t: '✓ W', c: NEON_T } : { t: '✗ L', c: '#FF3B3B' }
+                    }
                   }
                   return (
-                    <div key={g.id || g.matchup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: g.lean !== 'LEAN' ? 'rgba(189,255,0,0.05)' : 'rgba(189,255,0,0.02)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px' }}>
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{g.matchup} </span>
-                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: g.lean === 'OVER' ? NEON_T : g.lean === 'UNDER' ? '#FF3B3B' : MUTED }}>{g.lean === 'LEAN' ? 'LEAN' : g.lean} {g.projTotal}</span>
-                        <div style={{ fontFamily: R, fontSize: '8.5px', color: MUTED, marginTop: '2px' }}>{g.venue || ''}{(g.factors || []).length ? ` · ${(g.factors || []).join(' · ')}` : ' · neutral'}</div>
-                        {fin != null && (
-                          <div style={{ fontFamily: R, fontSize: '9px', marginTop: '3px', display: 'flex', flexWrap: 'wrap', gap: '9px', alignItems: 'center' }}>
-                            <span style={{ color: MUTED }}>PROJ <b style={{ color: TEXT }}>{g.projTotal}</b></span>
-                            <span style={{ color: MUTED }}>ACTUAL <b style={{ color: TEXT }}>{fin}</b></span>
-                            <span style={{ color: MUTED }}>ERR <b style={{ color: TEXT }}>{err > 0 ? '+' : ''}{err}</b></span>
-                            {result && <span style={{ color: result.c, fontWeight: 700 }}>{result.t}</span>}
-                          </div>
-                        )}
+                    <div key={g.id || g.matchup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: !noPick ? 'rgba(189,255,0,0.08)' : 'rgba(189,255,0,0.02)', border: !noPick ? `1px solid rgba(189,255,0,0.35)` : `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: !noPick ? NEON_T : MUTED, flexShrink: 0, width: 22 }}>{!noPick ? `#${rank}` : '—'}</span>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{g.matchup} </span>
+                          {/* OVER/UNDER both green (= a side was taken); no-pick reads "NO PICK" in grey. */}
+                          {noPick
+                            ? <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: MUTED }}>NO PICK</span>
+                            : <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: leanColor(g.lean) }}>{g.lean} {g.projTotal}</span>}
+                          {/* Quick-look box — same chrome as the MLB rows above: venue + factors context. */}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', padding: '3px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                            <span style={{ color: MUTED }}>{g.venue || 'venue —'}</span>
+                            {(g.factors || []).length > 0 && <span style={{ color: TEXT, fontWeight: 700 }}>{(g.factors || []).join(' · ')}</span>}
+                          </span>
+                          {/* Grading line — labeled PROJ · ACTUAL · ERROR · RESULT once final. */}
+                          {fin != null && (
+                            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: '5px', fontFamily: R, fontSize: '9px', alignItems: 'center' }}>
+                              <span style={{ color: MUTED }}>PROJ <b style={{ color: TEXT }}>{g.projTotal}</b></span>
+                              <span style={{ color: MUTED }}>ACTUAL <b style={{ color: TEXT }}>{fin}</b></span>
+                              {err != null && <span style={{ color: MUTED }}>ERROR <b style={{ color: err > 0 ? '#FFAE2B' : TEXT }}>{err > 0 ? '+' : ''}{err}</b></span>}
+                              {result ? <span style={{ color: result.c, fontWeight: 700 }}>{result.t}</span>
+                                : noPick && <span style={{ color: MUTED, fontWeight: 700 }}>NO PICK · not counted</span>}
+                            </span>
+                          )}
+                        </span>
                       </span>
-                      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: Math.abs(g.edge) >= 0.5 ? NEON_T : MUTED, flexShrink: 0 }} title="projected total vs KBO baseline">{g.edge > 0 ? '+' : ''}{g.edge}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: strong && !noPick ? NEON : MUTED }} title="projected total vs KBO baseline">{g.edge > 0 ? '+' : ''}{g.edge}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> EDGE</span></span>
+                      </span>
                     </div>
                   )
                 })}
               </div>
+              )}
               </>)}
             </div>
-          )}
+            )
+          })()}
           {(() => {
             // Record panel as a labeled grid: rows = time period, columns = Spotlight (strong) vs
             // All leans, each with its own win %. The column headers say which number is which, so
