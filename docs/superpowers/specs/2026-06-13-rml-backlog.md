@@ -13,6 +13,7 @@ Session 62 (merged to main, SW v378) shipped: onboarding re-fire fix, bet hand-o
 - 🟢 **Win Prob + Line Movement** — run line/total on each side (matches Fair Value); sparkline+arrows by implied prob (shorter price = UP).
 - 🟢 **By-sportsbook chart premium redesign** (tap-to-compare, decimal scaling, dots/gridlines/dashed-sharp, favorite-on-top, ⓘ how-to-read) · 🟢 consensus odds team labels + run line each side + O/U "0" fix · 🟢 weather Feels-like+Humidity + retractable roofs · 🟢 footer centered · 🟢 picks→legs · 🟢 CH3 sport-selector · 🟢 280/280 tests.
 - 🟢 **Lean grading verified CORRECT** (DB-checked) — snapshot locks first pre-game directional lean+line, grades vs locked line. "Phantom grey miss" was a real strong miss. No change needed.
+- 🟢 **🇰🇷 KBO SCAN (new free league)** — `api/kbo-scan.js` (TheSportsDB 4830 + Open-Meteo, 0 credits; park×baseline+weather, no Statcast); `kbo_leans` table + `cron-kbo-leans` (04:00+14:00 UTC) self-grades proj-vs-actual; Spotlight KBO section (collapsed, BETA, PROJ→ACTUAL→ERR→HIT/MISS) fills the OVERNIGHT slot. Projections rough → **next: add pitcher FIP + offense layer to sharpen**. See memory `rml-kbo-scan`.
 
 ### ⛔ BLOCKED on paid data (proved this session — NOT a UI fix)
 - **In-game on-court dot (#3)** + **timeouts remaining (#4)** — ESPN free summary exposes neither (probed live: no "timeout" field; only active/starter/DNP roster flags). Same class as the chart's **$ handle/money axis**. All need a **paid sharp/live feed** (how Apple Sports / Sharp Money do it).
