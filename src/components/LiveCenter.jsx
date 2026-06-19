@@ -2118,11 +2118,15 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
 
                 {/* Win Probability */}
                 {(dv || dvSpread || dvTotal) && (() => {
-                  const sh = spreadPt != null && Number(spreadPt) > 0 ? `+${spreadPt}` : `${spreadPt}`
+                  // Line on EACH SIDE (matches Fair Value): away gets +1.5, home gets -1.5 — never jammed in the middle.
+                  const fmtSp = (n) => n == null ? '' : (Number(n) > 0 ? `+${n}` : `${n}`)
+                  const spAwayL = spreadPt != null ? ` ${fmtSp(-Number(spreadPt))}` : ''
+                  const spHomeL = spreadPt != null ? ` ${fmtSp(Number(spreadPt))}` : ''
+                  const totL    = totalPt  != null ? ` ${totalPt}` : ''
                   const wpMarkets = [
-                    dv       && { label: 'Moneyline',              aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB,       oA: fair(dv.fairAmericanA),       oB: fair(dv.fairAmericanB),       pLabel: 'win' },
-                    dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB, oA: fair(dvSpread.fairAmericanA), oB: fair(dvSpread.fairAmericanB), pLabel: 'cover' },
-                    dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB,  oA: fair(dvTotal.fairAmericanA),  oB: fair(dvTotal.fairAmericanB),  pLabel: '' },
+                    dv       && { label: 'Moneyline', aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dv.fairA,       pB: dv.fairB,       oA: fair(dv.fairAmericanA),       oB: fair(dv.fairAmericanB),       pLabel: 'win' },
+                    dvSpread && { label: spreadLabel,  aLabel: `${event.away_abbr}${spAwayL}`, bLabel: `${event.home_abbr}${spHomeL}`, pA: dvSpread.fairA, pB: dvSpread.fairB, oA: fair(dvSpread.fairAmericanA), oB: fair(dvSpread.fairAmericanB), pLabel: 'cover' },
+                    dvTotal  && { label: 'Total',      aLabel: `Over${totL}`,  bLabel: `Under${totL}`, pA: dvTotal.fairA,  pB: dvTotal.fairB,  oA: fair(dvTotal.fairAmericanA),  oB: fair(dvTotal.fairAmericanB),  pLabel: '' },
                   ].filter(Boolean)
                   return <WinProbability markets={wpMarkets} live={false} />
                 })()}
@@ -2148,7 +2152,11 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       const juiceKey = mkt === 'ml' ? k : mkt === 'total' ? 'total_juice_over' : `spread_juice_${side}`
                       const jm = (movement[juiceKey] && movement[juiceKey].points >= 2) ? movement[juiceKey] : (mkt === 'ml' ? m : null)
                       const flat = !jm || jm.delta === 0
-                      const up = !!jm && jm.delta > 0
+                      // UP = the price SHORTENED (steamed / more favored), not "the number got bigger".
+                      // -136 → -193 shortens, so it must read as UP. Compare by decimal (lower = shorter).
+                      const up = !!jm && americanToDecimal(jm.current) < americanToDecimal(jm.open)
+                      // Plot the sparkline by IMPLIED PROBABILITY (1/decimal) so a shortening line rises.
+                      const sparkSeries = jm ? jm.series.map(v => 1 / americanToDecimal(v)) : (m.series || [])
                       const lineColor = flat ? MUTED : up ? NEON : '#FF3B3B'
                       const clv = jm ? computeClv(jm.open, jm.current) : null
                       const od = jm ? americanToDecimal(jm.open) : null
@@ -2174,7 +2182,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                                 : <span style={{ color: 'rgba(255,255,255,0.35)' }}>moneyline</span>}
                             </div>
                           </span>
-                          <Sparkline series={jm ? jm.series : m.series} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
+                          <Sparkline series={sparkSeries} color={flat ? 'rgba(255,255,255,0.4)' : lineColor} />
                           {/* RIGHT — the PRICE moving from open → now, then your CLV (did you beat the close) */}
                           <span style={{ textAlign: 'right', minWidth: '92px' }}>
                             <div style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>
