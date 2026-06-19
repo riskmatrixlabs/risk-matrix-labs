@@ -81,6 +81,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   // ⬡ KBO — FREE overnight scan (TheSportsDB + Open-Meteo, 0 credits). Korean baseball plays while
   // MLB is dark, so it fills the overnight Spotlight slot. Projection model, no market line yet (BETA).
   const [kbo, setKbo] = useState([])
+  const [kboOpen, setKboOpen] = useState(false)   // collapsed by default — tap to expand
   useEffect(() => {
     let cancel = false
     fetch('/api/kbo-scan').then(r => r.ok ? r.json() : null)
@@ -227,11 +228,13 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
           </div>
           {kbo.length > 0 && (
             <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ KBO — Overnight (Korea)</span>
+              <button onClick={() => setKboOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ KBO — Overnight (Korea) ({kbo.filter(g => g.lean !== 'LEAN').length})</span>
                 <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
-              </div>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>free projection model · park + weather · no market line yet · calibrating</div>
+                <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: kboOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              </button>
+              {kboOpen && (<>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '4px 0 6px' }}>free projection model · park + weather · no market line yet · calibrating</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {kbo.map((g) => (
                   <div key={g.id || g.matchup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: g.lean !== 'LEAN' ? 'rgba(189,255,0,0.05)' : 'rgba(189,255,0,0.02)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px' }}>
@@ -244,6 +247,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                   </div>
                 ))}
               </div>
+              </>)}
             </div>
           )}
           {(() => {
