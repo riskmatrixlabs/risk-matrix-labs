@@ -1568,7 +1568,7 @@ function BonusButton() {
   )
 }
 
-function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPrev = null, onNext = null, posLabel = '', bets = [], token = null, unitSize = 0 }) {
+function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPrev = null, onNext = null, onPick = null, posLabel = '', bets = [], token = null, unitSize = 0 }) {
   // Swipe left/right (from anywhere in the detail) to slide to the next/prev game — fixes
   // "can't get to the next card from inside". Horizontal-only so it never fights vertical scroll.
   const touch = useRef(null)
@@ -1742,6 +1742,13 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
       </div>
       </div>
       {shareOpen && <GameShareModal event={event} onClose={() => setShareOpen(false)} />}
+
+      {/* ⬡ Spotlight — pinned under the top bar so it stays visible on the game page (not just the slate) */}
+      {token && (
+        <div style={{ flexShrink: 0, maxWidth: '580px', width: '100%', margin: '0 auto', padding: '8px 14px 0', boxSizing: 'border-box' }}>
+          <SpotlightTicker token={token} onAddToSlip={onAddToSlip} onOpen={ev => onPick && onPick(ev)} />
+        </div>
+      )}
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -2616,6 +2623,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
         return <GameDetail event={selected} onBack={() => setSelectedId(null)}
           onPrev={prevId ? () => setSelectedId(prevId) : null}
           onNext={nextId ? () => setSelectedId(nextId) : null}
+          onPick={ev => setSelectedId(ev.id)}
           posLabel={idx >= 0 ? `${idx + 1}/${orderedEvents.length}` : ''}
           onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} bets={bets} token={token} unitSize={unitSize} />
       })()
