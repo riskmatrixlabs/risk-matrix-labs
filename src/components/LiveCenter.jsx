@@ -873,11 +873,10 @@ const GLOSSARY = {
 // Reusable collapsible card — header toggles, open by default. For the inline Insights sections.
 // Shared status pill so every data section reads the SAME way: grey PRE-GAME → red ● LIVE → FINAL.
 // So the user always knows whether they're looking at live or pre-game data.
-export function StatusPill({ status }) {
-  const live  = status === 'IP' || status === 'LIVE'
-  const final = status === 'FT' || status === 'AOT' || status === 'F' || status === 'STATUS_FINAL'
-  const label = live ? '● LIVE' : final ? 'FINAL' : 'PRE-GAME'
-  return <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '5px', border: `1px solid ${live ? '#FF3B3B' : BORDER}`, color: live ? '#FF3B3B' : MUTED, whiteSpace: 'nowrap' }}>{label}</span>
+export function StatusPill() {
+  // These odds/insights are the latest PRE-GAME line (free) — they do NOT tick live, so they must
+  // NEVER claim "LIVE". Labeling a stale price live could push someone to bet a number that moved.
+  return <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '5px', border: `1px solid ${BORDER}`, color: MUTED, whiteSpace: 'nowrap' }}>PRE-GAME</span>
 }
 
 function Collapsible({ title, sub, tip, status, defaultOpen = true, children }) {
@@ -1622,9 +1621,9 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
   useEffect(() => {
     if (!token || !event.external_event_id || !event.sport) return
     let cancelled = false
-    // FREE on open: cacheOnly serves the cron-warmed multi-book cache if present, else nothing —
-    // then the reader falls back to the free ESPN line (event.odds_* via cron-sync-events).
-    // The paid live multi-book pull happens only on the LineShop ↻ REFRESH tap.
+    // ALWAYS FREE: cacheOnly never spends a credit — serves the cron-warmed cache if present, else
+    // nothing, and the reader falls back to the free ESPN pre-game line. The paid live multi-book
+    // pull happens ONLY when the user taps the LineShop ↻ REFRESH. Game Center stays $0 to browse.
     fetch(`/api/game-lines?sport=${encodeURIComponent(event.sport)}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}&cacheOnly=1`,
       { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
@@ -2114,7 +2113,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     dvSpread && { label: `${spreadLabel} ${sh}`,   aLabel: event.away_abbr, bLabel: event.home_abbr, pA: dvSpread.fairA, pB: dvSpread.fairB, oA: fair(dvSpread.fairAmericanA), oB: fair(dvSpread.fairAmericanB), pLabel: 'cover' },
                     dvTotal  && { label: `Total ${totalPt}`, aLabel: 'Over',       bLabel: 'Under',          pA: dvTotal.fairA,  pB: dvTotal.fairB,  oA: fair(dvTotal.fairAmericanA),  oB: fair(dvTotal.fairAmericanB),  pLabel: '' },
                   ].filter(Boolean)
-                  return <WinProbability markets={wpMarkets} live={event.status === 'IP' || event.status === 'LIVE'} />
+                  return <WinProbability markets={wpMarkets} live={false} />
                 })()}
 
                 <BonusButton />
