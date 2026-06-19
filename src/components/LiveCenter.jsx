@@ -1051,7 +1051,7 @@ function useLiveGame(propEvent) {
       } catch { /* network blip — keep last good data */ }
     }
     tick()                                          // fetch the live line immediately on open (free)
-    const iv = setInterval(tick, isLive ? 25000 : 60000)   // live games refresh faster
+    const iv = setInterval(tick, isLive ? 10000 : 30000)   // open game: fast (free ESPN) — 10s live / 30s pre
     return () => { cancelled = true; clearInterval(iv) }
   }, [propEvent?.external_event_id, propEvent?.status, propEvent?.sport])
   return evt
@@ -2535,7 +2535,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
         }
       }))
       setLastUpdated(new Date())
-    }, 30000)
+    }, 20000)   // slate live refresh: 20s (free ESPN; many games at once, so a touch gentler than the open game)
     return () => clearInterval(interval)
   }, [events, sport, dateFilter])
 
