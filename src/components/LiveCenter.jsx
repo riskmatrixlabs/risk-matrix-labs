@@ -1982,9 +1982,9 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
             }
             const OddsCard = ({ line, juice, pick, odds, market, side, tag, empty }) => (
               <div
-                onClick={() => { if (!empty && onLogPosition) setOddsConfirm({ pick, odds, market, side, best: bestFor(market, side) }) }}
-                style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '66px', cursor: (!empty && onLogPosition) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
-                onMouseEnter={e => { if (!empty && onLogPosition) { e.currentTarget.style.background = 'rgba(189,255,0,0.06)'; e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)' } }}
+                onClick={() => { if (!empty && (onAddToSlip || onLogPosition)) setOddsConfirm({ pick, odds, market, side, best: bestFor(market, side) }) }}
+                style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '66px', cursor: (!empty && (onAddToSlip || onLogPosition)) ? 'pointer' : 'default', transition: 'border-color 0.15s, background 0.15s', gap: '3px' }}
+                onMouseEnter={e => { if (!empty && (onAddToSlip || onLogPosition)) { e.currentTarget.style.background = 'rgba(189,255,0,0.06)'; e.currentTarget.style.borderColor = 'rgba(189,255,0,0.35)' } }}
                 onMouseLeave={e => { e.currentTarget.style.background = CARD; e.currentTarget.style.borderColor = BORDER }}
               >
                 {empty ? <span style={{ fontFamily: R, fontSize: '18px', color: 'rgba(255,255,255,0.15)' }}>—</span> : (
@@ -2082,12 +2082,16 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                             <span style={{ color: NEON_T }}>{oddsConfirm.pick}</span>{b ? <> · best <span style={{ color: NEON_T }}>{BOOK_NAMES[b.book] || b.book} {fmtAm(b.price)}</span></> : ''}
                           </span>
                           <span style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {onAddToSlip && (
+                              <button onClick={() => { onAddToSlip({ pick: oddsConfirm.pick, odds: b?.price ?? oddsConfirm.odds, book: b?.book, link: b?.link, sport: event.sport, event: `${event.away_team} vs ${event.home_team}` }); setOddsConfirm(null) }}
+                                style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>+ Slip</button>
+                            )}
                             {b && b.link && (
                               <button onClick={() => { onLogPosition(event, { pick: oddsConfirm.pick, odds: b.price, book: b.book }); window.open(b.link, '_blank', 'noopener,noreferrer'); setOddsConfirm(null) }}
-                                style={{ padding: '7px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', background: NEON, color: '#0A0A0A', fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Log &amp; Open</button>
+                                style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Log &amp; Open</button>
                             )}
                             <button onClick={() => { setShopFocus({ mkt: shopMkt, n: (shopFocus?.n || 0) + 1 }); setOddsConfirm(null) }}
-                              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${NEON}`, cursor: 'pointer', background: 'transparent', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Compare Books</button>
+                              style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Compare Books</button>
                             <button onClick={() => setOddsConfirm(null)}
                               style={{ padding: '7px 11px', borderRadius: '7px', border: `1px solid ${BORDER}`, cursor: 'pointer', background: 'transparent', color: MUTED, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Cancel</button>
                           </span>
