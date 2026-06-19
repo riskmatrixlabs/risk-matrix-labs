@@ -236,16 +236,36 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
               {kboOpen && (<>
               <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '4px 0 6px' }}>free projection model · park + weather · no market line yet · calibrating</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {kbo.map((g) => (
-                  <div key={g.id || g.matchup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: g.lean !== 'LEAN' ? 'rgba(189,255,0,0.05)' : 'rgba(189,255,0,0.02)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px' }}>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{g.matchup} </span>
-                      <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: g.lean === 'OVER' ? NEON_T : g.lean === 'UNDER' ? '#FF3B3B' : MUTED }}>{g.lean === 'LEAN' ? 'LEAN' : g.lean} {g.projTotal}</span>
-                      <div style={{ fontFamily: R, fontSize: '8.5px', color: MUTED, marginTop: '2px' }}>{g.venue || ''}{(g.factors || []).length ? ` · ${(g.factors || []).join(' · ')}` : ' · neutral'}</div>
-                    </span>
-                    <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: Math.abs(g.edge) >= 0.5 ? NEON_T : MUTED, flexShrink: 0 }} title="projected total vs KBO baseline">{g.edge > 0 ? '+' : ''}{g.edge}</span>
-                  </div>
-                ))}
+                {kbo.map((g) => {
+                  // Once a game is final, show what happened, plainly: actual total · error vs the
+                  // projection · result (HIT/MISS vs the KBO baseline — no market line on the free model).
+                  const fin = g.finalTotal
+                  const err = fin != null ? Math.round((Number(fin) - Number(g.projTotal)) * 10) / 10 : null
+                  let result = null
+                  if (fin != null && g.lean !== 'LEAN') {
+                    const base = Number(g.baseline ?? 9.8)
+                    result = Number(fin) === base ? { t: 'PUSH', c: MUTED }
+                      : (g.lean === 'OVER' ? Number(fin) > base : Number(fin) < base) ? { t: '✓ HIT', c: NEON_T } : { t: '✗ MISS', c: '#FF3B3B' }
+                  }
+                  return (
+                    <div key={g.id || g.matchup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: g.lean !== 'LEAN' ? 'rgba(189,255,0,0.05)' : 'rgba(189,255,0,0.02)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px' }}>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{g.matchup} </span>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: g.lean === 'OVER' ? NEON_T : g.lean === 'UNDER' ? '#FF3B3B' : MUTED }}>{g.lean === 'LEAN' ? 'LEAN' : g.lean} {g.projTotal}</span>
+                        <div style={{ fontFamily: R, fontSize: '8.5px', color: MUTED, marginTop: '2px' }}>{g.venue || ''}{(g.factors || []).length ? ` · ${(g.factors || []).join(' · ')}` : ' · neutral'}</div>
+                        {fin != null && (
+                          <div style={{ fontFamily: R, fontSize: '9px', marginTop: '3px', display: 'flex', flexWrap: 'wrap', gap: '9px', alignItems: 'center' }}>
+                            <span style={{ color: MUTED }}>PROJ <b style={{ color: TEXT }}>{g.projTotal}</b></span>
+                            <span style={{ color: MUTED }}>ACTUAL <b style={{ color: TEXT }}>{fin}</b></span>
+                            <span style={{ color: MUTED }}>ERR <b style={{ color: TEXT }}>{err > 0 ? '+' : ''}{err}</b></span>
+                            {result && <span style={{ color: result.c, fontWeight: 700 }}>{result.t}</span>}
+                          </div>
+                        )}
+                      </span>
+                      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: Math.abs(g.edge) >= 0.5 ? NEON_T : MUTED, flexShrink: 0 }} title="projected total vs KBO baseline">{g.edge > 0 ? '+' : ''}{g.edge}</span>
+                    </div>
+                  )
+                })}
               </div>
               </>)}
             </div>
