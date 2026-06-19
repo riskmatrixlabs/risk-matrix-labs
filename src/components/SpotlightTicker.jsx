@@ -78,6 +78,16 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
       .then(r => r.ok ? r.json() : null).then(j => { if (j?.ok) setRecord(j) }).catch(() => {})
   }, [open, token, record])
 
+  // ⬡ KBO — FREE overnight scan (TheSportsDB + Open-Meteo, 0 credits). Korean baseball plays while
+  // MLB is dark, so it fills the overnight Spotlight slot. Projection model, no market line yet (BETA).
+  const [kbo, setKbo] = useState([])
+  useEffect(() => {
+    let cancel = false
+    fetch('/api/kbo-scan').then(r => r.ok ? r.json() : null)
+      .then(j => { if (!cancel) setKbo(j?.games || []) }).catch(() => {})
+    return () => { cancel = true }
+  }, [])
+
   useEffect(() => {
     if (!token) { setSignals([]); return }
     let cancel = false
@@ -215,6 +225,27 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
               </div>
             ))}
           </div>
+          {kbo.length > 0 && (
+            <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ KBO — Overnight (Korea)</span>
+                <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
+              </div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>free projection model · park + weather · no market line yet · calibrating</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {kbo.map((g) => (
+                  <div key={g.id || g.matchup} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: g.lean !== 'LEAN' ? 'rgba(189,255,0,0.05)' : 'rgba(189,255,0,0.02)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px' }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{g.matchup} </span>
+                      <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: g.lean === 'OVER' ? NEON_T : g.lean === 'UNDER' ? '#FF3B3B' : MUTED }}>{g.lean === 'LEAN' ? 'LEAN' : g.lean} {g.projTotal}</span>
+                      <div style={{ fontFamily: R, fontSize: '8.5px', color: MUTED, marginTop: '2px' }}>{g.venue || ''}{(g.factors || []).length ? ` · ${(g.factors || []).join(' · ')}` : ' · neutral'}</div>
+                    </span>
+                    <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: Math.abs(g.edge) >= 0.5 ? NEON_T : MUTED, flexShrink: 0 }} title="projected total vs KBO baseline">{g.edge > 0 ? '+' : ''}{g.edge}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {(() => {
             // Record panel as a labeled grid: rows = time period, columns = Spotlight (strong) vs
             // All leans, each with its own win %. The column headers say which number is which, so

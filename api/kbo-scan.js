@@ -57,42 +57,47 @@ function kstDate() {
   return new Date(t).toISOString().slice(0, 10)
 }
 
+// Shared engine — used by the public endpoint AND the overnight cron, so there's ONE model.
+export async function scanKBO(date) {
+  // FREE schedule — TheSportsDB league 4830 (KBO), test key "123". strEvent = "Home vs Away".
+  const sched = await fetch(`https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${date}&l=4830`)
+    .then(r => r.ok ? r.json() : null).catch(() => null)
+  const events = sched?.events || []
+  const games = []
+  for (const e of events) {
+    const home = norm(e.strHomeTeam), away = norm(e.strAwayTeam)
+    const geo = STADIUMS[home] || null
+    const wx = geo ? await weatherBoost(geo[0], geo[1], geo[2]) : { boost: 0, note: 'park n/a', tempF: null, windMph: null }
+    const pf = geo ? geo[3] : 1.0
+    const projTotal = fmt2(BASELINE_TOTAL * pf + wx.boost)   // baseline × park + weather (runs)
+    const edge = fmt2(projTotal - BASELINE_TOTAL)            // vs league baseline (no book line = free)
+    const lean = edge >= 0.4 ? 'OVER' : edge <= -0.4 ? 'UNDER' : 'LEAN'
+    const factors = []
+    if (pf >= 1.04) factors.push('hitter park')
+    else if (pf <= 0.95) factors.push('pitcher park')
+    if (geo?.[2]) factors.push('dome')
+    if (wx.note && wx.note !== 'dome') factors.push(wx.note)
+    const hs = e.intHomeScore, as = e.intAwayScore
+    const finalTotal = (hs != null && hs !== '' && as != null && as !== '') ? Number(hs) + Number(as) : null
+    games.push({
+      id: String(e.idEvent || ''), matchup: `${away} @ ${home}`, away, home,
+      venue: e.strVenue || null, time: e.strTime || null,
+      projTotal, baseline: BASELINE_TOTAL, edge, lean, factors, finalTotal,
+      weather: { tempF: wx.tempF, windMph: wx.windMph, dome: !!geo?.[2] },
+    })
+  }
+  games.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))   // strongest edge first
+  return { date, count: games.length, games }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, max-age=600')
   const date = String(req.query?.date || kstDate())
   try {
-    // FREE schedule — TheSportsDB league 4830 (KBO), test key "123". strEvent = "Home vs Away".
-    const sched = await fetch(`https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${date}&l=4830`)
-      .then(r => r.ok ? r.json() : null).catch(() => null)
-    const events = sched?.events || []
-    if (!events.length) return res.status(200).json({ date, games: [], note: 'No KBO games this date (off-season or none scheduled).' })
-
-    const games = []
-    for (const e of events) {
-      const home = norm(e.strHomeTeam), away = norm(e.strAwayTeam)
-      const geo = STADIUMS[home] || null
-      const wx = geo ? await weatherBoost(geo[0], geo[1], geo[2]) : { boost: 0, note: 'park n/a', tempF: null, windMph: null }
-      const pf = geo ? geo[3] : 1.0
-      // Projected total = league baseline × park factor + weather boost (runs).
-      const projTotal = fmt2(BASELINE_TOTAL * pf + wx.boost)
-      const edge = fmt2(projTotal - BASELINE_TOTAL)          // vs the league baseline (no book line = free)
-      const lean = edge >= 0.4 ? 'OVER' : edge <= -0.4 ? 'UNDER' : 'LEAN'
-      const factors = []
-      if (pf >= 1.04) factors.push('hitter park')
-      else if (pf <= 0.95) factors.push('pitcher park')
-      if (geo?.[2]) factors.push('dome')
-      if (wx.note && wx.note !== 'dome') factors.push(wx.note)
-      games.push({
-        matchup: `${away} @ ${home}`, away, home,
-        venue: e.strVenue || null, time: e.strTime || null,
-        projTotal, baseline: BASELINE_TOTAL, edge, lean,
-        factors, weather: { tempF: wx.tempF, windMph: wx.windMph, dome: !!geo?.[2] },
-      })
-    }
-    // Rank strongest first (biggest absolute edge off baseline).
-    games.sort((a, b) => Math.abs(b.edge) - Math.abs(a.edge))
+    const out = await scanKBO(date)
+    if (!out.games.length) return res.status(200).json({ ...out, note: 'No KBO games this date (off-season or none scheduled).' })
     return res.status(200).json({
-      date, count: games.length, games,
+      ...out,
       note: 'FREE scan (TheSportsDB + Open-Meteo, 0 credits). Projected total = baseline × park × weather. ' +
             'No book line yet (free) so edge is vs the KBO league baseline, not the market. No Statcast for KBO — park+weather model only.',
     })
@@ -100,3 +105,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ date, games: [], error: String(e?.message || e) })
   }
 }
+
+export { kstDate }
