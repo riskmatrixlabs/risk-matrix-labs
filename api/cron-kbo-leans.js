@@ -5,11 +5,12 @@
 // league baseline) — there's no free market line, so this is model-accuracy tracking, not a betting
 // record. KBO plays ~14:00–22:00 KST (05:00–13:00 UTC); registered in vercel.json for 04:00 + 14:00 UTC.
 import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'
 import { scanKBO, kstDate } from './kbo-scan.js'
 
 function db() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
 }
 const r1 = (n) => Math.round(n * 10) / 10
 
