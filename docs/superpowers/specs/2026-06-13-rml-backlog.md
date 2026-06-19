@@ -6,7 +6,13 @@
 ## 🟢 CURRENT STATE — Session 63 (SW v378+, branch `chore/backlog-gear-brand-sweep`)
 Session 62 (merged to main, SW v378) shipped: onboarding re-fire fix, bet hand-off (FanDuel/DK/Caesars/MGM/ESPN/BetRivers deep-link; HR/Novig app-open only — needs affiliate), 4-way slip (RR → RR Engine), RR Engine⇄slip two-way, bets-only reset, Spotlight always-renders, 24/7 event sync.
 
-**Session 63 (SW v378→v389, on main, all verified live):** 🟢 footer centered site-wide · 🟢 slip brand word picks→legs · 🟢 CH3 sport-selector buttons · 🟢 consensus odds strip: team labels + run line each side · 🟢 Over/Under no longer reads as "0" (OVER/UNDER tag) · 🟢 weather Feels-like+Humidity · 🟢 retractable-roof parks show weather (info, boost neutralized) · 🟢 **by-sportsbook chart premium redesign** (tap-to-compare, decimal scaling fixes "inverted", dots/gridlines/dashed-sharp, all-on + open by default, flipped to favorite-on-top, ⓘ how-to-read) · 🟢 2 stale tests greened (280/280) · backlog + master refreshed.
+**Session 63 (SW v378→v400, on main, all verified live):**
+- 🟢 **FREE LIVE ODDS** — game open = $0; `live-game` returns ESPN pickcenter (ML+run line+total, run-line price via pointSpread.close.odds); poll 10s live/30s pre; game-lines cacheOnly on open, paid only on LineShop REFRESH.
+- 🟢 **Honest PRE-GAME labeling** — free odds = latest line, not live-ticking (verified); odds sections read grey PRE-GAME, never fake LIVE; shared StatusPill; score header keeps real live.
+- 🟢 **Game Center UX** — sections collapsed by default · faster refresh (open 10s/slate 20s) · +Slip from odds cards (no Line Shop) · Spotlight pinned on game page · slip FAB lifted above the z-9999 detail overlay.
+- 🟢 **Win Prob + Line Movement** — run line/total on each side (matches Fair Value); sparkline+arrows by implied prob (shorter price = UP).
+- 🟢 **By-sportsbook chart premium redesign** (tap-to-compare, decimal scaling, dots/gridlines/dashed-sharp, favorite-on-top, ⓘ how-to-read) · 🟢 consensus odds team labels + run line each side + O/U "0" fix · 🟢 weather Feels-like+Humidity + retractable roofs · 🟢 footer centered · 🟢 picks→legs · 🟢 CH3 sport-selector · 🟢 280/280 tests.
+- 🟢 **Lean grading verified CORRECT** (DB-checked) — snapshot locks first pre-game directional lean+line, grades vs locked line. "Phantom grey miss" was a real strong miss. No change needed.
 
 ### ⛔ BLOCKED on paid data (proved this session — NOT a UI fix)
 - **In-game on-court dot (#3)** + **timeouts remaining (#4)** — ESPN free summary exposes neither (probed live: no "timeout" field; only active/starter/DNP roster flags). Same class as the chart's **$ handle/money axis**. All need a **paid sharp/live feed** (how Apple Sports / Sharp Money do it).
