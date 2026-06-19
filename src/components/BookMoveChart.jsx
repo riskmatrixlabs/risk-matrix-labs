@@ -70,7 +70,7 @@ export function computeBestAvailable(byBook) {
 export function BookLineMovement({ event, title = true, collapsible = false }) {
   const [byBook, setByBook] = useState({})
   const [side, setSide] = useState('away')
-  const [open, setOpen] = useState(true)   // open by default (data fills lazily; free to render)
+  const [open, setOpen] = useState(false)   // collapsed by default — user taps to open
   useEffect(() => {
     if (!event?.external_event_id) { setByBook({}); return }
     let live = true

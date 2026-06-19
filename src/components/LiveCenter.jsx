@@ -688,7 +688,7 @@ const TEAM_STAT_ROWS = {
 TEAM_STAT_ROWS.WNBA = TEAM_STAT_ROWS.NBA
 
 function TeamStats({ sport, awayAbbr, homeAbbr, aStats, hStats }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const statRows = (TEAM_STAT_ROWS[sport] ?? [])
     .map(([label, key]) => ({ label, a: aStats?.[key], h: hStats?.[key] }))
     .filter(r => r.a != null || r.h != null)
@@ -725,7 +725,7 @@ function TeamStats({ sport, awayAbbr, homeAbbr, aStats, hStats }) {
 
 // ── Trends — record splits (overall/home/road), streak, recent form. Collapsible (default open). ──
 function Trends({ awayAbbr, homeAbbr, trends }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   if (!trends?.away && !trends?.home) return null
   const a = trends.away ?? {}, h = trends.home ?? {}
   const rows = [
@@ -772,7 +772,7 @@ function Trends({ awayAbbr, homeAbbr, trends }) {
 
 // ── Injuries — away/home TAB split (like the box-score hitting toggle), collapsible. ──
 function Injuries({ awayAbbr, homeAbbr, injuries }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [team, setTeam] = useState('away')
   const a = injuries?.away ?? [], h = injuries?.home ?? []
   if (!a.length && !h.length) return null
@@ -818,7 +818,7 @@ function Injuries({ awayAbbr, homeAbbr, injuries }) {
 
 // ── Season Series — head-to-head meetings this season + each score (collapsible). ──
 function SeasonSeries({ awayAbbr, homeAbbr, series }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   if (!series) return null
   const meetings = series.meetings ?? []
   return (
@@ -879,7 +879,7 @@ export function StatusPill() {
   return <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '5px', border: `1px solid ${BORDER}`, color: MUTED, whiteSpace: 'nowrap' }}>PRE-GAME</span>
 }
 
-function Collapsible({ title, sub, tip, status, defaultOpen = true, children }) {
+function Collapsible({ title, sub, tip, status, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen)
   const head = <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>{title}{sub ? <span style={{ color: 'rgba(255,255,255,0.3)' }}> · {sub}</span> : ''}</span>
   return (
@@ -895,7 +895,7 @@ function Collapsible({ title, sub, tip, status, defaultOpen = true, children }) 
 }
 
 function WinProbability({ markets, live }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', overflow: 'hidden' }}>
       <div onClick={() => setOpen(o => !o)} style={{ position: 'relative', padding: '12px 14px', borderBottom: open ? `1px solid ${BORDER}` : 'none', background: 'rgba(189,255,0,0.04)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
@@ -1320,7 +1320,7 @@ export function LineShop({ event, token, onLogPosition, onAddToSlip, focus = nul
   const [confirm, setConfirm] = useState(null)   // { book, name, pick, odds, url } — tap-to-bet confirm
   const [userState, setUserState] = useState(() => { try { return localStorage.getItem('rml_state') || guessState() || '' } catch { return '' } })
   const [showAllBooks, setShowAllBooks] = useState(false)
-  const [secOpen, setSecOpen] = useState(true)   // collapsible section, open by default
+  const [secOpen, setSecOpen] = useState(false)   // collapsed by default — user taps to open
   const pickState = (s) => { setUserState(s); try { s ? localStorage.setItem('rml_state', s) : localStorage.removeItem('rml_state') } catch {} }
   const rootRef = useRef(null)
   const lw  = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
@@ -1596,7 +1596,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
   const tabs = getDetailTabs(event, meta, live, final)
   const [dtab, setDtab] = useState(tabs[0] ?? 'Odds')
   const [hitTeam,     setHitTeam]     = useState('away')
-  const [lineMoveOpen, setLineMoveOpen] = useState(true)   // Line Movement collapsible, open by default
+  const [lineMoveOpen, setLineMoveOpen] = useState(false)   // collapsed by default — user taps to open
   const [pitchTeam,   setPitchTeam]   = useState('away')
   const [skatersTeam, setSkatersTeam] = useState('away')
   const [movement,    setMovement]    = useState({})
