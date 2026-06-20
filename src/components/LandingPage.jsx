@@ -84,7 +84,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-dashboard.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -270,7 +270,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-dashboard.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
@@ -305,6 +305,17 @@ const CSS = `
   background:var(--rl-bg-0);color:var(--rl-ink-0);font-family:var(--rl-b);-webkit-font-smoothing:antialiased;
   overflow-x:hidden;position:relative;box-shadow:inset 0 0 240px rgba(0,0,0,.9);min-height:100vh;
 }
+/* dope background — hex grid + glow orbs + scanlines (from the original landing) */
+#rml-landing::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-color:var(--rl-bg-0);
+  background-image:
+    radial-gradient(700px circle at 74% 13%, rgba(189,255,0,.08), transparent 60%),
+    radial-gradient(440px circle at 5% 80%, rgba(189,255,0,.05), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='48'%3E%3Cpolygon points='28,2 52,14 52,34 28,46 4,34 4,14' fill='none' stroke='%23BDFF00' stroke-width='0.6' opacity='0.08'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.03) 2px 4px);
+  background-repeat:no-repeat,no-repeat,repeat,repeat;
+}
+#rml-landing > *{position:relative;z-index:1}
 #rml-landing::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.04;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 #rml-landing *{margin:0;padding:0;box-sizing:border-box}
@@ -317,7 +328,10 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{height:30px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-mark{height:34px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-logotext{display:flex;flex-direction:column;line-height:1}
+#rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--rl-signal)}
+#rml-landing .rl-lt2{font-family:var(--rl-d);font-size:8px;letter-spacing:.3em;color:rgba(189,255,0,.45);margin-top:2px}
 #rml-landing .rl-screenshot{width:100%;display:block;max-height:600px;object-fit:cover;object-position:top center;-webkit-mask-image:linear-gradient(#000 88%,transparent);mask-image:linear-gradient(#000 88%,transparent)}
 #rml-landing .rl-faq{display:flex;flex-direction:column;border-top:1px solid var(--rl-line);margin-top:8px}
 #rml-landing .rl-faq-item{border-bottom:1px solid var(--rl-line)}
@@ -332,7 +346,7 @@ const CSS = `
 #rml-landing .rl-btn:hover{opacity:.9;transform:translateY(-1px)}
 #rml-landing .rl-btn-lg{padding:13px 22px;font-size:12px}
 #rml-landing .rl-btn-ghost{color:var(--rl-signal);background:transparent;border:1px solid var(--rl-line-2);box-shadow:none}
-#rml-landing .rl-hero{position:relative;max-width:480px;margin:0 auto;padding:48px 22px 56px;overflow:hidden;background:radial-gradient(60% 50% at 50% 0%,rgba(189,255,0,.06),transparent 70%),radial-gradient(90% 60% at 50% 120%,#0d0e0d,var(--rl-bg-0))}
+#rml-landing .rl-hero{position:relative;max-width:480px;margin:0 auto;padding:48px 22px 56px;overflow:hidden;background:radial-gradient(70% 55% at 50% 8%,rgba(189,255,0,.05),transparent 70%)}
 #rml-landing .rl-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--rl-line) 1px,transparent 1px),linear-gradient(90deg,var(--rl-line) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(ellipse 80% 55% at 50% 25%,#000 35%,transparent 100%);mask-image:radial-gradient(ellipse 80% 55% at 50% 25%,#000 35%,transparent 100%)}
 #rml-landing .rl-hero-in{position:relative;z-index:1}
 #rml-landing .rl-h1{font-family:var(--rl-d);font-weight:700;font-size:clamp(38px,12vw,56px);line-height:.96;letter-spacing:-.015em;margin:18px 0 16px}
