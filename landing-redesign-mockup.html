@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>RML — Redesign Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg-0:#0A0A0A; --bg-1:#101110; --bg-2:#161817;
+  --line:#1E211F; --line-2:#2A2E2B;
+  --ink-0:#F2F4F0; --ink-1:#9DA39A; --ink-2:#5E635D;
+  --signal:#BDFF00; --signal-dim:#8FBF00; --signal-2:rgba(189,255,0,.12); --signal-glow:rgba(189,255,0,.45);
+  --pos:#5BE38B; --neg:#FF5C5C; --warn:#FFC24B;
+  --d:'Rajdhani',sans-serif; --b:'Inter',sans-serif; --m:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg-0);color:var(--ink-0);font-family:var(--b);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.grain::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.vig{box-shadow:inset 0 0 240px rgba(0,0,0,.9)}
+.wrap{max-width:440px;margin:0 auto;position:relative}
+.label{font:500 11px/1 var(--m);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-1)}
+.mono{font-family:var(--m);font-variant-numeric:tabular-nums}
+.sect{padding:64px 22px;position:relative;border-top:1px solid var(--line)}
+.kick{color:var(--signal);opacity:.85;margin-bottom:14px;display:block}
+h2{font-family:var(--d);font-weight:700;font-size:clamp(26px,8vw,38px);line-height:1.0;letter-spacing:-.01em;margin-bottom:14px}
+h2 .g{color:var(--signal)}
+.sub{font-size:14px;color:var(--ink-1);line-height:1.65;max-width:360px}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:30px;height:30px;border:2px solid var(--signal);border-radius:8px;display:grid;place-items:center;
+  font-family:var(--d);font-weight:700;color:var(--signal);font-size:17px}
+.brand .nm{font-family:var(--d);font-weight:700;letter-spacing:.04em;font-size:15px}
+.btn{font-family:var(--m);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--bg-0);background:var(--signal);border:none;border-radius:6px;padding:9px 14px;cursor:pointer;text-decoration:none;
+  box-shadow:0 0 24px -6px var(--signal-glow)}
+.btn-ghost{color:var(--signal);background:transparent;border:1px solid var(--line-2);box-shadow:none}
+
+/* hero */
+.hero{position:relative;padding:48px 22px 56px;overflow:hidden;
+  background:radial-gradient(60% 50% at 50% 0%,rgba(189,255,0,.06),transparent 70%),radial-gradient(90% 60% at 50% 120%,#0d0e0d,var(--bg-0))}
+.grid-bg{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px;
+  -webkit-mask-image:radial-gradient(ellipse 80% 55% at 50% 25%,#000 35%,transparent 100%);
+  mask-image:radial-gradient(ellipse 80% 55% at 50% 25%,#000 35%,transparent 100%)}
+.hero-in{position:relative;z-index:1}
+.hkick{margin-bottom:18px}
+h1{font-family:var(--d);font-weight:700;font-size:clamp(38px,12vw,56px);line-height:.96;letter-spacing:-.015em;margin-bottom:16px}
+h1 .g{color:var(--signal);text-shadow:0 0 22px rgba(189,255,0,.28)}
+.hsub{font-size:15px;color:var(--ink-1);line-height:1.6;max-width:380px;margin-bottom:26px}
+.cta-row{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.cta-row .btn{padding:13px 22px;font-size:12px}
+.fine{font-family:var(--m);font-size:10.5px;color:var(--ink-2);letter-spacing:.02em}
+
+/* ticker */
+.ticker-wrap{margin-top:30px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:11px 0;background:rgba(189,255,0,.02)}
+.ticker{display:flex;gap:30px;white-space:nowrap;width:max-content;animation:scroll 32s linear infinite}
+.ticker:hover{animation-play-state:paused}
+@keyframes scroll{to{transform:translateX(-50%)}}
+.tk{font:500 12px var(--m);letter-spacing:.04em;color:var(--ink-1);display:inline-flex;gap:7px;align-items:center}
+.tk .hit{color:var(--pos)} .tk .miss{color:var(--neg)} .tk .dot{width:4px;height:4px;border-radius:50%;background:var(--signal);opacity:.5}
+
+/* framed product panel */
+.frame{background:var(--bg-1);border:1px solid var(--line-2);border-radius:14px;overflow:hidden;margin-top:30px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 40px 80px -34px rgba(0,0,0,.9),0 0 0 1px rgba(189,255,0,.06)}
+.frame-bar{height:34px;display:flex;align-items:center;gap:6px;padding:0 13px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.fdot{width:9px;height:9px;border-radius:50%;background:var(--line-2)}
+.frame-bar .path{font:500 10px var(--m);color:var(--ink-2);margin-left:8px;letter-spacing:.04em}
+.live{margin-left:auto;font:700 9px var(--m);letter-spacing:.14em;color:var(--pos);display:flex;align-items:center;gap:5px}
+.live .ld{width:6px;height:6px;border-radius:50%;background:var(--pos);box-shadow:0 0 8px var(--pos);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.shot{padding:16px;display:flex;flex-direction:column;gap:10px}
+.ph{border:1px dashed var(--line-2);border-radius:8px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.012) 0 10px,transparent 10px 20px);
+  display:grid;place-items:center;color:var(--ink-2);font:500 11px var(--m);letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:8px}
+
+/* trust bar */
+.trust{padding:16px 22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  font:500 10.5px var(--m);letter-spacing:.1em;color:var(--ink-2);text-transform:uppercase;text-align:center;line-height:1.9}
+.trust b{color:var(--signal-dim);font-weight:500}
+
+/* stat row */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:16px 12px;text-align:center}
+.stat .n{font:700 26px var(--m);font-variant-numeric:tabular-nums;color:var(--ink-0);line-height:1}
+.stat .n.acc{color:var(--signal)}
+.stat .l{font:500 9.5px var(--m);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-top:7px}
+
+/* bento */
+.bento{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.cell{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+.cell .ci{font-family:var(--d);font-weight:700;font-size:20px;margin:10px 0 6px}
+.cell p{font-size:13px;color:var(--ink-1);line-height:1.6}
+.cell .tag{position:absolute;top:16px;right:16px;font:700 9px var(--m);letter-spacing:.12em;color:var(--signal-dim);
+  border:1px solid var(--signal-2);background:var(--signal-2);border-radius:5px;padding:3px 7px}
+
+/* record scoreboard */
+.board{background:var(--bg-1);border:1px solid var(--line-2);border-radius:14px;overflow:hidden;margin-top:8px;
+  box-shadow:0 40px 80px -40px rgba(0,0,0,.9)}
+.board-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.board-h .t{font:700 11px var(--m);letter-spacing:.12em;color:var(--ink-1);text-transform:uppercase}
+.bstats{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
+.bstat{padding:18px 12px;text-align:center;border-right:1px solid var(--line)}
+.bstat:last-child{border-right:none}
+.bstat .bn{font:700 30px var(--m);font-variant-numeric:tabular-nums;color:var(--signal);line-height:1}
+.bstat .bl{font:500 9px var(--m);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-top:8px}
+.row{display:grid;grid-template-columns:1.4fr .8fr .8fr .9fr;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:center;font-family:var(--m);font-size:12px}
+.row:last-child{border-bottom:none}
+.row .mtch{color:var(--ink-0);font-weight:500}
+.row .md{color:var(--ink-2);font-size:10px}
+.row .num{color:var(--ink-1);text-align:center;font-variant-numeric:tabular-nums}
+.chip{justify-self:end;font:700 10px var(--m);letter-spacing:.08em;padding:4px 8px;border-radius:5px}
+.chip.hit{color:var(--pos);background:rgba(91,227,139,.1)}
+.chip.miss{color:var(--neg);background:rgba(255,92,92,.1)}
+.chip.np{color:var(--ink-2);background:rgba(255,255,255,.04)}
+.board-f{padding:13px 16px;font:400 11px var(--b);color:var(--ink-2);line-height:1.6;text-align:center}
+.board-f a{color:var(--signal);text-decoration:none}
+
+/* steps */
+.step{display:flex;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:none}
+.step .sn{font-family:var(--d);font-weight:700;font-size:34px;color:var(--line-2);line-height:1;min-width:42px}
+.step .st{font-family:var(--d);font-weight:700;font-size:18px;margin-bottom:4px}
+.step p{font-size:13px;color:var(--ink-1);line-height:1.6}
+
+/* manifesto */
+.mani{text-align:center;padding:72px 22px}
+.mani h2{font-size:clamp(30px,9vw,44px);line-height:1.05}
+
+/* pricing */
+.price{background:var(--bg-1);border:1px solid var(--signal-2);border-radius:16px;padding:28px 22px;margin-top:8px}
+.price .amt{font-family:var(--d);font-weight:700;font-size:52px;color:var(--signal);line-height:1;text-shadow:0 0 30px rgba(189,255,0,.22)}
+.price .per{font-size:15px;color:var(--ink-1)}
+.price .yr{font:500 12px var(--m);color:var(--ink-2);margin-top:6px}
+.plist{display:grid;grid-template-columns:1fr 1fr;gap:9px 16px;margin:22px 0}
+.plist .pi{display:flex;gap:8px;font-size:12px;color:var(--ink-1);line-height:1.4}
+.plist .pi i{color:var(--signal);font-weight:700}
+.price .btn{display:block;text-align:center;padding:14px;font-size:13px;margin-top:6px}
+
+/* footer */
+footer{padding:44px 22px 56px;border-top:1px solid var(--line)}
+.foot-top{display:flex;flex-direction:column;gap:30px}
+.foot-tag{font:500 12px var(--m);letter-spacing:.06em;color:var(--ink-2);margin-top:12px}
+.socials{display:flex;gap:8px;margin-top:16px}
+.socials a{width:34px;height:34px;border:1px solid var(--line-2);border-radius:7px;display:grid;place-items:center;
+  font:700 10px var(--m);letter-spacing:.04em;color:var(--ink-1);text-decoration:none}
+.socials a:hover{border-color:var(--signal);color:var(--signal);background:var(--signal-2)}
+.foot-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.fcol{display:flex;flex-direction:column;gap:9px}
+.fch{font:500 10px var(--m);letter-spacing:.14em;text-transform:uppercase;color:var(--signal-dim);margin-bottom:3px}
+.fcol a{font-size:12.5px;color:var(--ink-1);text-decoration:none}
+.fcol a:hover{color:var(--ink-0)}
+.fnote{font:400 11px var(--m);color:var(--ink-2);line-height:1.8;letter-spacing:.02em;margin-top:30px;padding-top:22px;border-top:1px solid var(--line)}
+.reveal{opacity:0;transform:translateY(16px)}
+.reveal.in{opacity:1;transform:none;transition:opacity .5s,transform .5s cubic-bezier(.2,.7,.2,1)}
+</style>
+</head>
+<body class="grain vig">
+<div class="wrap">
+
+  <nav class="nav">
+    <div class="brand"><div class="mark">R</div><div class="nm">RISK MATRIX LABS</div></div>
+    <a href="#" class="btn">Open Terminal</a>
+  </nav>
+
+  <header class="hero">
+    <div class="grid-bg"></div>
+    <div class="hero-in">
+      <span class="label kick hkick">RISK MATRIX LABS // EST. 2026</span>
+      <h1>Operate with<br><span class="g">discipline.</span></h1>
+      <p class="hsub"><b style="color:var(--ink-0);font-weight:500">We don't sell picks. We show the numbers.</b> Free live odds, models that show their record — wins and misses — and the discipline to act. The decisions are yours.</p>
+      <div class="cta-row">
+        <a href="#" class="btn">Open Terminal →</a>
+        <a href="#record" class="btn btn-ghost">See the record</a>
+      </div>
+      <div class="fine">$0 to start · 3 days free · $29/mo after · cancel anytime</div>
+
+      <div class="frame">
+        <div class="frame-bar"><span class="fdot"></span><span class="fdot"></span><span class="fdot"></span>
+          <span class="path">rml://game-center/live</span>
+          <span class="live"><span class="ld"></span>LIVE</span>
+        </div>
+        <div class="shot">
+          <div class="ph" style="height:150px">[ GAME CENTER SCREENSHOT ]<br>live odds · win prob · line movement</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="ticker-wrap">
+    <div class="ticker" id="tk"></div>
+  </div>
+
+  <div class="trust">FREE LIVE ODDS · EV ENGINE · LINE MOVEMENT · KBO · <b>NO PICKS, NO HYPE</b></div>
+
+  <section class="sect">
+    <div class="stats reveal">
+      <div class="stat"><div class="n acc mono" data-to="248">0</div><div class="l">leans graded</div></div>
+      <div class="stat"><div class="n mono" data-to="0">0</div><div class="l">credits / scan</div></div>
+      <div class="stat"><div class="n mono">3</div><div class="l">free models</div></div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label kick">SECTION 01 // THE PLATFORM</span>
+    <h2>An edge platform.<br><span class="g">Not a tout.</span></h2>
+    <p class="sub" style="margin-bottom:24px">Everything an operator needs to find value and act on it with discipline — free where it can be, honest everywhere.</p>
+    <div class="bento">
+      <div class="cell reveal"><span class="tag">FREE</span><span class="label">GAME CENTER</span><div class="ci">See the edge</div><p>Open any game at $0 — live odds, line movement since open, win probability, and the by-sportsbook chart.</p><div class="ph" style="height:96px;margin-top:14px">[ GAME CENTER ]</div></div>
+      <div class="cell reveal"><span class="tag">EV</span><span class="label">MATRIX BOT</span><div class="ci">Grade the bet</div><p>Player props grouped by player, best price across books, and the EV edge on every line — at a glance.</p><div class="ph" style="height:96px;margin-top:14px">[ PROPS BY PLAYER ]</div></div>
+      <div class="cell reveal"><span class="tag">GRADED</span><span class="label">SPOTLIGHT + KBO</span><div class="ci">Trust the read</div><p>Over/under models ranked by conviction — every lean snapshotted and graded in public, wins and misses.</p><div class="ph" style="height:96px;margin-top:14px">[ SPOTLIGHT ]</div></div>
+      <div class="cell reveal"><span class="label">CH3 · BEAT THE CLOSE</span><div class="ci">Track CLV</div><p>Log a play and we grade it on closing-line value — the truest measure of whether a bet was actually sharp.</p></div>
+    </div>
+  </section>
+
+  <section class="sect" id="record">
+    <span class="label kick">SECTION 02 // THE RECORD</span>
+    <h2>We show our work.<br><span class="g">Wins and misses.</span></h2>
+    <p class="sub" style="margin-bottom:22px">Every model lean is snapshotted before the game and graded against the real result. No hidden losses. No cherry-picked screenshots. Most apps won't show you this.</p>
+    <div class="board reveal">
+      <div class="board-h"><span class="t">Spotlight · model record</span><span class="live"><span class="ld"></span>LIVE</span></div>
+      <div class="bstats">
+        <div class="bstat"><div class="bn mono">12–13</div><div class="bl">all-time</div></div>
+        <div class="bstat"><div class="bn mono">2–1</div><div class="bl">yesterday</div></div>
+        <div class="bstat"><div class="bn mono">48%</div><div class="bl">hit rate</div></div>
+      </div>
+      <div class="row"><div><div class="mtch">LAA @ ATH</div><div class="md">SPOTLIGHT · UNDER 9.5</div></div><div class="num">9.5</div><div class="num">11</div><span class="chip miss">✗ MISS</span></div>
+      <div class="row"><div><div class="mtch">Lotte @ Kiwoom</div><div class="md">KBO · UNDER 9.1</div></div><div class="num">9.1</div><div class="num">3</div><span class="chip hit">✓ HIT</span></div>
+      <div class="row"><div><div class="mtch">Kia @ KT</div><div class="md">KBO · no pick</div></div><div class="num">10.0</div><div class="num">14</div><span class="chip np">— N/A</span></div>
+      <div class="board-f">Snapshot of the live record — still calibrating, shown good and bad. <a href="#">See it live in the app →</a></div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <span class="label kick">SECTION 03 // HOW IT WORKS</span>
+    <h2>Scan. Grade.<br><span class="g">Decide.</span></h2>
+    <div style="margin-top:18px">
+      <div class="step reveal"><div class="sn mono">01</div><div><div class="st">See the edge</div><p>Open any game free — live odds, movement since open, win probability, by-sportsbook chart.</p></div></div>
+      <div class="step reveal"><div class="sn mono">02</div><div><div class="st">Grade the bet</div><p>Models and EV scoring show where value is — and where it isn't. Every read shown honestly.</p></div></div>
+      <div class="step reveal"><div class="sn mono">03</div><div><div class="st">Check the record</div><p>Every lean graded in public — wins and misses, today, yesterday, all-time.</p></div></div>
+      <div class="step reveal"><div class="sn mono">04</div><div><div class="st">Operate with discipline</div><p>Size every bet, run the ladder, track CLV. Act on real edges — not on tilt.</p></div></div>
+    </div>
+  </section>
+
+  <section class="mani">
+    <h2>We build for <span class="g">operators.</span><br>Not gamblers.</h2>
+  </section>
+
+  <section class="sect">
+    <span class="label kick">SECTION 04 // PRICING</span>
+    <h2>One price.<br><span class="g">Everything in.</span></h2>
+    <div class="price reveal">
+      <div style="display:flex;align-items:baseline;gap:6px"><span class="amt">$29</span><span class="per">/month</span></div>
+      <div class="yr">or $149/yr · $12.42/mo · 3-day free trial</div>
+      <div class="plist">
+        <div class="pi"><i>✓</i>Free live odds + Game Center</div>
+        <div class="pi"><i>✓</i>Spotlight O/U models</div>
+        <div class="pi"><i>✓</i>Player props by player</div>
+        <div class="pi"><i>✓</i>EV + CLV tracking</div>
+        <div class="pi"><i>✓</i>Line movement + line shop</div>
+        <div class="pi"><i>✓</i>PHLT™ ladder + sizing</div>
+        <div class="pi"><i>✓</i>Public model record</div>
+        <div class="pi"><i>✓</i>All future features</div>
+      </div>
+      <a href="#" class="btn">Start my free trial →</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-top">
+      <div class="foot-brand">
+        <div class="brand"><div class="mark">R</div><div class="nm">RISK MATRIX LABS</div></div>
+        <div class="foot-tag">Operate with discipline.</div>
+        <div class="socials">
+          <a href="#" aria-label="Instagram">IG</a>
+          <a href="#" aria-label="TikTok">TT</a>
+          <a href="#" aria-label="X">X</a>
+          <a href="#" aria-label="YouTube">YT</a>
+          <a href="#" aria-label="Discord">DC</a>
+        </div>
+      </div>
+      <div class="foot-cols">
+        <div class="fcol">
+          <div class="fch">Product</div>
+          <a href="#">Game Center</a><a href="#">Matrix Bot</a><a href="#">Spotlight</a><a href="#">Pricing</a>
+        </div>
+        <div class="fcol">
+          <div class="fch">Company</div>
+          <a href="#">About</a><a href="#">FAQ</a><a href="#">Affiliates</a><a href="#">Contact</a>
+        </div>
+        <div class="fcol">
+          <div class="fch">Legal</div>
+          <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Responsible Play</a>
+        </div>
+      </div>
+    </div>
+    <div class="fnote">We don't sell picks or guarantee winners. Models are continuously back-tested and still calibrating — past results don't predict future ones. Information and tools, not betting advice.<br><br>21+ · If you or someone you know has a gambling problem, call 1-800-GAMBLER.<br><span style="color:var(--ink-2)">© 2026 Risk Matrix Labs. All rights reserved.</span></div>
+  </footer>
+
+</div>
+<script>
+const items=[['KBO TOT O8.5','hit'],['SPOTLIGHT U9.5','miss'],['PHLT PRIME','hit'],['NBA U221','miss'],['MLB O8.5','hit'],['KBO U9.1','hit'],['NHL O6','miss'],['SPOTLIGHT O7.5','hit']];
+const tk=document.getElementById('tk');
+const build=()=>items.map(([t,r])=>`<span class="tk"><span class="dot"></span>${t} <span class="${r}">${r==='hit'?'✓ HIT':'✗ MISS'}</span></span>`).join('');
+tk.innerHTML=build()+build();
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+document.querySelectorAll('[data-to]').forEach(el=>{const to=+el.dataset.to;let s=null;const dur=900;const step=t=>{s=s||t;const p=Math.min((t-s)/dur,1);el.textContent=Math.round(to*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(step)};const o=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){requestAnimationFrame(step);o.unobserve(e.target)}}),{threshold:.5});o.observe(el)});
+</script>
+</body>
+</html>
