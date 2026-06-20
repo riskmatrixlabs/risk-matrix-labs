@@ -422,13 +422,13 @@ export default function LandingPage({ onLogin }) {
                 initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 style={{ fontFamily: R, fontWeight: 700, fontSize: 'clamp(40px, 5.5vw, 70px)', letterSpacing: '-0.01em', lineHeight: 1.04, margin: '22px 0 18px', color: '#fff' }}
               >
-                No locks. No hype.<br />
-                <span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.2)' }}>Just the numbers — graded in public.</span>
+                We don't sell picks.<br />
+                <span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.2)' }}>We show the numbers — graded in public.</span>
               </motion.h1>
 
               <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.18 }}
                 style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.75, marginBottom: '32px', maxWidth: '440px' }}>
-                Free live odds, EV-graded bets, and an honest track record — wins and misses. Built for operators who run a system, not gamblers chasing locks.
+                Free live odds, model reads, and EV — with every lean graded in public, wins and misses. No picks, no hype. The tools and the discipline; the decisions are yours.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
@@ -723,7 +723,7 @@ export default function LandingPage({ onLogin }) {
         <div style={{ maxWidth: '680px', margin: '0 auto' }}>
           <SectionHeader pill="FAQ" title="Common Questions" />
           <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A sports betting edge platform: free live odds, models that read the slate and show their record in public, and a bankroll discipline system to act on real value. See the edge, grade the bet, operate with discipline." />
-          <FAQItem delay={0.05} q="Is this a picks service or betting advice?" a="No. We don't sell locks or guarantee winners. Our models surface where there may be value and we grade every lean openly — wins and misses. The decisions are yours. This is information and discipline, not advice." />
+          <FAQItem delay={0.05} q="Do you sell picks?" a="No. We never sell picks and we never will. Our models surface where there may be value, and we grade every lean openly — wins and misses. We give you the numbers and the discipline; the decisions are yours. Information and tools, not advice." />
           <FAQItem delay={0.07} q="Do you guarantee wins?" a="No — and anyone who does is lying. Our models are continuously back-tested and still calibrating, and we show the real record, good and bad. We sell honesty and discipline, not a crystal ball." />
           <FAQItem delay={0.1}  q="How does the free trial work?" a="Start your 3-day free trial — no charge until day 4. You'll see the exact billing date and amount before you enter your card. Cancel anytime, no questions asked." />
           <FAQItem delay={0.15} q="How much does it cost?" a="$29/month, or $149/year (saves you $199 vs monthly). Annual plan works out to $12.42/month. Both plans include a 3-day free trial — no charge until day 4." />
