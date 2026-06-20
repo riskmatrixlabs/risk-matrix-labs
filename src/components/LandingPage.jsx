@@ -170,45 +170,13 @@ export default function LandingPage({ onLogin }) {
             <span className="rl-tag">EV</span><span className="rl-label">MATRIX BOT · PROPS</span>
             <div className="rl-ci">Props by player</div>
             <p>Every prop grouped by player, best price across books, and the EV edge on each line.</p>
-            <div style={{ marginTop: 14 }}>
-              <div className="pp-panel">
-                <div className="pp-head"><span className="pp-head-label">MATRIX BOT</span><span className="pp-head-sub">PLAYER PROPS</span><span className="pp-beta">BETA</span></div>
-                <div className="pp-player pp-open">
-                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#1D9E75' }}>GS</span><div className="pp-pid"><span className="pp-name">G. Springer</span><span className="pp-team">TOR · CF</span></div><span className="pp-chev">▾</span></div>
-                  <div className="pp-prop"><span className="pp-stat">Hits 1.5</span><div className="pp-prices"><span className="pp-best">▲ +110</span><span className="pp-alt">▼ -130</span><span className="pp-ev">+4.2%</span></div></div>
-                  <div className="pp-prop"><span className="pp-stat">Total Bases 2.5</span><div className="pp-prices"><span className="pp-best">▲ +135</span><span className="pp-alt">▼ -155</span><span className="pp-ev">+2.1%</span></div></div>
-                </div>
-                <div className="pp-player">
-                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#534AB7' }}>VG</span><div className="pp-pid"><span className="pp-name">V. Guerrero Jr.</span><span className="pp-team">TOR · 1B</span></div><span className="pp-count">3 props</span><span className="pp-chev">›</span></div>
-                </div>
-              </div>
-            </div>
+            <img className="rl-cell-shot" src="/brand/screenshots/sc-matrix-ch2.jpg" alt="Matrix Bot — Channel 2 props" loading="lazy" />
           </div>
           <div className="rl-cell rl-reveal">
             <span className="rl-tag">GRADED</span><span className="rl-label">SPOTLIGHT · O/U</span>
             <div className="rl-ci">Graded in public</div>
             <p>Over/under leans ranked by conviction — every one snapshotted and graded, wins and misses.</p>
-            <div style={{ marginTop: 14 }}>
-              <div className="sp-panel">
-                <div className="sp-head"><span className="sp-head-label">SPOTLIGHT</span><span className="sp-head-sub">O/U MODEL · TODAY</span><span className="sp-beta">BETA</span></div>
-                <div className="sp-row">
-                  <span className="sp-rank">#1</span>
-                  <div className="sp-main">
-                    <div className="sp-line"><span className="sp-match">BAL@LAD</span><span className="sp-side sp-over">OVER 8.5</span><span className="sp-tag">LINE 8.5</span><span className="sp-tag sp-edge">EDGE +1.2</span></div>
-                    <div className="sp-meta"><span className="sp-hit">✓ 3 v 8.5</span><span className="sp-dot">·</span><span className="sp-factors">2 FACTORS</span></div>
-                  </div>
-                  <span className="sp-slip">+ SLIP</span>
-                </div>
-                <div className="sp-row sp-row-graded">
-                  <span className="sp-rank sp-rank-dim">#2</span>
-                  <div className="sp-main">
-                    <div className="sp-line"><span className="sp-match">SD@SF</span><span className="sp-side sp-under">UNDER 7.5</span><span className="sp-tag">LINE 7.5</span><span className="sp-tag sp-miss">MISS</span></div>
-                    <div className="sp-meta"><span className="sp-miss-txt">✗ FINAL 9</span><span className="sp-dot">·</span><span className="sp-factors">1 FACTOR</span></div>
-                  </div>
-                  <span className="sp-result">GRADED</span>
-                </div>
-              </div>
-            </div>
+            <img className="rl-cell-shot" src="/brand/screenshots/sc-spotlight.jpg" alt="Spotlight — ranked O/U model leans" loading="lazy" />
           </div>
         </div>
       </section>
@@ -397,6 +365,7 @@ const CSS = `
 #rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:17px;letter-spacing:.2em;color:var(--rl-signal)}
 #rml-landing .rl-lt2{font-family:var(--rl-d);font-weight:600;font-size:9.5px;letter-spacing:.42em;color:rgba(189,255,0,.55);margin-top:3px}
 #rml-landing .rl-screenshot{width:100%;display:block;max-height:600px;object-fit:cover;object-position:top center;-webkit-mask-image:linear-gradient(#000 88%,transparent);mask-image:linear-gradient(#000 88%,transparent)}
+#rml-landing .rl-cell-shot{width:100%;display:block;margin-top:16px;border:1px solid var(--rl-line-2);border-radius:10px;max-height:360px;object-fit:cover;object-position:top center}
 #rml-landing .rl-faq{display:flex;flex-direction:column;border-top:1px solid var(--rl-line);margin-top:8px}
 #rml-landing .rl-faq-item{border-bottom:1px solid var(--rl-line)}
 #rml-landing .rl-faq-q{display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;list-style:none;padding:18px 2px;font-family:var(--rl-d);font-weight:700;font-size:16px;color:var(--rl-ink-0)}
