@@ -84,7 +84,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-dashboard.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -154,6 +154,58 @@ export default function LandingPage({ onLogin }) {
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
           <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://dashboard</span></div>
           <img className="rl-screenshot" src="/brand/screenshots/sc-dashboard.jpg" alt="Risk Matrix Labs dashboard" loading="lazy" />
+        </div>
+      </section>
+
+      <section className="rl-sect">
+        <span className="rl-label rl-kick">INSIDE THE APP</span>
+        <h2 className="rl-h2">The models,<br /><span className="rl-g">working.</span></h2>
+        <p className="rl-sub">A look at what the bot and the O/U model actually put in front of you — props priced for value, leans graded honestly.</p>
+        <div className="rl-bento">
+          <div className="rl-cell rl-reveal">
+            <span className="rl-tag">EV</span><span className="rl-label">MATRIX BOT · PROPS</span>
+            <div className="rl-ci">Props by player</div>
+            <p>Every prop grouped by player, best price across books, and the EV edge on each line.</p>
+            <div style={{ marginTop: 14 }}>
+              <div className="pp-panel">
+                <div className="pp-head"><span className="pp-head-label">MATRIX BOT</span><span className="pp-head-sub">PLAYER PROPS</span><span className="pp-beta">BETA</span></div>
+                <div className="pp-player pp-open">
+                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#1D9E75' }}>GS</span><div className="pp-pid"><span className="pp-name">G. Springer</span><span className="pp-team">TOR · CF</span></div><span className="pp-chev">▾</span></div>
+                  <div className="pp-prop"><span className="pp-stat">Hits 1.5</span><div className="pp-prices"><span className="pp-best">▲ +110</span><span className="pp-alt">▼ -130</span><span className="pp-ev">+4.2%</span></div></div>
+                  <div className="pp-prop"><span className="pp-stat">Total Bases 2.5</span><div className="pp-prices"><span className="pp-best">▲ +135</span><span className="pp-alt">▼ -155</span><span className="pp-ev">+2.1%</span></div></div>
+                </div>
+                <div className="pp-player">
+                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#534AB7' }}>VG</span><div className="pp-pid"><span className="pp-name">V. Guerrero Jr.</span><span className="pp-team">TOR · 1B</span></div><span className="pp-count">3 props</span><span className="pp-chev">›</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="rl-cell rl-reveal">
+            <span className="rl-tag">GRADED</span><span className="rl-label">SPOTLIGHT · O/U</span>
+            <div className="rl-ci">Graded in public</div>
+            <p>Over/under leans ranked by conviction — every one snapshotted and graded, wins and misses.</p>
+            <div style={{ marginTop: 14 }}>
+              <div className="sp-panel">
+                <div className="sp-head"><span className="sp-head-label">SPOTLIGHT</span><span className="sp-head-sub">O/U MODEL · TODAY</span><span className="sp-beta">BETA</span></div>
+                <div className="sp-row">
+                  <span className="sp-rank">#1</span>
+                  <div className="sp-main">
+                    <div className="sp-line"><span className="sp-match">BAL@LAD</span><span className="sp-side sp-over">OVER 8.5</span><span className="sp-tag">LINE 8.5</span><span className="sp-tag sp-edge">EDGE +1.2</span></div>
+                    <div className="sp-meta"><span className="sp-hit">✓ 3 v 8.5</span><span className="sp-dot">·</span><span className="sp-factors">2 FACTORS</span></div>
+                  </div>
+                  <span className="sp-slip">+ SLIP</span>
+                </div>
+                <div className="sp-row sp-row-graded">
+                  <span className="sp-rank sp-rank-dim">#2</span>
+                  <div className="sp-main">
+                    <div className="sp-line"><span className="sp-match">SD@SF</span><span className="sp-side sp-under">UNDER 7.5</span><span className="sp-tag">LINE 7.5</span><span className="sp-tag sp-miss">MISS</span></div>
+                    <div className="sp-meta"><span className="sp-miss-txt">✗ FINAL 9</span><span className="sp-dot">·</span><span className="sp-factors">1 FACTOR</span></div>
+                  </div>
+                  <span className="sp-result">GRADED</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -270,7 +322,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-dashboard.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
