@@ -130,7 +130,6 @@ export default function LandingPage({ onLogin }) {
 
       {/* ── FEATURE 1 — GAME CENTER (hero) ── */}
       <section className="rl-sect">
-        <span className="rl-label rl-kick">THE TABS // 01 · GAME CENTER</span>
         <h2 className="rl-h2">See the<br /><span className="rl-g">edge.</span></h2>
         <p className="rl-sub">Open any game — live odds, win probability, and line movement since open across every sportsbook. The whole board, before you place a bet.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
@@ -141,7 +140,6 @@ export default function LandingPage({ onLogin }) {
 
       {/* ── FEATURE 2 — MATRIX BOT / EV (hero) ── */}
       <section className="rl-sect">
-        <span className="rl-label rl-kick">THE TABS // 02 · MATRIX BOT</span>
         <h2 className="rl-h2">Every prop.<br /><span className="rl-g">Graded for value.</span></h2>
         <p className="rl-sub">Player props grouped by player, the best price across every book, and a true EV edge on every line. The bot runs the math — you see the value at a glance.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
@@ -152,7 +150,6 @@ export default function LandingPage({ onLogin }) {
 
       {/* ── FEATURE 3 — DASHBOARD (supporting, real screenshot) ── */}
       <section className="rl-sect">
-        <span className="rl-label rl-kick">THE TABS // 03 · DASHBOARD</span>
         <h2 className="rl-h2">Run it like<br /><span className="rl-g">an operator.</span></h2>
         <p className="rl-sub">Bankroll and unit sizing, the PHLT™ ladder, round-robin engine, and a discipline score on every session. Turn an edge into a system that compounds.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
@@ -162,7 +159,6 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section className="rl-sect">
-        <span className="rl-label rl-kick">INSIDE THE APP</span>
         <h2 className="rl-h2">The models,<br /><span className="rl-g">working.</span></h2>
         <p className="rl-sub">A look at what the bot and the O/U model actually put in front of you — props priced for value, leans graded honestly.</p>
         <div className="rl-bento">
@@ -188,7 +184,6 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section className="rl-sect" id="rl-record">
-        <span className="rl-label rl-kick">SECTION 04 // THE RECORD</span>
         <h2 className="rl-h2">We show our work.<br /><span className="rl-g">Wins and misses.</span></h2>
         <p className="rl-sub">Every model lean is snapshotted before the game and graded against the real result. No hidden losses. No cherry-picked screenshots. Most apps won't show you this.</p>
         <div className="rl-board rl-reveal">
@@ -210,7 +205,6 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section id="vs-touts" className="vs-section" aria-labelledby="vs-heading">
-        <div className="vs-kicker">SECTION 05 // VS THE TOUTS</div>
         <h2 id="vs-heading" className="vs-headline">Built the opposite way<br /><span className="vs-headline-accent">from a tout.</span></h2>
         <p className="vs-sub">Picks services sell certainty they can't back. We hand operators the receipts and the system — and never the lie.</p>
         <div className="vs-table" role="table" aria-label="Risk Matrix Labs versus a typical picks service">
@@ -254,7 +248,6 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 06 // HOW IT WORKS</span>
         <h2 className="rl-h2">Scan. Grade.<br /><span className="rl-g">Decide.</span></h2>
         <div style={{ marginTop: 18 }}>
           {STEPS.map(([n, t, d]) => (
@@ -266,7 +259,6 @@ export default function LandingPage({ onLogin }) {
       <section className="rl-mani"><h2 className="rl-h2">We build for <span className="rl-g">operators.</span><br />Not gamblers.</h2></section>
 
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 07 // PRICING</span>
         <h2 className="rl-h2">One price.<br /><span className="rl-g">Everything in.</span></h2>
         <div className="rl-price rl-reveal">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}><span className="rl-amt">$29</span><span className="rl-per">/month</span></div>
@@ -279,7 +271,6 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section className="rl-sect" id="rl-faq">
-        <span className="rl-label rl-kick">SECTION 08 // FAQ</span>
         <h2 className="rl-h2">Common<br /><span className="rl-g">questions.</span></h2>
         <div className="rl-faq">
           {[
