@@ -86,14 +86,16 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
-        <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+        <div className="rl-navcta">
+          <button onClick={open} className="rl-navlogin">Log In</button>
+          <a href="/pricing" className="rl-navtrial">Start Free Trial</a>
+        </div>
       </nav>
 
       <header className="rl-hero">
         <div className="rl-grid" />
         <div className="rl-hero-in">
-          <span className="rl-label rl-kick">RISK MATRIX LABS // EST. 2026</span>
           <h1 className="rl-h1">Operate with<br /><span className="rl-g">discipline.</span></h1>
           <p className="rl-hsub"><b>We don't sell picks. We show the numbers.</b> Free live odds, models that show their record — wins and misses — and the discipline to act. The decisions are yours.</p>
           <div className="rl-cta-row">
@@ -324,7 +326,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram"><FaInstagram /></a>
@@ -340,7 +342,11 @@ export default function LandingPage({ onLogin }) {
             <div className="rl-fcol"><div className="rl-fch">Legal</div><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/privacy">Responsible Play</a></div>
           </div>
         </div>
-        <div className="rl-fnote">We don't sell picks or guarantee winners. Models are continuously back-tested and still calibrating — past results don't predict future ones. Information and tools, not betting advice.<br /><br />21+ · If you or someone you know has a gambling problem, call 1-800-GAMBLER.<br /><span style={{ color: 'var(--rl-ink-2)' }}>© 2026 Risk Matrix Labs. All rights reserved.</span></div>
+        <div className="rl-fnote">
+          <p className="rl-disc">We don't sell picks or guarantee winners. Our models are continuously back-tested and still calibrating — past results don't predict future ones. Information and tools, not betting advice.</p>
+          <div className="rl-rg"><span className="rl-rg-tag">21+</span><span>If you or someone you know has a gambling problem, call <a href="tel:18004265464">1-800-GAMBLER</a>.</span></div>
+          <div className="rl-copy">© 2026 Risk Matrix Labs · All rights reserved · Operate with discipline.</div>
+        </div>
       </footer>
 
       <CookieBanner />
@@ -381,7 +387,12 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{height:50px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-mark{height:38px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-navcta{display:flex;align-items:center;gap:12px}
+#rml-landing .rl-navlogin{background:none;border:none;cursor:pointer;font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--rl-ink-1);padding:6px 2px}
+#rml-landing .rl-navlogin:hover{color:var(--rl-ink-0)}
+#rml-landing .rl-navtrial{font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rl-signal);text-decoration:none;border:1px solid var(--rl-signal);border-radius:5px;padding:8px 14px;transition:background .15s,color .15s}
+#rml-landing .rl-navtrial:hover{background:var(--rl-signal);color:var(--rl-bg-0)}
 #rml-landing .rl-logotext{display:flex;flex-direction:column;line-height:1}
 #rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:17px;letter-spacing:.2em;color:var(--rl-signal)}
 #rml-landing .rl-lt2{font-family:var(--rl-d);font-weight:600;font-size:9.5px;letter-spacing:.42em;color:rgba(189,255,0,.55);margin-top:3px}
@@ -480,7 +491,12 @@ const CSS = `
 #rml-landing .rl-fch{font:500 10px var(--rl-m);letter-spacing:.14em;text-transform:uppercase;color:var(--rl-signal-dim);margin-bottom:3px}
 #rml-landing .rl-fcol a{font-size:12.5px;color:var(--rl-ink-1);text-decoration:none}
 #rml-landing .rl-fcol a:hover{color:var(--rl-ink-0)}
-#rml-landing .rl-fnote{font:400 11px var(--rl-m);color:var(--rl-ink-2);line-height:1.8;letter-spacing:.02em;margin-top:30px;padding-top:22px;border-top:1px solid var(--rl-line)}
+#rml-landing .rl-fnote{margin-top:30px;padding-top:24px;border-top:1px solid var(--rl-line);display:flex;flex-direction:column;gap:14px}
+#rml-landing .rl-disc{font:400 11px var(--rl-b);color:var(--rl-ink-2);line-height:1.7;margin:0;max-width:420px}
+#rml-landing .rl-rg{display:flex;align-items:center;gap:10px;font:500 11px var(--rl-b);color:var(--rl-ink-1);line-height:1.5}
+#rml-landing .rl-rg-tag{flex:none;font-family:var(--rl-m);font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--rl-signal);border:1px solid var(--rl-signal-2);background:var(--rl-signal-2);border-radius:5px;padding:3px 9px}
+#rml-landing .rl-rg a{color:var(--rl-ink-0);text-decoration:none;border-bottom:1px solid var(--rl-line-2)}
+#rml-landing .rl-copy{font:500 10px var(--rl-m);letter-spacing:.08em;text-transform:uppercase;color:var(--rl-ink-2)}
 #rml-landing .rl-reveal{opacity:0;transform:translateY(16px)}
 #rml-landing .rl-reveal.in{opacity:1;transform:none;transition:opacity .5s,transform .5s cubic-bezier(.2,.7,.2,1)}
 #rml-landing .rl-cookie{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,10,.97);border-top:1px solid var(--rl-signal-2);padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
