@@ -79,7 +79,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><div className="rl-mark">R</div><div className="rl-nm">RISK MATRIX LABS</div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/brand-kit/icon-mark.svg" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -104,7 +104,7 @@ export default function LandingPage({ onLogin }) {
               <div className="gc-card">
                 <div className="gc-row gc-matchup">
                   <div className="gc-team gc-team-away">
-                    <span className="gc-logo gc-logo-laa">LAA</span>
+                    <span className="gc-logo gc-logo-laa"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/laa.png" alt="LAA" /></span>
                     <span className="gc-team-meta"><span className="gc-abbr">LAA</span><span className="gc-record">30-46</span></span>
                   </div>
                   <div className="gc-center">
@@ -113,7 +113,7 @@ export default function LandingPage({ onLogin }) {
                   </div>
                   <div className="gc-team gc-team-home">
                     <span className="gc-team-meta"><span className="gc-abbr">ATH</span><span className="gc-record">37-38</span></span>
-                    <span className="gc-logo gc-logo-ath">ATH</span>
+                    <span className="gc-logo gc-logo-ath"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/oak.png" alt="ATH" /></span>
                   </div>
                 </div>
                 <div className="gc-row gc-odds">
@@ -301,7 +301,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><div className="rl-mark">R</div><div className="rl-nm">RISK MATRIX LABS</div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/brand-kit/icon-mark.svg" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
@@ -348,7 +348,7 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{width:30px;height:30px;border:2px solid var(--rl-signal);border-radius:8px;display:grid;place-items:center;font-family:var(--rl-d);font-weight:700;color:var(--rl-signal);font-size:17px}
+#rml-landing .rl-mark{width:32px;height:32px;border-radius:8px;display:block;object-fit:contain}
 #rml-landing .rl-nm{font-family:var(--rl-d);font-weight:700;letter-spacing:.04em;font-size:15px}
 #rml-landing .rl-btn{font-family:var(--rl-m);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--rl-bg-0);background:var(--rl-signal);border:none;border-radius:6px;padding:9px 14px;cursor:pointer;text-decoration:none;box-shadow:0 0 24px -6px var(--rl-signal-glow);transition:transform .15s,opacity .15s;display:inline-block}
 #rml-landing .rl-btn:hover{opacity:.9;transform:translateY(-1px)}
@@ -472,9 +472,8 @@ const CSS = `
 #rml-landing .gc-matchup{justify-content:space-between;gap:8px}
 #rml-landing .gc-team{display:flex;align-items:center;gap:9px;min-width:0}
 #rml-landing .gc-team-home{justify-content:flex-end}
-#rml-landing .gc-logo{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--rl-d);font-weight:700;font-size:10px;color:#F2F4F0;border:1px solid #2A2E2B}
-#rml-landing .gc-logo-laa{background:#BA1B33}
-#rml-landing .gc-logo-ath{background:#115740}
+#rml-landing .gc-logo{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#161817;border:1px solid #2A2E2B}
+#rml-landing .gc-logo img{width:22px;height:22px;object-fit:contain;display:block}
 #rml-landing .gc-team-meta{display:flex;flex-direction:column;line-height:1.05;min-width:0}
 #rml-landing .gc-team-home .gc-team-meta{align-items:flex-end}
 #rml-landing .gc-abbr{font-family:var(--rl-d);font-weight:700;font-size:18px;color:#F2F4F0}
