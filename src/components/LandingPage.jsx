@@ -141,9 +141,9 @@ function SectionHeader({ pill, title, sub, center = true }) {
 
 // ─── MARQUEE ──────────────────────────────────────────────────────────────────
 const MARQUEE_ITEMS = [
-  'Bankroll Management', 'Risk Control', 'PHLT™ Ladder System',
-  'Round Robin Engine', 'Session Grading', 'Discipline Systems',
-  'Unit Sizing Engine', 'Tilt Detection', 'Behavioral Analytics',
+  'Free Live Odds', 'Spotlight O/U Models', 'Player Props by Player',
+  'Line Movement', 'EV + CLV Tracking', 'Graded in Public',
+  'PHLT™ Ladder System', 'Round Robin Engine', 'Discipline Score',
 ]
 
 function Marquee() {
@@ -509,13 +509,13 @@ export default function LandingPage({ onLogin }) {
       {/* ══ HOW IT WORKS ══ */}
       <section style={{ padding: '72px 40px', position: 'relative' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <SectionHeader pill="How It Works" title="Four Steps.<br/><span style='color:#BDFF00'>One System.</span>" />
+          <SectionHeader pill="How It Works" title="Scan. Grade.<br/><span style='color:#BDFF00'>Decide.</span>" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0' }} className="lp-4col">
             {[
-              { num: '01', title: 'Simulate', desc: 'Model how your bankroll grows or shrinks under different unit sizes, risk levels, and win rates — before you risk a dollar.' },
-              { num: '02', title: 'Set your bankroll', desc: 'Enter your starting bankroll, configure your unit size %, and lock in your risk limits. The system calculates everything else automatically.' },
-              { num: '03', title: 'Execute every session', desc: 'Log every bet. Run the pre-session checklist. Use the unit sizing engine and round robin engine. No guessing — just execution.' },
-              { num: '04', title: 'Grade your process', desc: 'Settle bets, review your Discipline Score™, and grade the session A–F. Your record is built on process — not results.' },
+              { num: '01', title: 'See the edge', desc: 'Open any game free — live odds, line movement since open, win probability, and the by-sportsbook chart. No paywall to look.' },
+              { num: '02', title: 'Grade the bet', desc: 'Spotlight O/U models, player props by player, and EV scoring tell you where the value is — and where it isn’t. Every read shown honestly.' },
+              { num: '03', title: 'Check the record', desc: 'Every model lean is graded in public — wins and misses, today, yesterday, all-time. No hidden losses, no cherry-picked screenshots.' },
+              { num: '04', title: 'Operate with discipline', desc: 'Size every bet, run the ladder, grade the session. Act on real edges with the bankroll system built in — not on tilt.' },
             ].map((step, i) => (
               <FadeIn key={step.num} delay={i * 0.1}>
                 <div style={{ padding: '40px 28px', borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', position: 'relative' }}>
@@ -532,12 +532,39 @@ export default function LandingPage({ onLogin }) {
       {/* ══ THREE COLUMNS ══ */}
       <section id="what" style={{ position: 'relative', padding: '72px 40px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <SectionHeader pill="What Is It" title="Built for operators<br/><span style='color:#BDFF00'>who run a system.</span>" sub="Risk Matrix Labs is the Bankroll Simulator for disciplined sports bettors. Every bet logged, every dollar protected, every session graded — with the risk management tools of a real operator." />
+          <SectionHeader pill="What Is It" title="An edge platform<br/><span style='color:#BDFF00'>that grades itself in public.</span>" sub="Risk Matrix Labs is a sports betting edge platform: free live odds, models that show their record — wins and misses — and the discipline system to act on real value. No locks. No hype. Built for operators who run a system." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="lp-3col">
-            <FeatureCard delay={0}   icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="3" height="6" rx="1" fill="#BDFF00"/><rect x="7" y="6" width="3" height="10" rx="1" fill="#BDFF00" opacity=".7"/><rect x="12" y="2" width="3" height="14" rx="1" fill="#BDFF00" opacity=".4"/></svg>} title="Track like a trader"        desc="Real-time bankroll curve, unit sizing, P&L tracking, and rolling performance metrics across every bet you place." />
-            <FeatureCard delay={0.1} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L9 4M9 14L9 16M2 9L4 9M14 9L16 9" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><circle cx="9" cy="9" r="4" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="1.5" fill="#BDFF00" opacity=".5"/></svg>} title="Manage your risk"           desc="Set daily limits, max bet size, stop-loss levels, and profit locks. Know your exposure before you place a single dollar." />
-            <FeatureCard delay={0.2} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2 L15 5 L15 10 C15 13.5 12 16 9 17 C6 16 3 13.5 3 10 L3 5 Z" stroke="#BDFF00" strokeWidth="1.5" fill="none"/><path d="M6 9l2 2 4-4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Stay in the system"         desc="Tilt detection flags when you're off track. Pre-session checklists enforce your process. Your Discipline Score™ doesn't lie." />
+            <FeatureCard delay={0}   icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="10" width="3" height="6" rx="1" fill="#BDFF00"/><rect x="7" y="6" width="3" height="10" rx="1" fill="#BDFF00" opacity=".7"/><rect x="12" y="2" width="3" height="14" rx="1" fill="#BDFF00" opacity=".4"/></svg>} title="See the edge"        desc="Open any game free — live odds, line movement since open, win probability, and the by-sportsbook chart. Spot where the value is before you bet." />
+            <FeatureCard delay={0.1} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L9 4M9 14L9 16M2 9L4 9M14 9L16 9" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><circle cx="9" cy="9" r="4" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="1.5" fill="#BDFF00" opacity=".5"/></svg>} title="Grade the bet"           desc="Spotlight O/U models, player props grouped by player, and EV scoring read every market — and every model lean is graded in public, wins and misses." />
+            <FeatureCard delay={0.2} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2 L15 5 L15 10 C15 13.5 12 16 9 17 C6 16 3 13.5 3 10 L3 5 Z" stroke="#BDFF00" strokeWidth="1.5" fill="none"/><path d="M6 9l2 2 4-4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Stay disciplined"         desc="Size every bet, run the PHLT™ ladder, track CLV, and grade every session. The bankroll system that turns an edge into a process." />
           </div>
+        </div>
+      </section>
+
+      {/* ══ GRADED IN PUBLIC (track record) ══ */}
+      <section style={{ position: 'relative', padding: '80px 40px', borderTop: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+        <HexGrid opacity={0.022} />
+        <GlowOrb size={620} x="78%" y="40%" opacity={0.04} />
+        <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <SectionHeader pill="Graded in Public" title="We show our work.<br/><span style='color:#BDFF00'>Wins and misses.</span>" sub="Every model lean is snapshotted before the game and graded against the real result — today, yesterday, all-time. No hidden losses. No cherry-picked screenshots. Most apps won't show you this." />
+          <FadeIn delay={0.1}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '14px' }} className="lp-3col">
+              {[
+                { label: 'Spotlight · all-time', rec: '12–13', sub: 'O/U model leans, graded' },
+                { label: 'Spotlight · yesterday', rec: '2–1', sub: 'directional leans' },
+                { label: 'KBO · yesterday', rec: '1–0', sub: 'no-pick games excluded' },
+              ].map(({ label, rec, sub }) => (
+                <div key={label} style={{ background: 'rgba(189,255,0,0.04)', border: '1px solid rgba(189,255,0,0.22)', borderRadius: '6px', padding: '24px 22px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '10px' }}>{label}</div>
+                  <div style={{ fontFamily: R, fontSize: '44px', fontWeight: 700, color: NEON, lineHeight: 1, textShadow: '0 0 30px rgba(189,255,0,0.2)' }}>{rec}</div>
+                  <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '8px' }}>{sub}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontFamily: I, fontSize: '12px', color: 'rgba(255,255,255,0.34)', textAlign: 'center', lineHeight: 1.7 }}>
+              Snapshot of the live record. Models are continuously back-tested and still calibrating — we show the real numbers, good and bad. <a href="https://app.riskmatrixlabs.com" style={{ color: NEON, textDecoration: 'none' }}>See it live in the app →</a>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
@@ -584,12 +611,12 @@ export default function LandingPage({ onLogin }) {
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <SectionHeader pill="Features" title="Every tool an operator needs" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }} className="lp-3col">
-            <FeatureCard delay={0}    icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="13" width="16" height="2" rx="1" fill="#BDFF00"/><rect x="3" y="9" width="12" height="2" rx="1" fill="#BDFF00" opacity=".6"/><rect x="6" y="5" width="6" height="2" rx="1" fill="#BDFF00" opacity=".35"/></svg>} title="PHLT™ Ladder Simulator"  desc="Fund each bet only from previous winnings. Protect your principal at every rung of the ladder system." />
-            <FeatureCard delay={0.06} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="3.5" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/><circle cx="9" cy="9" r="1" fill="#BDFF00"/></svg>} title="Unit sizing engine"       desc="Configure your unit % and instantly see 0.25u through 5u stake sizes in dollars. Size every bet with precision." />
-            <FeatureCard delay={0.12} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 6h12M3 9h8M3 12h10" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><rect x="12" y="7" width="4" height="7" rx="1" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/></svg>} title="Round Robin Engine"       desc="Build 2–5 team round robins. See every combo, total exposure, max payout, and the break-even hit rate you need." />
-            <FeatureCard delay={0.18} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 13 L5 9 L8 11 L11 6 L14 8 L16 4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Bankroll simulator"       desc="Model how your bankroll grows — or shrinks — under different unit sizes, risk levels, and win rates. Run the scenarios before you risk a dollar." />
-            <FeatureCard delay={0.24} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="#BDFF00" strokeWidth="1.5"/><path d="M6 7h6M6 10h4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" opacity=".6"/></svg>} title="Session grading"          desc="Every session earns an A–F grade based on your process, not your results. Discipline compounds over time." />
-            <FeatureCard delay={0.30} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 14 L6 9 L9 11 L13 5 L16 7" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 5h3v3" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity=".6"/></svg>} title="Behavioral analytics"     desc="Break down your edge by sport, book, bet type, and time period. Know what's working — and what's bleeding you." />
+            <FeatureCard delay={0}    icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 13 L5 9 L8 11 L11 6 L14 8 L16 4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>} title="Free live odds + line movement"  desc="Open any game at $0 — live odds, win probability, and line movement since open across every sportsbook. Paid scans only when you tap refresh." />
+            <FeatureCard delay={0.06} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="#BDFF00" strokeWidth="1.5"/><circle cx="9" cy="9" r="3.5" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/><circle cx="9" cy="9" r="1" fill="#BDFF00"/></svg>} title="Spotlight O/U models"       desc="Over/under models on the slate — park, weather, pitching and bullpen — ranked by conviction and graded in public, every lean, wins and misses." />
+            <FeatureCard delay={0.12} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 6h12M3 9h8M3 12h10" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round"/><rect x="12" y="7" width="4" height="7" rx="1" stroke="#BDFF00" strokeWidth="1.5" opacity=".6"/></svg>} title="Player props by player"       desc="Props grouped by player — every market, best price across books, and the EV edge on each line so you see value at a glance." />
+            <FeatureCard delay={0.18} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="13" width="16" height="2" rx="1" fill="#BDFF00"/><rect x="3" y="9" width="12" height="2" rx="1" fill="#BDFF00" opacity=".6"/><rect x="6" y="5" width="6" height="2" rx="1" fill="#BDFF00" opacity=".35"/></svg>} title="EV + CLV tracking"       desc="Log a play and Beat the Close grades it on closing-line value — the truest measure of whether a bet was actually sharp." />
+            <FeatureCard delay={0.24} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="13" width="16" height="2" rx="1" fill="#BDFF00"/><rect x="3" y="9" width="12" height="2" rx="1" fill="#BDFF00" opacity=".6"/><rect x="6" y="5" width="6" height="2" rx="1" fill="#BDFF00" opacity=".35"/></svg>} title="PHLT™ Ladder + unit sizing"          desc="Fund each bet from previous winnings only, size every stake from your bankroll %, and protect your principal at every rung." />
+            <FeatureCard delay={0.30} icon={<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="2" stroke="#BDFF00" strokeWidth="1.5"/><path d="M6 7h6M6 10h4" stroke="#BDFF00" strokeWidth="1.5" strokeLinecap="round" opacity=".6"/></svg>} title="Session grading + discipline"     desc="Every session graded on process, not results, with a Discipline Score that compounds. Run a round robin and see exposure, payout, and break-even hit rate." />
           </div>
         </div>
       </section>
@@ -623,11 +650,11 @@ export default function LandingPage({ onLogin }) {
               {/* Features list */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', marginBottom: '36px' }} className="lp-pricing-grid">
                 {[
-                  'Bankroll Simulator', 'Unit Sizing Engine',
-                  'PHLT™ Ladder System', 'Round Robin Engine',
-                  'Session Grading (A–F)', 'Discipline Score™',
-                  'Behavioral Analytics', 'Pre-Session Checklist',
-                  'Cloud Sync + Backup', 'All future features',
+                  'Free Live Odds + Game Center', 'Spotlight O/U Models',
+                  'Player Props by Player', 'EV + CLV Tracking',
+                  'Line Movement + Line Shop', 'PHLT™ Ladder System',
+                  'Unit Sizing + Round Robin', 'Session Grading + Discipline Score',
+                  'Public Model Record', 'All future features',
                 ].map(feature => (
                   <div key={feature} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontFamily: I, fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
                     <span style={{ color: NEON, fontWeight: 700, flexShrink: 0 }}>✓</span>{feature}
@@ -695,8 +722,9 @@ export default function LandingPage({ onLogin }) {
       <section id="faq" style={{ padding: '80px 40px 60px' }}>
         <div style={{ maxWidth: '680px', margin: '0 auto' }}>
           <SectionHeader pill="FAQ" title="Common Questions" />
-          <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A bankroll operating system and betting simulator built for disciplined operators. Track every bet, simulate bankroll growth, manage your risk, and grade every session — with the process tools of a real operator." />
-          <FAQItem delay={0.05} q="Is this a picks service?" a="No. We don't sell picks. We build the systems that help you manage your bankroll with discipline. Risk Matrix Labs is about process — not predictions." />
+          <FAQItem delay={0}    q="What is Risk Matrix Labs?" a="A sports betting edge platform: free live odds, models that read the slate and show their record in public, and a bankroll discipline system to act on real value. See the edge, grade the bet, operate with discipline." />
+          <FAQItem delay={0.05} q="Is this a picks service or betting advice?" a="No. We don't sell locks or guarantee winners. Our models surface where there may be value and we grade every lean openly — wins and misses. The decisions are yours. This is information and discipline, not advice." />
+          <FAQItem delay={0.07} q="Do you guarantee wins?" a="No — and anyone who does is lying. Our models are continuously back-tested and still calibrating, and we show the real record, good and bad. We sell honesty and discipline, not a crystal ball." />
           <FAQItem delay={0.1}  q="How does the free trial work?" a="Start your 3-day free trial — no charge until day 4. You'll see the exact billing date and amount before you enter your card. Cancel anytime, no questions asked." />
           <FAQItem delay={0.15} q="How much does it cost?" a="$29/month, or $149/year (saves you $199 vs monthly). Annual plan works out to $12.42/month. Both plans include a 3-day free trial — no charge until day 4." />
           <FAQItem delay={0.2}  q="Does it work on mobile?" a="Yes. Risk Matrix Labs is built mobile-first. Log bets, run the ladder, and grade sessions from your phone — your data syncs across every device automatically." />
