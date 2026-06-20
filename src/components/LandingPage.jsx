@@ -145,70 +145,85 @@ export default function LandingPage({ onLogin }) {
         </div>
       </section>
 
+      {/* ── FEATURE 1 — GAME CENTER (hero) ── */}
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 01 // THE PLATFORM</span>
-        <h2 className="rl-h2">An edge platform.<br /><span className="rl-g">Not a tout.</span></h2>
-        <p className="rl-sub">Everything an operator needs to find value and act on it with discipline — free where it can be, honest everywhere.</p>
-        <div className="rl-bento">
-          <div className="rl-cell rl-reveal">
-            <span className="rl-tag">FREE</span><span className="rl-label">GAME CENTER</span>
-            <div className="rl-ci">See the edge</div>
-            <p>Open any game at $0 — live odds, line movement since open, win probability, and the by-sportsbook chart.</p>
-          </div>
-          <div className="rl-cell rl-reveal">
-            <span className="rl-tag">EV</span><span className="rl-label">MATRIX BOT</span>
-            <div className="rl-ci">Grade the bet</div>
-            <p>Player props grouped by player, best price across books, and the EV edge on every line — at a glance.</p>
-            <div style={{ marginTop: 14 }}>
-              <div className="pp-panel">
-                <div className="pp-head"><span className="pp-head-label">MATRIX BOT</span><span className="pp-head-sub">PLAYER PROPS</span><span className="pp-beta">BETA</span></div>
-                <div className="pp-player pp-open">
-                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#1D9E75' }}>GS</span><div className="pp-pid"><span className="pp-name">G. Springer</span><span className="pp-team">TOR · CF</span></div><span className="pp-chev">▾</span></div>
-                  <div className="pp-prop"><span className="pp-stat">Hits 1.5</span><div className="pp-prices"><span className="pp-best">▲ +110</span><span className="pp-alt">▼ -130</span><span className="pp-ev">+4.2%</span></div></div>
-                  <div className="pp-prop"><span className="pp-stat">Total Bases 2.5</span><div className="pp-prices"><span className="pp-best">▲ +135</span><span className="pp-alt">▼ -155</span><span className="pp-ev">+2.1%</span></div></div>
-                </div>
-                <div className="pp-player">
-                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#534AB7' }}>VG</span><div className="pp-pid"><span className="pp-name">V. Guerrero Jr.</span><span className="pp-team">TOR · 1B</span></div><span className="pp-count">3 props</span><span className="pp-chev">›</span></div>
-                </div>
+        <span className="rl-label rl-kick">THE TABS // 01 · GAME CENTER</span>
+        <h2 className="rl-h2">See the edge.<br /><span className="rl-g">Free.</span></h2>
+        <p className="rl-sub">Open any game at $0 — live odds, win probability, and line movement since open across every sportsbook. The whole board, before you risk a dollar.</p>
+        <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
+          <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://game-center</span><span className="rl-live"><span className="rl-ld" />LIVE</span></div>
+          <div className="gcf-screen">
+            <div className="gcf-spotlight"><span className="gcf-hex" /><span className="gcf-spot-label">SPOTLIGHT</span><span className="gcf-spot-count">(2)</span><span className="gcf-beta">BETA</span><span className="gcf-spot-lean">WSH@TB <b>OVER 7.5</b> <span className="gcf-rank">#1</span></span></div>
+            <div className="gcf-chips"><span className="gcf-chip gcf-chip-live"><span className="gcf-livedot" />LIVE</span><span className="gcf-chip gcf-chip-on">All</span><span className="gcf-chip">MLB</span><span className="gcf-chip">NHL</span><span className="gcf-chip">NBA</span></div>
+            <div className="gcf-dates"><span className="gcf-date">YESTERDAY</span><span className="gcf-date gcf-date-on">TODAY</span><span className="gcf-date">UPCOMING</span></div>
+            <div className="gcf-card">
+              <div className="gcf-card-head"><span className="gcf-tag">MLB</span><span className="gcf-livepill"><span className="gcf-livedot" />LIVE</span><span className="gcf-inning">▲ 5th</span></div>
+              <div className="gcf-matchup">
+                <div className="gcf-team"><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/laa.png" alt="LAA" /></span><span className="gcf-abbr">LAA</span><span className="gcf-rec">30-46</span></div>
+                <div className="gcf-score"><span className="gcf-sc">10</span><span className="gcf-diamonds">◆◆</span><span className="gcf-sc">4</span></div>
+                <div className="gcf-team gcf-team-r"><span className="gcf-rec">37-38</span><span className="gcf-abbr">ATH</span><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/oak.png" alt="ATH" /></span></div>
               </div>
+              <div className="gcf-odds"><span>ML <b>+101</b></span><span className="gcf-dot">·</span><span>O/U <b>8.5</b></span><span className="gcf-dot">·</span><span>ML <b>-122</b></span></div>
+              <div className="gcf-pitch">Kevin Gausman <span className="gcf-vs">vs</span> Ben Brown</div>
+              <div className="gcf-leanrow"><span className="gcf-lean"><span className="gcf-lbeta">BETA</span> ⚐ OVER 6.5</span><span className="gcf-result">✓ 14 v 8.5</span></div>
             </div>
-          </div>
-          <div className="rl-cell rl-reveal">
-            <span className="rl-tag">GRADED</span><span className="rl-label">SPOTLIGHT + KBO</span>
-            <div className="rl-ci">Trust the read</div>
-            <p>Over/under models ranked by conviction — every lean snapshotted and graded in public, wins and misses.</p>
-            <div style={{ marginTop: 14 }}>
-              <div className="sp-panel">
-                <div className="sp-head"><span className="sp-head-label">SPOTLIGHT</span><span className="sp-head-sub">O/U MODEL · TODAY</span><span className="sp-beta">BETA</span></div>
-                <div className="sp-row">
-                  <span className="sp-rank">#1</span>
-                  <div className="sp-main">
-                    <div className="sp-line"><span className="sp-match">BAL@LAD</span><span className="sp-side sp-over">OVER 8.5</span><span className="sp-tag">LINE 8.5</span><span className="sp-tag sp-edge">EDGE +1.2</span></div>
-                    <div className="sp-meta"><span className="sp-hit">✓ 3 v 8.5</span><span className="sp-dot">·</span><span className="sp-factors">2 FACTORS</span></div>
-                  </div>
-                  <span className="sp-slip">+ SLIP</span>
-                </div>
-                <div className="sp-row sp-row-graded">
-                  <span className="sp-rank sp-rank-dim">#2</span>
-                  <div className="sp-main">
-                    <div className="sp-line"><span className="sp-match">SD@SF</span><span className="sp-side sp-under">UNDER 7.5</span><span className="sp-tag">LINE 7.5</span><span className="sp-tag sp-miss">MISS</span></div>
-                    <div className="sp-meta"><span className="sp-miss-txt">✗ FINAL 9</span><span className="sp-dot">·</span><span className="sp-factors">1 FACTOR</span></div>
-                  </div>
-                  <span className="sp-result">GRADED</span>
-                </div>
+            <div className="gcf-card">
+              <div className="gcf-card-head"><span className="gcf-tag">MLB</span><span className="gcf-time">7:05 PM</span></div>
+              <div className="gcf-matchup">
+                <div className="gcf-team"><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png" alt="NYY" /></span><span className="gcf-abbr">NYY</span><span className="gcf-rec">48-27</span></div>
+                <div className="gcf-score"><span className="gcf-soon">7:05 PM</span></div>
+                <div className="gcf-team gcf-team-r"><span className="gcf-rec">40-36</span><span className="gcf-abbr">BOS</span><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/bos.png" alt="BOS" /></span></div>
               </div>
+              <div className="gcf-odds"><span>ML <b>-140</b></span><span className="gcf-dot">·</span><span>O/U <b>9.0</b></span><span className="gcf-dot">·</span><span>ML <b>+120</b></span></div>
+              <div className="gcf-leanrow"><span className="gcf-lean"><span className="gcf-lbeta">BETA</span> ⚐ UNDER 9.0</span></div>
             </div>
-          </div>
-          <div className="rl-cell rl-reveal">
-            <span className="rl-label">CH3 · BEAT THE CLOSE</span>
-            <div className="rl-ci">Track CLV</div>
-            <p>Log a play and we grade it on closing-line value — the truest measure of whether a bet was actually sharp.</p>
           </div>
         </div>
       </section>
 
+      {/* ── FEATURE 2 — MATRIX BOT / EV (hero) ── */}
+      <section className="rl-sect">
+        <span className="rl-label rl-kick">THE TABS // 02 · MATRIX BOT</span>
+        <h2 className="rl-h2">Every prop.<br /><span className="rl-g">Graded for value.</span></h2>
+        <p className="rl-sub">Player props grouped by player, the best price across every book, and a true EV edge on every line. The bot runs the math — you see the value at a glance.</p>
+        <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
+          <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://matrix-bot/ch2</span><span className="rl-live"><span className="rl-ld" />EV</span></div>
+          <div className="mbf-screen">
+            <div className="mbf-tabs"><div className="mbf-tab">CH 1 · FIND</div><div className="mbf-tab mbf-tab-on">CH 2 · LOOK</div><div className="mbf-tab">CH 3 · TRACK</div></div>
+            <div className="mbf-strip">
+              <div className="mbf-dates"><span className="mbf-chip mbf-chip-on">Today</span><span className="mbf-chip">Wed</span><span className="mbf-chip">Thu</span></div>
+              <div className="mbf-sports"><span className="mbf-sport mbf-sport-on">MLB</span><span className="mbf-sport">NBA</span></div>
+            </div>
+            <div className="mbf-body">
+              <div className="mbf-player mbf-player-open">
+                <div className="mbf-phead"><div className="mbf-av" style={{ background: '#1F3A2E', color: '#5BE38B' }}>GS</div><div className="mbf-pmeta"><div className="mbf-pname">G. Springer</div><div className="mbf-pteam">TOR · CF</div></div><span className="mbf-chev">▴</span></div>
+                <div className="mbf-props">
+                  <div className="mbf-prop"><div className="mbf-stat"><span className="mbf-statname">Hits</span><span className="mbf-line">1.5</span></div><div className="mbf-prices"><span className="mbf-price mbf-price-best"><span className="mbf-ar">▲</span>+110</span><span className="mbf-price"><span className="mbf-ar">▼</span>-130</span><span className="mbf-ev">+4.2%</span></div></div>
+                  <div className="mbf-prop"><div className="mbf-stat"><span className="mbf-statname">Total Bases</span><span className="mbf-line">2.5</span></div><div className="mbf-prices"><span className="mbf-price"><span className="mbf-ar">▲</span>+135</span><span className="mbf-price mbf-price-best"><span className="mbf-ar">▼</span>-115</span><span className="mbf-ev">+2.8%</span></div></div>
+                  <div className="mbf-prop"><div className="mbf-stat"><span className="mbf-statname">Runs</span><span className="mbf-line">0.5</span></div><div className="mbf-prices"><span className="mbf-price mbf-price-best"><span className="mbf-ar">▲</span>+105</span><span className="mbf-price"><span className="mbf-ar">▼</span>-125</span><span className="mbf-ev">+3.6%</span></div></div>
+                </div>
+              </div>
+              <div className="mbf-player"><div className="mbf-phead"><div className="mbf-av" style={{ background: '#2E2A14', color: '#EF9F27' }}>VG</div><div className="mbf-pmeta"><div className="mbf-pname">V. Guerrero Jr.</div><div className="mbf-pteam">TOR · 1B</div></div><span className="mbf-count">3 props</span><span className="mbf-chev">▾</span></div></div>
+              <div className="mbf-player"><div className="mbf-phead"><div className="mbf-av" style={{ background: '#16243A', color: '#378ADD' }}>BB</div><div className="mbf-pmeta"><div className="mbf-pname">B. Bichette</div><div className="mbf-pteam">TOR · SS</div></div><span className="mbf-count">2 props</span><span className="mbf-chev">▾</span></div></div>
+            </div>
+            <div className="mbf-foot">BEST PRICE ACROSS BOOKS · +EV vs SHARP</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURE 3 — DASHBOARD (supporting, real screenshot) ── */}
+      <section className="rl-sect">
+        <span className="rl-label rl-kick">THE TABS // 03 · DASHBOARD</span>
+        <h2 className="rl-h2">Run it like<br /><span className="rl-g">an operator.</span></h2>
+        <p className="rl-sub">Bankroll and unit sizing, the PHLT™ ladder, round-robin engine, and a discipline score on every session. Turn an edge into a system that compounds.</p>
+        <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
+          <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://dashboard</span></div>
+          <img className="rl-dash-shot" src="/brand/screenshots/mobile-analytics.png" alt="Risk Matrix Labs dashboard" loading="lazy" />
+        </div>
+      </section>
+
       <section className="rl-sect" id="rl-record">
-        <span className="rl-label rl-kick">SECTION 02 // THE RECORD</span>
+        <span className="rl-label rl-kick">SECTION 04 // THE RECORD</span>
         <h2 className="rl-h2">We show our work.<br /><span className="rl-g">Wins and misses.</span></h2>
         <p className="rl-sub">Every model lean is snapshotted before the game and graded against the real result. No hidden losses. No cherry-picked screenshots. Most apps won't show you this.</p>
         <div className="rl-board rl-reveal">
@@ -230,7 +245,7 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section id="vs-touts" className="vs-section" aria-labelledby="vs-heading">
-        <div className="vs-kicker">SECTION 03 // VS THE TOUTS</div>
+        <div className="vs-kicker">SECTION 05 // VS THE TOUTS</div>
         <h2 id="vs-heading" className="vs-headline">Built the opposite way<br /><span className="vs-headline-accent">from a tout.</span></h2>
         <p className="vs-sub">Picks services sell certainty they can't back. We hand operators the receipts and the system — and never the lie.</p>
         <div className="vs-table" role="table" aria-label="Risk Matrix Labs versus a typical picks service">
@@ -274,7 +289,7 @@ export default function LandingPage({ onLogin }) {
       </section>
 
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 04 // HOW IT WORKS</span>
+        <span className="rl-label rl-kick">SECTION 06 // HOW IT WORKS</span>
         <h2 className="rl-h2">Scan. Grade.<br /><span className="rl-g">Decide.</span></h2>
         <div style={{ marginTop: 18 }}>
           {STEPS.map(([n, t, d]) => (
@@ -286,7 +301,7 @@ export default function LandingPage({ onLogin }) {
       <section className="rl-mani"><h2 className="rl-h2">We build for <span className="rl-g">operators.</span><br />Not gamblers.</h2></section>
 
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 05 // PRICING</span>
+        <span className="rl-label rl-kick">SECTION 07 // PRICING</span>
         <h2 className="rl-h2">One price.<br /><span className="rl-g">Everything in.</span></h2>
         <div className="rl-price rl-reveal">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}><span className="rl-amt">$29</span><span className="rl-per">/month</span></div>
@@ -593,4 +608,87 @@ const CSS = `
 #rml-landing .vs-bad::after{transform:rotate(-45deg)}
 #rml-landing .vs-foot{margin:24px 0 0;font-size:12.5px;line-height:1.5;color:#9DA39A}
 #rml-landing .vs-foot-key{font-family:var(--rl-m);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#BDFF00;margin-right:6px}
+
+/* full-screen renders fit flush inside the terminal frame */
+#rml-landing .rl-frame .gcf-screen,#rml-landing .rl-frame .mbf-screen{max-width:none;width:100%;min-height:auto;border:none;border-radius:0;background:#0A0A0A}
+#rml-landing .rl-dash-shot{width:100%;display:block;-webkit-mask-image:linear-gradient(#000 86%,transparent);mask-image:linear-gradient(#000 86%,transparent)}
+
+/* ── Game Center full screen ── */
+#rml-landing .gcf-screen{color:#F2F4F0;font-family:var(--rl-b);padding:12px 12px 16px;display:flex;flex-direction:column;gap:12px}
+#rml-landing .gcf-spotlight{display:flex;align-items:center;gap:7px;background:#101110;border:1px solid #1E211F;border-radius:8px;padding:8px 10px;overflow:hidden;white-space:nowrap}
+#rml-landing .gcf-hex{width:12px;height:12px;flex:none;background:#BDFF00;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}
+#rml-landing .gcf-spot-label{font-family:var(--rl-d);font-weight:700;font-size:12px;letter-spacing:.12em;color:#BDFF00}
+#rml-landing .gcf-spot-count{font-family:var(--rl-m);font-size:11px;color:#9DA39A}
+#rml-landing .gcf-beta,#rml-landing .gcf-lbeta{font-family:var(--rl-m);font-size:8px;font-weight:700;letter-spacing:.1em;color:#0A0A0A;background:#BDFF00;border-radius:3px;padding:2px 4px}
+#rml-landing .gcf-spot-lean{font-family:var(--rl-m);font-size:11px;color:#9DA39A;margin-left:2px;overflow:hidden;text-overflow:ellipsis}
+#rml-landing .gcf-spot-lean b{color:#F2F4F0}
+#rml-landing .gcf-rank{color:#BDFF00}
+#rml-landing .gcf-chips{display:flex;gap:7px;flex-wrap:wrap}
+#rml-landing .gcf-chip{font-family:var(--rl-b);font-size:12px;font-weight:500;color:#9DA39A;background:#161817;border:1px solid #2A2E2B;border-radius:999px;padding:5px 12px;display:flex;align-items:center;gap:5px}
+#rml-landing .gcf-chip-on{color:#BDFF00;border-color:#BDFF00;background:rgba(189,255,0,.08);font-weight:700}
+#rml-landing .gcf-chip-live{color:#FF5C5C}
+#rml-landing .gcf-livedot{width:6px;height:6px;border-radius:50%;background:#FF5C5C;flex:none}
+#rml-landing .gcf-dates{display:flex;gap:16px;border-bottom:1px solid #1E211F;padding-bottom:8px}
+#rml-landing .gcf-date{font-family:var(--rl-d);font-weight:600;font-size:12px;letter-spacing:.1em;color:#878D85;padding-bottom:6px;position:relative}
+#rml-landing .gcf-date-on{color:#F2F4F0}
+#rml-landing .gcf-date-on::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:2px;background:#BDFF00}
+#rml-landing .gcf-card{background:#101110;border:1px solid #2A2E2B;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+#rml-landing .gcf-card-head{display:flex;align-items:center;gap:8px}
+#rml-landing .gcf-tag{font-family:var(--rl-d);font-weight:700;font-size:10px;letter-spacing:.12em;color:#9DA39A;background:#161817;border:1px solid #1E211F;border-radius:4px;padding:2px 6px}
+#rml-landing .gcf-livepill{display:flex;align-items:center;gap:5px;font-family:var(--rl-m);font-size:9px;font-weight:700;letter-spacing:.1em;color:#FF5C5C;border:1px solid rgba(255,92,92,.4);border-radius:4px;padding:2px 6px}
+#rml-landing .gcf-inning{margin-left:auto;font-family:var(--rl-m);font-size:11px;color:#9DA39A}
+#rml-landing .gcf-time{margin-left:auto;font-family:var(--rl-m);font-size:12px;color:#9DA39A}
+#rml-landing .gcf-matchup{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+#rml-landing .gcf-team{display:flex;align-items:center;gap:8px;min-width:0}
+#rml-landing .gcf-team-r{justify-content:flex-end}
+#rml-landing .gcf-logo{width:30px;height:30px;border-radius:50%;background:#161817;display:flex;align-items:center;justify-content:center;flex:none}
+#rml-landing .gcf-logo img{width:22px;height:22px;object-fit:contain}
+#rml-landing .gcf-abbr{font-family:var(--rl-d);font-weight:700;font-size:17px;color:#F2F4F0}
+#rml-landing .gcf-rec{font-family:var(--rl-m);font-size:11px;color:#878D85;font-variant-numeric:tabular-nums}
+#rml-landing .gcf-score{display:flex;align-items:center;gap:8px}
+#rml-landing .gcf-sc{font-family:var(--rl-m);font-size:22px;font-weight:700;color:#F2F4F0;font-variant-numeric:tabular-nums}
+#rml-landing .gcf-diamonds{font-size:9px;color:#BDFF00;letter-spacing:1px}
+#rml-landing .gcf-soon{font-family:var(--rl-m);font-size:15px;font-weight:600;color:#9DA39A}
+#rml-landing .gcf-odds{display:flex;align-items:center;gap:7px;justify-content:center;font-family:var(--rl-m);font-size:11px;color:#878D85;border-top:1px solid #1E211F;padding-top:9px;font-variant-numeric:tabular-nums}
+#rml-landing .gcf-odds b{color:#F2F4F0;font-weight:700}
+#rml-landing .gcf-dot{color:#2A2E2B}
+#rml-landing .gcf-pitch{font-family:var(--rl-b);font-size:11px;color:#9DA39A;text-align:center}
+#rml-landing .gcf-vs{color:#878D85}
+#rml-landing .gcf-leanrow{display:flex;align-items:center;gap:8px}
+#rml-landing .gcf-lean{display:inline-flex;align-items:center;gap:6px;font-family:var(--rl-m);font-size:11px;font-weight:700;color:#BDFF00;background:rgba(189,255,0,.08);border:1px solid rgba(189,255,0,.35);border-radius:6px;padding:4px 8px}
+#rml-landing .gcf-result{font-family:var(--rl-m);font-size:11px;font-weight:700;color:#5BE38B}
+
+/* ── Matrix Bot full screen ── */
+#rml-landing .mbf-screen{min-height:auto;padding:14px 12px 12px;display:flex;flex-direction:column;gap:12px;font-family:var(--rl-b);color:#F2F4F0}
+#rml-landing .mbf-tabs{display:flex;gap:6px}
+#rml-landing .mbf-tab{flex:1;text-align:center;font-family:var(--rl-d);font-weight:600;font-size:11px;letter-spacing:.06em;color:#878D85;background:#101110;border:1px solid #1E211F;border-radius:9px;padding:9px 4px}
+#rml-landing .mbf-tab-on{color:#BDFF00;border-color:#BDFF00;background:#161817;box-shadow:inset 0 0 0 1px rgba(189,255,0,.25)}
+#rml-landing .mbf-strip{display:flex;align-items:center;justify-content:space-between;padding:0 2px}
+#rml-landing .mbf-dates{display:flex;gap:6px}
+#rml-landing .mbf-chip{font-family:var(--rl-m);font-size:11px;color:#9DA39A;background:#101110;border:1px solid #1E211F;border-radius:7px;padding:5px 10px}
+#rml-landing .mbf-chip-on{color:#F2F4F0;background:#161817;border-color:#2A2E2B}
+#rml-landing .mbf-sports{display:flex;gap:6px}
+#rml-landing .mbf-sport{font-family:var(--rl-d);font-weight:600;font-size:11px;letter-spacing:.04em;color:#878D85;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#101110;border:1px solid #1E211F}
+#rml-landing .mbf-sport-on{color:#BDFF00;border-color:#BDFF00;background:#161817}
+#rml-landing .mbf-body{display:flex;flex-direction:column;gap:8px;flex:1}
+#rml-landing .mbf-player{background:#101110;border:1px solid #1E211F;border-radius:13px}
+#rml-landing .mbf-player-open{border-color:#2A2E2B}
+#rml-landing .mbf-phead{display:flex;align-items:center;gap:10px;padding:11px 12px}
+#rml-landing .mbf-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--rl-d);font-weight:700;font-size:13px;flex-shrink:0}
+#rml-landing .mbf-pmeta{flex:1;min-width:0}
+#rml-landing .mbf-pname{font-family:var(--rl-d);font-weight:600;font-size:15px;color:#F2F4F0;line-height:1.1}
+#rml-landing .mbf-pteam{font-family:var(--rl-m);font-size:10px;color:#878D85;letter-spacing:.04em;margin-top:2px}
+#rml-landing .mbf-count{font-family:var(--rl-m);font-size:10px;color:#9DA39A}
+#rml-landing .mbf-chev{font-size:13px;color:#878D85}
+#rml-landing .mbf-props{display:flex;flex-direction:column;gap:7px;padding:0 10px 11px}
+#rml-landing .mbf-prop{display:flex;align-items:center;justify-content:space-between;background:#161817;border:1px solid #1E211F;border-radius:10px;padding:9px 10px}
+#rml-landing .mbf-stat{display:flex;flex-direction:column;gap:2px}
+#rml-landing .mbf-statname{font-family:var(--rl-d);font-weight:600;font-size:13px;color:#F2F4F0}
+#rml-landing .mbf-line{font-family:var(--rl-m);font-size:11px;color:#9DA39A;font-variant-numeric:tabular-nums}
+#rml-landing .mbf-prices{display:flex;align-items:center;gap:6px}
+#rml-landing .mbf-price{display:inline-flex;align-items:center;gap:2px;font-family:var(--rl-m);font-size:12px;font-variant-numeric:tabular-nums;color:#9DA39A;background:#0A0A0A;border:1px solid #2A2E2B;border-radius:7px;padding:5px 8px}
+#rml-landing .mbf-ar{font-size:9px;opacity:.7}
+#rml-landing .mbf-price-best{color:#5BE38B;border-color:rgba(91,227,139,.45);background:rgba(91,227,139,.08)}
+#rml-landing .mbf-ev{font-family:var(--rl-m);font-weight:700;font-size:12px;color:#0A0A0A;background:#BDFF00;border-radius:7px;padding:5px 8px;font-variant-numeric:tabular-nums}
+#rml-landing .mbf-foot{text-align:center;font-family:var(--rl-m);font-size:9.5px;letter-spacing:.12em;color:#878D85;padding:4px 0 2px}
 `
