@@ -15,7 +15,7 @@ const TICKER = [
 ]
 
 const BENTO = [
-  { tag: 'FREE', label: 'GAME CENTER', title: 'See the edge', desc: 'Open any game at $0 — live odds, line movement since open, win probability, and the by-sportsbook chart.', ph: '[ GAME CENTER ]' },
+  { tag: 'FREE', label: 'GAME CENTER', title: 'See the edge', desc: 'Open any game — live odds, line movement since open, win probability, and the by-sportsbook chart.', ph: '[ GAME CENTER ]' },
   { tag: 'EV', label: 'MATRIX BOT', title: 'Grade the bet', desc: 'Player props grouped by player, best price across books, and the EV edge on every line — at a glance.', ph: '[ PROPS BY PLAYER ]' },
   { tag: 'GRADED', label: 'SPOTLIGHT + KBO', title: 'Trust the read', desc: 'Over/under models ranked by conviction — every lean snapshotted and graded in public, wins and misses.', ph: '[ SPOTLIGHT ]' },
   { tag: null, label: 'CH3 · BEAT THE CLOSE', title: 'Track CLV', desc: 'Log a play and we grade it on closing-line value — the truest measure of whether a bet was actually sharp.', ph: null },
@@ -28,14 +28,14 @@ const RECORD_ROWS = [
 ]
 
 const STEPS = [
-  ['01', 'See the edge', 'Open any game free — live odds, movement since open, win probability, by-sportsbook chart.'],
+  ['01', 'See the edge', 'Open any game — live odds, movement since open, win probability, by-sportsbook chart.'],
   ['02', 'Grade the bet', "Models and EV scoring show where value is — and where it isn't. Every read shown honestly."],
   ['03', 'Check the record', 'Every lean graded in public — wins and misses, today, yesterday, all-time.'],
   ['04', 'Operate with discipline', 'Size every bet, run the ladder, track CLV. Act on real edges — not on tilt.'],
 ]
 
 const PRICE_FEATURES = [
-  'Free live odds + Game Center', 'Spotlight O/U models', 'Player props by player',
+  'Live odds + Game Center', 'Spotlight O/U models', 'Player props by player',
   'EV + CLV tracking', 'Line movement + line shop', 'PHLT™ ladder + sizing',
   'Public model record', 'All future features',
 ]
@@ -89,7 +89,7 @@ export default function LandingPage({ onLogin }) {
         <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
         <div className="rl-navcta">
           <button onClick={open} className="rl-navlogin">Log In</button>
-          <a href="/pricing" className="rl-navtrial">Start Free</a>
+          <a href="/pricing" className="rl-navtrial">Start Trial</a>
         </div>
       </nav>
 
@@ -99,10 +99,10 @@ export default function LandingPage({ onLogin }) {
           <h1 className="rl-h1">Operate with<br /><span className="rl-g">discipline.</span></h1>
           <p className="rl-hsub"><b>We don't sell picks. We show the numbers.</b> Free live odds, models that show their record — wins and misses — and the discipline to act. The decisions are yours.</p>
           <div className="rl-cta-row">
-            <a href="/pricing" className="rl-btn rl-btn-lg">Start free →</a>
+            <a href="/pricing" className="rl-btn rl-btn-lg">Start trial →</a>
             <a href="#rl-record" className="rl-btn rl-btn-lg rl-btn-ghost">See the record</a>
           </div>
-          <div className="rl-fine">$0 to start · 3 days free · $29/mo after · cancel anytime</div>
+          <div className="rl-fine">3-day free trial · $29/mo or $149/yr · cancel anytime</div>
 
           <div className="rl-frame">
             <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" />
@@ -118,7 +118,7 @@ export default function LandingPage({ onLogin }) {
         {ticker.map(([t, r], i) => <span className="rl-tk" key={i}><span className="rl-dot" />{t} <span className={r === 'hit' ? 'rl-hit' : 'rl-miss'}>{r === 'hit' ? '✓ HIT' : '✗ MISS'}</span></span>)}
       </div></div>
 
-      <div className="rl-trust">FREE LIVE ODDS · EV ENGINE · LINE MOVEMENT · KBO · <b>NO PICKS, NO HYPE</b></div>
+      <div className="rl-trust">LIVE ODDS · EV ENGINE · LINE MOVEMENT · KBO · <b>NO PICKS, NO HYPE</b></div>
 
       <section className="rl-sect">
         <div className="rl-stats rl-reveal">
@@ -131,8 +131,8 @@ export default function LandingPage({ onLogin }) {
       {/* ── FEATURE 1 — GAME CENTER (hero) ── */}
       <section className="rl-sect">
         <span className="rl-label rl-kick">THE TABS // 01 · GAME CENTER</span>
-        <h2 className="rl-h2">See the edge.<br /><span className="rl-g">Free.</span></h2>
-        <p className="rl-sub">Open any game at $0 — live odds, win probability, and line movement since open across every sportsbook. The whole board, before you risk a dollar.</p>
+        <h2 className="rl-h2">See the<br /><span className="rl-g">edge.</span></h2>
+        <p className="rl-sub">Open any game — live odds, win probability, and line movement since open across every sportsbook. The whole board, before you place a bet.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
           <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://game-center</span><span className="rl-live"><span className="rl-ld" />LIVE</span></div>
           <img className="rl-screenshot" src="/brand/screenshots/sc-game-detail.jpg" alt="Risk Matrix Labs game insights" loading="lazy" />
@@ -179,9 +179,9 @@ export default function LandingPage({ onLogin }) {
             <img className="rl-cell-shot" src="/brand/screenshots/sc-spotlight.jpg" alt="Spotlight — ranked O/U model leans" loading="lazy" />
           </div>
           <div className="rl-cell rl-reveal">
-            <span className="rl-tag">FREE</span><span className="rl-label">KBO · OVERNIGHT</span>
+            <span className="rl-tag">BETA</span><span className="rl-label">KBO · OVERNIGHT</span>
             <div className="rl-ci">Korea, while MLB sleeps</div>
-            <p>A free overnight O/U scan on Korean baseball — park + weather model, self-grading, today and yesterday.</p>
+            <p>An overnight O/U scan on Korean baseball — park + weather model, self-grading, today and yesterday.</p>
             <img className="rl-cell-shot" src="/brand/screenshots/sc-kbo.jpg" alt="KBO overnight model leans" loading="lazy" />
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function LandingPage({ onLogin }) {
           {[
             ['Do you sell picks?', "No. We never sell picks and we never will. Our models surface where there may be value, and we grade every lean in public — wins and misses. We give you the numbers and the discipline; the decisions are yours."],
             ['Do you guarantee wins?', "No — and anyone who does is lying. Our models are continuously back-tested and still calibrating, and we show the real record, good and bad. We sell honesty and discipline, not a crystal ball."],
-            ['Is it free?', "Opening any game is $0 — live odds and the board, no card. Full access (props, EV, models, bankroll system) is $29/mo or $149/yr with a 3-day free trial."],
+            ['How much does it cost?', "$29/mo or $149/yr (saves vs monthly), with a 3-day free trial — no charge until day 4. Full access to props, EV, the models, line-shopping, and the bankroll system."],
             ['How does the free trial work?', "3 days free — no charge until day 4. You see the exact billing date and amount before you enter a card. Cancel anytime, no questions."],
             ['Does it work on mobile?', "Yes — built mobile-first. Open the board, grade props, run the ladder from your phone; everything syncs across your devices."],
           ].map(([q, a], i) => (
