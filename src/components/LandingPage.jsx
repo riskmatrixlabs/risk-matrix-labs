@@ -361,10 +361,9 @@ const CSS = `
 #rml-landing::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   background-color:var(--rl-bg-0);
   background-image:
-    radial-gradient(700px circle at 74% 13%, rgba(189,255,0,.08), transparent 60%),
-    radial-gradient(440px circle at 5% 80%, rgba(189,255,0,.05), transparent 60%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='48'%3E%3Cpolygon points='28,2 52,14 52,34 28,46 4,34 4,14' fill='none' stroke='%23BDFF00' stroke-width='0.6' opacity='0.08'/%3E%3C/svg%3E"),
-    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.03) 2px 4px);
+    radial-gradient(620px circle at 78% 8%, rgba(189,255,0,.035), transparent 62%),
+    radial-gradient(380px circle at 4% 82%, rgba(189,255,0,.022), transparent 62%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='56'%3E%3Cpolygon points='32,2 60,16 60,40 32,54 4,40 4,16' fill='none' stroke='%23BDFF00' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
   background-repeat:no-repeat,no-repeat,repeat,repeat;
 }
 #rml-landing > *{position:relative;z-index:1}
