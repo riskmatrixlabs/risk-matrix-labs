@@ -86,7 +86,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
         <div className="rl-navcta">
           <button onClick={open} className="rl-navlogin">Log In</button>
           <a href="/pricing" className="rl-navtrial">Start Free</a>
@@ -326,7 +326,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram"><FaInstagram /></a>
@@ -387,7 +387,7 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{height:38px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-mark{height:52px;width:auto;display:block;object-fit:contain}
 #rml-landing .rl-navcta{display:flex;align-items:center;gap:12px}
 #rml-landing .rl-navlogin{background:none;border:none;cursor:pointer;font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--rl-ink-1);padding:6px 2px}
 #rml-landing .rl-navlogin:hover{color:var(--rl-ink-0)}
