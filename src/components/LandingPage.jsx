@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import LandingPageV1 from './LandingPageV1'
 
 // ─── Risk Matrix Labs — landing page. Dark "trading terminal" aesthetic: neon (#BDFF00)
 // rationed as the signal, grain + masked-grid atmosphere, mono microtype for machine data,
@@ -54,6 +55,10 @@ function CookieBanner() {
 }
 
 export default function LandingPage({ onLogin }) {
+  // ?old=1 → the original v1 landing (dope background, original layout) for side-by-side comparison.
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('old') === '1') {
+    return <LandingPageV1 onLogin={onLogin} />
+  }
   const open = (e) => { if (onLogin) { e?.preventDefault?.(); onLogin() } }
 
   // Ticker fill + scroll-reveal + count-up — all CSS-light, runs once after mount.
