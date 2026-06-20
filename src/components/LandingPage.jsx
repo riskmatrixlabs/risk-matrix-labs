@@ -89,7 +89,7 @@ export default function LandingPage({ onLogin }) {
         <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
         <div className="rl-navcta">
           <button onClick={open} className="rl-navlogin">Log In</button>
-          <a href="/pricing" className="rl-navtrial">Start Free Trial</a>
+          <a href="/pricing" className="rl-navtrial">Start Free</a>
         </div>
       </nav>
 
@@ -391,7 +391,7 @@ const CSS = `
 #rml-landing .rl-navcta{display:flex;align-items:center;gap:12px}
 #rml-landing .rl-navlogin{background:none;border:none;cursor:pointer;font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--rl-ink-1);padding:6px 2px}
 #rml-landing .rl-navlogin:hover{color:var(--rl-ink-0)}
-#rml-landing .rl-navtrial{font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rl-signal);text-decoration:none;border:1px solid var(--rl-signal);border-radius:5px;padding:8px 14px;transition:background .15s,color .15s}
+#rml-landing .rl-navtrial{font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--rl-signal);text-decoration:none;border:1px solid var(--rl-signal);border-radius:5px;padding:8px 14px;white-space:nowrap;transition:background .15s,color .15s}
 #rml-landing .rl-navtrial:hover{background:var(--rl-signal);color:var(--rl-bg-0)}
 #rml-landing .rl-logotext{display:flex;flex-direction:column;line-height:1}
 #rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:17px;letter-spacing:.2em;color:var(--rl-signal)}
