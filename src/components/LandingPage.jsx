@@ -719,7 +719,8 @@ const CSS = `
 #rml-landing .rl-cta-row,#rml-landing .rl-rg,#rml-landing .rl-socials{justify-content:center}
 #rml-landing .rl-step{flex-direction:column;align-items:center;text-align:center;gap:6px}
 #rml-landing .rl-cell{text-align:center}
-#rml-landing .rl-foot-brand{align-items:center}
+#rml-landing .rl-foot-brand{display:flex;flex-direction:column;align-items:center;text-align:center}
+#rml-landing .rl-foot-brand .rl-brand{justify-content:center}
 #rml-landing .rl-foot-cols{justify-items:center;text-align:center}
 #rml-landing .rl-fnote{align-items:center}
 /* keep data tables / UI panels left-aligned for readability */
