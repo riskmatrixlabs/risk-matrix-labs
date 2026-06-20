@@ -415,20 +415,20 @@ export default function LandingPage({ onLogin }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center' }} className="lp-hero-grid">
             <div>
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <Pill>The Bankroll Simulator</Pill>
+                <Pill>Graded in public</Pill>
               </motion.div>
 
               <motion.h1
                 initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 style={{ fontFamily: R, fontWeight: 700, fontSize: 'clamp(40px, 5.5vw, 70px)', letterSpacing: '-0.01em', lineHeight: 1.04, margin: '22px 0 18px', color: '#fff' }}
               >
-                Simulate. Execute.<br />
-                <span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.2)' }}>Operate With Discipline.</span>
+                No locks. No hype.<br />
+                <span style={{ color: NEON, textShadow: '0 0 40px rgba(189,255,0,0.2)' }}>Just the numbers — graded in public.</span>
               </motion.h1>
 
               <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.18 }}
                 style={{ fontFamily: I, fontSize: '16px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.75, marginBottom: '32px', maxWidth: '440px' }}>
-                The bankroll simulator built for operators who run a system. Model your edge, size every bet, and grade every session — with the discipline tools of a real operator.
+                Free live odds, EV-graded bets, and an honest track record — wins and misses. Built for operators who run a system, not gamblers chasing locks.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.26 }}>
@@ -437,12 +437,12 @@ export default function LandingPage({ onLogin }) {
                   onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)' }}
                   onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)' }}
                 >Start My Free Trial →</a>
-                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>3 days free · $29/mo or $149/yr after · cancel anytime</div>
+                <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.2)', marginTop: '10px' }}>$0 to start · 3 days free · $29/mo or $149/yr after · cancel anytime</div>
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.44 }}
                 style={{ display: 'flex', gap: '32px', marginTop: '44px', paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                {[['6', 'Core Modules'], ['100pt', 'Discipline Score™'], ['PHLT™', 'Ladder System']].map(([val, label]) => (
+                {[['FREE', 'Live odds'], ['PUBLIC', 'Graded record'], ['$0', 'To start']].map(([val, label]) => (
                   <div key={label}>
                     <div style={{ fontFamily: R, fontSize: '22px', fontWeight: 700, color: NEON }}>{val}</div>
                     <div style={{ fontFamily: I, fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '0.06em' }}>{label}</div>
