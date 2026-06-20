@@ -84,7 +84,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+        <div className="rl-brand"><img className="rl-logo-full" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -105,7 +105,7 @@ export default function LandingPage({ onLogin }) {
               <span className="rl-path">rml://game-center/live</span>
               <span className="rl-live"><span className="rl-ld" />LIVE</span>
             </div>
-            <img className="rl-screenshot" src="/brand/screenshots/sc-game-detail.jpg" alt="Risk Matrix Labs game insights — odds, model and weather" loading="lazy" />
+            <img className="rl-screenshot" src="/brand/screenshots/sc-game-center.jpg" alt="Risk Matrix Labs Game Center" loading="lazy" />
           </div>
         </div>
       </header>
@@ -131,7 +131,7 @@ export default function LandingPage({ onLogin }) {
         <p className="rl-sub">Open any game at $0 — live odds, win probability, and line movement since open across every sportsbook. The whole board, before you risk a dollar.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
           <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://game-center</span><span className="rl-live"><span className="rl-ld" />LIVE</span></div>
-          <img className="rl-screenshot" src="/brand/screenshots/sc-game-center.jpg" alt="Risk Matrix Labs Game Center — live games and odds" loading="lazy" />
+          <img className="rl-screenshot" src="/brand/screenshots/sc-game-detail.jpg" alt="Risk Matrix Labs game insights" loading="lazy" />
         </div>
       </section>
 
@@ -322,7 +322,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+            <div className="rl-brand"><img className="rl-logo-full" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
@@ -381,6 +381,7 @@ const CSS = `
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
 #rml-landing .rl-mark{height:34px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-logo-full{height:46px;width:auto;display:block;object-fit:contain}
 #rml-landing .rl-logotext{display:flex;flex-direction:column;line-height:1}
 #rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--rl-signal)}
 #rml-landing .rl-lt2{font-family:var(--rl-d);font-size:8px;letter-spacing:.3em;color:rgba(189,255,0,.45);margin-top:2px}
