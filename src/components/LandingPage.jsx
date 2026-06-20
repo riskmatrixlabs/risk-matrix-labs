@@ -100,7 +100,33 @@ export default function LandingPage({ onLogin }) {
               <span className="rl-path">rml://game-center/live</span>
               <span className="rl-live"><span className="rl-ld" />LIVE</span>
             </div>
-            <div className="rl-shot"><div className="rl-ph" style={{ height: 150 }}>[ GAME CENTER SCREENSHOT ]<br />live odds · win prob · line movement</div></div>
+            <div className="rl-shot">
+              <div className="gc-card">
+                <div className="gc-row gc-matchup">
+                  <div className="gc-team gc-team-away">
+                    <span className="gc-logo gc-logo-laa">LAA</span>
+                    <span className="gc-team-meta"><span className="gc-abbr">LAA</span><span className="gc-record">30-46</span></span>
+                  </div>
+                  <div className="gc-center">
+                    <div className="gc-score"><span className="gc-runs">10</span><span className="gc-bases">◆◆</span><span className="gc-runs">4</span></div>
+                    <div className="gc-inning"><span className="gc-live-dot" /><span className="gc-inning-arrow">▲</span><span className="gc-inning-num">5th</span></div>
+                  </div>
+                  <div className="gc-team gc-team-home">
+                    <span className="gc-team-meta"><span className="gc-abbr">ATH</span><span className="gc-record">37-38</span></span>
+                    <span className="gc-logo gc-logo-ath">ATH</span>
+                  </div>
+                </div>
+                <div className="gc-row gc-odds">
+                  <span className="gc-odds-cell"><span className="gc-odds-label">ML</span><span className="gc-odds-val gc-pos">+101</span></span>
+                  <span className="gc-odds-cell gc-odds-total"><span className="gc-odds-label">O/U</span><span className="gc-odds-val">8.5</span></span>
+                  <span className="gc-odds-cell"><span className="gc-odds-label">ML</span><span className="gc-odds-val">-122</span></span>
+                </div>
+                <div className="gc-row gc-footer">
+                  <span className="gc-pitchers"><span className="gc-pitcher">Kevin Gausman</span><span className="gc-vs">vs</span><span className="gc-pitcher">Ben Brown</span></span>
+                  <span className="gc-lean"><span className="gc-lean-tag">BETA</span><span className="gc-lean-flag">⚐</span><span className="gc-lean-text">OVER 6.5</span></span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -113,9 +139,9 @@ export default function LandingPage({ onLogin }) {
 
       <section className="rl-sect">
         <div className="rl-stats rl-reveal">
-          <div className="rl-stat"><div className="rl-n rl-acc rl-mono" data-to="248">0</div><div className="rl-l">leans graded</div></div>
-          <div className="rl-stat"><div className="rl-n rl-mono" data-to="0">0</div><div className="rl-l">credits / scan</div></div>
-          <div className="rl-stat"><div className="rl-n rl-mono">3</div><div className="rl-l">free models</div></div>
+          <div className="rl-stat"><div className="rl-n rl-acc rl-mono">289K+</div><div className="rl-l">odds tracked</div></div>
+          <div className="rl-stat"><div className="rl-n rl-mono">27–21</div><div className="rl-l">Spotlight O/U</div></div>
+          <div className="rl-stat"><div className="rl-n rl-mono">39K+</div><div className="rl-l">prop lines</div></div>
         </div>
       </section>
 
@@ -124,15 +150,60 @@ export default function LandingPage({ onLogin }) {
         <h2 className="rl-h2">An edge platform.<br /><span className="rl-g">Not a tout.</span></h2>
         <p className="rl-sub">Everything an operator needs to find value and act on it with discipline — free where it can be, honest everywhere.</p>
         <div className="rl-bento">
-          {BENTO.map((c, i) => (
-            <div className="rl-cell rl-reveal" key={i}>
-              {c.tag && <span className="rl-tag">{c.tag}</span>}
-              <span className="rl-label">{c.label}</span>
-              <div className="rl-ci">{c.title}</div>
-              <p>{c.desc}</p>
-              {c.ph && <div className="rl-ph" style={{ height: 96, marginTop: 14 }}>{c.ph}</div>}
+          <div className="rl-cell rl-reveal">
+            <span className="rl-tag">FREE</span><span className="rl-label">GAME CENTER</span>
+            <div className="rl-ci">See the edge</div>
+            <p>Open any game at $0 — live odds, line movement since open, win probability, and the by-sportsbook chart.</p>
+          </div>
+          <div className="rl-cell rl-reveal">
+            <span className="rl-tag">EV</span><span className="rl-label">MATRIX BOT</span>
+            <div className="rl-ci">Grade the bet</div>
+            <p>Player props grouped by player, best price across books, and the EV edge on every line — at a glance.</p>
+            <div style={{ marginTop: 14 }}>
+              <div className="pp-panel">
+                <div className="pp-head"><span className="pp-head-label">MATRIX BOT</span><span className="pp-head-sub">PLAYER PROPS</span><span className="pp-beta">BETA</span></div>
+                <div className="pp-player pp-open">
+                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#1D9E75' }}>GS</span><div className="pp-pid"><span className="pp-name">G. Springer</span><span className="pp-team">TOR · CF</span></div><span className="pp-chev">▾</span></div>
+                  <div className="pp-prop"><span className="pp-stat">Hits 1.5</span><div className="pp-prices"><span className="pp-best">▲ +110</span><span className="pp-alt">▼ -130</span><span className="pp-ev">+4.2%</span></div></div>
+                  <div className="pp-prop"><span className="pp-stat">Total Bases 2.5</span><div className="pp-prices"><span className="pp-best">▲ +135</span><span className="pp-alt">▼ -155</span><span className="pp-ev">+2.1%</span></div></div>
+                </div>
+                <div className="pp-player">
+                  <div className="pp-prow"><span className="pp-ava" style={{ background: '#534AB7' }}>VG</span><div className="pp-pid"><span className="pp-name">V. Guerrero Jr.</span><span className="pp-team">TOR · 1B</span></div><span className="pp-count">3 props</span><span className="pp-chev">›</span></div>
+                </div>
+              </div>
             </div>
-          ))}
+          </div>
+          <div className="rl-cell rl-reveal">
+            <span className="rl-tag">GRADED</span><span className="rl-label">SPOTLIGHT + KBO</span>
+            <div className="rl-ci">Trust the read</div>
+            <p>Over/under models ranked by conviction — every lean snapshotted and graded in public, wins and misses.</p>
+            <div style={{ marginTop: 14 }}>
+              <div className="sp-panel">
+                <div className="sp-head"><span className="sp-head-label">SPOTLIGHT</span><span className="sp-head-sub">O/U MODEL · TODAY</span><span className="sp-beta">BETA</span></div>
+                <div className="sp-row">
+                  <span className="sp-rank">#1</span>
+                  <div className="sp-main">
+                    <div className="sp-line"><span className="sp-match">BAL@LAD</span><span className="sp-side sp-over">OVER 8.5</span><span className="sp-tag">LINE 8.5</span><span className="sp-tag sp-edge">EDGE +1.2</span></div>
+                    <div className="sp-meta"><span className="sp-hit">✓ 3 v 8.5</span><span className="sp-dot">·</span><span className="sp-factors">2 FACTORS</span></div>
+                  </div>
+                  <span className="sp-slip">+ SLIP</span>
+                </div>
+                <div className="sp-row sp-row-graded">
+                  <span className="sp-rank sp-rank-dim">#2</span>
+                  <div className="sp-main">
+                    <div className="sp-line"><span className="sp-match">SD@SF</span><span className="sp-side sp-under">UNDER 7.5</span><span className="sp-tag">LINE 7.5</span><span className="sp-tag sp-miss">MISS</span></div>
+                    <div className="sp-meta"><span className="sp-miss-txt">✗ FINAL 9</span><span className="sp-dot">·</span><span className="sp-factors">1 FACTOR</span></div>
+                  </div>
+                  <span className="sp-result">GRADED</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="rl-cell rl-reveal">
+            <span className="rl-label">CH3 · BEAT THE CLOSE</span>
+            <div className="rl-ci">Track CLV</div>
+            <p>Log a play and we grade it on closing-line value — the truest measure of whether a bet was actually sharp.</p>
+          </div>
         </div>
       </section>
 
@@ -143,9 +214,9 @@ export default function LandingPage({ onLogin }) {
         <div className="rl-board rl-reveal">
           <div className="rl-board-h"><span className="rl-bt">Spotlight · model record</span><span className="rl-live"><span className="rl-ld" />LIVE</span></div>
           <div className="rl-bstats">
-            <div className="rl-bstat"><div className="rl-bn rl-mono">12–13</div><div className="rl-bl">all-time</div></div>
-            <div className="rl-bstat"><div className="rl-bn rl-mono">2–1</div><div className="rl-bl">yesterday</div></div>
-            <div className="rl-bstat"><div className="rl-bn rl-mono">48%</div><div className="rl-bl">hit rate</div></div>
+            <div className="rl-bstat"><div className="rl-bn rl-mono">27–21</div><div className="rl-bl">all-time</div></div>
+            <div className="rl-bstat"><div className="rl-bn rl-mono">5–3</div><div className="rl-bl">yesterday</div></div>
+            <div className="rl-bstat"><div className="rl-bn rl-mono">56%</div><div className="rl-bl">hit rate</div></div>
           </div>
           {RECORD_ROWS.map((r, i) => (
             <div className="rl-row" key={i}>
@@ -158,8 +229,52 @@ export default function LandingPage({ onLogin }) {
         </div>
       </section>
 
+      <section id="vs-touts" className="vs-section" aria-labelledby="vs-heading">
+        <div className="vs-kicker">SECTION 03 // VS THE TOUTS</div>
+        <h2 id="vs-heading" className="vs-headline">Built the opposite way<br /><span className="vs-headline-accent">from a tout.</span></h2>
+        <p className="vs-sub">Picks services sell certainty they can't back. We hand operators the receipts and the system — and never the lie.</p>
+        <div className="vs-table" role="table" aria-label="Risk Matrix Labs versus a typical picks service">
+          <div className="vs-colhead" role="row">
+            <div className="vs-colhead-spacer" role="columnheader" />
+            <div className="vs-colhead-rml" role="columnheader"><span className="vs-brand-mark">RML</span><span className="vs-colhead-tag">Operator</span></div>
+            <div className="vs-colhead-tout" role="columnheader"><span className="vs-tout-mark">Typical</span><span className="vs-colhead-tag">Picks service</span></div>
+          </div>
+          <div className="vs-row" role="row">
+            <div className="vs-criterion" role="cell">Sells picks &amp; "locks"</div>
+            <div className="vs-cell vs-cell-rml" role="cell"><span className="vs-mark vs-no" aria-hidden="true" /><span className="vs-val">Never. We don't sell picks.</span></div>
+            <div className="vs-cell vs-cell-tout" role="cell"><span className="vs-mark vs-bad" aria-hidden="true" /><span className="vs-val">It's the whole business.</span></div>
+          </div>
+          <div className="vs-row" role="row">
+            <div className="vs-criterion" role="cell">Real graded record — wins <em>and</em> losses</div>
+            <div className="vs-cell vs-cell-rml" role="cell"><span className="vs-mark vs-yes" aria-hidden="true" /><span className="vs-val">Public. All of it.</span></div>
+            <div className="vs-cell vs-cell-tout" role="cell"><span className="vs-mark vs-bad" aria-hidden="true" /><span className="vs-val">Losses quietly deleted.</span></div>
+          </div>
+          <div className="vs-row" role="row">
+            <div className="vs-criterion" role="cell">Free live odds</div>
+            <div className="vs-cell vs-cell-rml" role="cell"><span className="vs-mark vs-yes" aria-hidden="true" /><span className="vs-val">$0 to open a game.</span></div>
+            <div className="vs-cell vs-cell-tout" role="cell"><span className="vs-mark vs-warn" aria-hidden="true" /><span className="vs-val">Rarely — behind a paywall.</span></div>
+          </div>
+          <div className="vs-row" role="row">
+            <div className="vs-criterion" role="cell">Model methodology shown</div>
+            <div className="vs-cell vs-cell-rml" role="cell"><span className="vs-mark vs-yes" aria-hidden="true" /><span className="vs-val">Transparent. Read the math.</span></div>
+            <div className="vs-cell vs-cell-tout" role="cell"><span className="vs-mark vs-bad" aria-hidden="true" /><span className="vs-val">Black box. "Trust us."</span></div>
+          </div>
+          <div className="vs-row" role="row">
+            <div className="vs-criterion" role="cell">Discipline &amp; bankroll system</div>
+            <div className="vs-cell vs-cell-rml" role="cell"><span className="vs-mark vs-yes" aria-hidden="true" /><span className="vs-val">Built in.</span></div>
+            <div className="vs-cell vs-cell-tout" role="cell"><span className="vs-mark vs-bad" aria-hidden="true" /><span className="vs-val">None. Just chase.</span></div>
+          </div>
+          <div className="vs-row" role="row">
+            <div className="vs-criterion" role="cell">Guarantees wins</div>
+            <div className="vs-cell vs-cell-rml" role="cell"><span className="vs-mark vs-no" aria-hidden="true" /><span className="vs-val">Never. Nobody honest can.</span></div>
+            <div className="vs-cell vs-cell-tout" role="cell"><span className="vs-mark vs-bad" aria-hidden="true" /><span className="vs-val">Implies it, every time.</span></div>
+          </div>
+        </div>
+        <p className="vs-foot"><span className="vs-foot-key">THE WEDGE //</span> Everything they hide, we publish. That's the product.</p>
+      </section>
+
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 03 // HOW IT WORKS</span>
+        <span className="rl-label rl-kick">SECTION 04 // HOW IT WORKS</span>
         <h2 className="rl-h2">Scan. Grade.<br /><span className="rl-g">Decide.</span></h2>
         <div style={{ marginTop: 18 }}>
           {STEPS.map(([n, t, d]) => (
@@ -171,7 +286,7 @@ export default function LandingPage({ onLogin }) {
       <section className="rl-mani"><h2 className="rl-h2">We build for <span className="rl-g">operators.</span><br />Not gamblers.</h2></section>
 
       <section className="rl-sect">
-        <span className="rl-label rl-kick">SECTION 04 // PRICING</span>
+        <span className="rl-label rl-kick">SECTION 05 // PRICING</span>
         <h2 className="rl-h2">One price.<br /><span className="rl-g">Everything in.</span></h2>
         <div className="rl-price rl-reveal">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}><span className="rl-amt">$29</span><span className="rl-per">/month</span></div>
@@ -214,7 +329,7 @@ const CSS = `
 #rml-landing{
   --rl-bg-0:#0A0A0A;--rl-bg-1:#101110;--rl-bg-2:#161817;
   --rl-line:#1E211F;--rl-line-2:#2A2E2B;
-  --rl-ink-0:#F2F4F0;--rl-ink-1:#9DA39A;--rl-ink-2:#5E635D;
+  --rl-ink-0:#F2F4F0;--rl-ink-1:#9DA39A;--rl-ink-2:#878D85;
   --rl-signal:#BDFF00;--rl-signal-dim:#8FBF00;--rl-signal-2:rgba(189,255,0,.12);--rl-signal-glow:rgba(189,255,0,.45);
   --rl-pos:#5BE38B;--rl-neg:#FF5C5C;
   --rl-d:'Rajdhani',sans-serif;--rl-b:'Inter',sans-serif;--rl-m:'JetBrains Mono','IBM Plex Mono',monospace;
@@ -329,5 +444,154 @@ const CSS = `
 #rml-landing .rl-cookie-btns{display:flex;gap:10px}
 #rml-landing .rl-cookie-accept{font:700 11px var(--rl-m);letter-spacing:.1em;text-transform:uppercase;padding:8px 18px;border-radius:5px;cursor:pointer;background:var(--rl-signal);border:none;color:var(--rl-bg-0)}
 #rml-landing .rl-cookie-dismiss{font:700 11px var(--rl-m);letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;border-radius:5px;cursor:pointer;background:none;border:1px solid var(--rl-line-2);color:var(--rl-ink-1)}
-@media(prefers-reduced-motion:reduce){#rml-landing .rl-reveal{opacity:1;transform:none}#rml-landing .rl-ticker,#rml-landing .rl-ld{animation:none}}
+@media(prefers-reduced-motion:reduce){#rml-landing .rl-reveal{opacity:1;transform:none}#rml-landing .rl-reveal.in{transition:none}#rml-landing .rl-ticker,#rml-landing .rl-ld{animation:none}#rml-landing .rl-btn,#rml-landing .rl-btn:hover{transition:none;transform:none}}
+
+/* a11y + tap targets */
+#rml-landing a:focus-visible,#rml-landing button:focus-visible{outline:2px solid var(--rl-signal);outline-offset:2px;border-radius:4px}
+#rml-landing .rl-btn:focus-visible{outline-offset:3px}
+#rml-landing .rl-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+#rml-landing .rl-btn-ghost{border-color:rgba(189,255,0,.25)}
+#rml-landing .rl-socials a{width:44px;height:44px}
+#rml-landing .rl-cookie-accept,#rml-landing .rl-cookie-dismiss{min-height:44px}
+#rml-landing .rl-fcol a,#rml-landing .rl-board-f a{display:inline-block;padding:5px 0}
+#rml-landing .rl-row>*{min-width:0}
+#rml-landing .rl-mtch{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* desktop framing — keep the terminal column, mount it on a wall instead of floating in a void */
+@media(min-width:1024px){
+  #rml-landing{background:radial-gradient(120% 60% at 50% -10%,rgba(189,255,0,.05),transparent 60%),repeating-linear-gradient(90deg,var(--rl-bg-0) 0 38px,#0c0d0c 38px 40px),var(--rl-bg-0);background-attachment:fixed}
+  #rml-landing .rl-hero,#rml-landing .rl-ticker-wrap,#rml-landing .rl-trust,#rml-landing .rl-sect,#rml-landing .rl-mani,#rml-landing .rl-foot,#rml-landing .vs-section{max-width:560px;border-left:1px solid var(--rl-line);border-right:1px solid var(--rl-line);background-color:rgba(10,10,10,.82)}
+  #rml-landing .rl-nav{max-width:560px;border-left:1px solid var(--rl-line);border-right:1px solid var(--rl-line);border-top:1px solid var(--rl-line);box-shadow:0 0 0 1px rgba(189,255,0,.05),0 40px 120px -40px rgba(0,0,0,.9)}
+  #rml-landing .rl-foot{box-shadow:0 60px 120px -50px rgba(0,0,0,.9)}
+}
+
+/* ── Game Center card (hero product render) ── */
+#rml-landing .gc-card{width:100%;box-sizing:border-box;font-family:var(--rl-b);background:#101110;border:1px solid #2A2E2B;border-radius:14px;padding:12px 14px;color:#F2F4F0}
+#rml-landing .gc-card *{box-sizing:border-box}
+#rml-landing .gc-row{display:flex;align-items:center}
+#rml-landing .gc-matchup{justify-content:space-between;gap:8px}
+#rml-landing .gc-team{display:flex;align-items:center;gap:9px;min-width:0}
+#rml-landing .gc-team-home{justify-content:flex-end}
+#rml-landing .gc-logo{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--rl-d);font-weight:700;font-size:10px;color:#F2F4F0;border:1px solid #2A2E2B}
+#rml-landing .gc-logo-laa{background:#BA1B33}
+#rml-landing .gc-logo-ath{background:#115740}
+#rml-landing .gc-team-meta{display:flex;flex-direction:column;line-height:1.05;min-width:0}
+#rml-landing .gc-team-home .gc-team-meta{align-items:flex-end}
+#rml-landing .gc-abbr{font-family:var(--rl-d);font-weight:700;font-size:18px;color:#F2F4F0}
+#rml-landing .gc-record{font-family:var(--rl-m);font-variant-numeric:tabular-nums;font-size:10px;color:#9DA39A;margin-top:1px}
+#rml-landing .gc-center{display:flex;flex-direction:column;align-items:center;gap:3px;flex:0 0 auto;padding:0 4px}
+#rml-landing .gc-score{display:flex;align-items:center;gap:8px}
+#rml-landing .gc-runs{font-family:var(--rl-m);font-variant-numeric:tabular-nums;font-weight:600;font-size:22px;color:#F2F4F0}
+#rml-landing .gc-bases{font-size:8px;color:#5E635D;letter-spacing:-1px}
+#rml-landing .gc-inning{display:flex;align-items:center;gap:5px;background:#161817;border:1px solid #1E211F;border-radius:999px;padding:2px 8px}
+#rml-landing .gc-live-dot{width:5px;height:5px;border-radius:50%;background:#5BE38B;flex:0 0 5px;box-shadow:0 0 5px rgba(91,227,139,.6)}
+#rml-landing .gc-inning-arrow{font-size:8px;color:#5BE38B;line-height:1}
+#rml-landing .gc-inning-num{font-family:var(--rl-m);font-variant-numeric:tabular-nums;font-size:10px;font-weight:600;color:#F2F4F0}
+#rml-landing .gc-odds{justify-content:space-between;gap:6px;margin-top:11px;padding:7px 0;border-top:1px solid #1E211F;border-bottom:1px solid #1E211F}
+#rml-landing .gc-odds-cell{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:6px}
+#rml-landing .gc-odds-total{border-left:1px solid #1E211F;border-right:1px solid #1E211F}
+#rml-landing .gc-odds-label{font-family:var(--rl-b);font-size:9px;font-weight:600;letter-spacing:.6px;color:#878D85;text-transform:uppercase}
+#rml-landing .gc-odds-val{font-family:var(--rl-m);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;color:#F2F4F0}
+#rml-landing .gc-pos{color:#5BE38B}
+#rml-landing .gc-footer{justify-content:space-between;gap:8px;margin-top:10px}
+#rml-landing .gc-pitchers{display:flex;align-items:center;gap:6px;font-size:11px;color:#9DA39A;min-width:0;overflow:hidden}
+#rml-landing .gc-pitcher{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rml-landing .gc-vs{color:#5E635D;font-size:9px;flex:0 0 auto}
+#rml-landing .gc-lean{display:flex;align-items:center;gap:5px;flex:0 0 auto;background:rgba(189,255,0,.08);border:1px solid rgba(189,255,0,.35);border-radius:6px;padding:3px 7px}
+#rml-landing .gc-lean-tag{font-family:var(--rl-m);font-size:7px;font-weight:700;color:#BDFF00;opacity:.7}
+#rml-landing .gc-lean-flag{font-size:9px;color:#BDFF00}
+#rml-landing .gc-lean-text{font-family:var(--rl-d);font-weight:700;font-size:12px;color:#BDFF00}
+
+/* ── Spotlight panel ── */
+#rml-landing .sp-panel{width:100%;box-sizing:border-box;background:#0d0e0d;border:1px solid #1E211F;border-radius:10px;padding:8px 9px;font-family:var(--rl-b);color:#F2F4F0}
+#rml-landing .sp-head{display:flex;align-items:center;gap:7px;padding:1px 2px 7px;border-bottom:1px solid #1E211F}
+#rml-landing .sp-head-label{font-family:var(--rl-d);font-weight:700;font-size:12px;letter-spacing:.12em;color:#F2F4F0}
+#rml-landing .sp-head-sub{font-family:var(--rl-m);font-size:8.5px;letter-spacing:.08em;color:#878D85}
+#rml-landing .sp-beta{margin-left:auto;font-family:var(--rl-m);font-size:8px;font-weight:600;letter-spacing:.1em;color:#BDFF00;border:1px solid #2A2E2B;border-radius:4px;padding:1px 5px}
+#rml-landing .sp-row{display:flex;align-items:center;gap:8px;padding:7px 3px;border-bottom:1px solid #1E211F}
+#rml-landing .sp-row:last-child{border-bottom:none}
+#rml-landing .sp-rank{font-family:var(--rl-m);font-size:11px;font-weight:700;color:#BDFF00;min-width:18px;font-variant-numeric:tabular-nums}
+#rml-landing .sp-rank-dim{color:#878D85}
+#rml-landing .sp-main{flex:1;min-width:0}
+#rml-landing .sp-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#rml-landing .sp-match{font-family:var(--rl-m);font-size:11px;font-weight:600;color:#F2F4F0;font-variant-numeric:tabular-nums}
+#rml-landing .sp-side{font-family:var(--rl-d);font-weight:700;font-size:11px;letter-spacing:.04em;padding:0 4px;border-radius:3px}
+#rml-landing .sp-over{color:#5BE38B;background:rgba(91,227,139,.1)}
+#rml-landing .sp-under{color:#FF5C5C;background:rgba(255,92,92,.1)}
+#rml-landing .sp-tag{font-family:var(--rl-m);font-size:8.5px;font-weight:500;color:#9DA39A;border:1px solid #2A2E2B;border-radius:3px;padding:1px 4px;font-variant-numeric:tabular-nums}
+#rml-landing .sp-edge{color:#5BE38B;border-color:#1E211F;background:#161817}
+#rml-landing .sp-miss{color:#FF5C5C;border-color:#1E211F}
+#rml-landing .sp-meta{display:flex;align-items:center;gap:5px;margin-top:4px}
+#rml-landing .sp-hit{display:inline-flex;align-items:center;gap:3px;font-family:var(--rl-m);font-size:8.5px;color:#5BE38B;font-variant-numeric:tabular-nums}
+#rml-landing .sp-miss-txt{display:inline-flex;align-items:center;gap:3px;font-family:var(--rl-m);font-size:8.5px;color:#FF5C5C;font-variant-numeric:tabular-nums}
+#rml-landing .sp-dot{color:#5E635D;font-size:8px}
+#rml-landing .sp-factors{font-family:var(--rl-m);font-size:8.5px;color:#9DA39A}
+#rml-landing .sp-slip{display:inline-flex;align-items:center;gap:2px;font-family:var(--rl-d);font-weight:700;font-size:9.5px;letter-spacing:.05em;color:#101110;background:#BDFF00;border:none;border-radius:4px;padding:3px 7px;white-space:nowrap}
+#rml-landing .sp-row-graded{opacity:.78}
+#rml-landing .sp-result{font-family:var(--rl-m);font-size:8px;font-weight:600;letter-spacing:.08em;color:#878D85;border:1px solid #1E211F;border-radius:4px;padding:2px 6px;white-space:nowrap}
+
+/* ── Props-by-player panel ── */
+#rml-landing .pp-panel{width:100%;box-sizing:border-box;background:#0d0e0d;border:1px solid #1E211F;border-radius:10px;padding:8px 9px;font-family:var(--rl-b);color:#F2F4F0}
+#rml-landing .pp-head{display:flex;align-items:center;gap:7px;padding:1px 2px 7px;border-bottom:1px solid #1E211F}
+#rml-landing .pp-head-label{font-family:var(--rl-d);font-weight:700;font-size:12px;letter-spacing:.12em;color:#F2F4F0}
+#rml-landing .pp-head-sub{font-family:var(--rl-m);font-size:8.5px;letter-spacing:.08em;color:#878D85}
+#rml-landing .pp-beta{margin-left:auto;font-family:var(--rl-m);font-size:8px;font-weight:600;letter-spacing:.1em;color:#BDFF00;border:1px solid #2A2E2B;border-radius:4px;padding:1px 5px}
+#rml-landing .pp-player{border-bottom:1px solid #1E211F;padding:6px 2px}
+#rml-landing .pp-player:last-child{border-bottom:none}
+#rml-landing .pp-open{background:#161817;border:1px solid #1E211F;border-radius:8px;padding:7px 8px;margin-top:6px}
+#rml-landing .pp-prow{display:flex;align-items:center;gap:8px}
+#rml-landing .pp-ava{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--rl-d);font-weight:700;font-size:9.5px;color:#F2F4F0;flex-shrink:0}
+#rml-landing .pp-pid{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+#rml-landing .pp-name{font-family:var(--rl-d);font-weight:700;font-size:12px;color:#F2F4F0}
+#rml-landing .pp-team{font-family:var(--rl-m);font-size:8px;letter-spacing:.06em;color:#9DA39A}
+#rml-landing .pp-count{margin-left:auto;font-family:var(--rl-m);font-size:8.5px;color:#878D85}
+#rml-landing .pp-chev{margin-left:6px;font-size:13px;color:#878D85}
+#rml-landing .pp-open .pp-chev{margin-left:auto}
+#rml-landing .pp-prop{display:flex;align-items:center;gap:8px;margin-top:7px;padding-top:7px;border-top:1px solid #1E211F}
+#rml-landing .pp-stat{font-family:var(--rl-b);font-weight:500;font-size:11px;color:#F2F4F0;flex:1;min-width:0}
+#rml-landing .pp-prices{display:flex;align-items:center;gap:5px}
+#rml-landing .pp-best{font-family:var(--rl-m);font-size:10px;font-weight:600;color:#5BE38B;background:rgba(91,227,139,.1);border:1px solid #1E211F;border-radius:4px;padding:2px 5px;font-variant-numeric:tabular-nums}
+#rml-landing .pp-alt{font-family:var(--rl-m);font-size:10px;color:#9DA39A;border:1px solid #2A2E2B;border-radius:4px;padding:2px 5px;font-variant-numeric:tabular-nums}
+#rml-landing .pp-ev{font-family:var(--rl-m);font-size:8.5px;font-weight:600;color:#101110;background:#BDFF00;border-radius:3px;padding:2px 4px;font-variant-numeric:tabular-nums}
+
+/* ── vs the touts ── */
+#rml-landing .vs-section{background:#0d0e0d;color:#F2F4F0;font-family:var(--rl-b);padding:64px 22px;max-width:480px;margin:0 auto;border-top:1px solid var(--rl-line)}
+#rml-landing .vs-kicker{font-family:var(--rl-m);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--rl-signal);opacity:.85;margin:0 0 14px}
+#rml-landing .vs-headline{font-family:var(--rl-d);font-weight:700;font-size:clamp(26px,8vw,38px);line-height:1.02;letter-spacing:-.01em;margin:0 0 14px}
+#rml-landing .vs-headline-accent{color:var(--rl-signal)}
+#rml-landing .vs-sub{font-size:14px;line-height:1.55;color:#9DA39A;margin:0 0 24px;max-width:360px}
+#rml-landing .vs-table{display:flex;flex-direction:column;border:1px solid #1E211F;border-radius:12px;overflow:hidden;background:#101110}
+#rml-landing .vs-colhead,#rml-landing .vs-row{display:grid;grid-template-columns:1.15fr 1fr 1fr}
+#rml-landing .vs-colhead{background:#161817;border-bottom:1px solid #2A2E2B}
+#rml-landing .vs-colhead-spacer{padding:14px 12px}
+#rml-landing .vs-colhead-rml,#rml-landing .vs-colhead-tout{display:flex;flex-direction:column;gap:3px;padding:14px 10px;text-align:center;align-items:center;justify-content:center}
+#rml-landing .vs-colhead-rml{border-left:1px solid #BDFF00;background:rgba(189,255,0,.04)}
+#rml-landing .vs-colhead-tout{border-left:1px solid #2A2E2B}
+#rml-landing .vs-brand-mark{font-family:var(--rl-d);font-weight:700;font-size:18px;color:#BDFF00}
+#rml-landing .vs-tout-mark{font-family:var(--rl-d);font-weight:700;font-size:18px;color:#9DA39A}
+#rml-landing .vs-colhead-tag{font-family:var(--rl-m);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#878D85}
+#rml-landing .vs-row{border-bottom:1px solid #1E211F}
+#rml-landing .vs-row:last-of-type{border-bottom:0}
+#rml-landing .vs-criterion{padding:14px 12px;font-size:12.5px;line-height:1.35;font-weight:500;color:#F2F4F0;align-self:center;border-right:1px solid #1E211F}
+#rml-landing .vs-criterion em{font-style:normal;color:#BDFF00}
+#rml-landing .vs-cell{display:flex;flex-direction:column;gap:7px;padding:14px 10px;align-items:flex-start}
+#rml-landing .vs-cell-rml{background:rgba(189,255,0,.035);border-left:1px solid #BDFF00}
+#rml-landing .vs-cell-tout{border-left:1px solid #2A2E2B}
+#rml-landing .vs-val{font-size:11.5px;line-height:1.3;color:#9DA39A}
+#rml-landing .vs-cell-rml .vs-val{color:#F2F4F0}
+#rml-landing .vs-mark{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative}
+#rml-landing .vs-mark::before,#rml-landing .vs-mark::after{content:"";position:absolute;background:currentColor}
+#rml-landing .vs-yes{color:#5BE38B;box-shadow:inset 0 0 0 1px rgba(91,227,139,.5)}
+#rml-landing .vs-yes::before{width:7px;height:2px;border-radius:1px;transform:rotate(45deg) translate(-2px,2px)}
+#rml-landing .vs-yes::after{width:3px;height:2px;border-radius:1px;transform:rotate(45deg) translate(-4px,1px)}
+#rml-landing .vs-no{color:#BDFF00;box-shadow:inset 0 0 0 1px rgba(189,255,0,.55)}
+#rml-landing .vs-no::before{width:8px;height:2px;border-radius:1px}
+#rml-landing .vs-warn{color:#9DA39A;box-shadow:inset 0 0 0 1px rgba(157,163,154,.5)}
+#rml-landing .vs-warn::before{width:2px;height:2px;border-radius:50%}
+#rml-landing .vs-bad{color:#FF5C5C;box-shadow:inset 0 0 0 1px rgba(255,92,92,.5)}
+#rml-landing .vs-bad::before,#rml-landing .vs-bad::after{width:9px;height:2px;border-radius:1px}
+#rml-landing .vs-bad::before{transform:rotate(45deg)}
+#rml-landing .vs-bad::after{transform:rotate(-45deg)}
+#rml-landing .vs-foot{margin:24px 0 0;font-size:12.5px;line-height:1.5;color:#9DA39A}
+#rml-landing .vs-foot-key{font-family:var(--rl-m);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#BDFF00;margin-right:6px}
 `
