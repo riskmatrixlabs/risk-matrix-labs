@@ -737,4 +737,19 @@ const CSS = `
 #rml-landing .mbf-price-best{color:#5BE38B;border-color:rgba(91,227,139,.45);background:rgba(91,227,139,.08)}
 #rml-landing .mbf-ev{font-family:var(--rl-m);font-weight:700;font-size:12px;color:#0A0A0A;background:#BDFF00;border-radius:7px;padding:5px 8px;font-variant-numeric:tabular-nums}
 #rml-landing .mbf-foot{text-align:center;font-family:var(--rl-m);font-size:9.5px;letter-spacing:.12em;color:#878D85;padding:4px 0 2px}
+
+/* ── center-aligned layout pass ── */
+#rml-landing .rl-hero-in,#rml-landing .rl-sect,#rml-landing .vs-section,#rml-landing .rl-foot{text-align:center}
+#rml-landing .rl-hsub,#rml-landing .rl-sub,#rml-landing .vs-sub,#rml-landing .rl-disc{margin-left:auto;margin-right:auto}
+#rml-landing .rl-cta-row,#rml-landing .rl-rg,#rml-landing .rl-socials{justify-content:center}
+#rml-landing .rl-step{flex-direction:column;align-items:center;text-align:center;gap:6px}
+#rml-landing .rl-cell{text-align:center}
+#rml-landing .rl-foot-brand{align-items:center}
+#rml-landing .rl-foot-cols{justify-items:center;text-align:center}
+#rml-landing .rl-fnote{align-items:center}
+/* keep data tables / UI panels left-aligned for readability */
+#rml-landing .sp-panel,#rml-landing .pp-panel,#rml-landing .rl-board,#rml-landing .vs-table,#rml-landing .gc-card,#rml-landing .rl-faq{text-align:left}
+/* responsive titles — scale cleanly on mobile + desktop */
+#rml-landing .rl-h1{font-size:clamp(42px,12vw,62px)}
+#rml-landing .rl-h2,#rml-landing .vs-headline{font-size:clamp(28px,7.6vw,44px)}
 `
