@@ -381,11 +381,10 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{height:34px;width:auto;display:block;object-fit:contain}
-#rml-landing .rl-logo-full{height:46px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-mark{height:40px;width:auto;display:block;object-fit:contain}
 #rml-landing .rl-logotext{display:flex;flex-direction:column;line-height:1}
-#rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--rl-signal)}
-#rml-landing .rl-lt2{font-family:var(--rl-d);font-size:8px;letter-spacing:.3em;color:rgba(189,255,0,.45);margin-top:2px}
+#rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:17px;letter-spacing:.2em;color:var(--rl-signal)}
+#rml-landing .rl-lt2{font-family:var(--rl-d);font-weight:600;font-size:9.5px;letter-spacing:.42em;color:rgba(189,255,0,.55);margin-top:3px}
 #rml-landing .rl-screenshot{width:100%;display:block;max-height:600px;object-fit:cover;object-position:top center;-webkit-mask-image:linear-gradient(#000 88%,transparent);mask-image:linear-gradient(#000 88%,transparent)}
 #rml-landing .rl-faq{display:flex;flex-direction:column;border-top:1px solid var(--rl-line);margin-top:8px}
 #rml-landing .rl-faq-item{border-bottom:1px solid var(--rl-line)}
