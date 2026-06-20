@@ -79,7 +79,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/brand-kit/icon-mark.svg" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -313,10 +313,29 @@ export default function LandingPage({ onLogin }) {
         </div>
       </section>
 
+      <section className="rl-sect" id="rl-faq">
+        <span className="rl-label rl-kick">SECTION 08 // FAQ</span>
+        <h2 className="rl-h2">Common<br /><span className="rl-g">questions.</span></h2>
+        <div className="rl-faq">
+          {[
+            ['Do you sell picks?', "No. We never sell picks and we never will. Our models surface where there may be value, and we grade every lean in public — wins and misses. We give you the numbers and the discipline; the decisions are yours."],
+            ['Do you guarantee wins?', "No — and anyone who does is lying. Our models are continuously back-tested and still calibrating, and we show the real record, good and bad. We sell honesty and discipline, not a crystal ball."],
+            ['Is it free?', "Opening any game is $0 — live odds and the board, no card. Full access (props, EV, models, bankroll system) is $29/mo or $149/yr with a 3-day free trial."],
+            ['How does the free trial work?', "3 days free — no charge until day 4. You see the exact billing date and amount before you enter a card. Cancel anytime, no questions."],
+            ['Does it work on mobile?', "Yes — built mobile-first. Open the board, grade props, run the ladder from your phone; everything syncs across your devices."],
+          ].map(([q, a], i) => (
+            <details className="rl-faq-item" key={i}>
+              <summary className="rl-faq-q"><span>{q}</span><span className="rl-faq-x">+</span></summary>
+              <div className="rl-faq-a">{a}</div>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/brand-kit/icon-mark.svg" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
@@ -363,7 +382,15 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{width:32px;height:32px;border-radius:8px;display:block;object-fit:contain}
+#rml-landing .rl-mark{width:34px;height:34px;display:block;object-fit:contain}
+#rml-landing .rl-faq{display:flex;flex-direction:column;border-top:1px solid var(--rl-line);margin-top:8px}
+#rml-landing .rl-faq-item{border-bottom:1px solid var(--rl-line)}
+#rml-landing .rl-faq-q{display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;list-style:none;padding:18px 2px;font-family:var(--rl-d);font-weight:700;font-size:16px;color:var(--rl-ink-0)}
+#rml-landing .rl-faq-q::-webkit-details-marker{display:none}
+#rml-landing .rl-faq-x{font-family:var(--rl-m);font-size:20px;color:var(--rl-signal);transition:transform .2s;flex:none}
+#rml-landing .rl-faq-item[open] .rl-faq-x{transform:rotate(45deg)}
+#rml-landing .rl-faq-item[open] .rl-faq-q{color:var(--rl-signal)}
+#rml-landing .rl-faq-a{font-family:var(--rl-b);font-size:13.5px;line-height:1.65;color:var(--rl-ink-1);padding:0 2px 18px}
 #rml-landing .rl-nm{font-family:var(--rl-d);font-weight:700;letter-spacing:.04em;font-size:15px}
 #rml-landing .rl-btn{font-family:var(--rl-m);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--rl-bg-0);background:var(--rl-signal);border:none;border-radius:6px;padding:9px 14px;cursor:pointer;text-decoration:none;box-shadow:0 0 24px -6px var(--rl-signal-glow);transition:transform .15s,opacity .15s;display:inline-block}
 #rml-landing .rl-btn:hover{opacity:.9;transform:translateY(-1px)}
