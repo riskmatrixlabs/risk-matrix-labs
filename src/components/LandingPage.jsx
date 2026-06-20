@@ -86,7 +86,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -324,7 +324,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram"><FaInstagram /></a>
@@ -381,7 +381,7 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{height:40px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-mark{height:50px;width:auto;display:block;object-fit:contain}
 #rml-landing .rl-logotext{display:flex;flex-direction:column;line-height:1}
 #rml-landing .rl-lt1{font-family:var(--rl-d);font-weight:700;font-size:17px;letter-spacing:.2em;color:var(--rl-signal)}
 #rml-landing .rl-lt2{font-family:var(--rl-d);font-weight:600;font-size:9.5px;letter-spacing:.42em;color:rgba(189,255,0,.55);margin-top:3px}
