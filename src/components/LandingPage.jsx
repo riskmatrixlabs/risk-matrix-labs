@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { FaInstagram, FaTiktok, FaYoutube, FaDiscord } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import LandingPageV1 from './LandingPageV1'
 
 // ─── Risk Matrix Labs — landing page. Dark "trading terminal" aesthetic: neon (#BDFF00)
@@ -84,7 +86,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-logo-full" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -322,14 +324,14 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-logo-full" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-logotext"><span className="rl-lt1">RISK MATRIX</span><span className="rl-lt2">LABS</span></div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
-              <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
-              <a href="https://tiktok.com/@riskmatrixlabs" aria-label="TikTok">TT</a>
-              <a href="https://x.com/riskmatrixlabs" aria-label="X">X</a>
-              <a href="https://youtube.com/@riskmatrixlabs" aria-label="YouTube">YT</a>
-              <a href="https://discord.gg/smHv7CHc4p" aria-label="Discord">DC</a>
+              <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram"><FaInstagram /></a>
+              <a href="https://tiktok.com/@riskmatrixlabs" aria-label="TikTok"><FaTiktok /></a>
+              <a href="https://x.com/riskmatrixlabs" aria-label="X"><FaXTwitter /></a>
+              <a href="https://youtube.com/@riskmatrixlabs" aria-label="YouTube"><FaYoutube /></a>
+              <a href="https://discord.gg/smHv7CHc4p" aria-label="Discord"><FaDiscord /></a>
             </div>
           </div>
           <div className="rl-foot-cols">
@@ -361,9 +363,9 @@ const CSS = `
 #rml-landing::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   background-color:var(--rl-bg-0);
   background-image:
-    radial-gradient(620px circle at 78% 8%, rgba(189,255,0,.035), transparent 62%),
-    radial-gradient(380px circle at 4% 82%, rgba(189,255,0,.022), transparent 62%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='56'%3E%3Cpolygon points='32,2 60,16 60,40 32,54 4,40 4,16' fill='none' stroke='%23BDFF00' stroke-width='0.5' opacity='0.03'/%3E%3C/svg%3E");
+    radial-gradient(560px circle at 82% 6%, rgba(189,255,0,.05), transparent 58%),
+    radial-gradient(360px circle at 2% 84%, rgba(189,255,0,.03), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='56'%3E%3Cpolygon points='32,2 60,16 60,40 32,54 4,40 4,16' fill='none' stroke='%23BDFF00' stroke-width='0.5' opacity='0.04'/%3E%3C/svg%3E");
   background-repeat:no-repeat,no-repeat,repeat,repeat;
 }
 #rml-landing > *{position:relative;z-index:1}
@@ -472,7 +474,7 @@ const CSS = `
 #rml-landing .rl-foot-top{display:flex;flex-direction:column;gap:30px}
 #rml-landing .rl-foot-tag{font:500 12px var(--rl-m);letter-spacing:.06em;color:var(--rl-ink-2);margin-top:12px}
 #rml-landing .rl-socials{display:flex;gap:8px;margin-top:16px}
-#rml-landing .rl-socials a{width:34px;height:34px;border:1px solid var(--rl-line-2);border-radius:7px;display:grid;place-items:center;font:700 10px var(--rl-m);letter-spacing:.04em;color:var(--rl-ink-1);text-decoration:none}
+#rml-landing .rl-socials a{width:36px;height:36px;border:1px solid var(--rl-line-2);border-radius:8px;display:grid;place-items:center;font-size:16px;color:var(--rl-ink-1);text-decoration:none}
 #rml-landing .rl-socials a:hover{border-color:var(--rl-signal);color:var(--rl-signal);background:var(--rl-signal-2)}
 #rml-landing .rl-foot-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 #rml-landing .rl-fcol{display:flex;flex-direction:column;gap:9px}
