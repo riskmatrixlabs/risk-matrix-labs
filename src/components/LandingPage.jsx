@@ -167,16 +167,22 @@ export default function LandingPage({ onLogin }) {
         <p className="rl-sub">A look at what the bot and the O/U model actually put in front of you — props priced for value, leans graded honestly.</p>
         <div className="rl-bento">
           <div className="rl-cell rl-reveal">
-            <span className="rl-tag">EV</span><span className="rl-label">MATRIX BOT · PROPS</span>
-            <div className="rl-ci">Props by player</div>
-            <p>Every prop grouped by player, best price across books, and the EV edge on each line.</p>
-            <img className="rl-cell-shot" src="/brand/screenshots/sc-matrix-ch2.jpg" alt="Matrix Bot — Channel 2 props" loading="lazy" />
+            <span className="rl-tag">EV</span><span className="rl-label">MATRIX BOT · EV</span>
+            <div className="rl-ci">Props priced for value</div>
+            <p>The bot scans the board and surfaces props with a real EV edge — best book, the line, the % edge on each.</p>
+            <img className="rl-cell-shot" src="/brand/screenshots/sc-ev-props.jpg" alt="Matrix Bot — EV props board" loading="lazy" />
           </div>
           <div className="rl-cell rl-reveal">
             <span className="rl-tag">GRADED</span><span className="rl-label">SPOTLIGHT · O/U</span>
             <div className="rl-ci">Graded in public</div>
             <p>Over/under leans ranked by conviction — every one snapshotted and graded, wins and misses.</p>
             <img className="rl-cell-shot" src="/brand/screenshots/sc-spotlight.jpg" alt="Spotlight — ranked O/U model leans" loading="lazy" />
+          </div>
+          <div className="rl-cell rl-reveal">
+            <span className="rl-tag">FREE</span><span className="rl-label">KBO · OVERNIGHT</span>
+            <div className="rl-ci">Korea, while MLB sleeps</div>
+            <p>A free overnight O/U scan on Korean baseball — park + weather model, self-grading, today and yesterday.</p>
+            <img className="rl-cell-shot" src="/brand/screenshots/sc-kbo.jpg" alt="KBO overnight model leans" loading="lazy" />
           </div>
         </div>
       </section>
