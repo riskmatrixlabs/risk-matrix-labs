@@ -79,7 +79,7 @@ export default function LandingPage({ onLogin }) {
       <style>{CSS}</style>
 
       <nav className="rl-nav">
-        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
+        <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
         <a href="/pricing" onClick={open} className="rl-btn">Open Terminal</a>
       </nav>
 
@@ -100,33 +100,7 @@ export default function LandingPage({ onLogin }) {
               <span className="rl-path">rml://game-center/live</span>
               <span className="rl-live"><span className="rl-ld" />LIVE</span>
             </div>
-            <div className="rl-shot">
-              <div className="gc-card">
-                <div className="gc-row gc-matchup">
-                  <div className="gc-team gc-team-away">
-                    <span className="gc-logo gc-logo-laa"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/laa.png" alt="LAA" /></span>
-                    <span className="gc-team-meta"><span className="gc-abbr">LAA</span><span className="gc-record">30-46</span></span>
-                  </div>
-                  <div className="gc-center">
-                    <div className="gc-score"><span className="gc-runs">10</span><span className="gc-bases">◆◆</span><span className="gc-runs">4</span></div>
-                    <div className="gc-inning"><span className="gc-live-dot" /><span className="gc-inning-arrow">▲</span><span className="gc-inning-num">5th</span></div>
-                  </div>
-                  <div className="gc-team gc-team-home">
-                    <span className="gc-team-meta"><span className="gc-abbr">ATH</span><span className="gc-record">37-38</span></span>
-                    <span className="gc-logo gc-logo-ath"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/oak.png" alt="ATH" /></span>
-                  </div>
-                </div>
-                <div className="gc-row gc-odds">
-                  <span className="gc-odds-cell"><span className="gc-odds-label">ML</span><span className="gc-odds-val gc-pos">+101</span></span>
-                  <span className="gc-odds-cell gc-odds-total"><span className="gc-odds-label">O/U</span><span className="gc-odds-val">8.5</span></span>
-                  <span className="gc-odds-cell"><span className="gc-odds-label">ML</span><span className="gc-odds-val">-122</span></span>
-                </div>
-                <div className="gc-row gc-footer">
-                  <span className="gc-pitchers"><span className="gc-pitcher">Kevin Gausman</span><span className="gc-vs">vs</span><span className="gc-pitcher">Ben Brown</span></span>
-                  <span className="gc-lean"><span className="gc-lean-tag">BETA</span><span className="gc-lean-flag">⚐</span><span className="gc-lean-text">OVER 6.5</span></span>
-                </div>
-              </div>
-            </div>
+            <img className="rl-screenshot" src="/brand/screenshots/sc-game-detail.jpg" alt="Risk Matrix Labs game insights — odds, model and weather" loading="lazy" />
           </div>
         </div>
       </header>
@@ -152,32 +126,7 @@ export default function LandingPage({ onLogin }) {
         <p className="rl-sub">Open any game at $0 — live odds, win probability, and line movement since open across every sportsbook. The whole board, before you risk a dollar.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
           <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://game-center</span><span className="rl-live"><span className="rl-ld" />LIVE</span></div>
-          <div className="gcf-screen">
-            <div className="gcf-spotlight"><span className="gcf-hex" /><span className="gcf-spot-label">SPOTLIGHT</span><span className="gcf-spot-count">(2)</span><span className="gcf-beta">BETA</span><span className="gcf-spot-lean">WSH@TB <b>OVER 7.5</b> <span className="gcf-rank">#1</span></span></div>
-            <div className="gcf-chips"><span className="gcf-chip gcf-chip-live"><span className="gcf-livedot" />LIVE</span><span className="gcf-chip gcf-chip-on">All</span><span className="gcf-chip">MLB</span><span className="gcf-chip">NHL</span><span className="gcf-chip">NBA</span></div>
-            <div className="gcf-dates"><span className="gcf-date">YESTERDAY</span><span className="gcf-date gcf-date-on">TODAY</span><span className="gcf-date">UPCOMING</span></div>
-            <div className="gcf-card">
-              <div className="gcf-card-head"><span className="gcf-tag">MLB</span><span className="gcf-livepill"><span className="gcf-livedot" />LIVE</span><span className="gcf-inning">▲ 5th</span></div>
-              <div className="gcf-matchup">
-                <div className="gcf-team"><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/laa.png" alt="LAA" /></span><span className="gcf-abbr">LAA</span><span className="gcf-rec">30-46</span></div>
-                <div className="gcf-score"><span className="gcf-sc">10</span><span className="gcf-diamonds">◆◆</span><span className="gcf-sc">4</span></div>
-                <div className="gcf-team gcf-team-r"><span className="gcf-rec">37-38</span><span className="gcf-abbr">ATH</span><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/oak.png" alt="ATH" /></span></div>
-              </div>
-              <div className="gcf-odds"><span>ML <b>+101</b></span><span className="gcf-dot">·</span><span>O/U <b>8.5</b></span><span className="gcf-dot">·</span><span>ML <b>-122</b></span></div>
-              <div className="gcf-pitch">Kevin Gausman <span className="gcf-vs">vs</span> Ben Brown</div>
-              <div className="gcf-leanrow"><span className="gcf-lean"><span className="gcf-lbeta">BETA</span> ⚐ OVER 6.5</span><span className="gcf-result">✓ 14 v 8.5</span></div>
-            </div>
-            <div className="gcf-card">
-              <div className="gcf-card-head"><span className="gcf-tag">MLB</span><span className="gcf-time">7:05 PM</span></div>
-              <div className="gcf-matchup">
-                <div className="gcf-team"><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png" alt="NYY" /></span><span className="gcf-abbr">NYY</span><span className="gcf-rec">48-27</span></div>
-                <div className="gcf-score"><span className="gcf-soon">7:05 PM</span></div>
-                <div className="gcf-team gcf-team-r"><span className="gcf-rec">40-36</span><span className="gcf-abbr">BOS</span><span className="gcf-logo"><img src="https://a.espncdn.com/i/teamlogos/mlb/500/bos.png" alt="BOS" /></span></div>
-              </div>
-              <div className="gcf-odds"><span>ML <b>-140</b></span><span className="gcf-dot">·</span><span>O/U <b>9.0</b></span><span className="gcf-dot">·</span><span>ML <b>+120</b></span></div>
-              <div className="gcf-leanrow"><span className="gcf-lean"><span className="gcf-lbeta">BETA</span> ⚐ UNDER 9.0</span></div>
-            </div>
-          </div>
+          <img className="rl-screenshot" src="/brand/screenshots/sc-game-center.jpg" alt="Risk Matrix Labs Game Center — live games and odds" loading="lazy" />
         </div>
       </section>
 
@@ -187,27 +136,8 @@ export default function LandingPage({ onLogin }) {
         <h2 className="rl-h2">Every prop.<br /><span className="rl-g">Graded for value.</span></h2>
         <p className="rl-sub">Player props grouped by player, the best price across every book, and a true EV edge on every line. The bot runs the math — you see the value at a glance.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
-          <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://matrix-bot/ch2</span><span className="rl-live"><span className="rl-ld" />EV</span></div>
-          <div className="mbf-screen">
-            <div className="mbf-tabs"><div className="mbf-tab">CH 1 · FIND</div><div className="mbf-tab mbf-tab-on">CH 2 · LOOK</div><div className="mbf-tab">CH 3 · TRACK</div></div>
-            <div className="mbf-strip">
-              <div className="mbf-dates"><span className="mbf-chip mbf-chip-on">Today</span><span className="mbf-chip">Wed</span><span className="mbf-chip">Thu</span></div>
-              <div className="mbf-sports"><span className="mbf-sport mbf-sport-on">MLB</span><span className="mbf-sport">NBA</span></div>
-            </div>
-            <div className="mbf-body">
-              <div className="mbf-player mbf-player-open">
-                <div className="mbf-phead"><div className="mbf-av" style={{ background: '#1F3A2E', color: '#5BE38B' }}>GS</div><div className="mbf-pmeta"><div className="mbf-pname">G. Springer</div><div className="mbf-pteam">TOR · CF</div></div><span className="mbf-chev">▴</span></div>
-                <div className="mbf-props">
-                  <div className="mbf-prop"><div className="mbf-stat"><span className="mbf-statname">Hits</span><span className="mbf-line">1.5</span></div><div className="mbf-prices"><span className="mbf-price mbf-price-best"><span className="mbf-ar">▲</span>+110</span><span className="mbf-price"><span className="mbf-ar">▼</span>-130</span><span className="mbf-ev">+4.2%</span></div></div>
-                  <div className="mbf-prop"><div className="mbf-stat"><span className="mbf-statname">Total Bases</span><span className="mbf-line">2.5</span></div><div className="mbf-prices"><span className="mbf-price"><span className="mbf-ar">▲</span>+135</span><span className="mbf-price mbf-price-best"><span className="mbf-ar">▼</span>-115</span><span className="mbf-ev">+2.8%</span></div></div>
-                  <div className="mbf-prop"><div className="mbf-stat"><span className="mbf-statname">Runs</span><span className="mbf-line">0.5</span></div><div className="mbf-prices"><span className="mbf-price mbf-price-best"><span className="mbf-ar">▲</span>+105</span><span className="mbf-price"><span className="mbf-ar">▼</span>-125</span><span className="mbf-ev">+3.6%</span></div></div>
-                </div>
-              </div>
-              <div className="mbf-player"><div className="mbf-phead"><div className="mbf-av" style={{ background: '#2E2A14', color: '#EF9F27' }}>VG</div><div className="mbf-pmeta"><div className="mbf-pname">V. Guerrero Jr.</div><div className="mbf-pteam">TOR · 1B</div></div><span className="mbf-count">3 props</span><span className="mbf-chev">▾</span></div></div>
-              <div className="mbf-player"><div className="mbf-phead"><div className="mbf-av" style={{ background: '#16243A', color: '#378ADD' }}>BB</div><div className="mbf-pmeta"><div className="mbf-pname">B. Bichette</div><div className="mbf-pteam">TOR · SS</div></div><span className="mbf-count">2 props</span><span className="mbf-chev">▾</span></div></div>
-            </div>
-            <div className="mbf-foot">BEST PRICE ACROSS BOOKS · +EV vs SHARP</div>
-          </div>
+          <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://matrix-bot</span><span className="rl-live"><span className="rl-ld" />EV</span></div>
+          <img className="rl-screenshot" src="/brand/screenshots/sc-matrix-bot.jpg" alt="Risk Matrix Labs Matrix Bot — scan and EV" loading="lazy" />
         </div>
       </section>
 
@@ -218,7 +148,7 @@ export default function LandingPage({ onLogin }) {
         <p className="rl-sub">Bankroll and unit sizing, the PHLT™ ladder, round-robin engine, and a discipline score on every session. Turn an edge into a system that compounds.</p>
         <div className="rl-frame rl-reveal" style={{ marginTop: 22 }}>
           <div className="rl-frame-bar"><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-fdot" /><span className="rl-path">rml://dashboard</span></div>
-          <img className="rl-dash-shot" src="/brand/screenshots/mobile-analytics.png" alt="Risk Matrix Labs dashboard" loading="lazy" />
+          <img className="rl-screenshot" src="/brand/screenshots/sc-dashboard.jpg" alt="Risk Matrix Labs dashboard" loading="lazy" />
         </div>
       </section>
 
@@ -335,7 +265,7 @@ export default function LandingPage({ onLogin }) {
       <footer className="rl-foot">
         <div className="rl-foot-top">
           <div className="rl-foot-brand">
-            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-labs.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
+            <div className="rl-brand"><img className="rl-mark" src="/brand/logos/logo-mark.png" alt="Risk Matrix Labs" /><div className="rl-nm">RISK MATRIX LABS</div></div>
             <div className="rl-foot-tag">Operate with discipline.</div>
             <div className="rl-socials">
               <a href="https://instagram.com/riskmatrixlabs" aria-label="Instagram">IG</a>
@@ -382,7 +312,8 @@ const CSS = `
 #rml-landing .rl-sub{font-size:14px;color:var(--rl-ink-1);line-height:1.65;max-width:380px;margin-bottom:24px}
 #rml-landing .rl-nav{position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;backdrop-filter:blur(14px);background:rgba(10,10,10,.72);border-bottom:1px solid var(--rl-line);max-width:480px;margin:0 auto}
 #rml-landing .rl-brand{display:flex;align-items:center;gap:10px}
-#rml-landing .rl-mark{width:34px;height:34px;display:block;object-fit:contain}
+#rml-landing .rl-mark{height:30px;width:auto;display:block;object-fit:contain}
+#rml-landing .rl-screenshot{width:100%;display:block;max-height:600px;object-fit:cover;object-position:top center;-webkit-mask-image:linear-gradient(#000 88%,transparent);mask-image:linear-gradient(#000 88%,transparent)}
 #rml-landing .rl-faq{display:flex;flex-direction:column;border-top:1px solid var(--rl-line);margin-top:8px}
 #rml-landing .rl-faq-item{border-bottom:1px solid var(--rl-line)}
 #rml-landing .rl-faq-q{display:flex;align-items:center;justify-content:space-between;gap:14px;cursor:pointer;list-style:none;padding:18px 2px;font-family:var(--rl-d);font-weight:700;font-size:16px;color:var(--rl-ink-0)}
