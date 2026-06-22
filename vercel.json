@@ -46,6 +46,10 @@
     { "path": "/api/cron-grade-leans",       "schedule": "*/30 13-23 * * *" },
     { "path": "/api/cron-grade-leans",       "schedule": "*/30 0-9 * * *" },
     { "path": "/api/cron-kbo-leans",         "schedule": "0 4 * * *" },
-    { "path": "/api/cron-kbo-leans",         "schedule": "0 14 * * *" }
+    { "path": "/api/cron-kbo-leans",         "schedule": "0 14 * * *" },
+    { "path": "/api/cron-snapshot-phlt",     "schedule": "0 16 * * *" },
+    { "path": "/api/cron-snapshot-phlt",     "schedule": "0 21 * * *" },
+    { "path": "/api/cron-grade-props",       "schedule": "*/30 1-9 * * *" },
+    { "path": "/api/cron-grade-props",       "schedule": "0 13 * * *" }
   ]
 }
