@@ -6,6 +6,7 @@ import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
 import { matchBetToEvent, findEventForBet, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
+import { teamLeanLines } from '../lib/teamLean'
 import { liveConsensus } from '../lib/liveConsensus'
 import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES, copyPickAndOpen } from '../lib/betLinks'
 import { booksForState, OFFSHORE, NATIONWIDE, US_STATES, guessState } from '../lib/geoBooks'
@@ -252,6 +253,8 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
   }
   const moveArrow = t && t.dir > 0 ? '▲' : t && t.dir < 0 ? '▼' : null
   const bp = ou.bullpens
+  // Team leans (ML / Run Line) the model persists + grades — surfaced in FULL mode only, brand-safe.
+  const teamLeans = isGraded ? [] : teamLeanLines(ou.proj2?.bets, event?.away_abbr, event?.home_abbr)
   return (
     <div style={{ margin: '0 16px 12px', padding: '11px 13px', borderRadius: '12px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.06)' : CARD }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -264,6 +267,17 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
           </>
         )}
       </div>
+      {teamLeans.length > 0 && (
+        <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>MODEL</span>
+          {teamLeans.map((ln, i) => (
+            <Fragment key={ln.market}>
+              {i > 0 && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>·</span>}
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', color: NEON_T, whiteSpace: 'nowrap' }}>{ln.label}</span>
+            </Fragment>
+          ))}
+        </div>
+      )}
       {!isGraded && (moveArrow || ou.edge || (bp && (bp.away != null || bp.home != null))) && (
         <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
           {moveArrow && t?.open != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : '#FF3B3B' }}>{moveArrow} since open</span></span>}
