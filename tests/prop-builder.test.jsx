@@ -48,3 +48,20 @@ describe('PropBuilder — completing the prop', () => {
     })
   })
 })
+
+describe('PropBuilder — free stat context', () => {
+  it('shows season per-game for the chosen stat from player-stats', async () => {
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
+      if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: true, games: 10, last5games: 5, season: [{ label: 'H', value: 12 }], last5: [{ label: 'H', value: 7 }] }) })
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    })
+    render(<PropBuilder sport="MLB" game={null} token="t" onChange={() => {}} />)
+    fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
+    await waitFor(() => screen.getByText('Aaron Judge'))
+    fireEvent.click(screen.getByText('Aaron Judge'))
+    await waitFor(() => screen.getByLabelText(/stat/i))
+    fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
+    await waitFor(() => expect(screen.getByText(/1\.2/)).toBeTruthy())
+  })
+})

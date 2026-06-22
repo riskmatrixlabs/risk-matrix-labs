@@ -51,6 +51,20 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
     onChange?.(assembleProp({ player: player.player, side, line: lineN, statLabel: stat.label, sport, event: player.event, odds: oddsN }))
   }, [player, stat, side, line, odds, sport, onChange])
 
+  const [statResp, setStatResp] = useState(null)
+  useEffect(() => {
+    if (!player?.id) { setStatResp(null); return }
+    let on = true
+    fetch(`/api/player-stats?sport=${encodeURIComponent(sport)}&id=${encodeURIComponent(player.id)}`,
+      { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { found: false })
+      .then(j => { if (on) setStatResp(j) })
+      .catch(() => { if (on) setStatResp({ found: false }) })
+    return () => { on = false }
+  }, [player, sport, token])
+
+  const ctx = useMemo(() => (statResp && stat ? pickStatValue(statResp, stat.key) : null), [statResp, stat])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {!player ? (
@@ -100,7 +114,18 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
             <input value={odds} onChange={e => setOdds(e.target.value)} placeholder="Odds  ·  -120" inputMode="text"
               style={{ flex: 1, padding: '9px 11px', borderRadius: 10, background: '#121212', border: `1px solid ${BORDER}`, color: '#fff' }} />
           </div>
-          {/* free context box + live preview added in Task 4 */}
+          {ctx && (
+            <div style={{ background: '#101510', border: `1px solid ${NEON}22`, borderRadius: 10, padding: '9px 11px', display: 'flex', gap: 16 }}>
+              <div><div style={{ fontSize: 10, color: MUTED }}>SEASON / GM</div><div style={{ fontWeight: 700, color: '#fff' }}>{ctx.seasonPerGame.toFixed(1)}</div></div>
+              {ctx.last5PerGame != null && <div><div style={{ fontSize: 10, color: MUTED }}>LAST 5 / GM</div><div style={{ fontWeight: 700, color: '#fff' }}>{ctx.last5PerGame.toFixed(1)}</div></div>}
+            </div>
+          )}
+          {stat && line !== '' && odds !== '' && (
+            <div style={{ background: '#121212', border: `1px dashed ${BORDER}`, borderRadius: 10, padding: '9px 11px' }}>
+              <div style={{ color: '#fff', marginBottom: 5 }}>{`${player.player} ${side === 'over' ? 'Over' : 'Under'} ${line} ${stat.label} · ${odds}`}</div>
+              <span style={{ fontSize: 10, color: AMBER, border: `1px solid ${AMBER}55`, borderRadius: 5, padding: '2px 7px' }}>your number — not a book line</span>
+            </div>
+          )}
         </>
       )}
     </div>
