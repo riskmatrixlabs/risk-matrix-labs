@@ -114,10 +114,14 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
           if (!r.ok) return null
           const j = await r.json()
           // Snapshot every directional lean (not just strong) so we can grade the model's record
-          // after the game finishes. Fire-and-forget; the endpoint locks the first pre-game lean/day.
-          if ((j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER') && (ev.external_event_id || ev.id)) {
+          // after the game finishes. Fire-and-forget; the endpoint locks the first pre-game lean/day
+          // per market. Now carries the per-side run engine's ML + Run-Line picks too (graded like totals).
+          const bets = j?.ou?.proj2?.bets
+          const directionalTotal = (j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER')
+          const confidentMl = !!(bets?.ml?.pick && bets?.ml?.winProb >= 0.55)
+          if ((directionalTotal || confidentMl) && (ev.external_event_id || ev.id)) {
             fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time, edge_runs: j.ou.edgeRuns, model_version: j.ou.modelVersion }) }).catch(() => {})
+              body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time, edge_runs: j.ou.edgeRuns, model_version: j.ou.modelVersion, ml_pick: bets?.ml?.pick, ml_win_prob: bets?.ml?.winProb, rl_pick: bets?.rl?.pick, rl_cover_prob: bets?.rl?.coverProb }) }).catch(() => {})
           }
           // Only SURFACE a lean that has a real market total to anchor to — a lean with no line
           // ("OVER —") isn't actionable and breaks +Slip. (We still snapshot it above for grading.)
