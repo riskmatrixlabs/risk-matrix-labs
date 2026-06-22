@@ -53,11 +53,11 @@ describe('PHLT v2.2 scorer', () => {
   })
 
   describe('tierFor thresholds', () => {
-    it('maps scores to A/B/C/Avoid', () => {
-      expect(tierFor(90).tier).toBe('A')
-      expect(tierFor(80).tier).toBe('B')
-      expect(tierFor(70).tier).toBe('C')
-      expect(tierFor(50).tier).toBe('AVOID')
+    it('maps scores to A/B/C/Avoid (re-centered 72/62/52)', () => {
+      expect(tierFor(75).tier).toBe('A')   // >= 72
+      expect(tierFor(66).tier).toBe('B')   // 62-71
+      expect(tierFor(55).tier).toBe('C')   // 52-61
+      expect(tierFor(45).tier).toBe('AVOID') // < 52
     })
   })
 
@@ -96,6 +96,18 @@ describe('PHLT v2.2 scorer', () => {
       expect(r.faded).toBe(true)
       expect(r.tier).toBe('AVOID')
       expect(r.fades.join(' ')).toMatch(/Cold Zone/)
+    })
+
+    it('an AVERAGE, non-faded hitter is NOT Fade after the re-center (was the all-Fade bug)', () => {
+      const r = scoreHit({
+        hitter: { avgLast5: 0.250, hitStreak: 0, bbPct: 8, hitsLast4: 2, xba: 0.250 },
+        pitcher: { kPct: 22, whiffPct: 24, xbaAgainst: 0.255, era: 4.3 },
+        matchup: { platoonEdge: 0, xwoba: 0.320 },
+        park: { parkFactor: 100, weatherBoost: 0 },
+      })
+      expect(r.faded).toBe(false)        // no auto-fade triggered
+      expect(r.tier).not.toBe('AVOID')   // average ≠ Fade anymore
+      expect(r.score).toBeGreaterThanOrEqual(52) // lands in Caution or better
     })
 
     it('breakdown is present and each part is 0–100', () => {
