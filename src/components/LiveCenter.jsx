@@ -901,7 +901,7 @@ function PropBuilderSection({ event, token, onAddToSlip }) {
   const [resetKey, setResetKey] = useState(0)
   if (!onAddToSlip) return null
   return (
-    <Collapsible title="Build a prop" sub="free · tracks live" defaultOpen={false}>
+    <Collapsible title="Build a prop" sub="tracks live" defaultOpen={false}>
       <PropBuilder key={resetKey} sport={event.sport} game={event} token={token} onChange={setProp} />
       <button type="button" disabled={!prop}
         onClick={() => { if (prop) { onAddToSlip({ pick: prop.pick, odds: prop.odds, sport: prop.sport, event: prop.event, book: null }); setProp(null); setResetKey(k => k + 1) } }}
