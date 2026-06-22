@@ -106,3 +106,14 @@ export function ladderToWin(stake, odds) {
   if (odds > 0) return +(stake * (odds / 100)).toFixed(2)
   return +(stake / (Math.abs(odds) / 100)).toFixed(2)
 }
+
+// Idempotency guard for ladder rung seeding.
+// Returns true only when it is SAFE to seed a fresh set of rungs for `sessionKey`
+// (i.e. no ladder rows already exist for that session). Prevents a double-click /
+// double-fire of "Start Session" from appending a second set of rungs into the
+// same session, which produced duplicate "Rung N" rows in the bets table.
+export function canSeedLadder(bets, sessionKey) {
+  if (!sessionKey) return false
+  if (!Array.isArray(bets)) return true
+  return !bets.some(b => b && b.ladder && b.ladderSession === sessionKey)
+}

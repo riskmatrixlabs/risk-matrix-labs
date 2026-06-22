@@ -881,6 +881,10 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladde
   }
 
   const startSession = () => {
+    // Idempotency guard: never seed twice into the same session key. A double-click
+    // or re-fire of "Start Session" would otherwise append a second set of 6 rungs,
+    // producing duplicate "Rung N" rows. If rungs already exist for this session, no-op.
+    if (bets.some(b => b.ladder && b.ladderSession === ladderSessionKey)) return
     // Generate 6 fresh rungs for the current session key with user-set stake
     const s    = ladderStarting > 0 ? ladderStarting : LADDER_STARTING_BR
     const base  = Date.now()
