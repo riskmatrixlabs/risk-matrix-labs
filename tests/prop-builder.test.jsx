@@ -4,16 +4,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import PropBuilder from '../src/components/PropBuilder.jsx'
 
-const MATCH = { player: 'Aaron Judge', id: '33192', headshot: '', team: 'NYY',
+const MATCH = { player: 'Aaron Judge', id: '33192', headshot: 'https://espn.example/judge.png', team: 'NYY', pos: 'RF',
   game: { away: 'Cincinnati Reds', home: 'New York Yankees', away_abbr: 'CIN', home_abbr: 'NYY', external_event_id: '401111' } }
 
-beforeEach(() => {
-  global.fetch = vi.fn((url) => {
-    if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
-    if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-  })
-})
+// Default fetch mock: search returns the one player; all the new game-gated calls
+// (phlt / prop-open / scan-props) fail-soft so they never error in tests.
+function defaultFetch(url) {
+  if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
+  if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
+  if (String(url).includes('/api/phlt'))          return Promise.resolve({ ok: true, json: () => Promise.resolve({ verdicts: {} }) })
+  if (String(url).includes('/api/prop-open'))     return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
+  if (String(url).includes('/api/scan-props'))    return Promise.resolve({ ok: true, json: () => Promise.resolve({ edges: [], lineShopOnly: [] }) })
+  return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+}
+
+// Pick a stat by clicking its chip (was a <select> before the rich-UI rebuild).
+function pickStat(label) { fireEvent.click(screen.getByRole('button', { name: label })) }
+
+beforeEach(() => { global.fetch = vi.fn(defaultFetch) })
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
 describe('PropBuilder — player search', () => {
@@ -26,6 +34,14 @@ describe('PropBuilder — player search', () => {
     await waitFor(() => expect(screen.getByText(/Cincinnati Reds vs New York Yankees/i)).toBeTruthy())
     expect(onChange).toHaveBeenCalledWith(null)
   })
+
+  it('renders a headshot image for a search result', async () => {
+    render(<PropBuilder sport="MLB" game={null} token="t" onChange={() => {}} />)
+    fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
+    await waitFor(() => screen.getByText('Aaron Judge'))
+    const img = document.querySelector('img[src="https://espn.example/judge.png"]')
+    expect(img).toBeTruthy()
+  })
 })
 
 describe('PropBuilder — completing the prop', () => {
@@ -36,11 +52,10 @@ describe('PropBuilder — completing the prop', () => {
     await waitFor(() => screen.getByText('Aaron Judge'))
     fireEvent.click(screen.getByText('Aaron Judge'))
     await waitFor(() => screen.getByText(/auto-matched/i))
-    const select = screen.getByLabelText(/stat/i)
-    const opts = [...select.querySelectorAll('option')].map(o => o.textContent)
-    expect(opts).toContain('Hits')
-    expect(opts).not.toContain('Total Bases')
-    fireEvent.change(select, { target: { value: 'Hits' } })
+    // stat is now chips: a trackable one renders, an untrackable one does not
+    expect(screen.getByRole('button', { name: 'Hits' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Total Bases' })).toBeNull()
+    pickStat('Hits')
     fireEvent.change(screen.getByPlaceholderText(/line/i), { target: { value: '1.5' } })
     fireEvent.change(screen.getByPlaceholderText(/odds/i), { target: { value: '-120' } })
     await waitFor(() => {
@@ -53,16 +68,15 @@ describe('PropBuilder — completing the prop', () => {
 describe('PropBuilder — free stat context', () => {
   it('shows season per-game for the chosen stat from player-stats', async () => {
     global.fetch = vi.fn((url) => {
-      if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
       if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: true, games: 10, last5games: 5, season: [{ label: 'H', value: 12 }], last5: [{ label: 'H', value: 7 }] }) })
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      return defaultFetch(url)
     })
     render(<PropBuilder sport="MLB" game={null} token="t" onChange={() => {}} />)
     fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
     await waitFor(() => screen.getByText('Aaron Judge'))
     fireEvent.click(screen.getByText('Aaron Judge'))
-    await waitFor(() => screen.getByLabelText(/stat/i))
-    fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
+    await waitFor(() => screen.getByRole('button', { name: 'Hits' }))
+    pickStat('Hits')
     await waitFor(() => expect(screen.getByText(/1\.2/)).toBeTruthy())
   })
 })
@@ -71,35 +85,28 @@ describe('PropBuilder — cached scan line pre-fills', () => {
   const GAME = { away_team: 'Cincinnati Reds', home_team: 'New York Yankees', external_event_id: '401111' }
   it('pre-fills line and odds from /api/prop-open when a cached line exists', async () => {
     global.fetch = vi.fn((url) => {
-      if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
-      if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
       if (String(url).includes('/api/prop-open'))     return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: true, line: 1.5, price: -135, openLine: 0.5, openPrice: -150 }) })
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      return defaultFetch(url)
     })
     render(<PropBuilder sport="MLB" game={GAME} token="t" onChange={() => {}} />)
     fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
     await waitFor(() => screen.getByText('Aaron Judge'))
     fireEvent.click(screen.getByText('Aaron Judge'))
-    await waitFor(() => screen.getByLabelText(/stat/i))
-    fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
+    await waitFor(() => screen.getByRole('button', { name: 'Hits' }))
+    pickStat('Hits')
     await waitFor(() => expect(screen.getByPlaceholderText(/line/i).value).toBe('1.5'))
     expect(screen.getByPlaceholderText(/odds/i).value).toBe('-135')
-    expect(screen.getByText(/book line 1\.5 \(open 0\.5\)/)).toBeTruthy()
+    expect(screen.getByText(/book line 1\.5 \(open 0\.5/)).toBeTruthy()
   })
 
   it('leaves manual inputs empty when nothing is cached', async () => {
-    global.fetch = vi.fn((url) => {
-      if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
-      if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
-      if (String(url).includes('/api/prop-open'))     return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-    })
+    global.fetch = vi.fn(defaultFetch) // prop-open → { found:false }
     render(<PropBuilder sport="MLB" game={GAME} token="t" onChange={() => {}} />)
     fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
     await waitFor(() => screen.getByText('Aaron Judge'))
     fireEvent.click(screen.getByText('Aaron Judge'))
-    await waitFor(() => screen.getByLabelText(/stat/i))
-    fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
+    await waitFor(() => screen.getByRole('button', { name: 'Hits' }))
+    pickStat('Hits')
     await waitFor(() => {})
     expect(screen.getByPlaceholderText(/line/i).value).toBe('')
   })
