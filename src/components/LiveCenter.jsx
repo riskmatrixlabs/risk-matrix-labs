@@ -11,6 +11,7 @@ import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES, copyPickAndOpen } from
 import { booksForState, OFFSHORE, NATIONWIDE, US_STATES, guessState } from '../lib/geoBooks'
 import { Sparkline, InfoLabel, BOOK_NAMES, SPREAD_LABEL, fmtAm } from './botShared.jsx'
 import { BookLineMovement } from './BookMoveChart.jsx'
+import PropBuilder from './PropBuilder.jsx'
 
 const NEON   = '#BDFF00'
 const NEON_T = 'var(--neon-title)'
@@ -891,6 +892,24 @@ function Collapsible({ title, sub, tip, status, defaultOpen = false, children })
       </div>
       {open && children}
     </div>
+  )
+}
+
+// Free prop builder wrapped for Game Center: builds a prop and drops it on the slip.
+function PropBuilderSection({ event, token, onAddToSlip }) {
+  const [prop, setProp] = useState(null)
+  const [resetKey, setResetKey] = useState(0)
+  if (!onAddToSlip) return null
+  return (
+    <Collapsible title="Build a prop" sub="tracks live" defaultOpen={false}>
+      <PropBuilder key={resetKey} sport={event.sport} game={event} token={token} onChange={setProp} />
+      <button type="button" disabled={!prop}
+        onClick={() => { if (prop) { onAddToSlip({ pick: prop.pick, odds: prop.odds, sport: prop.sport, event: prop.event, book: null }); setProp(null); setResetKey(k => k + 1) } }}
+        style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 11, fontWeight: 700, letterSpacing: '0.14em',
+          border: 'none', cursor: prop ? 'pointer' : 'default', background: prop ? NEON : '#1c1c1c', color: prop ? '#0A0A0A' : '#666' }}>
+        + ADD TO SLIP
+      </button>
+    </Collapsible>
   )
 }
 
@@ -2127,6 +2146,9 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                     )}
                   </div>
                 )}
+
+                {/* Free prop builder — above the line shop */}
+                <PropBuilderSection event={event} token={token} onAddToSlip={onAddToSlip} />
 
                 {/* Line Shop — Compare Books / best price (swapped above Win Probability) */}
                 <LineShop event={event} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} focus={shopFocus} />
