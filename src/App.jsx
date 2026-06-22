@@ -813,7 +813,7 @@ function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, e
   // and live stat bars exactly like CH3 Track (same withLogos arg order: norm, ev, players, boxStats, events, winPct).
   const normWithLogos = () => {
     const ev = findEventForBet(bet, events)
-    return withLogos(normalizeBet(bet), ev || null, players, ev ? (boxScores[ev.external_event_id] || null) : null, events, winPct)
+    return withLogos(normalizeBet(bet), ev || null, players, boxScores, events, winPct)
   }
   const grade = gradeBet(bet, events)                     // EV/CLV so the footer fills like CH3
   const isOpen   = bet.result === 'Open'
@@ -2377,11 +2377,19 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [betWinPct, setBetWinPct] = useState({})   // event_id → { home, away } live game-winner prob (ML rings)
   const liveBetGameKeys = useMemo(() => {
     const set = new Set()
+    const addGame = (g, sport) => {
+      const hasBox = g && (isLiveEvent(g) || g.status === 'FT' || g.status === 'AOT')
+      if (hasBox && g.external_event_id) set.add(`${(sport || g.sport || 'MLB')}|${g.external_event_id}`)
+    }
     for (const b of bets || []) {
       if (b.result !== 'Open') continue
-      const ev = findEventForBet(b, betEvents)
-      const hasBox = ev && (isLiveEvent(ev) || ev.status === 'FT' || ev.status === 'AOT')
-      if (hasBox && ev.external_event_id) set.add(`${(b.sport || ev.sport || 'MLB')}|${ev.external_event_id}`)
+      addGame(findEventForBet(b, betEvents), b.sport)
+      // Parlay legs can be in different games — fetch each leg's game so cross-game prop legs track too.
+      if (Array.isArray(b.legs)) {
+        for (const leg of b.legs) {
+          addGame(findEventForBet({ sport: leg.sport || b.sport, event: leg.event, pick: leg.pick }, betEvents), leg.sport || b.sport)
+        }
+      }
     }
     return [...set]
   }, [bets, betEvents])
