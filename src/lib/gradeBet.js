@@ -2,6 +2,7 @@
 // Same math CH3 uses, extracted so the Bets-tab cards grade identically.
 import { findEventForBet, evaluateBet } from './betMatch.js'
 import { devigTwoWay, americanToDecimal, americanToImplied } from './devig.js'
+import { modelEvPct } from './modelEv.js'
 
 function buildDvs(ev) {
   const m = ev.metadata || {}
@@ -14,7 +15,7 @@ function buildDvs(ev) {
 
 const decFromAm = (a) => a > 0 ? a / 100 + 1 : 100 / Math.abs(a) + 1
 
-export function gradeBet(bet, events = []) {
+export function gradeBet(bet, events = [], modelEdges = {}) {
   if (!bet) return null
   const legs = Array.isArray(bet.legs) ? bet.legs : null
 
@@ -38,15 +39,25 @@ export function gradeBet(bet, events = []) {
       const comboCloseDec = closes.reduce((a, c) => a * (americanToDecimal(c) || 1), 1)
       if (comboCloseDec > 0) clvPct = (entryDec / comboCloseDec - 1) * 100
     }
-    return (evPct != null || clvPct != null || winProb != null) ? { evPct, clvPct, winProb } : fallback(bet)
+    const out = (evPct != null || clvPct != null || winProb != null) ? { evPct, clvPct, winProb } : fallback(bet)
+    return out ? { ...out, modelEvPct: null } : out
   }
 
   // ── Single ──
   const ev = findEventForBet(bet, events)
-  if (!ev) return fallback(bet)
+  if (!ev) { const fb = fallback(bet); return fb ? { ...fb, modelEvPct: null } : fb }
   const g = evaluateBet(bet, ev, buildDvs(ev))
-  if (!g) return fallback(bet)
-  return { evPct: g.evPct, clvPct: g.clvPct, winProb: g.fairProb ?? fallback(bet)?.winProb ?? null }
+  if (!g) { const fb = fallback(bet); return fb ? { ...fb, modelEvPct: null } : fb }
+  // ADDITIVE: separate model-adjusted EV for MLB total bets with a model edge (headline evPct untouched).
+  const edge = modelEdges[ev?.external_event_id]
+  const mev = modelEvPct({
+    pick: bet.pick,
+    americanOdds: Number(bet.odds),
+    overJuice: ev?.metadata?.over_juice,
+    underJuice: ev?.metadata?.under_juice,
+    modelEdgeRuns: edge,
+  })
+  return { evPct: g.evPct, clvPct: g.clvPct, winProb: g.fairProb ?? fallback(bet)?.winProb ?? null, modelEvPct: mev }
 }
 
 // No event match → at least a win-prob from the bet's own odds, so the ring still fills.

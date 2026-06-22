@@ -808,14 +808,14 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
 }
 
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
-function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [], players = [], boxScores = {}, winPct = {} }) {
+function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [], players = [], boxScores = {}, winPct = {}, modelEdges = {} }) {
   // Resolve the matched event + its live box-score so dashboard cards light up the win-prob ring
   // and live stat bars exactly like CH3 Track (same withLogos arg order: norm, ev, players, boxStats, events, winPct).
   const normWithLogos = () => {
     const ev = findEventForBet(bet, events)
     return withLogos(normalizeBet(bet), ev || null, players, boxScores, events, winPct)
   }
-  const grade = gradeBet(bet, events)                     // EV/CLV so the footer fills like CH3
+  const grade = gradeBet(bet, events, modelEdges)         // EV/CLV (+ additive M-EV) so the footer fills like CH3
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
 
@@ -851,7 +851,7 @@ function profitFromLadderOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladderSessionKey, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onCloseSync, betEvents = [], betRosterPlayers = [], betBoxScores = {}, betWinPct = {} }) {
+function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladderSessionKey, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onCloseSync, betEvents = [], betRosterPlayers = [], betBoxScores = {}, betWinPct = {}, betModelEdges = {} }) {
   const { isMobile } = useMobile()
   const [startInput, setStartInput] = useState(String(ladderStarting))
   const [editRow,    setEditRow]    = useState(null)
@@ -1091,6 +1091,8 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladde
               events={betEvents}
               players={betRosterPlayers}
               boxScores={betBoxScores}
+              winPct={betWinPct}
+              modelEdges={betModelEdges}
               winPct={betWinPct}
             />
           ))}
@@ -1667,7 +1669,7 @@ const ATip = ({ active, payload, label: tLabel, fmt: fmtFn }) => {
 }
 
 // ─── ANALYTICS PANEL ─────────────────────────────────────────────────────────
-function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit, onShare, betEvents = [], betRosterPlayers = [], betBoxScores = {}, betWinPct = {} }) {
+function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit, onShare, betEvents = [], betRosterPlayers = [], betBoxScores = {}, betWinPct = {}, betModelEdges = {} }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
@@ -1993,6 +1995,8 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
                 events={betEvents}
                 players={betRosterPlayers}
                 boxScores={betBoxScores}
+                winPct={betWinPct}
+                modelEdges={betModelEdges}
                 winPct={betWinPct}
               />
             ))}
@@ -2352,6 +2356,28 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     const t = setInterval(load, 60000)
     return () => { on = false; clearInterval(t) }
   }, [])
+  // Model run-edges per game (Supabase lean_results, market=total) → additive M-EV on total bet cards.
+  // FREE: authenticated SELECT; fail-soft to {} so the headline EV is never affected.
+  const [betModelEdges, setBetModelEdges] = useState({})
+  useEffect(() => {
+    let on = true
+    const ids = [...new Set(
+      bets.flatMap(b => {
+        const ev = findEventForBet(b, betEvents)
+        return ev?.external_event_id ? [ev.external_event_id] : []
+      })
+    )]
+    if (!ids.length) { setBetModelEdges({}); return }
+    supabase.from('lean_results').select('external_event_id, edge_runs').eq('market', 'total').in('external_event_id', ids)
+      .then(({ data }) => {
+        if (!on) return
+        const map = {}
+        for (const r of (data || [])) if (r?.edge_runs != null) map[r.external_event_id] = r.edge_runs
+        setBetModelEdges(map)
+      })
+      .catch(() => { if (on) setBetModelEdges({}) })
+    return () => { on = false }
+  }, [bets, betEvents])
   // Roster map for bet-log player-prop headshots: name→headshot across all active sports.
   const [betRosterPlayers, setBetRosterPlayers] = useState([])
   useEffect(() => {
@@ -5351,6 +5377,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     players={betRosterPlayers}
                     boxScores={betBoxScores}
                     winPct={betWinPct}
+                    modelEdges={betModelEdges}
+                    winPct={betWinPct}
                   />
                 ))}
                 {filtered.length === 0 && (
@@ -5395,7 +5423,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         )}
 
         {/* ── LADDER ── */}
-        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} ladderSessionKey={ladderSessionKey} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} betEvents={betEvents} betRosterPlayers={betRosterPlayers} betBoxScores={betBoxScores} betWinPct={betWinPct} onEdit={setEditingBet} onShare={setShareCardBet}
+        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} ladderSessionKey={ladderSessionKey} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} betEvents={betEvents} betRosterPlayers={betRosterPlayers} betBoxScores={betBoxScores} betWinPct={betWinPct} betModelEdges={betModelEdges} onEdit={setEditingBet} onShare={setShareCardBet}
           onCloseSync={(newKey, newStarting, newRungs) => {
             // No deletes — update session key so ladder tab shows fresh session, upsert new rungs
             setLadderSessionKey(newKey)
@@ -5405,7 +5433,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         />}
 
         {/* ── ANALYTICS ── */}
-        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} betEvents={betEvents} betRosterPlayers={betRosterPlayers} betBoxScores={betBoxScores} betWinPct={betWinPct} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
+        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} betEvents={betEvents} betRosterPlayers={betRosterPlayers} betBoxScores={betBoxScores} betWinPct={betWinPct} betModelEdges={betModelEdges} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} onAddToSlip={addToSlip} />}
