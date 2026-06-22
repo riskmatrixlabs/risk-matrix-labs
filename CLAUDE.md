@@ -69,8 +69,12 @@ After every session where we add new tools, prompts, install commands, or workfl
 
 ## DEPLOY
 ```
-npm run build && npx vercel deploy --prod --force
+npm run ship      # GUARDED: runs tests + undefined-variable check + build, deploys ONLY if all pass
 ```
+(`npm run ship` = `test && check:undef && build && vercel deploy --prod --force`. The `check:undef` step
+catches the class of bug that crashed prod when <MoveArrow> was deleted but still referenced.)
+Raw deploy (skips the guard — avoid): `npm run build && npx vercel deploy --prod --force`
+Always bump `public/sw.js` CACHE (`rml-vNNN`) before any deploy or the PWA serves a stale white screen.
 
 ## TEST
 ```
@@ -100,6 +104,8 @@ Never use the Vite dev server for Playwright testing — always prod build.
 - j.willey2489@gmail.com
 - lauriesjeanpaul@gmail.com
 - tjoel6788@gmail.com
+- mmartinez2014@icloud.com
+- ryancollado7@gmail.com (founder's younger brother — internal tester)
 
 ## WORKFLOW FOLDER
 ```

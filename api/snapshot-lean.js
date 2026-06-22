@@ -41,6 +41,10 @@ export default async function handler(req, res) {
     confidence: b.confidence != null ? Number(b.confidence) : null,
     strong: !!b.strong,
     reason: b.reason || null,
+    // Calibration (S65): persist the CONTINUOUS edge + model version so we can fit win% vs edge later
+    // (the 1–4 confidence bucket alone is too coarse — the analysis couldn't calibrate on it).
+    edge_runs: b.edge_runs != null ? Number(b.edge_runs) : null,
+    model_version: b.model_version || null,
   }
   // Insert-if-absent: lock the first pre-game lean of the day per game (never overwrite).
   const { error } = await sb.from('lean_results').upsert(row, { onConflict: 'external_event_id,game_date', ignoreDuplicates: true })

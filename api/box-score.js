@@ -1,7 +1,23 @@
 // Live box score — FREE (ESPN public summary, zero Odds-API credits). Returns a
 // per-player canonical stat map for one game so the bot can show live prop progress
-// (current stat vs the line) on tracked-bet cards. Read-only, public.
+// (current stat vs the line) on tracked-bet cards, plus the live game-winner win
+// probability (ESPN winprobability) so ML bet cards show a win-prob that actually
+// moves with the score. Read-only, public.
 import { SPORTS } from './cron-sync-live.js'
+
+// ESPN summary.winprobability is a per-play array; the LAST entry is the current
+// state. homeWinPercentage is 0..1 for the HOME team; away = 1 − home − tie. This
+// is the game-winner probability — valid for moneyline picks only (not totals/props).
+function parseWinPct(summary) {
+  const wp = summary?.winprobability
+  if (!Array.isArray(wp) || wp.length === 0) return null
+  const last = wp[wp.length - 1]
+  const home = Number(last?.homeWinPercentage)
+  if (!Number.isFinite(home)) return null
+  const tie = Number(last?.tiePercentage) || 0
+  const away = Math.max(0, 1 - home - tie)
+  return { home, away }
+}
 
 const cleanNum = (v) => {
   const s = String(v ?? '').trim()
@@ -39,7 +55,7 @@ export default async function handler(req, res) {
     const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${cfg.sport}/${cfg.league}/summary?event=${id}`)
     if (!r.ok) return res.status(200).json({ players: {} })
     const summary = await r.json()
-    return res.status(200).json({ players: parseBox(summary) })
+    return res.status(200).json({ players: parseBox(summary), winPct: parseWinPct(summary) })
   } catch (e) {
     return res.status(500).json({ error: e.message })
   }

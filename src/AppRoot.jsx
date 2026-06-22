@@ -264,6 +264,8 @@ export default function AppRoot() {
     'j.willey2489@gmail.com',
     'lauriesjeanpaul@gmail.com',
     'tjoel6788@gmail.com',
+    'mmartinez2014@icloud.com',
+    'ryancollado7@gmail.com',   // founder's younger brother — internal tester
   ]
   const isTeamMember = TEAM_EMAILS.includes(session.user.email?.toLowerCase())
 

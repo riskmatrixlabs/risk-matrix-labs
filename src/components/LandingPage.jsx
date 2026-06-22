@@ -302,7 +302,7 @@ export default function LandingPage({ onLogin }) {
             </div>
           </div>
           <div className="rl-foot-cols">
-            <div className="rl-fcol"><div className="rl-fch">Product</div><a href="/pricing" onClick={open}>Game Center</a><a href="/pricing" onClick={open}>Matrix Bot</a><a href="/pricing" onClick={open}>Spotlight</a><a href="/pricing">Pricing</a></div>
+            <div className="rl-fcol"><div className="rl-fch">Product</div><a href="/pricing" onClick={open}>Game Center</a><a href="/pricing" onClick={open}>Dashboard</a><a href="/pricing" onClick={open}>Matrix Bot</a><a href="/pricing" onClick={open}>Spotlight</a><a href="/pricing">Pricing</a></div>
             <div className="rl-fcol"><div className="rl-fch">Company</div><a href="#rl-record">Record</a><a href="/affiliates">Affiliates</a><a href="mailto:support@riskmatrixlabs.com">Contact</a></div>
             <div className="rl-fcol"><div className="rl-fch">Legal</div><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/privacy">Responsible Play</a></div>
           </div>

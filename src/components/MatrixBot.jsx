@@ -8,7 +8,7 @@ import './MatrixBot.css'
 import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT, DANGER, BOOK_NAMES, SPREAD_LABEL, fmtAm, Sparkline } from './botShared.jsx'
 import { fetchEvents, isLiveEvent } from '../lib/events.js'
 import { fetchLineMovement, fetchBookMovement } from '../lib/oddsHistory.js'
-import { matchBetToEvent, evaluateBet, teamSide } from '../lib/betMatch.js'
+import { matchBetToEvent, findEventForBet, evaluateBet, teamSide, parsePick } from '../lib/betMatch.js'
 import { devigTwoWay, americanToImplied, americanToDecimal } from '../lib/devig.js'
 import { statProgress, totalProgress, scoreText, isMoneylineOrSpread, parseLine, shellBar } from '../lib/statProgress.js'
 import { decorate, copyPickAndOpen } from '../lib/betLinks.js'
@@ -22,6 +22,7 @@ import { BookMoveChart } from './BookMoveChart.jsx'
 import EventsPicker from './EventsPicker.jsx'
 import SpotlightTicker from './SpotlightTicker.jsx'
 import { normalizeBet, computeRecord, groupByDate } from '../lib/betCard.js'
+import { operatorFromBetLog } from '../lib/evBrainFeeds.js'
 import { BetCard, BetTicket } from './BetCard.jsx'
 
 // League logos (ESPN transparent PNGs) — clean fallback when a bet's team side can't be resolved.
@@ -32,7 +33,7 @@ const LEAGUE_LOGO = {
   WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
 }
 
-const normName = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+export const normName = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 
 // Find a player headshot whose name is the leading part of a prop pick
 // (e.g. "Aaron Judge Over 1.5 TB" → Aaron Judge). players: [{ norm, headshot }].
@@ -47,17 +48,33 @@ function headshotFor(title, players) {
 
 // Give each leg a real image: a player headshot for player props, else the correct team
 // logo from the matched event, else the league logo. Mutates and returns the normalized bet.
-export function withLogos(n, ev, players = [], boxStats = null, events = []) {
+// winPctByEvent (optional) = { [external_event_id]: { home, away } } live game-winner
+// probabilities from ESPN box-score. Applied only to MONEYLINE legs, keyed by each
+// leg's OWN game — so a parlay leg goes live too — instead of sitting on the frozen
+// pre-game moneyline. Non-ML legs (totals/spreads/props) keep their implied winProb.
+export function withLogos(n, ev, players = [], boxStats = null, events = [], winPctByEvent = null) {
   for (const leg of n.legs) {
     // Each parlay leg can be a different game — match the leg to its OWN event (by its
     // event name) so ML/spread legs get real team logos + score, not the league fallback.
     const legEv = (leg.subtitle && events.length)
-      ? events.find(e => matchBetToEvent({ sport: leg.sport || n.sport, event: leg.subtitle, date: n.date }, e))
+      ? findEventForBet({ sport: leg.sport || n.sport, event: leg.subtitle, date: n.date, pick: leg.title }, events)
       : null
     const gameEv = legEv || ev
     leg.headshot = players.length ? headshotFor(leg.title, players) : null
     const lo = Number(leg.odds)
     leg.winProb = Number.isFinite(lo) ? americanToImplied(lo) : null
+    // Live ML win-prob: only when this leg is a moneyline pick on the primary live
+    // game (`ev`) — ESPN winprobability is game-winner odds, so it's wrong for
+    // totals/spreads/props (those keep the entry-implied winProb).
+    leg.liveWP = null
+    const legWinPct = winPctByEvent && gameEv?.external_event_id ? winPctByEvent[gameEv.external_event_id] : null
+    if (legWinPct) {
+      const parsed = parsePick(leg.title, gameEv)
+      if (parsed?.market === 'ml') {
+        const wp = parsed.side === 'home' ? legWinPct.home : legWinPct.away
+        if (Number.isFinite(wp)) leg.liveWP = wp
+      }
+    }
     // Per-type live tracking: player prop → stat bar; game total → score-vs-line bar;
     // ML/spread → score line.
     leg.statNow = null
@@ -238,7 +255,7 @@ function PlayerSearch({ token, onSelect, onClose }) {
   )
 }
 
-export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv', sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets }) {
+export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv', sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets, isDemo = false, ladderSessionKey = null }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
   const [game, setGame]       = useState(null)
@@ -270,8 +287,8 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       </div>
       {channel !== 'find' && (
         <div key={channel} className="tvbot-tune">
-          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} />}
-          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={goToBetLog} onResetBets={onResetBets} />}
+          {channel === 'look' && <LookChannel game={game} player={player} sport={sport} setSport={setSport} token={token} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} onBack={() => setChannel('find')} onBackToList={() => { setGame(null); setPlayer(null) }} onTune={(g) => tuneTo(g)} onPickPlayer={(m) => tuneTo(m.game, { name: m.player, pos: m.pos, team: m.team, headshot: m.headshot, id: m.id })} isDemo={isDemo} />}
+          {channel === 'track' && <TrackChannel bets={bets} sport={sport} token={token} unitSize={unitSize} sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={goToBetLog} onResetBets={onResetBets} ladderSessionKey={ladderSessionKey} />}
         </div>
       )}
     </div>
@@ -797,7 +814,7 @@ function GameCard({ game, sport, token }) {
   )
 }
 
-function LookChannel({ game, player = null, sport, setSport, token, onLogPosition, onAddToSlip, onBack, onTune, onPickPlayer }) {
+function LookChannel({ game, player = null, sport, setSport, token, onLogPosition, onAddToSlip, onBack, onTune, onPickPlayer, isDemo = false }) {
   const [bookMove, setBookMove] = useState({})   // per-book movement (the line-movement chart)
   const [chartMkt, setChartMkt] = useState('ml') // ml | spread | total
   const [bookSide, setBookSide] = useState('away')
@@ -845,7 +862,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
   // empty state, so props still appear even when a game has no book lines.
   return (
     <LookFrame onBack={onBack}>
-      <EventsPicker sport={sport} onPickSport={setSport} onPickGame={onTune} onPickPlayer={onPickPlayer} token={token} selectedId={game?.external_event_id} />
+      <EventsPicker sport={sport} onPickSport={setSport} onPickGame={onTune} onPickPlayer={onPickPlayer} token={token} selectedId={game?.external_event_id} isDemo={isDemo} />
 
       {!game && <div style={{ marginTop: '14px' }}><Empty text="Tap a game above — line movement, compare books & props load right here." /></div>}
 
@@ -1361,7 +1378,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
 }
 
 // ───────────────────────────── CH 3 · TRACK ─────────────────────────────
-function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets }) {
+function TrackChannel({ bets, sport, token, unitSize = 0, sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets, ladderSessionKey = null }) {
   const [events, setEvents] = useState([])
   useEffect(() => {
     let live = true
@@ -1397,7 +1414,7 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
   const liveGameKeys = useMemo(() => {
     const set = new Set()
     for (const b of bets || []) {
-      const ev = events.find(e => matchBetToEvent(b, e))
+      const ev = findEventForBet(b, events)
       // Live OR finished (FT/AOT) games have a box score — finished gives the settled
       // final stat so the bar locks in green/red instead of going blank.
       const hasBox = ev && (isLiveEvent(ev) || ev.status === 'FT' || ev.status === 'AOT')
@@ -1431,7 +1448,7 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
   const graded = useMemo(() => {
     const out = []
     for (const b of bets || []) {
-      const ev = events.find(e => matchBetToEvent(b, e))
+      const ev = findEventForBet(b, events)
       if (ev) { const grade = evaluateBet(b, ev, buildDvs(ev)); if (grade) out.push({ bet: b, ev, grade }) }
     }
     return out
@@ -1451,11 +1468,26 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
     }
   }, [graded])
 
+  // OPERATOR rating — EV Brain discipline score off the full bet log (unit = bankroll × risk %).
+  const operator = useMemo(() => operatorFromBetLog(bets || [], { unit: unitSize }), [bets, unitSize])
+  const settledCount = useMemo(
+    () => (bets || []).filter(b => b.result === 'W' || b.result === 'L' || b.result === 'P').length,
+    [bets]
+  )
+
   const [gearOpen, setGearOpen] = useState(false)
   const [scope, setScope] = useState('all')   // all | 30d | 7d | today
   // SHARED bet filter (master = Bets tab): sport + result mirror across Bets / CH3 / Overview.
   const scopedBets = useMemo(() => {
     let b = bets || []
+    // Ladder: a ladder run pre-creates all 6 rungs but you only ever PLAY one at a time, so CH3 should
+    // show just the single ACTIVE rung (lowest-id still-Open rung of the ACTIVE session) — not all 6, and
+    // not every old/abandoned session's rungs. The full ladder lives on the LADDER tab. Non-ladder bets
+    // are untouched. (ladderSession scopes to the live run; activeRungId picks the one in play.)
+    const activeRungId = (bets || [])
+      .filter(x => x.ladder && x.ladderSession === ladderSessionKey && x.result === 'Open')
+      .sort((p, q) => (p.ladderId || 0) - (q.ladderId || 0))[0]?.id
+    b = b.filter(x => !x.ladder || x.id === activeRungId)
     if (sportFilter !== 'ALL') b = b.filter(x => x.sport === sportFilter)
     if (scope !== 'all') {
       const days = scope === '30d' ? 30 : scope === '7d' ? 7 : 1
@@ -1464,7 +1496,7 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
       b = b.filter(x => (x.date || '') >= cutStr)
     }
     return b
-  }, [bets, scope, sportFilter])
+  }, [bets, scope, sportFilter, ladderSessionKey])
 
   // Distinct sports present in the whole log — powers the CH3 sport selector (so you can scope here, not just on the Bets tab).
   const sportsInLog = useMemo(() => [...new Set((bets || []).map(b => b.sport).filter(Boolean))].sort(), [bets])
@@ -1485,7 +1517,7 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
     const legs = Array.isArray(b.legs) ? b.legs : []
     if (legs.length < 2) return null
     const per = legs.map(leg => {
-      const ev = events.find(e => matchBetToEvent({ sport: leg.sport || b.sport, event: leg.event, date: b.date }, e))
+      const ev = findEventForBet({ sport: leg.sport || b.sport, event: leg.event, date: b.date, pick: leg.pick }, events)
       return ev ? evaluateBet({ pick: leg.pick, odds: leg.odds, sport: leg.sport || b.sport, event: leg.event, date: b.date }, ev, buildDvs(ev)) : null
     })
     if (!per.some(Boolean)) return null
@@ -1577,7 +1609,15 @@ function TrackChannel({ bets, sport, token, sportFilter = 'ALL', resultFilter = 
           </div>
           <div style={{ background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '9px 10px', textAlign: 'center' }}>
             <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.1em' }}>OPERATOR</div>
-            <div style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: MUTED }}>SOON</div>
+            {settledCount >= 3 ? (
+              <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: operator.label === 'Degen Mode' ? DANGER : (operator.label === 'Sharp' || operator.label === 'Clean') ? NEON_T : MUTED }}>
+                {Math.round(operator.score)} · {operator.label}
+              </div>
+            ) : (
+              <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 600, color: MUTED, letterSpacing: '0.04em', lineHeight: 1.3 }}>
+                Log a few bets to rate your discipline
+              </div>
+            )}
           </div>
         </div>
         {/* Shared filter — mirrors the Bets tab (master). Changing it here changes it there. */}

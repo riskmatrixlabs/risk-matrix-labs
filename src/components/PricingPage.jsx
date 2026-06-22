@@ -7,21 +7,22 @@ const R    = "'Rajdhani', sans-serif"
 const I    = "'Inter', sans-serif"
 
 const FEATURES = [
+  { icon: Zap,       label: 'Live Odds & EV Grades',     desc: 'Scan the slate — live odds and EV-graded bets, no locks' },
+  { icon: Target,    label: 'Props & Model Leans',       desc: 'Player props grouped by player, with a record graded in public' },
+  { icon: BarChart3, label: 'Line Movement',             desc: 'Since-open moves and book-by-book comparison' },
   { icon: BarChart3, label: 'Bankroll Simulator',       desc: 'Model any staking system before risking real money' },
   { icon: Target,    label: 'Unit Sizing Engine',        desc: 'Auto-calculates stake based on your bankroll %' },
-  { icon: Layers,    label: 'PHLT™ Ladder System',       desc: 'Risk-free compounding ladder with pull checkpoints' },
+  { icon: Layers,    label: 'PHLT™ Ladder System',       desc: 'Compounding ladder with pull checkpoints' },
   { icon: Zap,       label: 'Round Robin Engine',        desc: 'Full RR matrix — combos, payouts, break-even hits' },
-  { icon: BarChart3, label: 'Behavioral Analytics',      desc: 'P&L curve, ROI, Kelly score, and discipline metrics' },
   { icon: Shield,    label: 'Session Grading (A–F)',     desc: 'Grades every session on discipline, not just results' },
   { icon: RefreshCw, label: 'Cloud Sync + Backup',       desc: 'Your data synced in real time, across any device' },
-  { icon: Target,    label: 'Pre-Session Checklist',     desc: 'Forces discipline before you place a single bet' },
 ]
 
 const FAQS = [
   { q: 'Is there really a free trial?',        a: '3 days free — no charge until day 4. Cancel before then and you pay nothing.' },
   { q: 'Can I switch plans later?',            a: 'Yes. Switch between monthly and annual anytime from your account settings.' },
   { q: 'What happens if I cancel?',            a: 'You keep access until the end of your billing period. No partial refunds — but no surprise charges either.' },
-  { q: 'Is this a picks service?',             a: 'No. We don\'t sell picks. Risk Matrix Labs is a bankroll management simulator — we help you operate the money side of sports betting with discipline.' },
+  { q: 'Is this a picks service?',             a: 'No. We don\'t sell picks. Risk Matrix Labs is an edge platform — live odds, EV grades, props, and models graded in public, plus the discipline tools to operate the money side with a system.' },
   { q: 'Who is this built for?',               a: 'Operators — people who treat sports betting as a system, not a slot machine. Cappers, serious recreational bettors, and anyone who wants to stop guessing and start operating.' },
 ]
 
@@ -154,10 +155,10 @@ export default function PricingPage({ onBack, onSignup }) {
             {/* Feature checklist */}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {[
-                'Bankroll Simulator', 'Unit Sizing Engine',
+                'Live Odds & EV Grades', 'Props & Model Leans',
+                'Line Movement', 'Bankroll Simulator',
                 'PHLT™ Ladder System', 'Round Robin Engine',
                 'Session Grading (A–F)', 'Discipline Score™',
-                'Behavioral Analytics', 'Pre-Session Checklist',
                 'Cloud Sync + Backup', 'All future features',
               ].map(f => (
                 <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -69,7 +69,7 @@ export default function AffiliatePage({ onBack }) {
             <span style={{ color: NEON }}>Start getting paid for it.</span>
           </h1>
           <p style={{ fontFamily: I, fontSize: '17px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: '520px', margin: '0 auto 16px' }}>
-            Every follower who tails your picks needs bankroll management to do it right. Point them to Risk Matrix Labs — earn 30% recurring every month they stay subscribed.
+            Every follower who tails you needs a real edge platform to do it right — live odds, EV grades, props, and the discipline tools to run a system. Point them to Risk Matrix Labs — earn 30% recurring every month they stay subscribed.
           </p>
           <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.28)', lineHeight: 1.7, maxWidth: '480px', margin: '0 auto 40px' }}>
             One link. No gatekeeping. Pays out automatically — month after month, for as long as they're active.
@@ -109,7 +109,7 @@ export default function AffiliatePage({ onBack }) {
         {/* ── WHO IT'S FOR ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '72px' }}>
           {[
-            { icon: Users, title: 'Cappers', desc: 'Your followers already need bankroll management to tail your picks correctly. Point them to the right tool and earn when they subscribe.' },
+            { icon: Users, title: 'Cappers', desc: 'Your followers already need real tools — live odds, EV grades, and bankroll discipline — to operate correctly. Point them to the right platform and earn when they subscribe.' },
             { icon: Zap, title: 'Content creators', desc: "Sports betting content? Your audience is the exact operator we're built for. One link in your bio or video description." },
             { icon: RefreshCw, title: 'Discord & community mods', desc: 'If you run a betting Discord or Slack, every member is a potential subscriber. Your link works 24/7.' },
             { icon: DollarSign, title: 'Anyone with an audience', desc: 'Podcast, newsletter, Twitch stream — if your audience bets, they need better tools. That\'s the pitch.' },
@@ -236,6 +236,9 @@ export default function AffiliatePage({ onBack }) {
 
       {/* ── FOOTER ── */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '24px 40px', textAlign: 'center' }}>
+        <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.28)', maxWidth: '640px', margin: '0 auto 12px', lineHeight: 1.6 }}>
+          Affiliate links — Risk Matrix Labs may earn a commission. Earnings shown are examples, not guarantees; results vary based on referred subscribers who stay active. Must be 21+. Problem gambling? Call 1-800-GAMBLER.
+        </div>
         <div style={{ fontFamily: I, fontSize: '11px', color: 'rgba(255,255,255,0.16)' }}>© 2026 Risk Matrix Labs LLC. All rights reserved. &nbsp;·&nbsp; <a href="/privacy" style={{ color: 'rgba(255,255,255,0.28)', textDecoration: 'none' }}>Privacy</a> &nbsp;·&nbsp; <a href="/terms" style={{ color: 'rgba(255,255,255,0.28)', textDecoration: 'none' }}>Terms</a></div>
       </div>
 

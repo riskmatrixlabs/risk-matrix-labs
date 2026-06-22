@@ -3,6 +3,61 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
+## 🟢 CURRENT STATE — Session 65 (SW v467, on main · 2026-06-21)
+**Marathon session. Model sprint → 4 backlog wins → EV Brain Phase 2 → then a deep bet-tracking debug chain.**
+
+### 🟢 BET TRACKING — fully fixed (v456–v467, the "it's not tracking" saga)
+The tracker now does the full loop end-to-end, all verified live against the DB + console:
+- 🟢 **Auto-settle (v456)** — bets grade themselves W/L/P from the final score (`gradeBetResult.js`); was a planned "Phase 4" never built.
+- 🟢 **Event-matching timezone bug (v461)** — events store `start_time` in UTC → late-ET games land next UTC day → a bet matched BOTH today's + last-night's game; `.find` grabbed the wrong/finished one → mis-tracked AND risked mis-grading. Fixed with `findEventForBet` (line + ET-date disambiguation), wired into all 8 match sites incl. auto-settle. See memory `rml-event-matching-utc-bug`. (Validated: PIT@COL graded a correct WIN that the old matcher would've called a wrong loss.)
+- 🟢 **Live tracking on dashboard cards (v459)** + **score polling every 60s (v462)** — Overview/Bet Log/Ladder cards now light up like CH3 (was a one-time fetch holding stale scores).
+- 🟢 **Win-prob ring → 100% on win / 0% on loss (v463)** — was stuck showing static implied %.
+- 🟢 **Live progress bar + run count (v467)** — THE root cause: `parseTotal` was anchored (`^Over 11.5$`) so it couldn't read bet titles with the matchup prefix (`PIT@COL Over 11.5`) → bar never built. Now shows `14 / 11.5` filling green. 5 regression tests added.
+- 🟢 Ladder: CH3 shows only the ACTIVE rung (was dumping all 18 rungs from 3 sessions); Ladder + Overview cards got team logos (v458).
+
+### 🟢 EV BRAIN PHASE 2 — BUILT & LIVE (v453–v455, subagent-driven, plan `docs/superpowers/plans/2026-06-21-evbrain-phase2.md`)
+
+### 🟢 EV BRAIN PHASE 2 — BUILT & LIVE (v453–v455, subagent-driven, plan `docs/superpowers/plans/2026-06-21-evbrain-phase2.md`)
+- Labels = **Green/Small/Lean/Pass** (brand-safe, no "Play"); grader = **"EV Brain"**, MLB model keeps **PHLT**.
+- `src/lib/evBrainFeeds.js` (tested): `modelProbForBet` (de-vig consensus + model edge), `clvForBet` (close from odds_history), `disciplineFromBetLog` + `operatorFromBetLog`.
+- **OPERATOR tile filled** (MatrixBot TrackChannel; empty-state until ≥3 settled bets). **BetCard verdict pill enriched** (score + EV/CLV breakdown + tooltip). Verified live on real bets.
+
+### 🟢 AUTO-SETTLE — BUILT & LIVE (v456, the "not tracking" root cause)
+- Auto-settle was a planned "Phase 4" that **never shipped** — bets only settled manually, so the record/operator never tracked themselves. FIXED: `src/lib/gradeBetResult.js` (tested, grades total/ML/spread from final score) + an App.jsx effect that settles Open bets whose game is FINAL (conservative: parlays/ladder-TBD/in-progress → left Open). Verified live: owner's CIN@NYY auto-graded to L on load. Also fixed `created_at`→`updated_at`/`date` bug in the operator sort (v457).
+
+**Earlier today — deep O/U-model sprint (NOT from this backlog — triggered by grading the Jun-20 loss):**
+- Park de-correlation + extreme-park guard (Coors over-projection de-emphasized).
+- **Phase 2 O/U signals ALL wired & live:** wind-vs-park, pitcher skill (CSW/K-BB), handedness (L/R platoon), umpire, **bullpen fatigue** (owner's #1; b2b-bias bug found in verification + fixed → volume-only).
+- **Phase 3 per-side run engine LIVE as `proj2`** (BETA, additive) — projects each team's runs → Total/ML/RL from one engine. ⚠️ NOT trustworthy yet: drifts to league-avg on sharp-pitching games (needs market-anchoring); ML/RL not surfaced/graded. See plan `docs/superpowers/plans/2026-06-21-phase3-per-side-run-model.md`.
+- **Calibration foundation:** added `edge_runs`+`model_version` to `lean_results`, now logged per snapshot. The confidence/`strong` rating is NOISE (strong 53% < non-strong 59% over 59 leans) — cosmetic until ~250–300 graded edges accrue. See memory `rml-ou-model`.
+- Whitelisted `ryancollado7@gmail.com` (founder's brother, tester).
+
+### 🤖 AGENT-SHRINKABLE — ✅ CLEARED S65 (subagent-driven, sequential, each shipped + Chrome-verified)
+- 🟢 **Perf (v449)** — parallelized the startup cloud load (bets/settings/templates → `Promise.all`) + added a 75s per-game cache to `fetchLineMovement` (`oddsHistory.js`) so re-opening a game's Insights skips the Supabase round-trip.
+- 🟢 **Bet-log headshots (v450)** — player-prop legs now resolve real ESPN headshots via the existing `withLogos`/`rosterMap` + `player-search?all=1` pattern (matched by name, last-name fallback); team legs keep logos; unmatched → graceful badge fallback.
+- 🟢 **Demo safety-net slate (v451)** — `SAMPLE_SLATE` (3 `__sample:true` games) renders ONLY when `isDemo` (`?demo=true`) AND the real board is empty; verified real users (isDemo=false) can never see it (display-only, no write paths).
+- 🟢 **Bet-to-line (v452, Option A)** — in a bet's Insights "Line Movement" list, the bet's own market rows (`ml`/`spread`/`total`) float to the top when there's exactly one single-market bet; no-bet/parlay/multi-bet cases unchanged. NOTE: the *literal* ask (market-tab chart defaulting) was NOT built — the bet-Insights chart is hardcoded ML with no market tabs; full version (port CH2 tabs into `BookLineMovement`, or wire a bet→CH2 hand-off) is a larger build, logged as Option B/C in the agent's findings.
+- 🟢 **rml-master.html + this backlog refresh** — doc work (lead).
+
+### 🙅 NOT agent-doable (owner / business / blocked — needs YOU)
+- **Affiliate signup** (FanDuel/DK/Caesars revenue share) — account+financial signup, owner-only.
+- **ANTHROPIC_API_KEY** (unlocks OCR bet-slip upload) — owner-pending.
+- **Product decisions:** EV-Brain "Play" label vs brand rule · reset "nuke account" split · PHLT name collision.
+- **Paid data:** on-court dots / timeouts / $-handle — needs a paid sharp feed.
+
+### 🏗️ BIG BUILDS (not "easy" — need a plan first, then subagent-driven)
+- 🟡 **Phase 3 finish** — market-anchor the per-side engine (it drifts to league-avg on sharp games), then surface + GRADE ML/RL (needs new graded columns + cron). Plan only ~40% written. THE highest-value model work left.
+- 🟡 **EV Brain — remaining** — wire PHLT (MLB hitter) component into the bet grade; ladder/RR fit scoring; other sports (NBA/WNBA prop, NHL SOG) need new free-data sourcing.
+- 🟡 **NFL support** — new sport key + prop markets.
+- 🟡 **Bet-to-line full** — market-tab chart in bet Insights (Option B/C; only shipped the row-reorder Option A).
+
+### 🤖 SMALLER AGENT-SHRINKABLE (next easy wins)
+- 🟡 **Bet log redesign** — read multi-leg parlays like a sportsbook slip; per-leg box-score for cross-game prop legs.
+- 🟡 **Perf/credit polish** — faster near-game odds capture (the "30-min is dumb" tiering); odds push alerts (infra exists).
+- 🟡 **Reset UI decision** — bets-only (done) vs full "nuke account" split (needs YOUR product call first).
+
+---
+
 ## 🟢 CURRENT STATE — Session 63 (SW v378+, branch `chore/backlog-gear-brand-sweep`)
 Session 62 (merged to main, SW v378) shipped: onboarding re-fire fix, bet hand-off (FanDuel/DK/Caesars/MGM/ESPN/BetRivers deep-link; HR/Novig app-open only — needs affiliate), 4-way slip (RR → RR Engine), RR Engine⇄slip two-way, bets-only reset, Spotlight always-renders, 24/7 event sync.
 

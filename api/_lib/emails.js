@@ -53,13 +53,13 @@ export async function sendWelcome({ email, plan = 'Beta' }) {
     html: shell(`
       ${h1('You\'re in. Let\'s build your edge.')}
       ${chip('Welcome')}
-      ${p('Your <strong style="color:#fff;">Risk Matrix Dashboard</strong> is ready. You now have access to the PHLT™ Bankroll Ladder Tracker, discipline scoring, analytics, and every tool built for operators who take the long game seriously.')}
+      ${p('<strong style="color:#fff;">Risk Matrix Labs</strong> is your edge platform. Live odds, EV-graded bets, player props, and line movement — plus a model track record we grade in public, wins and misses. And underneath it all, the discipline tools that keep operators in the game.')}
       ${p('Here\'s how to get started in the first 5 minutes:')}
       <ol style="color:#aaa;font-size:14px;line-height:2;padding-left:18px;margin:12px 0;">
-        <li>Set your starting bankroll in the dashboard header</li>
-        <li>Log your first bet → Bet Log → LOG BET</li>
-        <li>Run your first PHLT™ Ladder session</li>
-        <li>Check your discipline score after each session</li>
+        <li>Open Game Center — scan today's slate for live odds and edges</li>
+        <li>Check the Matrix Bot props and model leans</li>
+        <li>Set your starting bankroll, then log your first bet</li>
+        <li>Watch your Discipline Score™ build session over session</li>
       </ol>
       ${btn('Open Dashboard', 'https://app.riskmatrixlabs.com')}
       ${p('Questions? Reply to this email — it goes straight to me.')}
@@ -112,7 +112,7 @@ export async function sendSubscriptionActivated({ email, plan = 'Beta' }) {
     html: shell(`
       ${h1('Subscription confirmed. Welcome to the full access.')}
       ${chip('Active Member')}
-      ${p(`Your <strong style="color:#fff;">${plan}</strong> subscription is now active. Full dashboard access, PHLT™ Ladder, analytics, and everything else — no limits.`)}
+      ${p(`Your <strong style="color:#fff;">${plan}</strong> subscription is now active. Full access — Game Center, Matrix Bot props and model leans, PHLT™ Ladder, analytics, and everything else — no limits.`)}
       ${p('Manage your billing, update your plan, or cancel anytime from inside the dashboard → click your username → Manage Billing.')}
       ${btn('Open Dashboard', 'https://app.riskmatrixlabs.com')}
       ${p('Appreciate you. Now go operate with discipline.')}
@@ -125,7 +125,7 @@ export async function sendDayOne({ email }) {
   return resend.emails.send({
     from: FROM,
     to: email,
-    subject: 'One thing to do in your Risk Matrix dashboard',
+    subject: 'One thing to do in Risk Matrix Labs',
     html: shell(`
       ${h1('Did you set your bankroll yet?')}
       ${chip('Day 1')}
@@ -154,10 +154,10 @@ export async function sendTrialExpired({ email }) {
       ${p('Your 3-day trial is over and your dashboard is locked — but everything you built is still saved. Your bets, your ladder settings, your bankroll history.')}
       ${p('Subscribe in 60 seconds to get it back:')}
       <ul style="color:#aaa;font-size:14px;line-height:2.2;padding-left:18px;margin:16px 0;">
-        <li>PHLT™ Ladder Tracker — full session structure</li>
-        <li>Discipline Score™ — session grading A–F</li>
-        <li>Risk Analytics — open exposure, stop loss, daily cap</li>
-        <li>Smart RR Engine — every round robin combo calculated</li>
+        <li>Game Center — live odds, EV-graded bets, line movement</li>
+        <li>Matrix Bot — player props and model leans, graded in public</li>
+        <li>Discipline Score™ — session grading A–F, every dollar tracked</li>
+        <li>Risk Analytics + RR Engine — exposure, stop loss, every combo</li>
       </ul>
       ${btn('Subscribe — $29/mo or $149/yr', 'https://app.riskmatrixlabs.com')}
       ${p('Questions? Just reply here.')}

@@ -10,6 +10,48 @@ import { fetchEvents, isLiveEvent } from '../lib/events.js'
 // Sports the provider supports today — must match FindChannel's FEED_SPORTS.
 const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']
 
+// ── DEMO SAMPLE SLATE ────────────────────────────────────────────────────────
+// Shown ONLY when isDemo===true AND the real board is empty (off-day / early AM).
+// These games are NEVER real: __sample:true tags every entry so they can never
+// be snapshotted, logged as bets, or fed into any model.  Real users (isDemo===false)
+// will NEVER see these — the gate is the isDemo prop, which AppRoot only sets to
+// true when ?demo=true is in the URL.
+const _SAMPLE_DATE = (() => {
+  // Use tomorrow's date so the fake games always appear as "upcoming"
+  const d = new Date(); d.setDate(d.getDate() + 1)
+  return d.toISOString()
+})()
+const SAMPLE_SLATE = [
+  {
+    external_event_id: '__sample_1',
+    away_team: 'New York Yankees',  away_abbr: 'NYY',
+    home_team: 'Los Angeles Dodgers', home_abbr: 'LAD',
+    away_logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png',
+    home_logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/lad.png',
+    start_time: _SAMPLE_DATE,
+    _sport: 'MLB', _live: false, __sample: true,
+  },
+  {
+    external_event_id: '__sample_2',
+    away_team: 'Houston Astros',   away_abbr: 'HOU',
+    home_team: 'Atlanta Braves',   home_abbr: 'ATL',
+    away_logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/hou.png',
+    home_logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/atl.png',
+    start_time: _SAMPLE_DATE,
+    _sport: 'MLB', _live: false, __sample: true,
+  },
+  {
+    external_event_id: '__sample_3',
+    away_team: 'Chicago Cubs',     away_abbr: 'CHC',
+    home_team: 'Boston Red Sox',   home_abbr: 'BOS',
+    away_logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/chc.png',
+    home_logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png',
+    start_time: _SAMPLE_DATE,
+    _sport: 'MLB', _live: false, __sample: true,
+  },
+]
+// ─────────────────────────────────────────────────────────────────────────────
+
 // League logos (ESPN, transparent PNGs) for the sport selector circles.
 const LEAGUE_LOGO = {
   MLB:  'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png',
@@ -55,7 +97,7 @@ const buildDateStrip = () => {
   return out
 }
 
-export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPlayer, token, selectedId }) {
+export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPlayer, token, selectedId, isDemo = false }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -78,9 +120,16 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
     return () => { live = false; clearTimeout(id) }
   }, [query, token])
 
+  // Demo safety-net: substitute sample games ONLY when demo mode is on AND the
+  // real slate is empty (off-day / early AM) AND the user is viewing Today.
+  // Real users (isDemo===false) always get the untouched `events` array.
+  const displayEvents = (!loading && isDemo && events.length === 0 && dayOff === 0)
+    ? SAMPLE_SLATE
+    : events
+
   // Case-insensitive substring filter on away/home name + abbr.
   const q = query.trim().toLowerCase()
-  const filtered = !q ? events : events.filter(ev =>
+  const filtered = !q ? displayEvents : displayEvents.filter(ev =>
     [ev.away_team, ev.home_team, ev.away_abbr, ev.home_abbr]
       .some(v => v && String(v).toLowerCase().includes(q))
   )
@@ -204,7 +253,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '20px 12px', fontSize: '11px', color: MUTED, letterSpacing: '0.04em' }}>
-          {events.length === 0 ? `No games ${dayOff === 0 ? 'today' : activeDay.label}` : 'No matching games'}
+          {displayEvents.length === 0 ? `No games ${dayOff === 0 ? 'today' : activeDay.label}` : 'No matching games'}
         </div>
       ) : (
         // Square cards in a horizontal slider — saves vertical space, swipe through the slate.

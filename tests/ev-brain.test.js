@@ -96,8 +96,8 @@ describe('disciplineScore', () => {
 
 describe('label helpers', () => {
   it('maps final score to a brand-safe verdict (no "play")', () => {
-    expect(verdictFor(90).key).toBe('PRIME')
-    expect(verdictFor(80).key).toBe('STRONG')
+    expect(verdictFor(90).key).toBe('GREEN')
+    expect(verdictFor(80).key).toBe('SMALL')
     expect(verdictFor(70).key).toBe('LEAN')
     expect(verdictFor(50).key).toBe('PASS')
     // brand rule: never the word "play"
@@ -123,7 +123,7 @@ describe('finalBetScore', () => {
   it('weights PHLT/EV/CLV/Fit/Discipline and returns a verdict', () => {
     const r = finalBetScore({ phlt: 90, ev: 90, clvProj: 90, ladderRRFit: 90, discipline: 90 })
     expect(r.score).toBeCloseTo(90, 5)
-    expect(r.verdict.key).toBe('PRIME')
+    expect(r.verdict.key).toBe('GREEN')
   })
   it('passes a weak bet', () => {
     const r = finalBetScore({ phlt: 50, ev: 40, clvProj: 50, ladderRRFit: 50, discipline: 50 })
@@ -163,7 +163,7 @@ describe('verdictFromBetGrade (Phase-2 glue)', () => {
     const v = verdictFromBetGrade({ evPct: 9, clvPct: 5, winProb: 0.6 }, -110)
     // EV 100 + CLV ~100, other components null → renormalize → high verdict
     expect(v.score).toBeGreaterThan(85)
-    expect(v.verdict.key).toBe('PRIME')
+    expect(v.verdict.key).toBe('GREEN')
     expect(v.evScore).toBe(100)
   })
   it('passes a -EV, line-moved-against bet', () => {
@@ -187,6 +187,6 @@ describe('gradeBetQuality (top-level)', () => {
     expect(g.clv).toBeGreaterThanOrEqual(90)
     expect(g.phlt).toBeGreaterThan(80)
     expect(g.final.verdict.key).toBeDefined()
-    expect(['PRIME', 'STRONG', 'LEAN', 'PASS']).toContain(g.final.verdict.key)
+    expect(['GREEN', 'SMALL', 'LEAN', 'PASS']).toContain(g.final.verdict.key)
   })
 })

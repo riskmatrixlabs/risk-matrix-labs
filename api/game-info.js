@@ -8,8 +8,18 @@ import { getSavantMaps } from './savant.js'
 import { fetchWeather } from './lib/weather.js'
 import { readScan, writeScan, isFresh, todayStr } from './_lib/scanStore.js'
 import { getOffense } from './_lib/offense.js'
+import { getPitcherSkillMaps, pitcherSkillDelta } from './_lib/pitcherSkill.js'
+import { windParkDelta } from './_lib/windPark.js'
+import { loadHandednessDelta } from './_lib/handedness.js'
+import { loadUmpireDelta } from './_lib/umpire.js'
+import { gameProjection, deriveBets } from './_lib/runModel.js'
+import { loadBullpenFatigue } from './_lib/bullpenFatigue.js'
 
 export const config = { maxDuration: 20 }
+
+// Model version tag — stamped on every snapshot so calibration can segment by model (the S65 analysis
+// showed we couldn't separate old vs new model on the record). Bump when the lean math changes.
+const MODEL_VERSION = 'ou-s65-phase2'
 
 const db = () => (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
@@ -129,8 +139,36 @@ export async function gameWeather(homeAbbr, iso) {
   else if (w.tempF <= 57) { boost -= 0.35; parts.push(`cool ${w.tempF}°`) }
   if (w.windMph >= 15) parts.push(`wind ${w.windMph}mph ${w.windDir}`)   // shown; direction-vs-park is a later refinement
   // Retractable roof: show the conditions as info, but neutralize the model boost (roof state unknown).
-  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, precipPct: w.precipPct, humidityPct: w.humidityPct, feelsF: w.feelsF, retractable: retractable || undefined,
+  return { tempF: w.tempF, windMph: w.windMph, windDir: w.windDir, windDeg: w.windDeg ?? null, precipPct: w.precipPct, humidityPct: w.humidityPct, feelsF: w.feelsF, retractable: retractable || undefined,
     boost: retractable ? 0 : Math.max(-1, Math.min(1, boost)), note: retractable ? 'retractable roof' : parts.join(' · ') }
+}
+
+// Park de-correlation (S64 PIT@COL fix): weather and park factor both encode air density (a ball
+// carries in hot/thin air), so at an extreme park the hot-weather boost largely re-counts what the
+// (pf-1) park term already captured. Damp the weather run-contribution by the park's extremity so
+// altitude is counted ~once, not stacked across both terms. Pure: returns runs to add to delta.
+//   neutral park (pf=1)   → full weather boost
+//   Coors (pf≈1.4)        → boost × 0.6 (extremity capped at 0.4)
+//   dome / no boost       → 0
+export function parkAdjustedWeather(boost, pf, dome) {
+  if (!boost || dome) return 0
+  const parkExtreme = Math.min(Math.abs((pf ?? 1) - 1), 0.4)
+  return boost * (1 - parkExtreme)
+}
+
+// Extreme-park edge regression (S64 PIT@COL guard). At extreme run-environment parks (Coras/GABP-type
+// hitter parks, or the most suppressive pitcher parks) the model's projection terms are CORRELATED — the
+// park factor, recent scoring form, the home starter's ERA and the bullpen ERA are all pushed the same
+// way by the same run environment, so summing them OVER-states the edge (PIT@COL projected a conf-4
+// STRONG over and lost by ~7). Until per-side road-split projection (Phase 3) decorrelates them properly,
+// regress the edge toward the line in proportion to how extreme the park is — i.e. trust our own number
+// LESS where it's been provably unreliable. Hypothesis, like the rest of the coefficients; the graded
+// record validates it. Threshold |pf-1| >= 0.07 isolates it to COL/CIN + SF/SEA/MIA/SD/ATH.
+export function extremeParkEdge(delta, pf) {
+  const extremity = Math.abs((pf ?? 1) - 1)
+  if (extremity < 0.07) return delta            // normal park → untouched
+  const haircut = Math.min(extremity * 4, 0.5)  // COL(.13)→0.5 cap, CIN(.08)→0.32, SF(.09)→0.36
+  return Math.round(delta * (1 - haircut) * 10) / 10
 }
 
 async function getJson(url, ms = 6000) {
@@ -209,12 +247,14 @@ export default async function handler(req, res) {
   let ou = null
   if (sport === 'MLB') {
     try {
-      const [ae, he, sav, anchor, wx, aBp, hBp, off] = await Promise.all([
+      const [ae, he, sav, anchor, wx, aBp, hBp, off, pskill, penFat] = await Promise.all([
         pitcherEra(cfg, aSide.pitcherId), pitcherEra(cfg, hSide.pitcherId),
         getSavantMaps().catch(() => null), totalAnchor(sport, away, home).catch(() => null),
         gameWeather(hSide.abbr, iso).catch(() => null),
         bullpenEra(aSide.abbr).catch(() => null), bullpenEra(hSide.abbr).catch(() => null),
         getOffense({ away, home, awayId: MLB_TEAM_ID[String(aSide.abbr || '').toUpperCase()], homeId: MLB_TEAM_ID[String(hSide.abbr || '').toUpperCase()] }).catch(() => null),
+        getPitcherSkillMaps().catch(() => null),   // Phase 2: CSW%/K-BB% swing-miss layer (free Savant)
+        loadBullpenFatigue(aSide.abbr, hSide.abbr).catch(() => null),   // Phase 2: bullpen FATIGUE (owner's #1; free MLB Stats API)
       ])
       aSide.era = ae; hSide.era = he
       // Statcast skill read per starter: xERA (fallback raw ERA), xBA-against (contact quality —
@@ -272,38 +312,101 @@ export default async function handler(req, res) {
       // (score 0) when lineups/data are unavailable, so the lean never regresses below today's model.
       if (off?.offense?.score) { score += off.offense.score; why.push(off.offense.reason) }
       if (off?.form?.score)    { score += off.form.score;    why.push(off.form.reason) }
-      // ── Independent run-environment projection (NOT anchored to the market line) ──
-      // The rating must reflect EDGE = our own projected total vs the market's line — not how many
-      // factors agree with the market, which just mirrors a line the market already set. We build an
-      // independent expected total from the same inputs (park · starters · pens · offense · weather).
+      // ── Line-anchored run-environment edge ──
+      // The market line already prices park · starters · pens · rosters. Our edge is only the DEVIATION
+      // our factors justify on top of it (a run-delta), so the model leans UNDER on sharp pitching as
+      // readily as OVER instead of fighting every low line from a fixed average (the old OVER-bias bug).
       // The coefficients are run estimates (a hypothesis) — the graded record validates them over time.
       const LG_TOTAL = 8.6, LG_XERA = 4.0, LG_PEN = 4.1
-      let proj = LG_TOTAL * pf
-      if (ap.eff != null && hp.eff != null) proj += ((ap.eff + hp.eff) / 2 - LG_XERA) * 0.9   // starters (~5-6 IP)
-      if (aBp != null && hBp != null)       proj += ((aBp + hBp) / 2 - LG_PEN) * 0.5           // bullpens (~3-4 IP)
-      if (off?.offense?.score)              proj += off.offense.score * 0.45                   // lineup xwOBA
-      if (off?.form?.score)                 proj += off.form.score * 0.30                      // recent scoring
-      if (wx && !wx.dome && wx.boost)       proj += wx.boost                                   // weather (in runs)
-      proj = Math.round(proj * 10) / 10
+      // Run-DELTA from a neutral game: how far our factors say THIS game deviates from average.
+      // The market line already prices park/pitchers/rosters, so our edge is only this deviation —
+      // applied ON TOP of the line (owner's rule: "anchor the lean to the live total"). Coefficients
+      // raised vs the old absolute model so a real pitching/bullpen edge actually moves the number.
+      // ── Phase 2 signals (free) — computed here, folded into delta below ──
+      // pitcher SKILL: CSW%/K-BB% (swing-and-miss + command) judge each arm on its OWN skill, not its
+      // park-inflated ERA. THE Coors fix: an elite strikeout arm at altitude is no longer disguised as a
+      // "soft arm". wind-vs-park: wind blowing IN suppresses runs (under), OUT carries them (over).
+      const pskNN = (s) => (pskill?.normName ? pskill.normName(s.pitcherFull || s.pitcher || '') : null)
+      const aNN = pskNN(aSide), hNN = pskNN(hSide)
+      const pskillD = pitcherSkillDelta({
+        awayCsw: aNN ? pskill?.csw?.[aNN] : null, homeCsw: hNN ? pskill?.csw?.[hNN] : null,
+        awayKbb: aNN ? pskill?.kbb?.[aNN] : null, homeKbb: hNN ? pskill?.kbb?.[hNN] : null,
+      })
+      const windD = windParkDelta({ parkAbbr: hSide.abbr, windSpeedMph: wx?.windMph, windDirDeg: wx?.windDeg, isDome: wx?.dome })
+      // Phase 2 — platoon (L/R) edge. Only lights up inside the ~3h pre-game window once lineups post;
+      // neutral { delta:0 } otherwise. Reuses the gamePk getOffense already resolved (no extra schedule
+      // fetch). Bounded by per-fetch timeouts + 12h cache; degrades to neutral on any miss.
+      // Both reuse the gamePk getOffense already resolved; run them together so they add no extra
+      // latency. Each is gated (needs posted lineups/officials) + cached + degrades to neutral.
+      const [handD, umpD] = off?.gamePk
+        ? await Promise.all([
+            loadHandednessDelta(off.gamePk).catch(() => ({ delta: 0, reason: null })),
+            loadUmpireDelta(off.gamePk).catch(() => ({ delta: 0, reason: null })),
+          ])
+        : [{ delta: 0, reason: null }, { delta: 0, reason: null }]
+      const penFatD = penFat || { delta: 0, reason: null }
+      if (pskillD.reason) { score += Math.sign(pskillD.delta); why.push(pskillD.reason) }
+      if (windD.reason)   { score += Math.sign(windD.delta);   why.push(windD.reason) }
+      if (handD.reason)   { score += Math.sign(handD.delta);   why.push(handD.reason) }
+      if (umpD.reason)    { score += Math.sign(umpD.delta);    why.push(umpD.reason) }
+      if (penFatD.reason) { score += Math.sign(penFatD.delta); why.push(penFatD.reason) }
+
+      let delta = 0
+      // When the skill layer is active it already carries the pitching signal, so trim the raw-ERA
+      // coefficient (1.3→1.0) to avoid double-counting the same arms (rml-ou-model Phase-2 note).
+      const eraCoeff = pskillD.delta !== 0 ? 1.0 : 1.3
+      if (ap.eff != null && hp.eff != null) delta += ((ap.eff + hp.eff) / 2 - LG_XERA) * eraCoeff  // starters
+      delta += pskillD.delta                                                                        // Phase 2: swing-miss/command
+      if (aBp != null && hBp != null)       delta += ((aBp + hBp) / 2 - LG_PEN) * 0.9           // bullpens — owner's #1 (was ×0.5)
+      if (off?.offense?.score)              delta += off.offense.score * 0.45                   // lineup xwOBA
+      if (off?.form?.score)                 delta += off.form.score * 0.30                      // recent scoring
+      delta += windD.delta                                                                          // Phase 2: wind vs park
+      delta += handD.delta                                                                          // Phase 2: platoon L/R edge
+      delta += umpD.delta                                                                            // Phase 2: home-plate umpire
+      delta += penFatD.delta                                                                         // Phase 2: bullpen fatigue (owner's #1)
+      // Weather and park both encode air density (a ball carries in hot/thin air), so at an extreme
+      // park the hot-weather boost is largely re-counting what (pf-1) already captured. Damp the
+      // weather add-on by the park's extremity so altitude is counted ~once, not stacked. This is the
+      // S64 PIT@COL fix: Coors (pf≈1.4) projected 13.8 vs a 10.5 line because park + weather + the
+      // home starter's altitude-inflated xERA all summed the same cause. (Park de-correlation.)
+      if (wx && !wx.dome && wx.boost) delta += parkAdjustedWeather(wx.boost, pf, wx.dome)
+      delta += (pf - 1) * 4.0                                                                   // park tilts the deviation
+      delta = extremeParkEdge(delta, pf)        // regress the edge at extreme parks (correlated-term guard)
+      delta = Math.round(delta * 10) / 10
 
       if (why.length || anchor?.current != null) {
         // Only trust a plausible MLB game total (~6–13 runs). A value outside this is a mis-sourced
-        // market (e.g. a -0.5 run line leaking in) — comparing our projection to it gives a garbage
-        // edge, so treat it as no line and fall back rather than surface a false "strong".
+        // market (e.g. a -0.5 run line leaking in) — treat it as no line and fall back.
         const rawLine = anchor?.current ?? null
         const line = (rawLine != null && rawLine >= 5 && rawLine <= 15) ? rawLine : null
-        let lean, edgeRuns = null, confidence, strong
+        let lean, edgeRuns = null, confidence, strong, proj
         if (line != null) {
-          // EDGE = our projection − the market line. The rating is the size of that gap, in runs.
-          edgeRuns = Math.round((proj - line) * 10) / 10
+          // ANCHOR TO THE LINE: projection = market line + our factor deviation. This makes the model
+          // SYMMETRIC — it leans UNDER on sharp pitching as readily as OVER — instead of fighting every
+          // low line from a fixed league-average anchor (the old 77%-OVER bias).
+          proj = Math.round((line + delta) * 10) / 10
+          edgeRuns = Math.round(delta * 10) / 10
           const mag = Math.abs(edgeRuns)
-          lean = edgeRuns >= 0.5 ? 'OVER' : edgeRuns <= -0.5 ? 'UNDER' : 'LEAN'  // <0.5-run gap = no real edge → pass
-          confidence = mag >= 2 ? 4 : mag >= 1.5 ? 3 : mag >= 1 ? 2 : 1
-          strong = mag >= 1.5 && lean !== 'LEAN'   // only a real model-vs-market gap surfaces as "strong"
+          lean = edgeRuns >= 1 ? 'OVER' : edgeRuns <= -1 ? 'UNDER' : 'LEAN'  // <1-run deviation = no edge → pass
+          confidence = mag >= 2.5 ? 4 : mag >= 2 ? 3 : mag >= 1.5 ? 2 : 1
+          strong = mag >= 2 && lean !== 'LEAN'   // a real ≥2-run deviation surfaces as "strong"
+          // Extreme hitter park + OVER = the exact profile the model has been provably wrong on
+          // (correlated over-projection). Never let it shout: strip STRONG, cap confidence, flag it.
+          if (pf >= 1.08 && lean === 'OVER') {
+            strong = false
+            confidence = Math.min(confidence, 2)
+            why.push('⚠ extreme park — model de-emphasized')
+          }
         } else {
-          // No market line to compare against → fall back to the raw factor lean, never "strong".
+          // No market line → absolute fallback from league average; raw factor lean, never "strong".
+          proj = Math.round((LG_TOTAL * pf + delta) * 10) / 10
           lean = score >= 1 ? 'OVER' : score <= -1 ? 'UNDER' : 'LEAN'
           confidence = 1; strong = false
+        }
+        // Agreement guard: if the qualitative factors and the run-edge point opposite ways, it's not a
+        // clean signal → pass. (Belt-and-suspenders; with line-anchoring they almost always agree now.)
+        if (lean !== 'LEAN' && score !== 0 && edgeRuns != null && Math.sign(score) !== Math.sign(edgeRuns)) {
+          lean = 'LEAN'; strong = false
         }
         // Market-move context (value vs late): does the line's move agree with our lean?
         let edge = null
@@ -313,7 +416,21 @@ export default async function handler(req, res) {
           else edge = 'value — line moved against the lean'
         }
         ou = { lean, score, proj, edgeRuns, confidence, strong, reason: why.join(' · '), model: usingX ? 'statcast' : 'era',
+          modelVersion: MODEL_VERSION,
           total: anchor || null, edge, weather: wx || null, bullpens: { away: aBp ?? null, home: hBp ?? null }, offenseSource: off?.source || 'none' }
+
+        // Phase 3 (BETA, additive — does NOT replace the line-anchored `ou` lean above). Projects each
+        // team's runs separately so an ace fully suppresses the side he faces (no starter-averaging) and
+        // park/weather count once per side, then derives Total + ML + RL from one engine. Shown alongside
+        // `ou` so the two can be compared on the graded record before any switch.
+        const weatherPerSide = (wx && !wx.dome && wx.boost) ? parkAdjustedWeather(wx.boost, pf, wx.dome) / 2 : 0
+        const gp = gameProjection({
+          away: { offXwoba: off?.awayXwoba ?? null, starterXera: ap.eff, bullpenEra: aBp ?? null },
+          home: { offXwoba: off?.homeXwoba ?? null, starterXera: hp.eff, bullpenEra: hBp ?? null },
+          parkMult: pf, weatherRunsPerSide: weatherPerSide,
+        })
+        const marketTotal = (anchor?.current != null && anchor.current >= 5 && anchor.current <= 15) ? anchor.current : null
+        ou.proj2 = { ...gp, bets: deriveBets({ proj: gp, marketTotal }) }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
   }

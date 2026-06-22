@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "check:undef": "node scripts/check-undef.cjs",
+    "ship": "npm run test && npm run check:undef && npm run build && npx vercel deploy --prod --force"
   },
   "dependencies": {
     "@sentry/react": "^10.55.0",

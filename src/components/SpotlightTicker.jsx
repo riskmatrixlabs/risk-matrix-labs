@@ -34,14 +34,6 @@ async function enrichWithBooks(leg, ev, ou, token) {
 
 const R = 'Rajdhani, sans-serif'
 
-// Line-movement arrow vs the open total. ▲ = total climbed, ▼ = dropped since open.
-// Green when the move is "value" (line moved against the lean → better number); grey when "late".
-function MoveArrow({ ou }) {
-  const dir = ou?.total?.dir
-  if (!dir) return null
-  const good = ou?.edge && ou.edge.startsWith('value')
-  return <span title={ou.edge || (dir > 0 ? 'total up since open' : 'total down since open')} style={{ marginLeft: 4, fontSize: '10px', color: good ? NEON : MUTED }}>{dir > 0 ? '▲' : '▼'}</span>
-}
 
 function RankBadge({ rank }) {
   return (
@@ -91,14 +83,19 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
     return () => { cancel = true }
   }, [])
   // Yesterday = LOCKED grades from the DB (never a live re-scan — that's what caused phantom losses).
-  // KST yesterday: the scan reports its date; fall back to UTC+9 math if not loaded yet.
+  // Fetched EAGERLY on mount (not just when the tab is opened) so the section can stay visible on KBO
+  // off-days (e.g. Mondays, when today's slate is empty) and you can still review the overnight record.
   useEffect(() => {
-    if (kboView !== 'yesterday' || kboYest) return
     const kstNow = new Date(Date.now() + 9 * 3600e3)
     const y = new Date(kstNow.getTime() - 86400e3).toISOString().slice(0, 10)
     fetch(`/api/kbo-record?date=${y}`).then(r => r.ok ? r.json() : null)
       .then(j => setKboYest(j || { games: [], record: { w: 0, l: 0, p: 0 } })).catch(() => {})
-  }, [kboView, kboYest])
+  }, [])
+  // On a KBO off-day (no games today) but with gradeable games yesterday, land on the Yesterday tab so
+  // the section opens to something useful instead of "No KBO games today."
+  useEffect(() => {
+    if (kbo.length === 0 && (kboYest?.games?.length > 0)) setKboView('yesterday')
+  }, [kbo, kboYest])
 
   useEffect(() => {
     if (!token) { setSignals([]); return }
@@ -120,7 +117,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
           // after the game finishes. Fire-and-forget; the endpoint locks the first pre-game lean/day.
           if ((j?.ou?.lean === 'OVER' || j?.ou?.lean === 'UNDER') && (ev.external_event_id || ev.id)) {
             fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time }) }).catch(() => {})
+              body: JSON.stringify({ sport: 'MLB', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, lean: j.ou.lean, total_line: j.ou.total?.current, confidence: j.ou.confidence, strong: !!j.ou.strong, reason: j.ou.reason, start_time: ev.start_time, edge_runs: j.ou.edgeRuns, model_version: j.ou.modelVersion }) }).catch(() => {})
           }
           // Only SURFACE a lean that has a real market total to anchor to — a lean with no line
           // ("OVER —") isn't actionable and breaks +Slip. (We still snapshot it above for grading.)
@@ -141,16 +138,23 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   // Spotlight ALWAYS lives at the top of Game Center — even with no directional leans it stays put
   // (an honest empty state), rather than vanishing and looking broken.
   const strongSignals = signals.filter(s => s.ou.strong)
+  const directional = signals.filter(s => s.ou.lean === 'OVER' || s.ou.lean === 'UNDER')
   const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))
-  const strongRanked = strongSignals.map((s, i) => ({ ...s, rank: ranked.find(r => r.ev.id === s.ev.id)?.rank ?? i + 1 }))
-  const loop = [...strongRanked, ...strongRanked]
+  // Feature the strong leans if there are any; otherwise fall back to ALL directional leans so the
+  // marquee never goes blank when the model has real (sub-"strong") edges — the calibration/guard work
+  // can legitimately leave a slate with leans but none ≥2-run "strong". Count badge = directional leans.
+  const featured = strongSignals.length ? strongSignals : directional
+  const featuredRanked = featured.map((s, i) => ({ ...s, rank: ranked.find(r => r.ev.id === s.ev.id)?.rank ?? i + 1 }))
+  const loop = [...featuredRanked, ...featuredRanked]
   // Conviction color: 3+ factors = bright NEON (strong), exactly 2 = white (weakest that still qualifies).
   const leanColor = (ou) => (ou.confidence >= 3 ? NEON : TEXT)
   const Chip = ({ ev, ou, rank }) => (
     <button onClick={() => onOpen?.(ev)} style={{ background: 'none', border: 'none', cursor: onOpen ? 'pointer' : 'default', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
       {ev.away_abbr}@{ev.home_abbr}{' '}
       <span style={{ color: leanColor(ou) }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-      <MoveArrow ou={ou} />
+      {ou.total?.open != null && ou.total?.current != null && ou.total.open !== ou.total.current && (
+        <span style={{ color: (ou.edge && ou.edge.startsWith('value')) ? NEON : MUTED, fontSize: '11px' }}>{' '}{ou.total.open}→{ou.total.current}</span>
+      )}
       <RankBadge rank={rank} />
     </button>
   )
@@ -159,25 +163,25 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
       <div style={{ border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)', padding: '9px 0 9px 12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <style>{`@keyframes rml-spot{from{transform:translateX(0)}to{transform:translateX(-50%)}}.rml-spot-track{display:inline-flex;gap:26px;white-space:nowrap;animation:rml-spot 40s linear infinite;will-change:transform}.rml-spot-track:hover{animation-play-state:paused}@media (prefers-reduced-motion:reduce){.rml-spot-track{animation:none}}`}</style>
         <button onClick={() => setOpen(o => !o)} title="Spotlight — tap for the ranked list" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, flexShrink: 0, textTransform: 'uppercase' }}>
-          ⬡ Spotlight ({strongSignals.length})
+          ⬡ Spotlight ({directional.length})
           <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
           <span style={{ display: 'inline-block', fontSize: '8px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
         </button>
-        {strongSignals.length > 0 ? (
+        {featured.length > 0 ? (
           <div style={{ overflow: 'hidden', flex: 1 }}>
             <div className="rml-spot-track">
               {loop.map(({ ev, ou, rank }, i) => <span key={ev.id + '-' + i}><Chip ev={ev} ou={ou} rank={rank} /></span>)}
             </div>
           </div>
         ) : (
-          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, flex: 1 }}>{signals.length ? 'tap for all leans ▾' : 'no strong leans yet today — model stays neutral until there’s an edge'}</span>
+          <span style={{ fontFamily: R, fontSize: '11px', color: MUTED, flex: 1 }}>no directional leans yet today — model stays neutral until there’s an edge</span>
         )}
       </div>
 
       {open && (
         <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
           <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>⬡ Spotlight — Today, ranked strongest first</div>
-          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>#1 = strongest model lean · line = open → current (▲ market up, ▼ down)</div>
+          <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>#1 = strongest model lean · LINE = open → current total (green = moved to a better number)</div>
           {/* Honest beta disclaimer — the model is experimental and being calibrated; not advice. */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '8px', padding: '6px 8px', borderRadius: '6px', background: 'rgba(255,174,43,0.08)', border: '1px solid rgba(255,174,43,0.3)' }}>
             <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', flexShrink: 0, marginTop: '1px' }}>BETA</span>
@@ -196,7 +200,6 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                   <span style={{ minWidth: 0 }}>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
                     <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: leanColor(ou) }}>{ou.lean === 'OVER' ? 'OVER' : 'UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
-                    <MoveArrow ou={ou} />
                     {/* Quick-look in its own box = PUBLIC market info only (open→current line + value/late). Factors hidden — that's the edge. */}
                     <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', padding: '3px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
                       {(() => {
@@ -204,6 +207,9 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                         const live = ts != null && ts <= Date.now()
                         const timeLabel = ts == null ? null : (live ? 'LIVE' : new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
                         const line = ou.total?.current
+                        const openLine = ou.total?.open
+                        const moved = openLine != null && line != null && openLine !== line
+                        const moveColor = (ou.edge && ou.edge.startsWith('value')) ? NEON_T : MUTED
                         const edge = ou.edgeRuns
                         const strong = edge != null && Math.abs(edge) >= 1.5
                         // Result: graded (✓HIT/✗MISS), or live total-so-far vs the line (cashing/busted/alive).
@@ -221,7 +227,10 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                         return (
                           <>
                             {timeLabel && <span style={{ color: live ? '#FF3B3B' : MUTED, fontWeight: 700 }}>{timeLabel}</span>}
-                            <span style={{ color: MUTED }}>LINE</span><span style={{ color: TEXT, fontWeight: 700 }}>{line != null ? line : '—'}</span>
+                            <span style={{ color: MUTED }}>LINE</span>
+                            {moved
+                              ? <span style={{ fontWeight: 700 }}><span style={{ color: MUTED }}>{openLine}</span><span style={{ color: moveColor, margin: '0 3px' }}>→</span><span style={{ color: TEXT }}>{line}</span></span>
+                              : <span style={{ color: TEXT, fontWeight: 700 }}>{line != null ? line : '—'}</span>}
                             <span style={{ color: MUTED }}>EDGE</span><span style={{ color: strong ? NEON_T : TEXT, fontWeight: 700 }}>{edge != null ? `${edge > 0 ? '+' : ''}${edge}` : '—'}</span>
                             {result && <span style={{ color: result.c, fontWeight: 700 }}>{result.t}</span>}
                           </>
@@ -237,7 +246,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
               </div>
             ))}
           </div>
-          {(kbo.length > 0 || kboView === 'yesterday') && (() => {
+          {(kbo.length > 0 || kboYest?.games?.length > 0 || kboView === 'yesterday') && (() => {
             // ONE source per view: Today = live scan; Yesterday = LOCKED DB grades (no re-scan, so
             // no phantom W/L). Both normalize to the same row shape, so the renderer is identical.
             const src = kboView === 'yesterday' ? (kboYest?.games || []) : kbo
@@ -309,6 +318,15 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                             : <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: leanColor(g.lean) }}>{g.lean} {g.projTotal}</span>}
                           {/* Quick-look box — same chrome as the MLB rows above: venue + factors context. */}
                           <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', padding: '3px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                            {/* PROJ vs BASE so today's number is readable BEFORE the game is final */}
+                            {!noPick && g.projTotal != null && (
+                              <>
+                                <span style={{ color: MUTED }}>PROJ</span>
+                                <span style={{ color: TEXT, fontWeight: 700 }}>{g.projTotal}</span>
+                                <span style={{ color: MUTED }}>vs BASE</span>
+                                <span style={{ color: TEXT, fontWeight: 700 }}>{g.baseline ?? 9.8}</span>
+                              </>
+                            )}
                             <span style={{ color: MUTED }}>{g.venue || 'venue —'}</span>
                             {(g.factors || []).length > 0 && <span style={{ color: TEXT, fontWeight: 700 }}>{(g.factors || []).join(' · ')}</span>}
                           </span>

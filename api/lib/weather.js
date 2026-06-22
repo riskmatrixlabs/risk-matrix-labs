@@ -15,6 +15,7 @@ export function pickHour(hourly, gameStartIso) {
     tempF: Math.round(hourly.temperature_2m?.[idx]),
     windMph: Math.round(hourly.wind_speed_10m?.[idx]),
     windDir: degToCompass(hourly.wind_direction_10m?.[idx] ?? 0),
+    windDeg: hourly.wind_direction_10m?.[idx] ?? null,   // raw met degrees (wind FROM) for windPark.js
     precipPct: hourly.precipitation_probability?.[idx] ?? null,
     humidityPct: hourly.relative_humidity_2m?.[idx] ?? null,
     feelsF: hourly.apparent_temperature?.[idx] != null ? Math.round(hourly.apparent_temperature[idx]) : null,

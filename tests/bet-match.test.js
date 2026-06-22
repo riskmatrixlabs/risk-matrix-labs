@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parsePick, matchBetToEvent, evaluateBet, teamSide } from '../src/lib/betMatch.js'
+import { parsePick, matchBetToEvent, findEventForBet, evaluateBet, teamSide } from '../src/lib/betMatch.js'
 import { devigTwoWay } from '../src/lib/devig.js'
 
 const event = {
@@ -35,6 +35,67 @@ describe('matchBetToEvent', () => {
   it('rejects wrong sport', () => expect(matchBetToEvent({ ...base, sport: 'NBA' }, event)).toBe(false))
   it('rejects when a team is missing', () => expect(matchBetToEvent({ ...base, event: 'Arizona Diamondbacks vs San Diego Padres' }, event)).toBe(false))
   it('rejects far-off date', () => expect(matchBetToEvent({ ...base, date: '2026-06-01' }, event)).toBe(false))
+
+  // ET-date window: a late-night ET game stored on the NEXT UTC day still matches its ET date.
+  it('Jun-20 night game (01:10 UTC Jun-21 = 9:10pm ET Jun-20) matches a Jun-20 bet', () => {
+    const nightEv = { ...event, start_time: '2026-06-21T01:10:00Z' }
+    expect(matchBetToEvent({ ...base, date: '2026-06-20' }, nightEv)).toBe(true)
+  })
+  it('Jun-21 19:10 UTC game matches a Jun-21 bet', () => {
+    const dayEv = { ...event, start_time: '2026-06-21T19:10:00Z' }
+    expect(matchBetToEvent({ ...base, date: '2026-06-21' }, dayEv)).toBe(true)
+  })
+})
+
+describe('findEventForBet', () => {
+  // Two candidate events: same teams, both within the date window of a Jun-21 bet.
+  // Live game tonight (total 11.5, starts 19:10 UTC Jun-21) and last-night's final
+  // (total 10.5, started 01:10 UTC Jun-21 = 9:10pm ET Jun-20).
+  const liveGame = {
+    id: '401815849', sport: 'MLB',
+    away_abbr: 'PIT', home_abbr: 'COL',
+    away_team: 'Pittsburgh Pirates', home_team: 'Colorado Rockies',
+    start_time: '2026-06-21T19:10:00Z', status: 'in', odds_total: 11.5,
+  }
+  const nightFinal = {
+    id: '401815834', sport: 'MLB',
+    away_abbr: 'PIT', home_abbr: 'COL',
+    away_team: 'Pittsburgh Pirates', home_team: 'Colorado Rockies',
+    start_time: '2026-06-21T01:10:00Z', status: 'post', odds_total: 10.5,
+  }
+  const betOver115 = { sport: 'MLB', event: 'Pittsburgh Pirates @ Colorado Rockies', pick: 'Over 11.5', date: '2026-06-21' }
+
+  it('picks the 11.5 live game for an Over 11.5 bet, not the 10.5 final', () => {
+    expect(findEventForBet(betOver115, [nightFinal, liveGame]).id).toBe('401815849')
+    // order-independent
+    expect(findEventForBet(betOver115, [liveGame, nightFinal]).id).toBe('401815849')
+  })
+
+  it('picks the prev-night 10.5 game for an Over 10.5 bet (symmetry)', () => {
+    const betOver105 = { ...betOver115, pick: 'Over 10.5', date: '2026-06-20' }
+    expect(findEventForBet(betOver105, [liveGame, nightFinal]).id).toBe('401815834')
+  })
+
+  it('single matching event → returned as-is', () => {
+    expect(findEventForBet(betOver115, [liveGame]).id).toBe('401815849')
+  })
+
+  it('no matching events → null', () => {
+    const other = { ...liveGame, away_abbr: 'NYY', home_abbr: 'BOS', away_team: 'New York Yankees', home_team: 'Boston Red Sox' }
+    expect(findEventForBet(betOver115, [other])).toBeNull()
+    expect(findEventForBet(betOver115, [])).toBeNull()
+  })
+
+  it('ML bet (no line) with two same-team candidates → prefers matching ET date', () => {
+    // bet dated Jun-20 → should pick the night game whose ET date is Jun-20
+    const betMl = { sport: 'MLB', event: 'Pittsburgh Pirates @ Colorado Rockies', pick: 'PIT ML', date: '2026-06-20' }
+    expect(findEventForBet(betMl, [liveGame, nightFinal]).id).toBe('401815834')
+  })
+
+  it('never throws', () => {
+    expect(() => findEventForBet(null, null)).not.toThrow()
+    expect(findEventForBet(null, null)).toBeNull()
+  })
 })
 
 describe('evaluateBet', () => {

@@ -47,6 +47,20 @@ export function parsePick(pick, event) {
   return null
 }
 
+// The event's ET calendar date (YYYY-MM-DD) from its UTC start_time. ET = UTC−4.
+// A 9:10pm ET game stored as 01:10 UTC the NEXT day → resolves back to its true ET date.
+export function eventEtDate(event) {
+  const t = Date.parse(event?.start_time)
+  if (Number.isNaN(t)) return null
+  return new Date(t - 4 * 3600e3).toISOString().slice(0, 10)
+}
+
+// The event's spread line for a given side ('away' | 'home').
+function eventSpreadLine(event, side) {
+  const v = side === 'away' ? event?.odds_spread_away : event?.odds_spread_home
+  return v == null || v === '' ? null : Number(v)
+}
+
 // Does this bet belong to this event? Sport + both teams present + same-ish date.
 export function matchBetToEvent(bet, event) {
   if (!bet || !event) return false
@@ -61,13 +75,76 @@ export function matchBetToEvent(bet, event) {
   }
   if (!hasTeam(event.away_abbr, event.away_team) || !hasTeam(event.home_abbr, event.home_team)) return false
 
-  // Date within ±1 day of the event's local date (lenient — books/users log loosely).
+  // Date within ±1 ET calendar day of the bet's date (lenient — books/users log loosely,
+  // and a late-night ET game lives on the next UTC day). ET-based so the Jun-20-night
+  // game resolves to Jun-20, letting findEventForBet's line/date ranking disambiguate.
   if (bet.date && event.start_time) {
-    const evDate = new Date(event.start_time)
-    const betDate = new Date(`${bet.date}T12:00:00Z`)
-    if (Math.abs(evDate - betDate) > 36 * 3600 * 1000) return false
+    const etDate = eventEtDate(event)
+    if (etDate) {
+      const evMs = Date.parse(`${etDate}T12:00:00Z`)
+      const betMs = Date.parse(`${bet.date}T12:00:00Z`)
+      if (!Number.isNaN(evMs) && !Number.isNaN(betMs) && Math.abs(evMs - betMs) > 1.5 * 24 * 3600 * 1000) return false
+    }
   }
   return true
+}
+
+// Resolve the single BEST event for a bet from a list of events, or null.
+// Ranks multiple same-team/same-window candidates by (1) locked-line match,
+// (2) exact ET date, (3) closest start — so a live 11.5 bet never grades a
+// finished 10.5 game. Pure; never throws.
+export function findEventForBet(bet, events) {
+  if (!bet || !Array.isArray(events) || events.length === 0) return null
+  const candidates = events.filter(e => matchBetToEvent(bet, e))
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0]
+
+  // (1) Line match — strongest signal. Compare the bet's locked line to each event's line.
+  const lineDiffs = candidates.map(e => {
+    const parsed = parsePick(bet.pick, e)
+    if (!parsed) return null
+    let evLine = null
+    if (parsed.market === 'total') evLine = e.odds_total == null || e.odds_total === '' ? null : Number(e.odds_total)
+    else if (parsed.market === 'spread') evLine = eventSpreadLine(e, parsed.side)
+    if (evLine == null || parsed.line == null || Number.isNaN(evLine)) return null
+    return Math.abs(Number(parsed.line) - evLine)
+  })
+  const haveAnyLine = lineDiffs.some(d => d != null)
+  if (haveAnyLine) {
+    const within = lineDiffs.filter(d => d != null && d <= 0.75)
+    // If exactly one candidate is within 0.75 and others aren't, pick it outright.
+    if (within.length === 1) {
+      const idx = lineDiffs.findIndex(d => d != null && d <= 0.75)
+      return candidates[idx]
+    }
+    // Otherwise prefer the smallest line diff among those that have a line.
+    let best = -1, bestDiff = Infinity
+    lineDiffs.forEach((d, i) => { if (d != null && d < bestDiff) { bestDiff = d; best = i } })
+    if (best >= 0) return candidates[best]
+  }
+
+  // (2) Exact ET date.
+  if (bet.date) {
+    const exact = candidates.filter(e => eventEtDate(e) === bet.date)
+    if (exact.length === 1) return exact[0]
+    if (exact.length > 1) return pickClosestStart(exact, bet.date)
+  }
+
+  // (3) Recency — start_time closest to the bet's date.
+  return pickClosestStart(candidates, bet.date)
+}
+
+function pickClosestStart(candidates, betDate) {
+  const target = betDate ? Date.parse(`${betDate}T12:00:00Z`) : NaN
+  if (Number.isNaN(target)) return candidates[0]
+  let best = candidates[0], bestDiff = Infinity
+  for (const e of candidates) {
+    const t = Date.parse(e?.start_time)
+    if (Number.isNaN(t)) continue
+    const d = Math.abs(t - target)
+    if (d < bestDiff) { bestDiff = d; best = e }
+  }
+  return best
 }
 
 // Current offered American odds for a parsed pick, from the live event row.

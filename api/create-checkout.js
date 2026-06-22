@@ -10,6 +10,8 @@ const TEAM_EMAILS = [
   'j.willey2489@gmail.com',
   'lauriesjeanpaul@gmail.com',
   'tjoel6788@gmail.com',
+  'mmartinez2014@icloud.com',
+  'ryancollado7@gmail.com',   // founder's younger brother — internal tester
 ]
 
 export default async function handler(req, res) {

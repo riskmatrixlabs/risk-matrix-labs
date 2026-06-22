@@ -18,7 +18,9 @@ export function parseProp(title) {
 
 // Bare game total: "Over 9.5" / "Under 7" (no player, no trailing market word)
 export function parseTotal(title) {
-  const m = String(title || '').trim().match(/^(over|under|o|u)\s*([\d.]+)$/i)
+  // Lenient (unanchored) like parseLine: bet titles include the matchup prefix, e.g. "PIT@COL Over 11.5"
+  // — the old `^over 11.5$` anchor failed on those, so the live total bar never rendered. Match anywhere.
+  const m = String(title || '').match(/\b(over|under|o|u)\s*(\d[\d.]*)/i)
   if (!m) return null
   return { dir: m[1][0].toLowerCase() === 'o' ? 'over' : 'under', line: parseFloat(m[2]) }
 }

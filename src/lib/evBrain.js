@@ -122,9 +122,9 @@ export function roundRobinScore(components) {
 
 // ── Label tiers ──────────────────────────────────────────────────────────────
 const VERDICTS = [
-  { min: 85, key: 'PRIME',  label: 'Prime',  tone: 'neon'   },
-  { min: 75, key: 'STRONG', label: 'Strong', tone: 'green'  },
-  { min: 65, key: 'LEAN',   label: 'Lean',   tone: 'amber'  },
+  { min: 85, key: 'GREEN', label: 'Green', tone: 'neon'  },
+  { min: 75, key: 'SMALL', label: 'Small', tone: 'green' },
+  { min: 65, key: 'LEAN',  label: 'Lean',  tone: 'amber' },
   { min: -Infinity, key: 'PASS', label: 'Pass', tone: 'muted' },
 ]
 export function verdictFor(score) {

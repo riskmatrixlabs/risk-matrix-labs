@@ -1,7 +1,7 @@
 {
   "name": "Risk Matrix Labs",
   "short_name": "RML",
-  "description": "The Bankroll Simulator for disciplined sports bettors. Operate with discipline.",
+  "description": "The sports betting edge platform — live odds, EV-graded bets, player props, line movement, and models graded in public. Built for operators who run a system. Operate with discipline.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",
@@ -12,7 +12,7 @@
     {
       "name": "Open Dashboard",
       "short_name": "Dashboard",
-      "description": "Open your Risk Matrix bankroll dashboard",
+      "description": "Open your Risk Matrix Labs dashboard",
       "url": "/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
@@ -29,13 +29,13 @@
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

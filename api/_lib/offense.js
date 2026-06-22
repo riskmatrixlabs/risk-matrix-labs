@@ -112,7 +112,7 @@ async function recentRpg(teamId) {
 
 // Orchestrate: returns { offense:{score,reason}, form:{score,reason}, source }.
 export async function getOffense({ away, home, awayId, homeId }) {
-  const empty = { offense: { score: 0, reason: null }, form: { score: 0, reason: null }, source: 'none' }
+  const empty = { offense: { score: 0, reason: null }, form: { score: 0, reason: null }, source: 'none', gamePk: null, awayXwoba: null, homeXwoba: null }
   try {
     const sav = await getSavantMaps().catch(() => null)
     const batters = sav?.batter || {}
@@ -131,6 +131,6 @@ export async function getOffense({ away, home, awayId, homeId }) {
     }
     const [ar, hr] = await Promise.all([recentRpg(awayId).catch(() => null), recentRpg(homeId).catch(() => null)])
     const combinedRpg = (ar != null && hr != null) ? (ar + hr) / 2 : null
-    return { offense: offenseFactor(awayX, homeX), form: formFactor(combinedRpg), source }
+    return { offense: offenseFactor(awayX, homeX), form: formFactor(combinedRpg), source, gamePk: g?.gamePk ?? null, awayXwoba: awayX ?? null, homeXwoba: homeX ?? null }
   } catch { return empty }
 }

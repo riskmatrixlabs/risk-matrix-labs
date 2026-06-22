@@ -1,6 +1,6 @@
 // Grade a logged bet (single OR parlay) → { evPct, clvPct, winProb } against matched events.
 // Same math CH3 uses, extracted so the Bets-tab cards grade identically.
-import { matchBetToEvent, evaluateBet } from './betMatch.js'
+import { findEventForBet, evaluateBet } from './betMatch.js'
 import { devigTwoWay, americanToDecimal, americanToImplied } from './devig.js'
 
 function buildDvs(ev) {
@@ -21,7 +21,7 @@ export function gradeBet(bet, events = []) {
   // ── Parlay: grade each leg vs its own event, then combine ──
   if (legs && legs.length >= 2) {
     const per = legs.map(leg => {
-      const ev = events.find(e => matchBetToEvent({ sport: leg.sport || bet.sport, event: leg.event, date: bet.date }, e))
+      const ev = findEventForBet({ sport: leg.sport || bet.sport, event: leg.event, date: bet.date, pick: leg.pick }, events)
       return ev ? evaluateBet({ pick: leg.pick, odds: leg.odds, sport: leg.sport || bet.sport, event: leg.event, date: bet.date }, ev, buildDvs(ev)) : null
     })
     if (!per.some(Boolean)) return fallback(bet)
@@ -42,7 +42,7 @@ export function gradeBet(bet, events = []) {
   }
 
   // ── Single ──
-  const ev = events.find(e => matchBetToEvent(bet, e))
+  const ev = findEventForBet(bet, events)
   if (!ev) return fallback(bet)
   const g = evaluateBet(bet, ev, buildDvs(ev))
   if (!g) return fallback(bet)

@@ -24,6 +24,8 @@ import {
   fetchTemplates, upsertTemplate, deleteTemplate as dbDeleteTemplate,
   rowToBet, betToRow,
 } from './lib/supabase'
+import { matchBetToEvent, findEventForBet } from './lib/betMatch.js'
+import { gradeBetResult } from './lib/gradeBetResult.js'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
@@ -32,8 +34,8 @@ import {
 import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Moon, Shield, ShieldAlert, ShieldCheck, AlertTriangle, Target, Crosshair, BarChart3, Lock, Zap, Wallet, ArrowUpRight, ArrowDownRight, Clock, Pencil, RotateCcw, CheckSquare, X, Minimize2, Flame, Calendar, Tag, Sliders, Share2, Copy, CheckCheck, Save, FolderOpen, FileDown, RefreshCcw, BookMarked, Upload, Handshake, Radio, Tv, Ticket } from 'lucide-react'
 import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
-import MatrixBot, { withLogos } from './components/MatrixBot'
-import { fetchEvents as fetchBetEvents } from './lib/events.js'
+import MatrixBot, { withLogos, normName } from './components/MatrixBot'
+import { fetchEvents as fetchBetEvents, isLiveEvent } from './lib/events.js'
 import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
@@ -788,8 +790,13 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
 }
 
 // ─── UNIVERSAL BET CARD ───────────────────────────────────────────────────────
-function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [] }) {
-  const normWithLogos = () => withLogos(normalizeBet(bet), null, [], null, events)
+function BetCard({ bet, onSettle, onEdit, onDelete, onShare, unitSize, bankIn, events = [], players = [], boxScores = {}, winPct = {} }) {
+  // Resolve the matched event + its live box-score so dashboard cards light up the win-prob ring
+  // and live stat bars exactly like CH3 Track (same withLogos arg order: norm, ev, players, boxStats, events, winPct).
+  const normWithLogos = () => {
+    const ev = findEventForBet(bet, events)
+    return withLogos(normalizeBet(bet), ev || null, players, ev ? (boxScores[ev.external_event_id] || null) : null, events, winPct)
+  }
   const grade = gradeBet(bet, events)                     // EV/CLV so the footer fills like CH3
   const isOpen   = bet.result === 'Open'
   const isLadder = !!bet.ladder
@@ -826,7 +833,7 @@ function profitFromLadderOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladderSessionKey, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onCloseSync }) {
+function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladderSessionKey, darkMode, unitSize = 20, masterBankroll = 1000, onEdit, onShare, onCloseSync, betEvents = [], betRosterPlayers = [], betBoxScores = {}, betWinPct = {} }) {
   const { isMobile } = useMobile()
   const [startInput, setStartInput] = useState(String(ladderStarting))
   const [editRow,    setEditRow]    = useState(null)
@@ -1059,6 +1066,10 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladde
               onShare={onShare}
               unitSize={unitSize}
               bankIn={row.bankIn}
+              events={betEvents}
+              players={betRosterPlayers}
+              boxScores={betBoxScores}
+              winPct={betWinPct}
             />
           ))}
           {/* Mobile footer */}
@@ -1634,7 +1645,7 @@ const ATip = ({ active, payload, label: tLabel, fmt: fmtFn }) => {
 }
 
 // ─── ANALYTICS PANEL ─────────────────────────────────────────────────────────
-function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit, onShare }) {
+function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkMode, onSettle, onEdit, onShare, betEvents = [], betRosterPlayers = [], betBoxScores = {}, betWinPct = {} }) {
   const { isMobile, isTablet } = useMobile()
   const g = (d, t, m) => isMobile ? m : isTablet ? t : d
   const [chartView,      setChartView]      = useState('cumulative')
@@ -1957,6 +1968,10 @@ function AnalyticsPanel({ bets, stats, masterBankroll, ladderStarting = 0, darkM
                 onShare={onShare}
                 unitSize={stats.unitSize}
                 bankIn={bankInMap[b.id]}
+                events={betEvents}
+                players={betRosterPlayers}
+                boxScores={betBoxScores}
+                winPct={betWinPct}
               />
             ))}
           </div>
@@ -2305,11 +2320,65 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   useEffect(() => {
     let on = true
     const SP = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
-    Promise.all(SP.flatMap(s => [fetchBetEvents(s, 'today'), fetchBetEvents(s, 'yesterday')]))
+    // Poll every 60s (was a one-time fetch): live scores must stay current so the dashboard bet cards'
+    // live total bars + win-prob reflect the in-progress game — exactly like CH3 Track already polls.
+    // Without this the dashboard held the score AS OF page load, so live tracking never updated.
+    const load = () => Promise.all(SP.flatMap(s => [fetchBetEvents(s, 'today'), fetchBetEvents(s, 'yesterday')]))
       .then(rs => { if (on) setBetEvents(rs.flatMap(r => r?.data || [])) })
       .catch(() => {})
-    return () => { on = false }
+    load()
+    const t = setInterval(load, 60000)
+    return () => { on = false; clearInterval(t) }
   }, [])
+  // Roster map for bet-log player-prop headshots: name→headshot across all active sports.
+  const [betRosterPlayers, setBetRosterPlayers] = useState([])
+  useEffect(() => {
+    if (!token) return
+    let on = true
+    const SP = ['MLB', 'NBA', 'NHL', 'WNBA']
+    Promise.all(SP.map(s =>
+      fetch(`/api/player-search?all=1&sport=${encodeURIComponent(s)}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => [])
+    )).then(arrs => {
+      if (!on) return
+      const all = arrs.flat()
+      setBetRosterPlayers(all.map(p => ({ norm: normName(p.player || ''), headshot: p.headshot || null })).filter(p => p.norm))
+    })
+    return () => { on = false }
+  }, [token])
+  // Live box-score stats for dashboard bet cards (win-prob ring + live stat bars) — mirrors
+  // CH3 TrackChannel: one fetch per live matched game, refreshed every 60s. Free (ESPN summary,
+  // 0 Odds-API credits), keyed by event id. Finished (FT/AOT) games also fetched so the bar
+  // locks in the settled final stat instead of going blank.
+  const [betBoxScores, setBetBoxScores] = useState({})
+  const [betWinPct, setBetWinPct] = useState({})   // event_id → { home, away } live game-winner prob (ML rings)
+  const liveBetGameKeys = useMemo(() => {
+    const set = new Set()
+    for (const b of bets || []) {
+      if (b.result !== 'Open') continue
+      const ev = findEventForBet(b, betEvents)
+      const hasBox = ev && (isLiveEvent(ev) || ev.status === 'FT' || ev.status === 'AOT')
+      if (hasBox && ev.external_event_id) set.add(`${(b.sport || ev.sport || 'MLB')}|${ev.external_event_id}`)
+    }
+    return [...set]
+  }, [bets, betEvents])
+  useEffect(() => {
+    if (!liveBetGameKeys.length) { setBetBoxScores({}); setBetWinPct({}); return }
+    let live = true
+    const load = () => Promise.all(liveBetGameKeys.map(k => {
+      const [sp, id] = k.split('|')
+      return fetch(`/api/box-score?sport=${encodeURIComponent(sp)}&id=${encodeURIComponent(id)}`)
+        .then(r => r.ok ? r.json() : null).then(j => [id, j || {}]).catch(() => [id, {}])
+    })).then(pairs => {
+      if (!live) return
+      setBetBoxScores(Object.fromEntries(pairs.map(([id, j]) => [id, j.players || {}])))
+      setBetWinPct(Object.fromEntries(pairs.map(([id, j]) => [id, j.winPct || null])))
+    })
+    load()
+    const t = setInterval(load, 60000)
+    return () => { live = false; clearInterval(t) }
+  }, [liveBetGameKeys.join(',')])
   const [sortCol,      setSortCol]      = useState('date')
   const [sortDir,      setSortDir]      = useState('desc')
   const [showAdd,      setShowAdd]      = useState(false)
@@ -2461,8 +2530,19 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           })
         }
         console.log('[RML] load — userId:', userId, '| token present:', !!token, '| token prefix:', token?.slice(0,20))
-        // Load bets from cloud
-        const { data: betRows, error: betErr } = await fetchBets(userId, token)
+        // Load bets, settings, and templates from cloud in parallel — all three are independent
+        // queries so there is no reason to await them sequentially. This cuts the initial cloud
+        // round-trip from ~3 serial Supabase calls down to 1 (they all resolve together).
+        const [
+          { data: betRows,  error: betErr  },
+          { data: settings, error: settErr },
+          { data: tmplRows },
+        ] = await Promise.all([
+          fetchBets(userId, token),
+          fetchSettings(userId, token),
+          fetchTemplates(userId, token),
+        ])
+
         const localSave = loadSession(userId)
         const localBets = localSave?.bets || []
         // Onboarding decision is deferred until AFTER settings load — a returning user with a
@@ -2500,22 +2580,20 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           }
         }
 
-        // Load settings from cloud
-        const { data: settings, error: settErr } = await fetchSettings(userId, token)
         // A cloud settings row = this account has used the app before → never re-onboard it,
         // regardless of bets or this device's localStorage.
         const hasCloudSettings = !!settings
         if (settErr && settErr.code !== 'PGRST116') {
           console.error('[RML] fetchSettings error:', settErr)
           // Cloud failed — fall back to localStorage settings
-          const localSave = loadSession(userId)
-          if (localSave) {
-            if (localSave.ladderStarting) setLadderStarting(localSave.ladderStarting)
-            if (localSave.bankroll != null) setBankroll(localSave.bankroll)
-            if (localSave.masterBrOverride != null) setMasterBrOverride(localSave.masterBrOverride)
-            if (localSave.username)       setUsername(localSave.username)
-            if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
-            if (localSave.darkMode !== undefined) setDarkMode(localSave.darkMode)
+          const localSaveSett = loadSession(userId)
+          if (localSaveSett) {
+            if (localSaveSett.ladderStarting) setLadderStarting(localSaveSett.ladderStarting)
+            if (localSaveSett.bankroll != null) setBankroll(localSaveSett.bankroll)
+            if (localSaveSett.masterBrOverride != null) setMasterBrOverride(localSaveSett.masterBrOverride)
+            if (localSaveSett.username)       setUsername(localSaveSett.username)
+            if (localSaveSett.riskSettings)   setRiskSettings(localSaveSett.riskSettings)
+            if (localSaveSett.darkMode !== undefined) setDarkMode(localSaveSett.darkMode)
           }
         } else if (settings) {
           if (settings.ladder_starting)     setLadderStarting(settings.ladder_starting)
@@ -2527,14 +2605,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           if (settings.dark_mode !== undefined) setDarkMode(settings.dark_mode)
         } else {
           // No cloud settings — try localStorage
-          const localSave = loadSession(userId)
-          if (localSave) {
-            if (localSave.ladderStarting) setLadderStarting(localSave.ladderStarting)
-            if (localSave.bankroll != null) setBankroll(localSave.bankroll)
-            if (localSave.masterBrOverride != null) setMasterBrOverride(localSave.masterBrOverride)
-            if (localSave.username)       setUsername(localSave.username)
-            if (localSave.riskSettings)   setRiskSettings(localSave.riskSettings)
-            if (localSave.darkMode !== undefined) setDarkMode(localSave.darkMode)
+          const localSaveSett = loadSession(userId)
+          if (localSaveSett) {
+            if (localSaveSett.ladderStarting) setLadderStarting(localSaveSett.ladderStarting)
+            if (localSaveSett.bankroll != null) setBankroll(localSaveSett.bankroll)
+            if (localSaveSett.masterBrOverride != null) setMasterBrOverride(localSaveSett.masterBrOverride)
+            if (localSaveSett.username)       setUsername(localSaveSett.username)
+            if (localSaveSett.riskSettings)   setRiskSettings(localSaveSett.riskSettings)
+            if (localSaveSett.darkMode !== undefined) setDarkMode(localSaveSett.darkMode)
           }
         }
 
@@ -2544,8 +2622,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           setShowWelcome(true)
         }
 
-        // Load templates from cloud
-        const { data: tmplRows } = await fetchTemplates(userId, token)
+        // Apply templates (fetched in parallel above alongside bets + settings)
         if (tmplRows?.length > 0) {
           setTemplates(tmplRows.map(r => ({ name: r.name, date: r.created_at?.slice(0,10), bankroll: r.bankroll, username: r.username, riskSettings: r.risk_settings })))
         }
@@ -2974,6 +3051,27 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       return next
     })
   }
+
+  // ── AUTO-SETTLE (S65) — grade Open bets from their game's final score and persist. This was the
+  // long-planned "Phase 4" that never shipped: bets only ever settled manually, so the record/operator
+  // never tracked on their own. For each Open straight bet whose matched event is FINAL, gradeBetResult
+  // returns W/L/P (or null when it can't grade — parlays, ladder-TBD picks, non-final games → left Open),
+  // and we route it through the existing settleBet (which computes pnl + upserts). Idempotent: once a bet
+  // is settled it's no longer 'Open', so it won't be re-graded.
+  const autoSettleTried = useRef(new Set())
+  useEffect(() => {
+    if (!betEvents.length || !bets.length) return
+    for (const b of bets) {
+      if (b.result !== 'Open' || autoSettleTried.current.has(b.id)) continue
+      const ev = findEventForBet(b, betEvents)
+      if (!ev) continue
+      const r = gradeBetResult(b, ev)
+      if (r === 'W' || r === 'L' || r === 'P') {
+        autoSettleTried.current.add(b.id)
+        settleBet(b.id, r)
+      }
+    }
+  }, [bets, betEvents])
 
 
   const sportBkdn = useMemo(() => {
@@ -3771,11 +3869,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             content: (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
                 {[
-                  { tab: 'Analytics', icon: '📊', desc: 'Your bankroll command center — P&L curve, unit sizes, risk limits, Discipline Score™.' },
-                  { tab: 'Bet Log', icon: '📝', desc: 'Log every bet. Hit Log Bet → fill in the details → settle when it lands.' },
+                  { tab: 'Game Center', icon: '🎯', desc: 'Live odds, EV-graded bets, and line movement. Scan today\'s slate for edges — wins and misses graded in public.' },
+                  { tab: 'Matrix Bot', icon: '🤖', desc: 'Player props and model leans, grouped by player. Build a slip and check the consensus edge before you place it.' },
+                  { tab: 'Analytics', icon: '📊', desc: 'Your command center — P&L curve, unit sizes, risk limits, Discipline Score™.' },
+                  { tab: 'Bet Log', icon: '📝', desc: 'Log every position. Hit Log Bet → fill in the details → settle when it lands.' },
                   { tab: 'Ladder', icon: '🪜', desc: 'The PHLT™ system — fund each rung only from previous winnings. Principal stays protected.' },
-                  { tab: 'RR Engine', icon: '⚙️', desc: 'Build round robins. See every combo, exposure, and the break-even hit rate you need.' },
-                  { tab: 'Session', icon: '📋', desc: 'Pre-session checklist + session grading. Every session earns an A–F based on process.' },
                 ].map(({ tab, icon, desc }) => (
                   <div key={tab} style={{ display: 'flex', gap: '12px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '4px' }}>
                     <span style={{ fontSize: '16px', flexShrink: 0 }}>{icon}</span>
@@ -3793,7 +3891,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           {
             pill: '03 / 03',
             title: "You're Ready to Operate",
-            desc: 'Start by logging your first bet or run the bankroll simulator. Discipline compounds — one session at a time.',
+            desc: 'Scan the slate in Game Center, build a slip in Matrix Bot, then log your positions. Discipline compounds — one session at a time.',
             content: (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                 {[
@@ -3925,11 +4023,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             <div style={{ marginBottom: '20px' }}>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON_T, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Quick Start</div>
               {[
+                'Scan today\'s slate → Game Center for live odds & edges',
+                'Build a slip & check props → Matrix Bot',
                 'Set your starting bankroll in the header',
                 'Log your first bet → Bet Log → LOG BET',
-                'Run the PHLT™ Ladder → Ladder tab',
                 'Check your discipline → Session tab after each session',
-                'Analyze your edge → Analytics tab weekly',
               ].map((step, i) => (
                 <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: '16px' }}>{i + 1}.</span>
@@ -3942,7 +4040,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             <div style={{ marginBottom: '20px' }}>
               <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.22em', color: NEON_T, textTransform: 'uppercase', marginBottom: '10px', paddingBottom: '6px', borderBottom: `1px solid var(--border)` }}>Tab Guide</div>
               {[
-                ['Analytics', 'Bankroll command center — stats, risk panel, BR limits'],
+                ['Game Center', 'Live odds, EV-graded bets, line movement — slate scan'],
+                ['Matrix Bot', 'Player props & model leans, grouped by player'],
+                ['Analytics', 'Command center — stats, risk panel, BR limits'],
                 ['Ladder', 'PHLT™ Ladder — step-by-step session roadmap'],
                 ['Bet Log', 'Log, edit, settle, and filter all your bets'],
                 ['Overview', 'P&L curve, ROI, Kelly Criterion, book breakdown'],
@@ -5208,6 +5308,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     onShare={setShareCardBet}
                     unitSize={stats.unitSize}
                     events={betEvents}
+                    players={betRosterPlayers}
+                    boxScores={betBoxScores}
+                    winPct={betWinPct}
                   />
                 ))}
                 {filtered.length === 0 && (
@@ -5252,7 +5355,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         )}
 
         {/* ── LADDER ── */}
-        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} ladderSessionKey={ladderSessionKey} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} onEdit={setEditingBet} onShare={setShareCardBet}
+        {tab === 'ladder' && <LadderTracker bets={bets} setBets={setBets} ladderStarting={ladderStarting} setLadderStarting={setLadderStarting} ladderSessionKey={ladderSessionKey} darkMode={darkMode} unitSize={stats.unitSize} masterBankroll={masterBankroll} betEvents={betEvents} betRosterPlayers={betRosterPlayers} betBoxScores={betBoxScores} betWinPct={betWinPct} onEdit={setEditingBet} onShare={setShareCardBet}
           onCloseSync={(newKey, newStarting, newRungs) => {
             // No deletes — update session key so ladder tab shows fresh session, upsert new rungs
             setLadderSessionKey(newKey)
@@ -5262,7 +5365,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         />}
 
         {/* ── ANALYTICS ── */}
-        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
+        {tab === 'analytics' && <AnalyticsPanel bets={bets} stats={stats} masterBankroll={masterBankroll} ladderStarting={ladderStarting} darkMode={darkMode} betEvents={betEvents} betRosterPlayers={betRosterPlayers} betBoxScores={betBoxScores} betWinPct={betWinPct} onSettle={settleBet} onEdit={setEditingBet} onShare={setShareCardBet} />}
 
         {/* ══ RR ENGINE ══ */}
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} onAddToSlip={addToSlip} />}
@@ -5270,7 +5373,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
         {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
         {tab === 'bot'  && <MatrixBot initialView={botView} onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll}
-          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} />}
+          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} isDemo={isDemo} ladderSessionKey={ladderSessionKey} />}
 
       </div>
 

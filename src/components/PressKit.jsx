@@ -59,7 +59,7 @@ export default function PressKit({ onBack }) {
         <section style={{ marginBottom: '52px' }}>
           <SectionHead>About Risk Matrix Labs</SectionHead>
           <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.75, margin: '0 0 14px' }}>
-            Risk Matrix Labs is the Bankroll Simulator for serious sports bettors. We give operators the tools to simulate bankroll growth, manage risk with precision, and execute a disciplined betting system — without emotion.
+            Risk Matrix Labs is the edge platform for serious sports bettors. Live odds, EV-graded bets, player props, and line movement — plus a model track record graded in public, wins and misses. Underneath it: the bankroll, risk, and discipline tools that let operators run a system without emotion.
           </p>
           <p style={{ fontFamily: I, fontSize: '14px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.75, margin: 0 }}>
             Most bettors track wins and losses. Risk Matrix Labs operators track units, risk exposure, ROI, Kelly fractions, and ladder progressions — the same metrics professional bankroll managers use. We're building the infrastructure layer for the $150B US sports betting market.
@@ -151,10 +151,10 @@ export default function PressKit({ onBack }) {
           <SectionHead>Key Messages</SectionHead>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
-              'The Bankroll Simulator for the $150B sports betting market.',
+              'The edge platform for the $150B sports betting market.',
+              'Live odds, EV grades, props, and models graded in public — no locks, no hype.',
               'Built for operators, not gamblers. Discipline over hunches.',
-              'Unit sizing, risk exposure, ROI analytics, and ladder simulation — all in one system.',
-              '"Operate With Discipline." — the standard for serious bankroll management.',
+              '"Operate With Discipline." — the standard for serious operators.',
             ].map((m, i) => (
               <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', background: '#111', border: '1px solid #1e1e1e', borderRadius: '6px', padding: '12px 16px' }}>
                 <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 800, color: NEON, flexShrink: 0, marginTop: '1px' }}>{String(i + 1).padStart(2, '0')}</span>

@@ -4,7 +4,7 @@ import { fetchEvents, fetchLiveEvents, isLiveEvent } from '../lib/events'
 import SpotlightTicker from './SpotlightTicker.jsx'
 import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
-import { matchBetToEvent, evaluateBet } from '../lib/betMatch'
+import { matchBetToEvent, findEventForBet, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { liveConsensus } from '../lib/liveConsensus'
 import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES, copyPickAndOpen } from '../lib/betLinks'
@@ -1568,7 +1568,7 @@ function BonusButton() {
   )
 }
 
-function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPrev = null, onNext = null, onPick = null, posLabel = '', bets = [], token = null, unitSize = 0 }) {
+function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPrev = null, onNext = null, onPick = null, posLabel = '', bets = [], allEvents = [], token = null, unitSize = 0 }) {
   // Swipe left/right (from anywhere in the detail) to slide to the next/prev game — fixes
   // "can't get to the next card from inside". Horizontal-only so it never fights vertical scroll.
   const touch = useRef(null)
@@ -1960,10 +1960,25 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
             const fair = (v) => v == null ? '—' : (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`)
 
             // ── Your bets on THIS game → graded against fair value + closing line ──
+            // Only attach a bet to THIS event if this event is its BEST match (line/date
+            // disambiguated) — so a live-game bet doesn't also light up last-night's final.
+            const _evPool = (allEvents && allEvents.length) ? allEvents : [event]
             const myBets = (bets || [])
-              .filter(b => matchBetToEvent(b, event))
+              .filter(b => matchBetToEvent(b, event) && findEventForBet(b, _evPool)?.id === event.id)
               .map(b => evaluateBet(b, event, { dv, dvSpread, dvTotal }))
               .filter(Boolean)
+
+            // ── Line Movement ordering: if exactly one parseable single-market bet, show that market first ──
+            const _singleMarketBets = myBets.filter(b => b && b.parsed && (b.parsed.market === 'ml' || b.parsed.market === 'spread' || b.parsed.market === 'total'))
+            const _uniqueMarkets = [...new Set(_singleMarketBets.map(b => b.parsed.market))]
+            const priorityMarket = _uniqueMarkets.length === 1 ? _uniqueMarkets[0] : null
+            const movedOrdered = priorityMarket
+              ? [...moved].sort((a, b) => {
+                  const aMatch = a === priorityMarket || a.startsWith(priorityMarket + '_')
+                  const bMatch = b === priorityMarket || b.startsWith(priorityMarket + '_')
+                  return aMatch === bMatch ? 0 : aMatch ? -1 : 1
+                })
+              : moved
 
             // ── Odds table (was the Odds tab) — driven by live values above when present ──
             const hasSpread = spreadPt != null
@@ -2143,7 +2158,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       } />
                       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: 'absolute', right: '16px', transform: lineMoveOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M4 6L8 10L12 6" stroke={MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
-                    {lineMoveOpen && moved.map((k, i) => {
+                    {lineMoveOpen && movedOrdered.map((k, i) => {
                       const mkt = k.split('_')[0]           // 'ml' | 'spread' | 'total'
                       const m = movement[k]                 // line/price series → the headline number
                       // The PRICE ("juice") series that actually moves — drives %, CLV, arrow, sparkline.
@@ -2165,7 +2180,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       // Run Line / Total: the headline is the LINE; show the juice (odds) that actually moved too.
                       const showOdds = mkt !== 'ml' && jm
                       return (
-                        <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < moved.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                        <div key={k} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '12px', padding: '11px 14px', borderBottom: i < movedOrdered.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           {/* LEFT — the bet + its LINE (the number you're betting over/under or the spread) */}
                           {(() => {
                             const arrow = flat ? '→' : up ? '↗' : '↘'
@@ -2560,10 +2575,14 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
 
   const selected = events.find(e => e.id === selectedId) ?? null
 
-  // Finished games sink to the bottom of the list so live/upcoming stay on top (no scrolling
-  // past completed games). Stable sort preserves the existing time/sport order within each group.
+  // Slate order: live/upcoming on top, then finished, then dead games (postponed/canceled)
+  // at the very bottom — they have no result and won't play, so they shouldn't push the
+  // actionable slate down. DLY/SUS stay up top since they can still resume into a live game.
+  // Stable sort preserves the existing time/sport order within each rank group.
   const isFinalEvent = (e) => e.status === 'FT' || e.status === 'AOT'
-  const orderedEvents = [...events].sort((a, b) => (isFinalEvent(a) ? 1 : 0) - (isFinalEvent(b) ? 1 : 0))
+  const isDeadEvent  = (e) => e.status === 'PPD' || e.status === 'CXL'
+  const slateRank = (e) => isDeadEvent(e) ? 2 : isFinalEvent(e) ? 1 : 0
+  const orderedEvents = [...events].sort((a, b) => slateRank(a) - slateRank(b))
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '80px' }}>
@@ -2633,7 +2652,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
           onNext={nextId ? () => setSelectedId(nextId) : null}
           onPick={ev => setSelectedId(ev.id)}
           posLabel={idx >= 0 ? `${idx + 1}/${orderedEvents.length}` : ''}
-          onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} bets={bets} token={token} unitSize={unitSize} />
+          onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} bets={bets} allEvents={events} token={token} unitSize={unitSize} />
       })()
       : events.length === 0 ? (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', textAlign: 'center', padding: '48px 0', fontFamily: R, fontSize: '11px', color: MUTED, letterSpacing: '0.14em' }}>

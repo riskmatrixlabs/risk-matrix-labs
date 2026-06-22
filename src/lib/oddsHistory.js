@@ -1,5 +1,11 @@
 import { supabase } from './supabase'
 
+// ── Per-game in-memory cache for line movement (consensus) ───────────────────
+// Re-opening the same game within the TTL skips the Supabase round-trip entirely.
+// Cleared on page reload (intentional — fresh session = fresh data).
+const _lineMovementCache = new Map() // key: externalEventId → { data, ts }
+const LINE_MOVEMENT_TTL_MS = 75_000  // 75 seconds
+
 // Open → current → delta (+ the full value series for sparklines) for one
 // market/side's chronological snapshots.
 export function computeMovement(snapshots) {
@@ -13,11 +19,17 @@ export function computeMovement(snapshots) {
 
 // Fetch all snapshots for an event and reduce to per-market/side movement.
 // Key format: `${market}_${side}` for two-sided markets, or `${market}` when side is null.
+// Results are cached in-memory for LINE_MOVEMENT_TTL_MS so re-opening the same game
+// in the Insights view does not fire a redundant Supabase query.
 export async function fetchLineMovement(externalEventId) {
+  const cacheKey = String(externalEventId)
+  const cached = _lineMovementCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < LINE_MOVEMENT_TTL_MS) return cached.data
+
   const { data, error } = await supabase
     .from('odds_history')
     .select('*')
-    .eq('external_event_id', String(externalEventId))
+    .eq('external_event_id', cacheKey)
     .is('book', null)              // market-level consensus only — per-book rows feed the By-Sportsbook chart, not this
     .order('captured_at', { ascending: true })
   if (error || !data?.length) return {}
@@ -28,6 +40,7 @@ export async function fetchLineMovement(externalEventId) {
   }
   const out = {}
   for (const [key, snaps] of Object.entries(groups)) out[key] = computeMovement(snaps)
+  _lineMovementCache.set(cacheKey, { data: out, ts: Date.now() })
   return out
 }
 

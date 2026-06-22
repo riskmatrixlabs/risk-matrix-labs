@@ -6,14 +6,40 @@ import { NEON, MUTED, BORDER, TEXT } from './botShared.jsx'
 import { ticketStatus, slipClv } from '../lib/betCard.js'
 import { verdictFromBetGrade } from '../lib/evBrain.js'
 
-// EV-Brain verdict → pill color. Prime=neon, Strong=green, Lean=amber, Pass=muted.
+// EV-Brain verdict → pill color. Green=neon, Small=green, Lean=amber, Pass=muted.
 const VERDICT_COLOR = { neon: '#BDFF00', green: '#5BD16B', amber: '#FFAE2B', muted: '#888780' }
-function VerdictPill({ verdict, size = 'md' }) {
+// One honest sentence — this is an experimental signal, not advice.
+const VERDICT_TIP = 'EV Brain grade — value (EV) + line value (CLV). Green = best, Pass = skip. Experimental signal, not advice.'
+
+// Build the compact sub-score breakdown string from the grade + verdict result.
+// Only includes pieces that actually exist (EV but no CLV, etc.). Returns '' if nothing.
+function breakdownText(result, grade) {
+  if (!result) return ''
+  const parts = []
+  if (result.evScore != null) {
+    parts.push(grade?.evPct != null
+      ? `EV ${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%`
+      : `EV ${Math.round(result.evScore)}`)
+  }
+  if (result.clvScore != null) {
+    parts.push(grade?.clvPct != null
+      ? `beat close ${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}`
+      : `CLV ${Math.round(result.clvScore)}`)
+  }
+  return parts.join(' · ')
+}
+
+function VerdictPill({ verdict, result = null, grade = null, size = 'md' }) {
   if (!verdict) return null
   const c = VERDICT_COLOR[verdict.tone] || MUTED
   const fs = size === 'sm' ? 8 : 9
+  const detail = breakdownText(result, grade)
+  const head = result?.score != null ? `${verdict.label} ${Math.round(result.score)}` : verdict.label
   return (
-    <span title="EV-Brain bet grade (EV + CLV)" style={{ fontFamily: R, fontSize: fs, fontWeight: 700, letterSpacing: '0.12em', color: c, background: `${c}1f`, border: `1px solid ${c}59`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase' }}>{verdict.label}</span>
+    <span title={VERDICT_TIP} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+      <span style={{ fontFamily: R, fontSize: fs, fontWeight: 700, letterSpacing: '0.12em', color: c, background: `${c}1f`, border: `1px solid ${c}59`, borderRadius: 5, padding: '2px 7px', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>{head}</span>
+      {detail && <span style={{ fontFamily: I, fontSize: 8, color: c, opacity: 0.78, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{detail}</span>}
+    </span>
   )
 }
 
@@ -30,6 +56,12 @@ const toWin = (odds, stake) => (odds == null || !stake) ? null : (odds > 0 ? sta
 const AMBER = '#FFAE2B'   // brighter, punchier orange for pending/live
 // Ring color by status: pending/live = orange, won = green, lost = red, push = gray.
 const ringColor = (status) => status?.key === 'won' ? NEON : status?.key === 'lost' ? '#FF3B3B' : status?.key === 'push' ? '#888780' : AMBER
+// Pikkit-style live ring color: a SETTLED bet locks to its result (green win / red
+// loss / gray push); an in-progress bet shifts with the win probability so the circle
+// reads as a live "are we winning" — green ahead (≥60%), amber toss-up, red behind (<40%).
+const probColor = (p) => (p == null || Number.isNaN(p)) ? AMBER : p >= 0.60 ? NEON : p >= 0.40 ? AMBER : '#FF3B3B'
+export const liveRingColor = (status, pct) =>
+  (status?.key === 'won' || status?.key === 'lost' || status?.key === 'push') ? ringColor(status) : probColor(pct)
 
 // Pikkit-style win-probability ring. pct = 0..1 (de-vig fair win prob). Green donut + % center.
 function Ring({ pct, size = 38, stroke = 4, color = NEON }) {
@@ -148,9 +180,15 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
   const [open, setOpen] = useState(false)
   const st = bet.status
   const leg = bet.legs[0] || {}
-  const winProb = grade?.winProb ?? leg.winProb ?? null
+  // Win-prob ring: a SETTLED bet resolves to 100% (won) / 0% (lost) so the ring fills like everyone's
+  // tracker; while pending/live it shows the current/implied probability.
+  // leg.liveWP (live ESPN game-winner prob for an ML pick) wins over the static
+  // de-vig/implied prob so the ring moves with the score on in-progress games.
+  const baseWP = leg.liveWP ?? grade?.winProb ?? leg.winProb ?? null
+  const winProb = st?.key === 'won' ? 1 : st?.key === 'lost' ? 0 : baseWP
   const win = toWin(bet.odds, bet.stake)
-  const verdict = grade?.verdict ?? verdictFromBetGrade(grade, bet.odds)?.verdict
+  const gradeResult = verdictFromBetGrade(grade, bet.odds)
+  const verdict = grade?.verdict ?? gradeResult?.verdict
   return (
     <div style={{ position: 'relative', background: '#0d0d0d', border: `1px solid ${st.color}59`, borderRadius: 14, padding: compact ? '9px 11px' : 13, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: st.color }} />
@@ -162,8 +200,8 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
           {bet.subtitle && <div style={{ fontFamily: I, fontSize: 11, color: MUTED }}>{bet.subtitle}</div>}
         </div>
         {bet.book && <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#1c1c1c', color: '#9a9a9a', alignSelf: 'flex-start' }}>{bet.book}</span>}
-        {verdict && <VerdictPill verdict={verdict} size={compact ? 'sm' : 'md'} />}
-        <Ring pct={winProb} size={compact ? 32 : 40} color={ringColor(st)} />
+        {verdict && <VerdictPill verdict={verdict} result={gradeResult} grade={grade} size={compact ? 'sm' : 'md'} />}
+        <Ring pct={winProb} size={compact ? 32 : 40} color={liveRingColor(st, winProb)} />
       </div>
       <StatBar stat={leg.statNow} style={{ marginTop: 11 }} />
       <ScoreChip text={leg.scoreLine} status={st} />
@@ -189,22 +227,25 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
   )
 }
 
-function LegRow({ leg }) {
+function LegRow({ leg, last = false }) {
   const st = leg.status
-  // Name + detail stay light/readable; the bar (StatBar) carries the green/red status.
+  // One sportsbook-slip line: status dot + logo on the left, pick + odds aligned in a row,
+  // live score / stat below. Name + odds stay light/readable; the bar (StatBar) carries green/red.
+  const dim = st.key === 'lost'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 13px', position: 'relative' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 13px', position: 'relative', borderBottom: last ? 'none' : '1px solid #161616' }}>
       <Avatar headshot={leg.headshot} logo={leg.logo} logo2={leg.logo2} label={leg.subtitle || leg.title} status={st} size={38} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, textDecoration: st.key === 'lost' ? 'line-through' : 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.title}</span>
-          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: st.key === 'lost' ? '#9a9a9a' : TEXT, flexShrink: 0 }}>{fmtOdds(leg.odds)}</span>
+          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: dim ? '#9a9a9a' : TEXT, textDecoration: dim ? 'line-through' : 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.title}</span>
+          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: dim ? '#9a9a9a' : TEXT, flexShrink: 0 }}>{fmtOdds(leg.odds)}</span>
         </div>
+        {leg.subtitle && <div style={{ fontFamily: I, fontSize: 10, color: MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leg.subtitle}</div>}
         {leg.close != null && <div style={{ fontFamily: I, fontSize: 9, color: MUTED }}>closed {fmtOdds(leg.close)}</div>}
         <StatBar stat={leg.statNow} />
         <ScoreChip text={leg.scoreLine} status={st} />
       </div>
-      <span style={{ color: st.color, fontSize: 17, fontWeight: 700, lineHeight: 1 }}>{GLYPH[st.key] || ''}</span>
+      <span style={{ color: st.color, fontSize: 17, fontWeight: 700, lineHeight: 1, marginTop: 1 }}>{GLYPH[st.key] || ''}</span>
     </div>
   )
 }
@@ -215,28 +256,46 @@ export function BetTicket({ bet, grade, pnl = null, onEdit = null, badge = null 
   const clvVal = grade?.clvPct ?? slipClv(bet.legs.map(l => ({ entry: l.odds, close: l.close }))).clvPct
   const win = toWin(bet.odds, bet.stake)
   // Combined parlay win probability = product of each leg's win prob (independent legs).
-  const legProbs = bet.legs.map(l => l.winProb).filter(p => p != null && !Number.isNaN(p))
+  const legProbs = bet.legs.map(l => l.liveWP ?? l.winProb).filter(p => p != null && !Number.isNaN(p))
   const comboProb = legProbs.length === bet.legs.length && legProbs.length ? legProbs.reduce((a, b) => a * b, 1) : null
-  const verdict = grade?.verdict ?? verdictFromBetGrade({ evPct: grade?.evPct, clvPct: clvVal, winProb: comboProb ?? grade?.winProb }, bet.odds)?.verdict
+  const ticketGrade = { evPct: grade?.evPct, clvPct: clvVal, winProb: comboProb ?? grade?.winProb }
+  const gradeResult = verdictFromBetGrade(ticketGrade, bet.odds)
+  const verdict = grade?.verdict ?? gradeResult?.verdict
   return (
     <div style={{ position: 'relative', border: `1px solid ${t.overall.color}59`, borderRadius: 14, background: '#0c0c0c', overflow: 'hidden' }}>
       {/* Left status-color accent stripe, matching the single card. */}
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: t.overall.color, zIndex: 2 }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '11px 13px', borderBottom: '1px solid #1e1e1e' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-          <Badge text={badge} />
-          <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{bet.title}</span>
+      {/* Slip header — title + leg count on the left; verdict, progress pill + win-prob ring on the right. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '11px 13px 9px', background: `${t.overall.color}0d` }}>
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+            <Badge text={badge} />
+            <span style={{ fontFamily: R, fontSize: 14, fontWeight: 700, color: TEXT, letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bet.title}</span>
+          </span>
+          <span style={{ fontFamily: R, fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.12em' }}>{bet.legs.length}-LEG PARLAY</span>
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          {verdict && <VerdictPill verdict={verdict} size="sm" />}
-          <span style={{ fontFamily: R, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: `${t.overall.color}1f`, color: t.overall.color }}>{t.label}{t.overall.key === 'live' ? ' · LIVE' : ''}</span>
-          <Ring pct={comboProb ?? grade?.winProb} size={36} color={ringColor(t.overall)} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+          {verdict && <VerdictPill verdict={verdict} result={gradeResult} grade={ticketGrade} size="sm" />}
+          <span style={{ fontFamily: R, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: `${t.overall.color}1f`, color: t.overall.color, whiteSpace: 'nowrap' }}>{t.label}{t.overall.key === 'live' ? ' · LIVE' : ''}</span>
+          <Ring pct={t.overall.key === 'won' ? 1 : t.overall.key === 'lost' ? 0 : (comboProb ?? grade?.winProb)} size={36} color={liveRingColor(t.overall, comboProb ?? grade?.winProb)} />
         </span>
       </div>
 
-      <div style={{ position: 'relative', padding: '4px 0' }}>
-        <div style={{ position: 'absolute', left: 32, top: 28, bottom: 28, width: 2, background: '#262626' }} />
-        {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} /></div>)}
+      {/* Combined odds + stake → to win, sportsbook-slip style. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 13px', borderTop: '1px solid #1e1e1e', borderBottom: '1px solid #1e1e1e', background: '#0a0a0a' }}>
+        <span style={{ fontFamily: R, fontSize: 16, fontWeight: 700, color: TEXT, letterSpacing: '0.02em' }}>{fmtOdds(bet.odds)}</span>
+        {win != null && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: R, fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: MUTED }}>${Number(bet.stake).toFixed(0)}</span>
+            <span style={{ color: MUTED, fontSize: 12 }}>→</span>
+            <span style={{ color: t.overall.key === 'lost' ? '#9a9a9a' : NEON }}>${win.toFixed(0)}</span>
+          </span>
+        )}
+      </div>
+
+      <div style={{ position: 'relative', padding: '2px 0' }}>
+        <div style={{ position: 'absolute', left: 32, top: 30, bottom: 30, width: 2, background: '#262626' }} />
+        {bet.legs.map((leg, i) => <div key={i} style={{ position: 'relative', zIndex: 1 }}><LegRow leg={leg} last={i === bet.legs.length - 1} /></div>)}
       </div>
 
       {/* Collapse toggle row */}

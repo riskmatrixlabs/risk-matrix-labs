@@ -13,17 +13,18 @@ const PRICE_MONTHLY = import.meta.env.VITE_STRIPE_PRICE_MONTHLY || 'price_1Tf56Q
 const PRICE_YEARLY  = import.meta.env.VITE_STRIPE_PRICE_YEARLY  || 'price_1Tf58cJEv6JkAZy9kzUbPCDV'
 
 const FEATURES = [
+  'Live Odds & EV-Graded Bets',
+  'Player Props & Model Leans',
+  'Line Movement & Book Comparison',
   'Bankroll Simulator',
   'PHLT™ Ladder System',
   'Unit Sizing Engine',
   'Round Robin Engine',
-  'Behavioral Analytics',
   'Discipline Score™ & Session grading',
   'Pre-Session Checklist & Tilt Detection',
   'Bet Log — unlimited entries',
   'Cloud sync across all devices',
   'Risk Management panel',
-  'PDF session reports',
 ]
 
 export default function PaywallScreen({ user, token, subStatus, onSignOut, onRefreshAccess }) {
@@ -144,7 +145,7 @@ export default function PaywallScreen({ user, token, subStatus, onSignOut, onRef
           RISK MATRIX LABS
         </div>
         <div style={{ fontFamily: R, fontSize: '9px', letterSpacing: '0.3em', color: 'rgba(189,255,0,0.45)', marginTop: '3px' }}>
-          BANKROLL SIMULATOR
+          OPERATE WITH DISCIPLINE
         </div>
       </div>
 
