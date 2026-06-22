@@ -92,16 +92,24 @@ via `onSubmit` + `submitLabel`.
   and flows through the existing `onAdd` path (no new persistence code).
 - Stake/units, date, book remain the modal's existing fields.
 
-### Mount 2 — Game Center (search → slip)
+### Mount 2 — Game Center → game Insights, above Line Shop (search → slip)
 
-`LiveCenter.jsx` (Game Center):
-- A **search bar** entry ("+ build a prop") opens `<PropBuilder>` for the active sport,
-  `game` pre-scoped when a game is in context, otherwise an all-players search.
-- `onSubmit(prop)` calls the **existing** `onAddToSlip({ pick, odds, sport, event, book: null,
-  evPct: null, consensus: false })` — the same plumbing the paid prop chips already use
-  (`MatrixBot.jsx` confirm flow). The leg lands in the existing neon ticket; the user places /
-  logs from there alongside other legs.
-- No direct logging here; the slip owns the place/log step.
+`LiveCenter.jsx`, inside the `GameDetail` **Insights** tab card stack — a new
+**"+ build a prop"** section placed **directly above the Line Shop / Compare Books card**
+(currently `<LineShop .../>` at ~line 2132). Rationale: the game is already open here, so:
+- `game` is always known → `PropBuilder` **scopes the player search to that game's roster** and
+  the **event is pre-resolved** (best case for live tracking — no match guesswork).
+- The slip handler it needs, `onAddToSlip`, is **already in scope** in `GameDetail` (passed to
+  `LineShop` on the same line), so no new plumbing.
+
+Mounted as `<PropBuilder sport={event.sport} game={event} token={token} submitLabel="+ ADD TO
+SLIP" onSubmit={...} />`. `onSubmit(prop)` calls the **existing** `onAddToSlip({ pick, odds,
+sport, event, book: null, evPct: null, consensus: false })` — the same path the paid prop chips
+use. The leg lands in the existing neon ticket; the user places / logs from there alongside
+other legs. No direct logging here; the slip owns the place/log step.
+
+It can render collapsed (a `LookSection`-style header that expands to the builder) to match the
+other Insights cards, or open inline — implementer's call, consistent with the surrounding stack.
 
 ## Data flow (all free, 0 credits)
 
