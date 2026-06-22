@@ -65,6 +65,27 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
 
   const ctx = useMemo(() => (statResp && stat ? pickStatValue(statResp, stat.key) : null), [statResp, stat])
 
+  // Cached scan line: if this player+stat+game was already scanned (paid), the line/price live
+  // in prop_history. Pre-fill the (still-editable) inputs from that FREE cache read; show open.
+  const [cachedOpen, setCachedOpen] = useState(null)
+  useEffect(() => {
+    setCachedOpen(null)
+    const eventId = game?.external_event_id
+    if (!player?.player || !stat?.key || !eventId) return
+    let on = true
+    const params = new URLSearchParams({ sport, game: String(eventId), player: player.player, market: stat.key, side })
+    fetch(`/api/prop-open?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { found: false })
+      .then(j => {
+        if (!on || !j?.found) return
+        setCachedOpen(j)
+        if (j.line != null) setLine(String(j.line))
+        if (j.price != null) setOdds(String(j.price))
+      })
+      .catch(() => {})
+    return () => { on = false }
+  }, [player, stat, side, sport, token, game])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {!player ? (
@@ -114,6 +135,13 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
             <input value={odds} onChange={e => setOdds(e.target.value)} placeholder="Odds  ·  -120" inputMode="text"
               style={{ flex: 1, padding: '9px 11px', borderRadius: 10, background: '#121212', border: `1px solid ${BORDER}`, color: '#fff' }} />
           </div>
+          {cachedOpen?.found && cachedOpen.line != null && (
+            <div style={{ fontSize: 11, color: NEON }}>
+              book line {cachedOpen.line}
+              {cachedOpen.openLine != null && cachedOpen.openLine !== cachedOpen.line ? ` (open ${cachedOpen.openLine})` : ''}
+              <span style={{ color: MUTED }}> · pre-filled, editable</span>
+            </div>
+          )}
           {ctx && (
             <div style={{ background: '#101510', border: `1px solid ${NEON}22`, borderRadius: 10, padding: '9px 11px', display: 'flex', gap: 16 }}>
               <div><div style={{ fontSize: 10, color: MUTED }}>SEASON / GM</div><div style={{ fontWeight: 700, color: '#fff' }}>{ctx.seasonPerGame.toFixed(1)}</div></div>

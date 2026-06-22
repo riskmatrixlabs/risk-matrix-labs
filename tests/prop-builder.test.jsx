@@ -67,6 +67,44 @@ describe('PropBuilder — free stat context', () => {
   })
 })
 
+describe('PropBuilder — cached scan line pre-fills', () => {
+  const GAME = { away_team: 'Cincinnati Reds', home_team: 'New York Yankees', external_event_id: '401111' }
+  it('pre-fills line and odds from /api/prop-open when a cached line exists', async () => {
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
+      if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
+      if (String(url).includes('/api/prop-open'))     return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: true, line: 1.5, price: -135, openLine: 0.5, openPrice: -150 }) })
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    })
+    render(<PropBuilder sport="MLB" game={GAME} token="t" onChange={() => {}} />)
+    fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
+    await waitFor(() => screen.getByText('Aaron Judge'))
+    fireEvent.click(screen.getByText('Aaron Judge'))
+    await waitFor(() => screen.getByLabelText(/stat/i))
+    fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
+    await waitFor(() => expect(screen.getByPlaceholderText(/line/i).value).toBe('1.5'))
+    expect(screen.getByPlaceholderText(/odds/i).value).toBe('-135')
+    expect(screen.getByText(/book line 1\.5 \(open 0\.5\)/)).toBeTruthy()
+  })
+
+  it('leaves manual inputs empty when nothing is cached', async () => {
+    global.fetch = vi.fn((url) => {
+      if (String(url).includes('/api/player-search')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ matches: [MATCH] }) })
+      if (String(url).includes('/api/player-stats'))  return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
+      if (String(url).includes('/api/prop-open'))     return Promise.resolve({ ok: true, json: () => Promise.resolve({ found: false }) })
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    })
+    render(<PropBuilder sport="MLB" game={GAME} token="t" onChange={() => {}} />)
+    fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
+    await waitFor(() => screen.getByText('Aaron Judge'))
+    fireEvent.click(screen.getByText('Aaron Judge'))
+    await waitFor(() => screen.getByLabelText(/stat/i))
+    fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
+    await waitFor(() => {})
+    expect(screen.getByPlaceholderText(/line/i).value).toBe('')
+  })
+})
+
 describe('PropBuilder — inline onChange parent does not loop', () => {
   it('renders under a parent passing a new onChange identity each render without crashing', async () => {
     function Parent() {
