@@ -3,8 +3,13 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
-## 🟢 CURRENT STATE — Session 66 (SW v484, on main · 2026-06-21→22)
-**Tracking sweep → 2 free features → quick-wins → parallel model builds → SECURITY → TEAM PICKS end-to-end → model-adjusted EV → PHLT recalibration + self-grading loop.** All shipped to prod & merged; 519 tests green.
+## 🟢 CURRENT STATE — Session 66 (SW v487, on main · 2026-06-21→22)
+**Tracking sweep → free features → parallel model builds → SECURITY → TEAM PICKS → M-EV → PHLT recalibration + self-grading loop → model records in Spotlight → prop-builder fix + rich rebuild.** All shipped & merged; 523 tests green. *(Marathon session — 20 deploys, every build reviewed + Chrome-verified.)*
+
+### 🟢 SHIPPED LATE-SESSION (v485 → v487)
+- 🟢 **Model records in Spotlight (v485)** — the panel now shows **Team picks (ML/RL)** + **PHLT hitter props** records alongside the O/U record (`prop-record` + `lean-record` extended). Also fixed a real bug: the O/U record was polluted by ml/rl rows (both in `lean_results` since v480) → scoped to totals (clean 35-31 all-time).
+- 🟢 **Prop-builder search BUG FIX (v486)** — game-scoped player search came up EMPTY in every game. Root cause: ESPN's live scoreboard rolls to the next slate late at night, so its game-ids never matched the events-table game on screen; the `external_event_id` filter dropped everything. Fixed → match by **team abbr** (`scopeToGame`, 3 tests). Verified live (Greene/Volpe now show in NYY@DET).
+- 🟢 **Prop-builder RICH REBUILD (v487)** — was "basic"; now matches the bot: search results with **headshots**, selected-player **card + PHLT grade badge** (live, e.g. "FADE 49"), **stat chips** (not a dropdown), season/L5 context, and the **line treatment** — free cached line + a credit-disciplined **"↻ Pull line"** button (paid scan, tap-only) + manual fallback. Dual-mode safe (degrades in the LOG BET modal where game=null). Built via frontend-design + a reviewed subagent; Chrome-verified live. Memory `rml-prop-builder`.
 
 ### 🟢 SHIPPED THIS SESSION (v468 → v479, all verified)
 - 🟢 **Live win-prob ring (v468–v470)** — the ring "wasn't moving" because it de-vigged the FROZEN pre-game moneyline. Now pulls ESPN live game-winner % (`/api/box-score` `winPct`) for **ML legs only** (totals/props keep implied), updates every 60s, $0. Parlay ML legs resolve per-leg too. Memory `rml-live-winprob`.
@@ -22,6 +27,11 @@
 - 🟢 **Model-adjusted EV "M-EV" (v483) — EV Brain item 1.** Separate `M-EV` badge on single MLB-total bet cards = de-vig + model edge via `modelProbForBet` (`src/lib/modelEv.js`, 8 tests). **Headline EV stays byte-identical** (additive `gradeBet.modelEvPct` field only) — kept market-honest per owner's call; the model view is shown distinctly. Shows only when a game has a logged `edge_runs`. ⚠️ `EDGE_TO_PROB=0.03` is a hypothesis until calibration lands (~July).
 - 🟢 **PHLT RECALIBRATION (v484) — the "all-Fade" fix.** Investigation (2 parallel agents) found it was a real threshold miscalibration: cutoffs sat ~15pt above where sub-scores cluster (avg hitter ~54 but Caution started at 65), + the streak floor (30) dragged the whole non-streaking field down. **Fix: `tierFor` cutoffs 85/75/65 → 72/62/52, `streakScore(0)` 30 → 48.** Avg hitter now ~53 → Caution, not Fade (test-verified). Auto-fades unchanged. (Eyeball re-center — tune from the graded record once the loop below has data.) Memory `rml-two-models`.
 - 🟢 **PHLT SELF-GRADING LOOP (v484) — Plan A, built via 3 parallel worktree agents.** PHLT went from display-only island → a graded track record, mirroring the O/U loop: new `prop_results` table → `cron-snapshot-phlt` locks top-8 pre-game picks/game (`phltVerdictsForGame` extracted from `api/phlt.js`, endpoint preserved) → `cron-grade-props` grades from the final box score (pure `gradeProp` + reused `resolveStat`, never-guesses) → `prop-record` endpoint tallies by tier. Crons registered (snapshot 16/21 UTC, grade overnight). Plan `docs/superpowers/plans/2026-06-22-connect-phlt.md`.
+
+### ▶ NEXT SESSION — START HERE
+**Read first:** memory `project-rml`, `rml-prop-builder`, `rml-two-models`. Branch `main`, SW **v487**, **523 tests**, deploy `npm run ship` (guarded — bump `public/sw.js` CACHE first). Verify UI changes live in Chrome.
+**Model loops are now baking** (team picks + PHLT self-grade automatically; calibration ~July) — so the highest-leverage *buildable* work is **the full public "All-Time Performance" page** (SharpMoney-style filterable dashboard — the Spotlight panel records are the quick-win v0; the data exists across `lean_results`/`prop_results`/`bets`). Then the quick-wins (#7). Two product calls await you: **reset-UI split (#6)** + enable leaked-password protection + the team-lean `MODEL` label wording.
+**Spot-check tomorrow:** did `cron-snapshot-phlt` populate `prop_results` (16/21 UTC) and `cron-grade-props` grade them? (First real PHLT-loop data.)
 
 ### 🟡 OPEN BOARD — what's left (priority order)
 **Big model builds:**
