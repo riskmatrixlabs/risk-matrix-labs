@@ -28,7 +28,7 @@ const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 // Flatten ESPN boxscore.players[].statistics[] into { "<lower name>": { <key>: num } }.
 // Each statistics category exposes parallel `keys` + per-athlete `stats` arrays; we zip
 // them and keep only clean numeric values (skips combined keys like "hits-atBats").
-function parseBox(summary) {
+export function parseBox(summary) {
   const out = {}
   for (const team of summary?.boxscore?.players || []) {
     for (const cat of team.statistics || []) {

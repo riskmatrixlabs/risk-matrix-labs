@@ -52,3 +52,18 @@ export function gradeLeanResult({ market, lean, pick_side, total_line, awayScore
 
   return null
 }
+
+// Pure W/L grader for a PHLT player-prop pick from a final box-score stat value.
+// statValue = the player's final stat (e.g. hits). prop_line = the 0.5-style line.
+// lean = 'OVER' | 'UNDER'. Returns 'W' | 'L' | 'P' | null. null = cannot grade
+// (DNP / stat not found / unparseable line) — caller leaves the row ungraded, never guesses.
+// No push on a .5 line; integer stats never equal 0.5, so 'P' won't occur in practice.
+export function gradeProp({ statValue, prop_line, lean }) {
+  if (!isFiniteNum(statValue)) return null
+  if (!isFiniteNum(prop_line)) return null
+  const hit = statValue >= prop_line
+  const side = String(lean || '').toUpperCase()
+  if (side === 'OVER') return hit ? 'W' : 'L'
+  if (side === 'UNDER') return hit ? 'L' : 'W'
+  return null
+}
