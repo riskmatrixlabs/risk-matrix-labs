@@ -898,12 +898,13 @@ function Collapsible({ title, sub, tip, status, defaultOpen = false, children })
 // Free prop builder wrapped for Game Center: builds a prop and drops it on the slip.
 function PropBuilderSection({ event, token, onAddToSlip }) {
   const [prop, setProp] = useState(null)
+  const [resetKey, setResetKey] = useState(0)
   if (!onAddToSlip) return null
   return (
     <Collapsible title="Build a prop" sub="free · tracks live" defaultOpen={false}>
-      <PropBuilder sport={event.sport} game={event} token={token} onChange={setProp} />
+      <PropBuilder key={resetKey} sport={event.sport} game={event} token={token} onChange={setProp} />
       <button type="button" disabled={!prop}
-        onClick={() => { if (prop) { onAddToSlip({ pick: prop.pick, odds: prop.odds, sport: prop.sport, event: prop.event, book: null }); setProp(null) } }}
+        onClick={() => { if (prop) { onAddToSlip({ pick: prop.pick, odds: prop.odds, sport: prop.sport, event: prop.event, book: null }); setProp(null); setResetKey(k => k + 1) } }}
         style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 11, fontWeight: 700, letterSpacing: '0.14em',
           border: 'none', cursor: prop ? 'pointer' : 'default', background: prop ? NEON : '#1c1c1c', color: prop ? '#0A0A0A' : '#666' }}>
         + ADD TO SLIP
