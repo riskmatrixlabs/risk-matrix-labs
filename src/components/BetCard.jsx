@@ -252,7 +252,15 @@ function LegRow({ leg, last = false }) {
 
 export function BetTicket({ bet, grade, pnl = null, onEdit = null, badge = null }) {
   const [open, setOpen] = useState(false)
-  const t = ticketStatus(bet.legs)
+  // A SETTLED parlay (result W/L/P → bet.status) shows its real outcome in the header;
+  // only an Open parlay falls back to live leg-progress. Without this a won/lost parlay
+  // kept rendering "0 OF 2 HIT · LIVE" with an amber ring even after auto-settle.
+  const liveStatus = ticketStatus(bet.legs)
+  const settledKey = bet.status?.key
+  const isSettled = settledKey === 'won' || settledKey === 'lost' || settledKey === 'push'
+  const t = isSettled
+    ? { ...liveStatus, overall: bet.status, label: settledKey === 'won' ? 'WON' : settledKey === 'lost' ? 'LOST' : 'PUSH' }
+    : liveStatus
   const clvVal = grade?.clvPct ?? slipClv(bet.legs.map(l => ({ entry: l.odds, close: l.close }))).clvPct
   const win = toWin(bet.odds, bet.stake)
   // Combined parlay win probability = product of each leg's win prob (independent legs).
