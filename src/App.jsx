@@ -35,6 +35,7 @@ import { TrendingUp, TrendingDown, Plus, Trash2, ChevronUp, ChevronDown, Sun, Mo
 import PartnersPage from './components/PartnersPage'
 import LiveCenter   from './components/LiveCenter'
 import MatrixBot, { withLogos, normName } from './components/MatrixBot'
+import PropBuilder from './components/PropBuilder.jsx'
 import { fetchEvents as fetchBetEvents, isLiveEvent } from './lib/events.js'
 import ShareCardModal from './components/ShareCardModal'
 import { BOOK_NAMES } from './components/botShared.jsx'
@@ -446,7 +447,7 @@ function profitFromOdds(stake, odds) {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds))
 }
 
-function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
+function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
   const { isMobile } = useMobile()
   const [form, setForm] = useState(initial
     ? { ...initial, odds: String(initial.odds), units: String(initial.units), stake: String(initial.stake),
@@ -583,7 +584,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
 
     const TOP_SPORTS = ['NFL','NBA','MLB','NHL','CFB','Soccer','Other']
     const TOP_BOOKS  = ['DraftKings','FanDuel','BetMGM','Caesars','Hard Rock','Other']
-    const BET_TYPES  = ['Straight','Parlay','SGP','RR 2s','RR 3s','Live Bet','Hedge']
+    const BET_TYPES  = ['Straight','Player Prop','Parlay','SGP','RR 2s','RR 3s','Live Bet','Hedge']
 
     return (
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '10px' : '20px' }}>
@@ -691,6 +692,21 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
 
           {/* ── MATCHUP / LEGS CARD ── */}
           {!multiLeg ? (
+            form.betType === 'Player Prop' ? (
+              <div style={{ padding: '4px 0' }}>
+                <PropBuilder
+                  sport={form.sport}
+                  game={null}
+                  token={token}
+                  onChange={(prop) => setForm(p => ({
+                    ...p,
+                    event: prop?.event || '',
+                    pick:  prop?.pick  || '',
+                    odds:  prop?.odds != null ? String(prop.odds) : '',
+                  }))}
+                />
+              </div>
+            ) : (
             <div style={card}>
               <span style={lbl}>Matchup</span>
               <input value={form.event} onChange={f('event')} placeholder="Event  ·  e.g. Chiefs vs Raiders"
@@ -698,6 +714,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete }) {
               <input value={form.pick} onChange={f('pick')} placeholder="Pick  ·  e.g. Chiefs -6.5"
                 style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${form.pick ? NEON : 'var(--border2)'}`, borderRadius: '10px', color: form.pick ? NEON_T : 'var(--text)', fontFamily: 'Inter,sans-serif', fontSize: '14px', fontWeight: form.pick ? 700 : 400, padding: '11px 14px', outline: 'none' }} />
             </div>
+            )
           ) : (
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -3658,7 +3675,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
             if (error) console.error('[RML] addBet upsert error:', error)
           }).catch(e => console.error('[RML] addBet upsert threw:', e))
         }
-      }} onClose={() => { setShowAdd(false); setInitialBet(null) }} unitSize={stats.unitSize} />}
+      }} onClose={() => { setShowAdd(false); setInitialBet(null) }} unitSize={stats.unitSize} token={token} />}
 
       {/* CANCEL SURVEY MODAL */}
       {showCancelSurvey && (
@@ -3829,6 +3846,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           onClose={() => setEditingBet(null)}
           onDelete={deleteBetReliable}
           unitSize={stats.unitSize}
+          token={token}
         />
       )}
 
