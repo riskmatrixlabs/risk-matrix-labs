@@ -30,20 +30,24 @@ export default async function handler(req, res) {
 
   const today = etDate(0), yesterday = etDate(1)
   const { data: all } = await sb.from('lean_results')
-    .select('external_event_id, game_date, lean, total_line, confidence, strong, result, final_total, closing_line, clv')
-    .order('game_date', { ascending: false }).limit(2000)
+    .select('external_event_id, game_date, market, lean, total_line, confidence, strong, result, final_total, closing_line, clv')
+    .order('game_date', { ascending: false }).limit(3000)
   const rows = all || []
 
-  const strong = rows.filter(r => r.strong)
+  // Split by market: the O/U record is TOTALS only (ml/rl rows live in the same table since
+  // v480 and would otherwise pollute it). Team = ML + Run Line combined.
+  const totals = rows.filter(r => (r.market || 'total') === 'total')
+  const teamRows = rows.filter(r => r.market === 'ml' || r.market === 'rl')
+  const strong = totals.filter(r => r.strong)
   const rec = (set) => ({
     today: tally(set.filter(r => r.game_date === today)),
     yesterday: tally(set.filter(r => r.game_date === yesterday)),
     allTime: tally(set),
   })
 
-  // Per-game map for today + yesterday so the cards can render a badge.
+  // Per-game map for today + yesterday so the cards can render a badge (TOTALS lean only).
   const games = {}
-  for (const r of rows) {
+  for (const r of totals) {
     if (r.game_date !== today && r.game_date !== yesterday) continue
     games[r.external_event_id] = {
       lean: r.lean, line: r.total_line, strong: r.strong,
@@ -52,5 +56,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ ok: true, all: rec(rows), strong: rec(strong), games })
+  return res.status(200).json({ ok: true, all: rec(totals), strong: rec(strong), team: rec(teamRows), games })
 }

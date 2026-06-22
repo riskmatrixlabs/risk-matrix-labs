@@ -63,12 +63,15 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
   const [signals, setSignals] = useState([])
   const [open, setOpen] = useState(false)
   const [record, setRecord] = useState(null)  // model lean track record (strong subset = Spotlight)
+  const [propRec, setPropRec] = useState(null) // PHLT hitter-prop record (self-grading loop)
 
-  // Pull the graded record when the panel opens (free DB read).
+  // Pull the graded records when the panel opens (free DB reads).
   useEffect(() => {
     if (!open || !token || record) return
     fetch('/api/lean-record', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null).then(j => { if (j?.ok) setRecord(j) }).catch(() => {})
+    fetch('/api/prop-record', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (j) setPropRec(j) }).catch(() => {})
   }, [open, token, record])
 
   // ⬡ KBO — FREE overnight scan (TheSportsDB + Open-Meteo, 0 credits). Korean baseball plays while
@@ -398,6 +401,21 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                 </div>
                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, fontFamily: R, fontSize: '8.5px', color: MUTED, letterSpacing: '0.03em', lineHeight: 1.5 }}>
                   <span style={{ color: NEON_T }}>Spotlight</span> = high-confidence leans we feature · <span style={{ color: TEXT }}>All</span> = every model lean
+                </div>
+                {/* Other model records — team picks (ML/RL) + PHLT hitter props, self-graded (BETA, building). */}
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {[
+                    { label: '🏆 Team picks (ML / RL)', r: record?.team?.allTime },
+                    { label: 'PHLT hitter props', r: propRec?.overall },
+                  ].map(({ label, r }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>
+                      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>
+                        {fmtRec(r)}{pct(r) && <span style={{ fontSize: '9px', color: MUTED, marginLeft: '4px' }}>{pct(r)}</span>}
+                      </span>
+                    </div>
+                  ))}
+                  <span style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.03em' }}>all-time · self-graded · BETA — builds as games settle</span>
                 </div>
               </div>
             )
