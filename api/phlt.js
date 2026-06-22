@@ -113,19 +113,29 @@ async function hitterForm(id) {
   return form
 }
 
-export default async function handler(req, res) {
-  const user = await requireAuth(req, res); if (!user) return
-  const sport = String(req.query.sport || 'MLB').toUpperCase()
-  res.setHeader('Cache-Control', 'public, max-age=600')
-  if (sport !== 'MLB') return res.status(200).json({ ok: true, sport, verdicts: {}, note: 'PHLT is MLB-only' })
+// Reusable per-game PHLT compute. Fetches roster/probables/Savant/form and scores each hitter, then
+// returns { verdicts, parkFactor, homeAbbr, pitchers, savCounts }. When `names` is omitted (or empty),
+// every hitter on both teams' rosters is scored — that's what the pre-game snapshot cron wants.
+// MLB-only: callers must pass sport:'MLB'.
+export async function phltVerdictsForGame({ sport = 'MLB', away, home, iso, names } = {}) {
+  const sp = String(sport || 'MLB').toUpperCase()
+  if (sp !== 'MLB') return { verdicts: {}, parkFactor: null, homeAbbr: null, pitchers: {}, savCounts: null }
 
-  const away = String(req.query.away || ''), home = String(req.query.home || ''), iso = req.query.iso
-  const names = String(req.query.names || '').split('|').map(s => s.trim()).filter(Boolean)
-  if (!away || !home || !names.length) return res.status(400).json({ error: 'need away, home, names' })
-
-  const [sav, roster, probs] = await Promise.all([getSavantMaps(), rosterIndex(sport), probables(away, home, iso)])
+  const [sav, roster, probs] = await Promise.all([getSavantMaps(), rosterIndex(sp), probables(away, home, iso)])
   const abbrs = Object.keys(probs)
   const homeAbbr = abbrs.find(a => probs[a] && norm(probs[a].name) === norm(home)) || abbrs[1] || home
+
+  // No explicit names → score every hitter on both teams' rosters (for the snapshot cron). The roster
+  // index is keyed by full name; restrict to the two teams in this game by team abbr.
+  let pickNames = Array.isArray(names) ? names.filter(Boolean) : []
+  if (!pickNames.length) {
+    const teamAbbrs = new Set(abbrs)
+    const seen = new Set()
+    for (const [nn, v] of Object.entries(roster.byFull)) {
+      if (v?.team && teamAbbrs.has(v.team) && !seen.has(nn)) { seen.add(nn); pickNames.push(nn) }
+    }
+  }
+
   const parkFactor = (PARK[homeAbbr] || 1.0) * 100
   const wx = await gameWeather(homeAbbr, iso).catch(() => null)
   const weatherBoost = wx && !wx.dome ? wx.boost : null   // hot air carries (over) → helps a hitter
@@ -148,7 +158,7 @@ export default async function handler(req, res) {
   const pitchers = {}; for (const a of abbrs) pitchers[a] = pitcherFor(a)
 
   const verdicts = {}
-  await Promise.all(names.map(async (name) => {
+  await Promise.all(pickNames.map(async (name) => {
     const nn = norm(name)
     const r = roster.byFull[nn] || roster.byLast[nn.split(/\s+/).pop()]
     const form = r?.id ? await hitterForm(r.id) : null
@@ -167,19 +177,35 @@ export default async function handler(req, res) {
     verdicts[name] = { ...v, vs: pit.name || null, team: r?.team || null }
   }))
 
+  return { verdicts, parkFactor, homeAbbr, pitchers, abbrs, rosterByFull: roster.byFull, rosterByLast: roster.byLast, savBatter: sav.batter, savCounts: sav.counts }
+}
+
+export default async function handler(req, res) {
+  const user = await requireAuth(req, res); if (!user) return
+  const sport = String(req.query.sport || 'MLB').toUpperCase()
+  res.setHeader('Cache-Control', 'public, max-age=600')
+  if (sport !== 'MLB') return res.status(200).json({ ok: true, sport, verdicts: {}, note: 'PHLT is MLB-only' })
+
+  const away = String(req.query.away || ''), home = String(req.query.home || ''), iso = req.query.iso
+  const names = String(req.query.names || '').split('|').map(s => s.trim()).filter(Boolean)
+  if (!away || !home || !names.length) return res.status(400).json({ error: 'need away, home, names' })
+
+  const { verdicts, parkFactor, homeAbbr, pitchers, abbrs, rosterByFull, rosterByLast, savBatter, savCounts } =
+    await phltVerdictsForGame({ sport, away, home, iso, names })
+
   const out = {
     ok: true, sport, parkFactor, homeAbbr,
     pitchers: Object.fromEntries(Object.entries(pitchers).map(([a, p]) => [a, p?.name || null])),
     verdicts,
-    meta: { savantCounts: sav.counts, matched: Object.values(verdicts).filter(v => v.score != null).length, requested: names.length },
+    meta: { savantCounts: savCounts, matched: Object.values(verdicts).filter(v => v.score != null).length, requested: names.length },
   }
   if (req.query.debug === '1') {
     out.debug = {
-      abbrs, rosterSize: Object.keys(roster.byFull).length,
+      abbrs, rosterSize: Object.keys(rosterByFull).length,
       pitchersFull: pitchers,
       sample: names.slice(0, 3).map(name => {
-        const nn = norm(name); const r = roster.byFull[nn] || roster.byLast[nn.split(/\s+/).pop()]
-        return { name, nn, foundId: r?.id || null, foundTeam: r?.team || null, oppAbbr: abbrs.find(a => a !== r?.team), satvBatter: !!sav.batter[nn] }
+        const nn = norm(name); const r = rosterByFull[nn] || rosterByLast[nn.split(/\s+/).pop()]
+        return { name, nn, foundId: r?.id || null, foundTeam: r?.team || null, oppAbbr: abbrs.find(a => a !== r?.team), satvBatter: !!savBatter[nn] }
       }),
     }
   }
