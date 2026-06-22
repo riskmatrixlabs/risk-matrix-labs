@@ -26,6 +26,7 @@ import {
 } from './lib/supabase'
 import { matchBetToEvent, findEventForBet } from './lib/betMatch.js'
 import { gradeBetResult } from './lib/gradeBetResult.js'
+import { gradeParlay } from './lib/gradeParlay.js'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
@@ -3039,7 +3040,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     else { setSortCol(col); setSortDir('desc') }
   }
 
-  const settleBet = (id, result) => {
+  const settleBet = (id, result, oddsOverride = null) => {
     setBets(prev => {
       const next = prev.map(b => {
         if (b.id !== id) return b
@@ -3048,8 +3049,9 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           const profit = b.odds > 0 ? b.stake * (b.odds / 100) : b.stake * (100 / Math.abs(b.odds))
           pnl = result === 'W' ? +profit.toFixed(2) : result === 'L' ? -b.stake : 0
         } else {
+          const od = oddsOverride ?? b.odds
           pnl = result === 'W'
-            ? (b.odds > 0 ? b.units * b.odds / 100 : b.units * 100 / Math.abs(b.odds))
+            ? (od > 0 ? b.units * od / 100 : b.units * 100 / Math.abs(od))
             : result === 'L' ? -b.units : 0
           pnl = +pnl.toFixed(2)
         }
@@ -3080,6 +3082,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     if (!betEvents.length || !bets.length) return
     for (const b of bets) {
       if (b.result !== 'Open' || autoSettleTried.current.has(b.id)) continue
+      if (b.legs && b.legs.length >= 2) {
+        const { result, effectiveOdds } = gradeParlay(b, betEvents)
+        if (result === 'W' || result === 'L' || result === 'P') {
+          autoSettleTried.current.add(b.id)
+          settleBet(b.id, result, effectiveOdds)
+        }
+        continue
+      }
       const ev = findEventForBet(b, betEvents)
       if (!ev) continue
       const r = gradeBetResult(b, ev)
