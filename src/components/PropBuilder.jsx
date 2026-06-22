@@ -2,7 +2,7 @@
 // edits. Parents own the submit button. Zero Odds-API credits — uses the free
 // player-search / player-stats / box-score chain.
 import { useState, useEffect, useMemo } from 'react'
-import { trackableStatOptions, assembleProp, pickStatValue } from '../lib/propBuilderLib.js'
+import { trackableStatOptions, assembleProp, pickStatValue, scopeToGame } from '../lib/propBuilderLib.js'
 
 const NEON = '#BDFF00', AMBER = '#FFAE2B', MUTED = '#8f8f8f', BORDER = '#2a2a2a'
 
@@ -29,8 +29,7 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
         .then(r => r.ok ? r.json() : { matches: [] })
         .then(j => {
           if (!on) return
-          let rows = j.matches || []
-          if (game) rows = rows.filter(m => m.game?.external_event_id === game.external_event_id)
+          const rows = scopeToGame(j.matches || [], game)
           setMatches(rows.slice(0, 12))
         })
         .catch(() => { if (on) setMatches([]) })

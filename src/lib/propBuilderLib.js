@@ -2,6 +2,20 @@
 import { PROP_MARKETS, labelFor } from './propMarkets.js'
 import { resolveStat } from './statProgress.js'
 
+// Scope player-search matches to the game the user is viewing. Match by TEAM ABBR — NOT the
+// player-search game id — because ESPN's live scoreboard can roll to the next slate late at
+// night, so its game ids won't line up with the events-table game on screen (this is why the
+// game-scoped search came up empty). Falls back to all matches if neither team is in today's
+// index, so the search never mysteriously empties.
+export function scopeToGame(rows = [], game) {
+  if (!game) return rows
+  const aw = String(game.away_abbr || '').toUpperCase()
+  const hm = String(game.home_abbr || '').toUpperCase()
+  if (!aw && !hm) return rows
+  const scoped = rows.filter(m => { const t = String(m.team || '').toUpperCase(); return t === aw || t === hm })
+  return scoped.length ? scoped : rows
+}
+
 // Synthetic stat record with every key resolveStat reads, all set so any
 // resolvable market returns a number. Markets resolveStat can't read (total
 // bases, threes) return null here and are therefore excluded from the builder.

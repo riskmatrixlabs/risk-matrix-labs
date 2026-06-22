@@ -1,6 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { trackableStatOptions, assembleProp, pickStatValue } from '../src/lib/propBuilderLib.js'
+import { trackableStatOptions, assembleProp, pickStatValue, scopeToGame } from '../src/lib/propBuilderLib.js'
 import { parseProp, resolveStat } from '../src/lib/statProgress.js'
+
+describe('scopeToGame (id-drift resilient)', () => {
+  // Player-search game id (401815840) differs from the on-screen game — match by TEAM instead.
+  const rows = [
+    { player: 'Anthony Volpe', team: 'NYY', game: { external_event_id: '401815840' } },
+    { player: 'Riley Greene', team: 'DET', game: { external_event_id: '401815839' } },
+    { player: 'Mookie Betts', team: 'LAD', game: { external_event_id: '401815850' } },
+  ]
+  it('keeps players on either team of the viewed game, ignoring the mismatched game id', () => {
+    const out = scopeToGame(rows, { away_abbr: 'NYY', home_abbr: 'DET' })
+    expect(out.map(r => r.team).sort()).toEqual(['DET', 'NYY'])
+  })
+  it('falls back to all rows when neither team is in the index (date drift)', () => {
+    const out = scopeToGame(rows, { away_abbr: 'BOS', home_abbr: 'TOR' })
+    expect(out.length).toBe(3)
+  })
+  it('returns rows unchanged when no game is given', () => {
+    expect(scopeToGame(rows, null)).toBe(rows)
+  })
+})
 
 describe('trackableStatOptions', () => {
   it('offers only stats the box score can read (drops Total Bases + Threes)', () => {
