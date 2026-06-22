@@ -52,7 +52,10 @@ function headshotFor(title, players) {
 // probabilities from ESPN box-score. Applied only to MONEYLINE legs, keyed by each
 // leg's OWN game — so a parlay leg goes live too — instead of sitting on the frozen
 // pre-game moneyline. Non-ML legs (totals/spreads/props) keep their implied winProb.
-export function withLogos(n, ev, players = [], boxStats = null, events = [], winPctByEvent = null) {
+// boxByEvent (optional) = { [external_event_id]: statsByPlayer } live box scores from ESPN,
+// keyed by game — so a PROP leg gets its OWN game's stat bar even when the parlay's legs are
+// in different games (was: single boxStats = only the primary game, so cross-game legs went blank).
+export function withLogos(n, ev, players = [], boxByEvent = null, events = [], winPctByEvent = null) {
   for (const leg of n.legs) {
     // Each parlay leg can be a different game — match the leg to its OWN event (by its
     // event name) so ML/spread legs get real team logos + score, not the league fallback.
@@ -79,7 +82,8 @@ export function withLogos(n, ev, players = [], boxStats = null, events = [], win
     // ML/spread → score line.
     leg.statNow = null
     leg.scoreLine = null
-    const propBar = boxStats ? statProgress(leg.title, boxStats, leg.status) : null
+    const legBox = boxByEvent && gameEv?.external_event_id ? boxByEvent[gameEv.external_event_id] : null
+    const propBar = legBox ? statProgress(leg.title, legBox, leg.status) : null
     const totBar = gameEv ? totalProgress(leg.title, gameEv.away_score, gameEv.home_score, leg.status) : null
     if (propBar) leg.statNow = propBar
     else if (totBar) leg.statNow = totBar
@@ -1652,7 +1656,7 @@ function TrackChannel({ bets, sport, token, unitSize = 0, sportFilter = 'ALL', r
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {grp.bets.map((b) => {
                 const ev = graded.find(x => x.bet === b)?.ev
-                const n = withLogos(normalizeBet(b), ev, players, ev ? boxScores[ev.external_event_id] : null, events)
+                const n = withLogos(normalizeBet(b), ev, players, boxScores, events)
                 return n.kind === 'parlay'
                   ? <BetTicket key={b.id} bet={n} grade={gradeFor(b)} />
                   : <BetCard key={b.id} bet={n} grade={gradeFor(b)} />

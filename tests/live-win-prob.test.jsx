@@ -66,3 +66,27 @@ describe('Pikkit-style live ring color', () => {
     expect(liveRingColor({ key: 'lost' }, 0.95)).toBe(RED)
   })
 })
+
+describe('withLogos — per-leg box score (cross-game parlay)', () => {
+  const EV_CIN = { external_event_id: '401111', sport: 'MLB', status: 'IP',
+    away_team: 'Cincinnati Reds', home_team: 'New York Yankees', away_abbr: 'CIN', home_abbr: 'NYY' }
+  const EV_NYM = { external_event_id: '401815842', sport: 'MLB', status: 'IP',
+    away_team: 'New York Mets', home_team: 'Philadelphia Phillies', away_abbr: 'NYM', home_abbr: 'PHI' }
+
+  it('resolves each prop leg from its OWN game box score, not just the primary', () => {
+    const bet = { id: 9, sport: 'MLB', odds: 250, event: '2-Leg Parlay', result: 'Open', legs: [
+      { pick: 'Aaron Judge Over 1.5 Hits', odds: -120, event: 'Cincinnati Reds vs New York Yankees', sport: 'MLB' },
+      { pick: 'Bryce Harper Over 1.5 Hits', odds: -110, event: 'New York Mets vs Philadelphia Phillies', sport: 'MLB' },
+    ] }
+    // box stats keyed by external_event_id (the map) — each game has only its own player
+    const boxByEvent = {
+      '401111': { 'aaron judge': { hits: 2 } },
+      '401815842': { 'bryce harper': { hits: 0 } },
+    }
+    const n = withLogos(normalizeBet(bet), null, [], boxByEvent, [EV_CIN, EV_NYM], null)
+    const judge = n.legs.find(l => /Judge/i.test(l.title))
+    const harper = n.legs.find(l => /Harper/i.test(l.title))
+    expect(judge.statNow?.current).toBe(2)   // from CIN@NYY box
+    expect(harper.statNow?.current).toBe(0)  // from NYM@PHI box
+  })
+})
