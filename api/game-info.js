@@ -12,7 +12,7 @@ import { getPitcherSkillMaps, pitcherSkillDelta } from './_lib/pitcherSkill.js'
 import { windParkDelta } from './_lib/windPark.js'
 import { loadHandednessDelta } from './_lib/handedness.js'
 import { loadUmpireDelta } from './_lib/umpire.js'
-import { gameProjection, deriveBets } from './_lib/runModel.js'
+import { gameProjection, deriveBets, anchorProjection } from './_lib/runModel.js'
 import { loadBullpenFatigue } from './_lib/bullpenFatigue.js'
 
 export const config = { maxDuration: 20 }
@@ -430,7 +430,10 @@ export default async function handler(req, res) {
           parkMult: pf, weatherRunsPerSide: weatherPerSide,
         })
         const marketTotal = (anchor?.current != null && anchor.current >= 5 && anchor.current <= 15) ? anchor.current : null
-        ou.proj2 = { ...gp, bets: deriveBets({ proj: gp, marketTotal }) }
+        // Anchor the absolute per-side total toward the market (margin-preserving) BEFORE deriving bets,
+        // so the Total defers to the line like `ou` does and ML/RL keep coming from the projected margin.
+        const gpA = anchorProjection(gp, marketTotal)
+        ou.proj2 = { ...gpA, bets: deriveBets({ proj: gpA, marketTotal }) }
       }
     } catch { /* O-U is a bonus — ignore failures */ }
   }

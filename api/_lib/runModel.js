@@ -56,6 +56,24 @@ export function gameProjection({ away = {}, home = {}, parkMult = 1, weatherRuns
   return { awayRuns, homeRuns, total, margin }
 }
 
+// anchorProjection(raw, marketTotal, weight) → market-anchored projection.
+// The per-side engine builds an ABSOLUTE total from league baselines, so on sharp low-total games it
+// reverts toward league-average (~8.6) and flips the Total lean to OVER even when the market (and the
+// line-anchored `ou` model) correctly say UNDER. The MARGIN is the engine's real signal (it drives
+// ML/RL); the TOTAL should defer to the market like `ou` does. So we blend the total toward the market
+// (market-leaning weight) and re-split the two sides from the blended total while PRESERVING the margin.
+//   anchoredTotal = W*marketTotal + (1-W)*raw.total  (W = 0.65, market-leaning hypothesis to tune)
+//   homeRuns = (anchoredTotal + margin)/2 ; awayRuns = (anchoredTotal - margin)/2   (margin = home-away)
+// If marketTotal isn't a positive finite number, returns `raw` unchanged.
+export function anchorProjection(raw, marketTotal, weight = 0.65) {
+  if (!Number.isFinite(marketTotal) || marketTotal <= 0) return raw
+  const margin = raw.margin
+  const anchoredTotal = Math.round((weight * marketTotal + (1 - weight) * raw.total) * 100) / 100
+  const homeRuns = Math.round(((anchoredTotal + margin) / 2) * 100) / 100
+  const awayRuns = Math.round(((anchoredTotal - margin) / 2) * 100) / 100
+  return { awayRuns, homeRuns, total: anchoredTotal, margin }
+}
+
 // Normal CDF (Abramowitz-Stegun 7.1.26 approximation) — no dependency.
 function normCdf(z) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z))
