@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import PropBuilder from '../src/components/PropBuilder.jsx'
@@ -63,5 +64,20 @@ describe('PropBuilder — free stat context', () => {
     await waitFor(() => screen.getByLabelText(/stat/i))
     fireEvent.change(screen.getByLabelText(/stat/i), { target: { value: 'Hits' } })
     await waitFor(() => expect(screen.getByText(/1\.2/)).toBeTruthy())
+  })
+})
+
+describe('PropBuilder — inline onChange parent does not loop', () => {
+  it('renders under a parent passing a new onChange identity each render without crashing', async () => {
+    function Parent() {
+      // mirrors the LOG BET modal: every onChange stores a fresh object,
+      // forcing a re-render → a new inline onChange identity each render.
+      const [, setProp] = React.useState(null)
+      // inline arrow → new identity every render; must not infinite-loop
+      return <PropBuilder sport="MLB" game={null} token="t" onChange={(p) => setProp({ p })} />
+    }
+    expect(() => render(<Parent />)).not.toThrow()
+    // let effects settle
+    await waitFor(() => expect(screen.getByPlaceholderText(/search player/i)).toBeTruthy())
   })
 })

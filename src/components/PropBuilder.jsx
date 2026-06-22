@@ -49,7 +49,7 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
     const oddsN = parseInt(String(odds).replace(/[−–—]/g, '-').replace(/[^0-9-]/g, ''))
     if (!player || !stat || !Number.isFinite(lineN) || !Number.isFinite(oddsN)) { onChange?.(null); return }
     onChange?.(assembleProp({ player: player.player, side, line: lineN, statLabel: stat.label, sport, event: player.event, odds: oddsN }))
-  }, [player, stat, side, line, odds, sport, onChange])
+  }, [player, stat, side, line, odds, sport])
 
   const [statResp, setStatResp] = useState(null)
   useEffect(() => {
