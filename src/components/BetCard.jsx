@@ -219,6 +219,7 @@ export function BetCard({ bet, grade, compact = false, pnl = null, onEdit = null
           <PnlBox pnl={pnl} />
           {bankIn != null && <StatBox label="BANK" value={`$${Number(bankIn).toFixed(0)}`} valueSize={13} />}
           <GradeBadge label="EV" value={grade?.evPct != null ? `${grade.evPct >= 0 ? '+' : ''}${grade.evPct.toFixed(1)}%` : '—'} good={grade?.evPct != null && grade.evPct >= 0} />
+          {grade?.modelEvPct != null && <GradeBadge label="M-EV·MODEL" value={`${grade.modelEvPct >= 0 ? '+' : ''}${grade.modelEvPct.toFixed(1)}%`} good={grade.modelEvPct >= 0} />}
           <GradeBadge label="CLV" value={grade?.clvPct != null ? `${grade.clvPct >= 0 ? '+' : ''}${grade.clvPct.toFixed(1)}%` : '—'} good={grade?.clvPct != null && grade.clvPct >= 0} />
           {onEdit && <button onClick={e => { e.stopPropagation(); onEdit() }} style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, cursor: 'pointer', padding: '0 10px', color: MUTED, display: 'flex', alignItems: 'center', flexShrink: 0 }}><Pencil size={12} /></button>}
         </div>
