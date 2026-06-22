@@ -3,8 +3,8 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
-## 🟢 CURRENT STATE — Session 66 (SW v477, on main · 2026-06-21)
-**Bet-tracking correctness sweep + two new free features + a parallel quick-win run.** All shipped to prod & merged to main; 435 tests green.
+## 🟢 CURRENT STATE — Session 66 (SW v478, on main · 2026-06-21)
+**Bet-tracking correctness sweep + two new free features + a parallel quick-win run.** All shipped to prod & merged to main; 436 tests green.
 
 ### 🟢 SHIPPED THIS SESSION (v468 → v477, all verified live in Chrome)
 - 🟢 **Live win-prob ring (v468–v470)** — the ring "wasn't moving" because it de-vigged the FROZEN pre-game moneyline. Now pulls ESPN live game-winner % (`/api/box-score` `winPct`) for **ML legs only** (totals/props keep implied), updates every 60s, $0. Parlay ML legs resolve per-leg too. Memory `rml-live-winprob`.
@@ -14,6 +14,7 @@
 - 🟢 **PARLAY AUTO-SETTLE (v476)** — was straights-only; parlays sat Open forever. New `gradeParlay` (pure): early-loss, **push-reduction** (drop pushed legs, recompute payout), reduced-odds pnl via `settleBet(oddsOverride)`. Settled-parlay header now reads WON/LOST/PUSH (was stale "LIVE"). Verified: owner's NYM@PHI parlay settled W **+$55** (not +$90). Memory `rml-parlay-autosettle`.
 - 🟢 **Ladder rung-dupe guard (v477)** — `startSession` seeded 6 rungs with no idempotency guard → double-fire = dups. Guard added (`canSeedLadder`). DB currently clean (no migration). *(Future cross-device sync-loop resurfacing is the separate reset-sync-loop concern.)*
 - 🟢 **Prop cached-line auto-fill (v477)** — `api/prop-open.js` (free, reads `prop_history`) → prop builder pre-fills line/odds + shows "open" when a scan exists; types-yourself when not. $0.
+- 🟢 **Per-leg box score for cross-game parlay legs (v478)** — `withLogos` now takes a box-score MAP keyed by event id (was single primary-game stats) + `liveBetGameKeys` fetches each leg's game, so a prop leg in a *different* game gets its own live stat bar. Mirrors the `winPctByEvent` refactor. *(Quick-win — the only cleanly-unblocked one; reset-UI split needs an owner product call, manual-parlay-push-aware needs a per-leg settle UI, bet-to-line-full + KBO are bigger.)*
 
 ### 🟡 OPEN BOARD — what's left (priority order)
 **Big model builds:**
