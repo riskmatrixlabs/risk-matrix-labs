@@ -74,7 +74,35 @@ export default function PropBuilder({ sport, game = null, token, onChange }) {
             style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 8, color: MUTED, padding: '4px 8px', cursor: 'pointer' }}>change</button>
         </div>
       )}
-      {/* stat / side / line / odds / context added in Tasks 3-4 */}
+      {player && (
+        <>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1.3, fontSize: 11, color: MUTED }}>Stat
+              <select aria-label="Stat" value={stat?.label || ''} onChange={e => setStat(statOptions.find(o => o.label === e.target.value) || null)}
+                style={{ width: '100%', marginTop: 4, padding: '9px 11px', borderRadius: 10, background: '#121212', border: `1px solid ${BORDER}`, color: '#fff' }}>
+                <option value="" disabled>Choose…</option>
+                {statOptions.map(o => <option key={o.key} value={o.label}>{o.label}</option>)}
+              </select>
+            </label>
+            <div style={{ flex: 1, fontSize: 11, color: MUTED }}>Side
+              <div style={{ display: 'flex', marginTop: 4, border: `1px solid ${BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
+                {['over', 'under'].map(s => (
+                  <button key={s} type="button" onClick={() => setSide(s)}
+                    style={{ flex: 1, padding: '9px 0', fontWeight: 700, border: 'none', cursor: 'pointer',
+                      background: side === s ? NEON : 'transparent', color: side === s ? '#0A0A0A' : MUTED }}>{s === 'over' ? 'OVER' : 'UNDER'}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input value={line} onChange={e => setLine(e.target.value)} placeholder="Line  ·  1.5" inputMode="decimal"
+              style={{ flex: 1, padding: '9px 11px', borderRadius: 10, background: '#121212', border: `1px solid ${BORDER}`, color: '#fff' }} />
+            <input value={odds} onChange={e => setOdds(e.target.value)} placeholder="Odds  ·  -120" inputMode="text"
+              style={{ flex: 1, padding: '9px 11px', borderRadius: 10, background: '#121212', border: `1px solid ${BORDER}`, color: '#fff' }} />
+          </div>
+          {/* free context box + live preview added in Task 4 */}
+        </>
+      )}
     </div>
   )
 }

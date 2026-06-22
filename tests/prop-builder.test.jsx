@@ -26,3 +26,25 @@ describe('PropBuilder — player search', () => {
     expect(onChange).toHaveBeenCalledWith(null)
   })
 })
+
+describe('PropBuilder — completing the prop', () => {
+  it('offers only trackable stats and emits the full prop when complete', async () => {
+    const onChange = vi.fn()
+    render(<PropBuilder sport="MLB" game={null} token="t" onChange={onChange} />)
+    fireEvent.change(screen.getByPlaceholderText(/search player/i), { target: { value: 'judge' } })
+    await waitFor(() => screen.getByText('Aaron Judge'))
+    fireEvent.click(screen.getByText('Aaron Judge'))
+    await waitFor(() => screen.getByText(/auto-matched/i))
+    const select = screen.getByLabelText(/stat/i)
+    const opts = [...select.querySelectorAll('option')].map(o => o.textContent)
+    expect(opts).toContain('Hits')
+    expect(opts).not.toContain('Total Bases')
+    fireEvent.change(select, { target: { value: 'Hits' } })
+    fireEvent.change(screen.getByPlaceholderText(/line/i), { target: { value: '1.5' } })
+    fireEvent.change(screen.getByPlaceholderText(/odds/i), { target: { value: '-120' } })
+    await waitFor(() => {
+      const last = onChange.mock.calls.at(-1)[0]
+      expect(last).toMatchObject({ pick: 'Aaron Judge Over 1.5 Hits', odds: -120, line: 1.5 })
+    })
+  })
+})
