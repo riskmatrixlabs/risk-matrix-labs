@@ -8,6 +8,7 @@
 // So when our row isn't FINAL we fetch the TRUE final straight from ESPN and backfill `events` too.
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
+import { gradeLeanResult } from './_lib/gradeLean.js'
 
 export const config = { maxDuration: 60 }
 
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
   // Ungraded leans from the last few days (avoid scanning ancient rows).
   const since = new Date(Date.now() - 4 * 86400e3).toISOString().slice(0, 10)
   const { data: pending } = await sb.from('lean_results')
-    .select('id, external_event_id, sport, lean, total_line, game_date')
+    .select('id, external_event_id, sport, lean, total_line, game_date, market, pick_side')
     .is('result', null).gte('game_date', since).limit(500)
   if (!pending?.length) return res.status(200).json({ ok: true, graded: 0, note: 'nothing pending' })
 
@@ -93,16 +94,16 @@ export default async function handler(req, res) {
     }
 
     const total = home + away
-    const line = Number(p.total_line)
-    let result
-    if (total === line) result = 'P'
-    else if (p.lean === 'OVER') result = total > line ? 'W' : 'L'
-    else result = total < line ? 'W' : 'L'
-    // CLV: did the closing line move toward our lean? (Over → line up = +CLV; Under → line down = +CLV.)
-    const close = await closingTotal(p.external_event_id, e?.start_time || null)
-    let clv = null
-    if (close != null && Number.isFinite(line)) {
-      clv = Math.round((p.lean === 'OVER' ? close - line : line - close) * 10) / 10
+    const result = gradeLeanResult({ market: p.market, lean: p.lean, pick_side: p.pick_side, total_line: p.total_line, awayScore: away, homeScore: home })
+    if (result == null) continue // can't grade confidently — leave ungraded, never guess
+    // CLV is TOTAL-ONLY: did the closing line move toward our lean? (Over → line up = +CLV; Under → line down = +CLV.)
+    let close = null, clv = null
+    if ((p.market || 'total') === 'total') {
+      const line = Number(p.total_line)
+      close = await closingTotal(p.external_event_id, e?.start_time || null)
+      if (close != null && Number.isFinite(line)) {
+        clv = Math.round((p.lean === 'OVER' ? close - line : line - close) * 10) / 10
+      }
     }
     const { error } = await sb.from('lean_results')
       .update({ final_total: total, result, closing_line: close, clv, graded_at: new Date().toISOString() })
