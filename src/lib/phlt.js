@@ -65,13 +65,16 @@ export function parkWeatherScore(pw = {}) {
 }
 
 // ── Hot Streak (0–100): length of the active hitting streak. ──
+// Floor raised 30→48 (S66): NOT being on a streak isn't a negative signal — most hitters
+// aren't on one. The old 30 floor pushed this 15%-weighted term down for the whole field,
+// helping drag the average score below the Caution line. 48 = neutral, streaks build above it.
 export function streakScore(games = 0) {
   const g = Number(games) || 0
   if (g >= 8) return 100
   if (g >= 5) return 85
   if (g >= 3) return 70
   if (g >= 1) return 52
-  return 30
+  return 48
 }
 
 // Which of the three Red-Flag pitcher conditions are tripped.
@@ -91,10 +94,14 @@ export function coldZone(h = {}) {
   return f
 }
 
+// Tier cutoffs re-centered (S66): sub-scores cluster so an AVERAGE hitter scores ~54, but the
+// old cutoffs (85/75/65) put Caution at 65 → everything average-or-below read "Fade". Lowered to
+// 72/62/52 so tiers track the real score distribution (avg → Caution, not Fade). The auto-fade
+// overrides (red-flag pitcher / cold zone) still hard-Fade regardless of score.
 export function tierFor(score) {
-  if (score >= 85) return { tier: 'A', label: 'Prime', color: 'green' }
-  if (score >= 75) return { tier: 'B', label: 'Strong', color: 'blue' }
-  if (score >= 65) return { tier: 'C', label: 'Caution', color: 'yellow' }
+  if (score >= 72) return { tier: 'A', label: 'Prime', color: 'green' }
+  if (score >= 62) return { tier: 'B', label: 'Strong', color: 'blue' }
+  if (score >= 52) return { tier: 'C', label: 'Caution', color: 'yellow' }
   return { tier: 'AVOID', label: 'Fade', color: 'red' }
 }
 
