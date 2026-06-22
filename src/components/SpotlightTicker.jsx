@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { fetchEvents } from '../lib/events'
 import { decorate } from '../lib/betLinks'
+import { teamLeanLines } from '../lib/teamLean'
 import { NEON, NEON_T, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
 
 // Enrich a Spotlight leg with per-book odds from the FREE cached game-lines (same data Channel 2
@@ -241,6 +242,16 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                         )
                       })()}
                     </span>
+                    {(() => {
+                      // Team leans (ML / Run Line) the model persists + grades — surfaced under the total, brand-safe.
+                      const tl = teamLeanLines(ou.proj2?.bets, ev.away_abbr, ev.home_abbr)
+                      return tl.length ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', fontFamily: R, fontSize: '9px' }}>
+                          <span style={{ color: MUTED, fontWeight: 700, letterSpacing: '0.12em' }}>MODEL</span>
+                          {tl.map((ln, i) => <span key={ln.market} style={{ color: NEON_T, fontWeight: 700, whiteSpace: 'nowrap' }}>{i > 0 ? '· ' : ''}{ln.label}</span>)}
+                        </span>
+                      ) : null
+                    })()}
                   </span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
