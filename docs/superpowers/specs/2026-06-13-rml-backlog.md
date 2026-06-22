@@ -3,7 +3,45 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
-## 🟢 CURRENT STATE — Session 65 (SW v467, on main · 2026-06-21)
+## 🟢 CURRENT STATE — Session 66 (SW v477, on main · 2026-06-21)
+**Bet-tracking correctness sweep + two new free features + a parallel quick-win run.** All shipped to prod & merged to main; 435 tests green.
+
+### 🟢 SHIPPED THIS SESSION (v468 → v477, all verified live in Chrome)
+- 🟢 **Live win-prob ring (v468–v470)** — the ring "wasn't moving" because it de-vigged the FROZEN pre-game moneyline. Now pulls ESPN live game-winner % (`/api/box-score` `winPct`) for **ML legs only** (totals/props keep implied), updates every 60s, $0. Parlay ML legs resolve per-leg too. Memory `rml-live-winprob`.
+- 🟢 **Pikkit-style ring colors (v471)** — live ring shifts with win prob (≥60% green / 40–60% amber / <40% red); settled locks W/L/P. `liveRingColor` in BetCard.jsx.
+- 🟢 **Postponed games sink to bottom (v472)** — Game Center slate: live/upcoming → finished → dead (PPD/CXL) at the very bottom; DLY/SUS stay up (can resume).
+- 🟢 **FREE GUIDED PROP BUILDER (v474)** — `PropBuilder` (player search → auto-matched game → stat/side/line/odds + free season/L5 context). Mounts: LOG BET **Player Prop** type + Game Center Insights **"Build a prop"** above Line Shop → slip. Only live-trackable stats offered; NO EV (paid); word "free" kept out of UI (brand). Spec+plan in docs/superpowers. Memory `rml-prop-builder`.
+- 🟢 **PARLAY AUTO-SETTLE (v476)** — was straights-only; parlays sat Open forever. New `gradeParlay` (pure): early-loss, **push-reduction** (drop pushed legs, recompute payout), reduced-odds pnl via `settleBet(oddsOverride)`. Settled-parlay header now reads WON/LOST/PUSH (was stale "LIVE"). Verified: owner's NYM@PHI parlay settled W **+$55** (not +$90). Memory `rml-parlay-autosettle`.
+- 🟢 **Ladder rung-dupe guard (v477)** — `startSession` seeded 6 rungs with no idempotency guard → double-fire = dups. Guard added (`canSeedLadder`). DB currently clean (no migration). *(Future cross-device sync-loop resurfacing is the separate reset-sync-loop concern.)*
+- 🟢 **Prop cached-line auto-fill (v477)** — `api/prop-open.js` (free, reads `prop_history`) → prop builder pre-fills line/odds + shows "open" when a scan exists; types-yourself when not. $0.
+
+### 🟡 OPEN BOARD — what's left (priority order)
+**Big model builds:**
+1. 🟡 **Phase 3 — team picks** *(highest-value)* — market-anchor the per-side `proj2` engine (drifts to league-avg on sharp games = the trust blocker), then surface + GRADE ML/RL (new graded cols + cron). Plan `docs/superpowers/plans/2026-06-21-phase3-finish-team-picks.md`. **Start by honestly assessing proj2 drift before promising the feature.**
+2. 🟡 **EV Brain — remaining** — wire PHLT (MLB hitter) + discipline/operator into the verdict; other sports (NBA/WNBA prop, NHL SOG free-data sourcing).
+3. 🟡 **O/U calibration** — `strong` rating is still noise; needs ~250–300 graded edges (time, not code) + a historical backtest.
+
+**Bugs / correctness:**
+- 🟡 **Reset doesn't fully stick** + reset-UI split ("new bankroll keeps history" vs "nuke account") — needs owner product call. Memory `rml-reset-sync-loop`.
+- 🟡 **Manual parlay settle not push-aware** — auto-settle is; tapping WIN by hand still pays full ticket odds. Low priority.
+
+**Quick wins / polish:**
+- 🟡 **Bet log redesign** — parlays read like a sportsbook slip; per-leg box-score for cross-game prop legs.
+- 🟡 **Bet-to-line full** — market-tab chart in bet Insights (only the row-reorder Option A shipped; B/C = port CH2 tabs).
+- 🟡 **Perf/credit** — near-game odds-capture tiering ("30-min is dumb"); odds push alerts (infra exists).
+- 🟡 **KBO scan sharpening** — add pitcher FIP + offense layer (free-data sourcing — focused solo task, not parallel-safe). Memory `rml-kbo-scan`.
+
+**New surface:** 🟡 NFL support (new sport key + prop markets).
+
+### 🙅 OWNER-ONLY (unblocks real value — needs YOU)
+- **Affiliate signup** (FanDuel/DK/Caesars) — revenue share on bets we already deep-link.
+- **ANTHROPIC_API_KEY** — unlocks the (already-built) OCR bet-slip upload.
+- **Product calls:** reset split · (PHLT name + "Play" label already resolved).
+- **Paid data:** on-court dots / timeouts / $-handle — needs a paid sharp feed.
+
+---
+
+## 📜 HISTORICAL — Session 65 (SW v467)
 **Marathon session. Model sprint → 4 backlog wins → EV Brain Phase 2 → then a deep bet-tracking debug chain.**
 
 ### 🟢 BET TRACKING — fully fixed (v456–v467, the "it's not tracking" saga)
