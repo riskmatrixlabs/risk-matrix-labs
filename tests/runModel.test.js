@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { LG, projectTeamRuns, gameProjection, winProbFromMargin, coverProb, deriveBets } from '../api/_lib/runModel.js'
+import { LG, projectTeamRuns, gameProjection, winProbFromMargin, coverProb, deriveBets, anchorProjection } from '../api/_lib/runModel.js'
 
 describe('projectTeamRuns', () => {
   it('a perfectly average matchup at a neutral park returns league team runs', () => {
@@ -81,6 +81,40 @@ describe('coverProb (-1.5 run line)', () => {
   it('a big home margin: home covers -1.5 more often than not', () => { expect(coverProb(2.5)).toBeGreaterThan(0.5) })
   it('cover prob increases with margin', () => { expect(coverProb(3)).toBeGreaterThan(coverProb(1)) })
   it('home favored by exactly 1.5 → ~50% to cover -1.5', () => { expect(coverProb(1.5)).toBeCloseTo(0.5, 1) })
+})
+
+describe('anchorProjection', () => {
+  // margin is HOME-perspective: homeRuns - awayRuns. Here away scores more → margin negative.
+  const raw = { awayRuns: 5.0, homeRuns: 3.0, total: 8.0, margin: -2.0 } // engine: away by 2
+
+  it('pulls the total toward the market but KEEPS the margin', () => {
+    const a = anchorProjection(raw, 6.5) // market says 6.5, much lower
+    expect(a.total).toBeGreaterThan(6.5) // blended, not fully market
+    expect(a.total).toBeLessThan(8.0)    // pulled down toward market
+    expect(a.margin).toBeCloseTo(-2.0, 1) // margin (the ML/RL signal) preserved
+    expect(a.awayRuns + a.homeRuns).toBeCloseTo(a.total, 1)
+    expect(a.homeRuns - a.awayRuns).toBeCloseTo(a.margin, 1) // margin = home - away
+  })
+
+  it('blends with W=0.65 toward market: 8.0 raw on 6.5 market → ~7.025', () => {
+    const a = anchorProjection(raw, 6.5)
+    expect(a.total).toBeCloseTo(0.65 * 6.5 + 0.35 * 8.0, 1) // 7.025, rounded to 2dp → 7.03
+  })
+
+  it('a raw 8.6 projection on a 6.5 market lands ~7.24 (no longer league-avg)', () => {
+    const a = anchorProjection({ awayRuns: 4.3, homeRuns: 4.3, total: 8.6, margin: 0 }, 6.5)
+    expect(a.total).toBeCloseTo(7.235, 1) // 0.65*6.5 + 0.35*8.6 = 7.235 → 7.24
+  })
+
+  it('no market total (null) → returns the raw projection unchanged', () => {
+    expect(anchorProjection(raw, null)).toEqual(raw)
+  })
+
+  it('non-positive / non-finite market total → returns raw unchanged', () => {
+    expect(anchorProjection(raw, 0)).toEqual(raw)
+    expect(anchorProjection(raw, -3)).toEqual(raw)
+    expect(anchorProjection(raw, NaN)).toEqual(raw)
+  })
 })
 
 describe('deriveBets', () => {
