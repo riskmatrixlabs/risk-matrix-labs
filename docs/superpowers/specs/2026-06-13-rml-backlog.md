@@ -3,10 +3,10 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
-## 🟢 CURRENT STATE — Session 66 (SW v478, on main · 2026-06-21)
-**Bet-tracking correctness sweep + two new free features + a parallel quick-win run.** All shipped to prod & merged to main; 436 tests green.
+## 🟢 CURRENT STATE — Session 66 (SW v479, on main · 2026-06-21→22)
+**Bet-tracking correctness sweep → two new free features → parallel quick-wins → parallel model builds + a security fix.** All shipped to prod & merged to main; 455 tests green.
 
-### 🟢 SHIPPED THIS SESSION (v468 → v477, all verified live in Chrome)
+### 🟢 SHIPPED THIS SESSION (v468 → v479, all verified)
 - 🟢 **Live win-prob ring (v468–v470)** — the ring "wasn't moving" because it de-vigged the FROZEN pre-game moneyline. Now pulls ESPN live game-winner % (`/api/box-score` `winPct`) for **ML legs only** (totals/props keep implied), updates every 60s, $0. Parlay ML legs resolve per-leg too. Memory `rml-live-winprob`.
 - 🟢 **Pikkit-style ring colors (v471)** — live ring shifts with win prob (≥60% green / 40–60% amber / <40% red); settled locks W/L/P. `liveRingColor` in BetCard.jsx.
 - 🟢 **Postponed games sink to bottom (v472)** — Game Center slate: live/upcoming → finished → dead (PPD/CXL) at the very bottom; DLY/SUS stay up (can resume).
@@ -14,17 +14,21 @@
 - 🟢 **PARLAY AUTO-SETTLE (v476)** — was straights-only; parlays sat Open forever. New `gradeParlay` (pure): early-loss, **push-reduction** (drop pushed legs, recompute payout), reduced-odds pnl via `settleBet(oddsOverride)`. Settled-parlay header now reads WON/LOST/PUSH (was stale "LIVE"). Verified: owner's NYM@PHI parlay settled W **+$55** (not +$90). Memory `rml-parlay-autosettle`.
 - 🟢 **Ladder rung-dupe guard (v477)** — `startSession` seeded 6 rungs with no idempotency guard → double-fire = dups. Guard added (`canSeedLadder`). DB currently clean (no migration). *(Future cross-device sync-loop resurfacing is the separate reset-sync-loop concern.)*
 - 🟢 **Prop cached-line auto-fill (v477)** — `api/prop-open.js` (free, reads `prop_history`) → prop builder pre-fills line/odds + shows "open" when a scan exists; types-yourself when not. $0.
-- 🟢 **Per-leg box score for cross-game parlay legs (v478)** — `withLogos` now takes a box-score MAP keyed by event id (was single primary-game stats) + `liveBetGameKeys` fetches each leg's game, so a prop leg in a *different* game gets its own live stat bar. Mirrors the `winPctByEvent` refactor. *(Quick-win — the only cleanly-unblocked one; reset-UI split needs an owner product call, manual-parlay-push-aware needs a per-leg settle UI, bet-to-line-full + KBO are bigger.)*
+- 🟢 **Per-leg box score for cross-game parlay legs (v478)** — `withLogos` now takes a box-score MAP keyed by event id (was single primary-game stats) + `liveBetGameKeys` fetches each leg's game, so a prop leg in a *different* game gets its own live stat bar. Mirrors the `winPctByEvent` refactor.
+- 🟢 **proj2 MARKET-ANCHOR (v479) — Phase-3 Task 1 DONE** — `anchorProjection(raw, marketTotal, 0.65)` in `runModel.js`: blends the per-side projected total toward the market (margin-preserving — margin drives ML/RL), wired in `game-info.js` (additive/BETA). Kills the league-avg drift: raw 8.6 on a 6.5 line → **7.24** (was 8.6). Verified: algebra sound (home−away=margin, home+away=total), 5 new tests. **This UNBLOCKS surfacing team picks + EV-Brain model-edge wiring.**
+- 🟢 **Calibration harness (v479) — dormant** — `src/lib/calibration.js` (`wilsonInterval` [verified vs textbook: 18/32→[.393,.718]], `bucketByEdge`, `summarize` with `ready` flag at gradedN≥250) + read-only runner `scripts/calibration-report.mjs`. Lights up when graded edges accrue (~mid-July). 14 tests.
+- 🟢 **SECURITY: RLS enabled (v479)** — 3 tables were exposed to the anon key (`scan_cache` + both `*_backup_20260620` tables holding **real user bet history/settings**). Confirmed server-only access (service_role bypasses RLS), enabled RLS (no policies) → anon locked, app unaffected. Advisor `rls_disabled_in_public` ERROR cleared. *(Built A+B as parallel subagents in isolated worktrees, reviewed + merged serially; then logic-verified both modules independently.)*
 
 ### 🟡 OPEN BOARD — what's left (priority order)
 **Big model builds:**
-1. 🟡 **Phase 3 — team picks** *(highest-value)* — market-anchor the per-side `proj2` engine (drifts to league-avg on sharp games = the trust blocker), then surface + GRADE ML/RL (new graded cols + cron). Plan `docs/superpowers/plans/2026-06-21-phase3-finish-team-picks.md`. **Start by honestly assessing proj2 drift before promising the feature.**
-2. 🟡 **EV Brain — remaining** — wire PHLT (MLB hitter) + discipline/operator into the verdict; other sports (NBA/WNBA prop, NHL SOG free-data sourcing).
-3. 🟡 **O/U calibration** — `strong` rating is still noise; needs ~250–300 graded edges (time, not code) + a historical backtest.
+1. 🟡 **Phase 3 — team picks** — ✅ Task 1 (market-anchor) DONE. **Remaining = Tasks 2–5:** new `ml_rl_results` table + persist the ML/RL pick (`snapshot-lean` sibling) → grade from final scores (`cron-grade-leans` sibling) → surface ML/RL in Spotlight + game card (`SpotlightTicker.jsx`). Plan `docs/superpowers/plans/2026-06-21-phase3-finish-team-picks.md`. Sequential, model-layer.
+2. 🟡 **EV Brain — remaining** *(now unblocked by the anchor)* — **first step (S):** wire `modelProbForBet` (already built+tested) into MLB-total EV so the verdict reflects the model edge, not just market. Then: persist PHLT score at prop-log time → verdict; add CLV to Operator; thread Discipline into the per-bet verdict; verdict tooltip. NBA/WNBA/NHL = no model yet (data sourcing, defer). Audit findings drive the order.
+3. 🟡 **O/U calibration** — harness BUILT (above); now data-blocked. Graded edges = **0** today (`edge_runs` started logging 6/22); `strong` 56% vs 50% (n≈33) is noise. Re-derive the rating once ~250–300 graded edges accrue (**~July 18–26**). Also: verify the auto-grader actually grades the `edge_runs` rows (snapshot-lock concern).
 
 **Bugs / correctness:**
 - 🟡 **Reset doesn't fully stick** + reset-UI split ("new bankroll keeps history" vs "nuke account") — needs owner product call. Memory `rml-reset-sync-loop`.
-- 🟡 **Manual parlay settle not push-aware** — auto-settle is; tapping WIN by hand still pays full ticket odds. Low priority.
+- 🟡 **Manual parlay settle not push-aware** — auto-settle is; tapping WIN by hand still pays full ticket odds. Needs a per-leg settle UI. Low priority.
+- 🟡 **Bonus security (from RLS audit)** — `odds_history` has an **anon INSERT** `WITH CHECK(true)` policy (anon could spam rows; likely a leftover, written server-side); `lean_results` has an authenticated INSERT `WITH CHECK(true)`; leaked-password protection is off. Confirm nothing legit writes via those roles, then tighten.
 
 **Quick wins / polish:**
 - 🟡 **Bet log redesign** — parlays read like a sportsbook slip; per-leg box-score for cross-game prop legs.
