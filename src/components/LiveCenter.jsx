@@ -7,6 +7,7 @@ import { computeClv } from '../lib/clv'
 import { matchBetToEvent, findEventForBet, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { teamLeanLines } from '../lib/teamLean'
+import CallChips from './CallChips.jsx'
 import { liveConsensus } from '../lib/liveConsensus'
 import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES, copyPickAndOpen } from '../lib/betLinks'
 import { booksForState, OFFSHORE, NATIONWIDE, US_STATES, guessState } from '../lib/geoBooks'
@@ -153,6 +154,35 @@ function GradedFlag({ g, size = 10 }) {
   )
 }
 
+// Team calls (ML / Run Line) graded — so a FINISHED game shows the result of EVERY call the card made,
+// not just the total. Reads g.ml / g.rl from the lean-record games map ({pick, result}).
+function TeamGradedFlags({ g, event }) {
+  const abbrOf = (side) => side === 'HOME' ? (event?.home_abbr || 'HOME') : side === 'AWAY' ? (event?.away_abbr || 'AWAY') : side
+  const rows = []
+  for (const [m, suffix] of [['ml', 'ML'], ['rl', '-1.5']]) {
+    const t = g?.[m]
+    if (!t?.result) continue
+    const word = String(t.pick || '').trim().split(/\s+/)[0]
+    rows.push({ key: m, label: `${abbrOf(word)} ${suffix}`, result: t.result })
+  }
+  if (!rows.length) return null
+  return (
+    <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>MODEL</span>
+      {rows.map(({ key, label, result }) => {
+        const c = result === 'W' ? NEON_T : result === 'L' ? '#FF3B3B' : MUTED
+        const txt = result === 'W' ? '✓ W' : result === 'L' ? '✗ L' : 'PUSH'
+        return (
+          <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <span style={{ color: NEON_T }}>{label}</span>
+            <span style={{ color: c, padding: '1px 5px', borderRadius: '4px', border: `1px solid ${c}` }}>{txt}</span>
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 // Small amber BETA tag — the O/U model is experimental/being calibrated; mark it everywhere it shows.
 const BetaTag = ({ size = 7 }) => (
   <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, letterSpacing: '0.08em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '0 3px', flexShrink: 0, whiteSpace: 'nowrap' }}>BETA</span>
@@ -171,7 +201,7 @@ function LiveResultChip({ lean, line, total, size = 9 }) {
 
 // ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
 // anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
-function OuFlag({ event, token, compact = false, mini = false, inline = false }) {
+function OuFlag({ event, token, compact = false, mini = false, inline = false, onAddToSlip = null }) {
   const [ou, setOu] = useState(null)
   const [graded, setGraded] = useState(null)
   useEffect(() => {
@@ -267,7 +297,10 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false })
           </>
         )}
       </div>
-      {teamLeans.length > 0 && (
+      {isGraded && <TeamGradedFlags g={graded} event={event} />}
+      {onAddToSlip && !isGraded ? (
+        <CallChips game={event} ou={ou} onAddToSlip={onAddToSlip} token={token} style={{ marginTop: '7px' }} />
+      ) : teamLeans.length > 0 && (
         <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>MODEL</span>
           {teamLeans.map((ln, i) => (
@@ -1776,16 +1809,16 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
       </div>
       {shareOpen && <GameShareModal event={event} onClose={() => setShareOpen(false)} />}
 
-      {/* ⬡ Spotlight — pinned under the top bar so it stays visible on the game page (not just the slate) */}
-      {token && (
-        <div style={{ flexShrink: 0, maxWidth: '580px', width: '100%', margin: '0 auto', padding: '8px 14px 0', boxSizing: 'border-box' }}>
-          <SpotlightTicker token={token} onAddToSlip={onAddToSlip} onOpen={ev => onPick && onPick(ev)} />
-        </div>
-      )}
-
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <div style={{ maxWidth: '580px', width: '100%', margin: '0 auto' }}>
+
+        {/* ⬡ Spotlight — scrolls with the page content (matches the rest of the app) */}
+        {token && (
+          <div style={{ padding: '8px 14px 0', boxSizing: 'border-box' }}>
+            <SpotlightTicker token={token} onAddToSlip={onAddToSlip} onOpen={ev => onPick && onPick(ev)} />
+          </div>
+        )}
 
         {/* ── HERO ── */}
         <div style={{ background: 'linear-gradient(180deg, rgba(189,255,0,0.03) 0%, transparent 100%)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -1950,7 +1983,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
           {/* Context strip — venue / coverage + weather, always visible above every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
           {/* O/U model — full breakdown (Statcast + bullpen + weather, anchored to total) */}
-          <OuFlag event={event} token={token} />
+          <OuFlag event={event} token={token} onAddToSlip={onAddToSlip} />
           {meta.weather && (
             <Collapsible title="Weather" status={event.status}>
               <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>

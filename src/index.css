@@ -176,3 +176,20 @@ input, select, button { outline: none; }
 }
 .analytics-pills::-webkit-scrollbar { display: none; }
 .analytics-pills button { flex-shrink: 0; }
+
+/* ── BR section pills — mobile: two rows of three; desktop: one scrollable line ─ */
+.br-pills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+.br-pills button { flex-shrink: 0; white-space: nowrap; }
+@media (min-width: 768px) {
+  .br-pills {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .br-pills::-webkit-scrollbar { display: none; }
+}

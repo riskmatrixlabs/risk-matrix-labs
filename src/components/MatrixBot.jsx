@@ -19,6 +19,8 @@ import { legFromRow, pickShareText, boardShareText } from '../lib/botSlip.js'
 import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
 import { LineShop } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
+import CallChips from './CallChips.jsx'
+import OddsGrid from './OddsGrid.jsx'
 import EventsPicker from './EventsPicker.jsx'
 import SpotlightTicker from './SpotlightTicker.jsx'
 import { normalizeBet, computeRecord, groupByDate } from '../lib/betCard.js'
@@ -337,7 +339,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
     return m
   }, [preGames])
 
-  const buildGame = (ev) => ({ away: ev.away_team, home: ev.home_team, away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, away_logo: ev.away_logo, home_logo: ev.home_logo, sport: ev._sport, external_event_id: ev.external_event_id, commenceTime: ev.start_time })
+  const buildGame = (ev) => ({ away: ev.away_team, home: ev.home_team, away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, away_logo: ev.away_logo, home_logo: ev.home_logo, sport: ev._sport, external_event_id: ev.external_event_id, commenceTime: ev.start_time, odds_ml_away: ev.odds_ml_away, odds_ml_home: ev.odds_ml_home, odds_spread_away: ev.odds_spread_away, odds_spread_home: ev.odds_spread_home, odds_total: ev.odds_total, metadata: ev.metadata })
   const resolveGame = (e) => {
     const ev = evByKey[gameKey(e.away, e.home)]
     return ev ? buildGame(ev) : { away: e.away, home: e.home, sport: e._sport, external_event_id: '', commenceTime: e.commenceTime }
@@ -753,7 +755,7 @@ function LookFrame({ onBack, children }) {
 }
 
 // Matchup header for CH2 — logos, records, status/score, MLB pitchers (FREE via ESPN game-info).
-function GameCard({ game, sport, token }) {
+function GameCard({ game, sport, token, onAddToSlip }) {
   const [info, setInfo] = useState(null)
   useEffect(() => {
     if (!game?.away || !game?.home || !token) { setInfo(null); return }
@@ -793,6 +795,8 @@ function GameCard({ game, sport, token }) {
         </div>
         {col(info?.home, game.home_abbr || up(game.home))}
       </div>
+      {/* Free pre-game odds board — Game-Center-style buttons (Run Line · Total · ML), tap to add. $0. */}
+      <OddsGrid game={game} total={info?.ou?.total?.current} onAddToSlip={onAddToSlip} token={token} />
       {ou && (
         <div style={{ marginTop: '11px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.07)' : 'transparent' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
@@ -811,6 +815,14 @@ function GameCard({ game, sport, token }) {
                 <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : DANGER, letterSpacing: '0.03em' }}>{ou.edge}</span>
               )}
             </div>
+          )}
+          {/* Tap-to-add call chips — total + any ML/RL — same as Spotlight, so you can add from the card. */}
+          {onAddToSlip && (
+            <CallChips
+              game={{ away_team: game.away, home_team: game.home, away_abbr: game.away_abbr || up(game.away), home_abbr: game.home_abbr || up(game.home) }}
+              ou={ou} onAddToSlip={onAddToSlip} token={token}
+              style={{ marginTop: '8px', display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%' }}
+            />
           )}
         </div>
       )}
@@ -872,7 +884,7 @@ function LookChannel({ game, player = null, sport, setSport, token, onLogPositio
 
       {game && (
         <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: `1px solid ${BORDER}` }}>
-          <GameCard game={game} sport={sport} token={token} />
+          <GameCard game={game} sport={sport} token={token} onAddToSlip={onAddToSlip} />
 
           <LookSection label="PLAYER PROPS" defaultOpen={true}>
             <PropsPanel game={game} sport={game.sport || sport} token={token} searchedPlayer={player} onLogPosition={onLogPosition} onAddToSlip={onAddToSlip} />

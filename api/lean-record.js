@@ -30,14 +30,22 @@ export default async function handler(req, res) {
 
   const today = etDate(0), yesterday = etDate(1)
   const { data: all } = await sb.from('lean_results')
-    .select('external_event_id, game_date, market, lean, total_line, confidence, strong, result, final_total, closing_line, clv')
+    .select('external_event_id, game_date, market, lean, pick_side, total_line, confidence, strong, result, final_total, closing_line, clv')
     .order('game_date', { ascending: false }).limit(3000)
   const rows = all || []
 
   // Split by market: the O/U record is TOTALS only (ml/rl rows live in the same table since
   // v480 and would otherwise pollute it). Team = ML + Run Line combined.
   const totals = rows.filter(r => (r.market || 'total') === 'total')
-  const teamRows = rows.filter(r => r.market === 'ml' || r.market === 'rl')
+  // Team ML/RL had a home-field-advantage bug fixed Jun 22 ET. Only COUNT graded ML/RL games from the
+  // next slate forward so the broken version's losses don't pollute the record. O/U was unaffected
+  // (HFA doesn't touch totals) → it counts all. The per-game `games` map still grades ALL games.
+  const ML_FIX_DATE = '2026-06-23'
+  const mlAll = rows.filter(r => r.market === 'ml')
+  const rlAll = rows.filter(r => r.market === 'rl')
+  const mlRows = mlAll.filter(r => r.game_date >= ML_FIX_DATE)
+  const rlRows = rlAll.filter(r => r.game_date >= ML_FIX_DATE)
+  const teamRows = [...mlAll, ...rlAll]
   const strong = totals.filter(r => r.strong)
   const rec = (set) => ({
     today: tally(set.filter(r => r.game_date === today)),
@@ -45,16 +53,22 @@ export default async function handler(req, res) {
     allTime: tally(set),
   })
 
-  // Per-game map for today + yesterday so the cards can render a badge (TOTALS lean only).
+  // Per-game map for today + yesterday so the cards can grade EVERY call they showed.
+  // Top-level fields = the TOTALS lean (back-compat); .ml / .rl = the team calls' grades.
   const games = {}
+  const ensure = (id) => (games[id] ??= {})
   for (const r of totals) {
     if (r.game_date !== today && r.game_date !== yesterday) continue
-    games[r.external_event_id] = {
+    Object.assign(ensure(r.external_event_id), {
       lean: r.lean, line: r.total_line, strong: r.strong,
       result: r.result || null, finalTotal: r.final_total ?? null, date: r.game_date,
       closingLine: r.closing_line ?? null, clv: r.clv ?? null,
-    }
+    })
+  }
+  for (const r of teamRows) {
+    if (r.game_date !== today && r.game_date !== yesterday) continue
+    ensure(r.external_event_id)[r.market] = { pick: r.pick_side || r.lean || null, result: r.result || null, date: r.game_date }
   }
 
-  return res.status(200).json({ ok: true, all: rec(totals), strong: rec(strong), team: rec(teamRows), games })
+  return res.status(200).json({ ok: true, all: rec(totals), strong: rec(strong), team: rec(teamRows), ml: rec(mlRows), rl: rec(rlRows), games })
 }

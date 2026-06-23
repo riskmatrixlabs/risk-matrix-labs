@@ -2467,7 +2467,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [showCancelSurvey, setShowCancelSurvey] = useState(false)
   const [cancelReason,     setCancelReason]     = useState(null)
   const [portalPending,    setPortalPending]    = useState(false)
-  const [overviewSection, setOverviewSection] = useState('limits')
+  const [overviewSection, setOverviewSection] = useState(null)
   const [analyticsShowUnits, setAnalyticsShowUnits] = useState(false)
   const [betLogShowAll,   setBetLogShowAll]   = useState(false)
 
@@ -4619,7 +4619,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               {stats.openBets} Live {stats.openBets === 1 ? 'Bet' : 'Bets'}
             </span>
             <span style={{ fontFamily: R, fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
-              {fmt$(stats.openRisk$)} at risk
+              {fmt$(stats.openRisk$)} at risk{masterBankroll > 0 ? ` · ${((stats.openRisk$ / masterBankroll) * 100).toFixed(1)}% of bankroll` : ''}
             </span>
           </div>
           <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', color: YELLOW, opacity: 0.7 }}>VIEW →</span>
@@ -4673,7 +4673,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                   { id: 'performance', label: 'Performance' },
                 ]
                 return (
-                  <div className="analytics-pills" style={{ marginBottom: '8px' }}>
+                  <div className="br-pills" style={{ marginBottom: '8px' }}>
                     {pills.map(({ id, label, dot }) => {
                       const active = overviewSection === id
                       return (
@@ -4840,13 +4840,11 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                     {(() => {
                       const openOnlyRisk = bets.filter(b => b.result === 'Open' && !b.ladder).reduce((s, b) => s + (b.stake || b.units * stats.unitSize), 0)
                       const ladderStake  = stats.activeLadderRung ? stats.activeLadderRung.stake : 0
-                      const totalRisk    = openOnlyRisk + ladderStake
                       return [
                         { label: 'Max Per Bet',   value: fmt$(risk.maxRiskPerBet$), sub: `${riskSettings.maxRiskPerBetPct}% of bankroll`, color: 'var(--text)' },
                         { label: 'Daily Cap',     value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap`,          color: 'var(--text)' },
                         { label: '⚡ Ladder',     value: fmt$(ladderStake),          sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : '', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                         { label: 'Open Bet Risk', value: fmt$(openOnlyRisk),         sub: openOnlyRisk > 0 ? `${bets.filter(b=>b.result==='Open'&&!b.ladder).length} bets pending` : '', color: openOnlyRisk > 0 ? YELLOW : 'var(--text)' },
-                        { label: 'Total Risk',    value: fmt$(totalRisk),             sub: masterBankroll > 0 ? `${((totalRisk / masterBankroll) * 100).toFixed(1)}% of bankroll` : '', color: totalRisk > 0 ? RED : 'var(--text)' },
                         ]
                     })().map(({ label, value, sub, color }) => (
                       <div key={label} style={{ ...cardStyle, padding: '9px 11px' }}>
@@ -5023,7 +5021,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
               { id: 'performance', label: 'Performance' },
             ]
             return (
-              <div className="analytics-pills" style={{ marginBottom: '10px' }}>
+              <div className="br-pills" style={{ marginBottom: '10px' }}>
                 {pills.map(({ id, label, dot }) => {
                   const active = overviewSection === id
                   return (
@@ -5179,7 +5177,6 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                       { label: 'Daily Cap',   value: fmt$(risk.maxRiskCap$),    sub: `${riskSettings.maxRiskTodayPct}% cap` },
                       { label: '⚡ Ladder',   value: stats.activeLadderRung ? fmt$(stats.activeLadderRung.stake) : fmt$(0), sub: stats.activeLadderRung ? `rung ${stats.activeLadderRung.ladderId} active` : 'no active rung', color: stats.activeLadderRung ? YELLOW : 'var(--text)' },
                       (() => { const openOnlyRisk = bets.filter(b => b.result === 'Open' && !b.ladder).reduce((s, b) => s + (b.stake || b.units * stats.unitSize), 0); return { label: 'Open Bet Risk', value: fmt$(openOnlyRisk), sub: openOnlyRisk > 0 ? `${bets.filter(b=>b.result==='Open'&&!b.ladder).length} bets pending` : 'none open', color: openOnlyRisk > 0 ? YELLOW : 'var(--text)' }; })(),
-                      (() => { const openOnlyRisk = bets.filter(b => b.result === 'Open' && !b.ladder).reduce((s, b) => s + (b.stake || b.units * stats.unitSize), 0); const ladderStake = stats.activeLadderRung ? stats.activeLadderRung.stake : 0; const totalRisk = openOnlyRisk + ladderStake; return { label: 'Total Risk', value: fmt$(totalRisk), sub: masterBankroll > 0 ? `${((totalRisk / masterBankroll) * 100).toFixed(1)}% of bankroll` : '', color: totalRisk > 0 ? RED : 'var(--text)' }; })(),
                     ].map(({ label, value, sub, color }) => (
                       <div key={label} style={{ padding: '9px 11px', background: 'var(--card2)', border: `1px solid var(--border)`, borderRadius: '2px' }}>
                         <div style={{ fontFamily: R, fontSize: '8px', letterSpacing: '0.14em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>

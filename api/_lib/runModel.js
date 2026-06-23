@@ -12,6 +12,8 @@ export const LG = {
   PEN_ERA:   4.10,   // league avg bullpen ERA
   STARTER_SHARE: 0.62, // fraction of a game's innings a starter throws (rest = pen)
   MARGIN_SD: 3.00,   // stdev of MLB final run margin (for win-prob + RL cover math)
+  HFA_RUNS:  0.25,   // home-field advantage in runs — added to the home-perspective margin so a
+                     // neutral matchup correctly reads ~54% home (MLB's real rate), not a 50/50 coin flip.
 }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -52,7 +54,9 @@ export function gameProjection({ away = {}, home = {}, parkMult = 1, weatherRuns
     parkMult, weatherRunsPerSide,
   })
   const total = Math.round((awayRuns + homeRuns) * 100) / 100
-  const margin = Math.round((homeRuns - awayRuns) * 100) / 100
+  // Margin is home-perspective and carries the home-field edge (HFA_RUNS) so ML/RL don't over-pick
+  // the road side on a near-tie. The TOTAL deliberately does NOT get HFA (it's a who-wins effect).
+  const margin = Math.round((homeRuns - awayRuns + LG.HFA_RUNS) * 100) / 100
   return { awayRuns, homeRuns, total, margin }
 }
 
@@ -121,11 +125,14 @@ export function deriveBets({ proj, marketTotal = null, totalDeadband = 1.0 } = {
     winProb = homeWins ? p : Math.round((1 - p) * 1000) / 1000
   }
 
-  // ── Run line (-1.5 on the favorite) ──
+  // ── Run line (-1.5 on the favorite) ── only emit a pick when the favorite's projected margin is
+  // actually thick enough to clear -1.5 (coverProb ≥ RL_MIN). Laying -1.5 on a thin favorite is a
+  // structural loser, so below the threshold we keep the probability for context but make no pick.
+  const RL_MIN = 0.52
   let rl = { pick: null, coverProb: null }
   if (mlPick) {
     const favCover = mlPick === 'HOME' ? coverProb(margin) : coverProb(-margin)
-    rl = { pick: `${mlPick} -1.5`, coverProb: favCover }
+    rl = { pick: favCover >= RL_MIN ? `${mlPick} -1.5` : null, coverProb: favCover }
   }
 
   return {

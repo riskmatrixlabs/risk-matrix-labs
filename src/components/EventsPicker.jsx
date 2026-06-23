@@ -76,6 +76,12 @@ const buildGame = (ev) => ({
   sport: ev._sport,
   external_event_id: ev.external_event_id,
   commenceTime: ev.start_time,
+  odds_ml_away: ev.odds_ml_away,
+  odds_ml_home: ev.odds_ml_home,
+  odds_spread_away: ev.odds_spread_away,
+  odds_spread_home: ev.odds_spread_home,
+  odds_total: ev.odds_total,
+  metadata: ev.metadata,
 })
 
 // ET (UTC-4) YYYY-MM-DD for an offset in days — matches fetchEvents' day windows.

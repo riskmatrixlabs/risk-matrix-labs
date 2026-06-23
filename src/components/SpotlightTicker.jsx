@@ -2,61 +2,21 @@
 // Self-fetches today's slate (free Supabase events) + the free, server-cached O/U model per MLB
 // game; keeps only `strong` leans, ranks them #1.. by factor count. Auto-refreshes every 3 min
 // (model is FREE — safe to poll, unlike paid scans). Tap a signal → onOpen(event) if provided.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { fetchEvents } from '../lib/events'
-import { decorate } from '../lib/betLinks'
 import { teamLeanLines } from '../lib/teamLean'
 import { NEON, NEON_T, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
-
-// Enrich a Spotlight leg with per-book odds from the FREE cached game-lines (same data Channel 2
-// uses) so the slip shows all books + places like a CH2 pick. Falls back to the bare leg if nothing
-// is cached. Zero credits (cacheOnly=1).
-async function enrichWithBooks(leg, ev, ou, token) {
-  if (!token) return leg
-  try {
-    const r = await fetch(`/api/game-lines?sport=MLB&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}&cacheOnly=1`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!r.ok) return leg
-    const j = await r.json()
-    const tot = j?.markets?.totals
-    if (!tot?.rows?.length) return leg
-    const re = ou.lean === 'OVER' ? /^o/i : /^u/i
-    const name = (tot.outcomes || []).find(n => re.test(n))
-    if (!name) return leg
-    const byBook = {}, byBookLink = {}
-    for (const row of tot.rows) {
-      const pr = row.prices?.[name]; if (pr == null) continue
-      byBook[row.book] = pr
-      const dl = decorate(row.book, row.links?.[name]); if (dl) byBookLink[row.book] = dl
-    }
-    if (Object.keys(byBook).length) return { ...leg, byBook, byBookLink }
-  } catch { /* fall through to bare leg */ }
-  return leg
-}
+import CallChips from './CallChips.jsx'
 
 const R = 'Rajdhani, sans-serif'
 
 
 function RankBadge({ rank }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', marginRight: 6, padding: '0 5px', borderRadius: 5, border: `1px solid rgba(189,255,0,0.4)`, background: 'rgba(189,255,0,0.1)', verticalAlign: 'middle' }}>
       <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>#{rank}</span>
     </span>
   )
-}
-
-// Build a fully-priced slip leg from a signal — uses the FREE synced over/under juice (zero credits).
-function signalToLeg(ev, ou) {
-  const side = ou.lean === 'OVER' ? 'Over' : 'Under'
-  const juice = ou.lean === 'OVER' ? ou.total?.overJuice : ou.total?.underJuice
-  const matchup = `${ev.away_abbr}@${ev.home_abbr}`
-  return {
-    // Include the matchup so two games with the same total (e.g. both "Over 10") don't collide in the slip's dedup.
-    pick: `${matchup} ${side} ${ou.total?.current ?? ''}`.trim(),
-    odds: juice != null ? juice : -110,
-    sport: 'MLB',
-    event: matchup,
-    book: null,
-  }
 }
 
 export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
@@ -145,25 +105,28 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
 
   // Spotlight ALWAYS lives at the top of Game Center — even with no directional leans it stays put
   // (an honest empty state), rather than vanishing and looking broken.
-  const strongSignals = signals.filter(s => s.ou.strong)
   const directional = signals.filter(s => s.ou.lean === 'OVER' || s.ou.lean === 'UNDER')
   const ranked = signals.map((s, i) => ({ ...s, rank: i + 1 }))
-  // Feature the strong leans if there are any; otherwise fall back to ALL directional leans so the
-  // marquee never goes blank when the model has real (sub-"strong") edges — the calibration/guard work
-  // can legitimately leave a slate with leans but none ≥2-run "strong". Count badge = directional leans.
-  const featured = strongSignals.length ? strongSignals : directional
+  // Top bar shows EVERY directional read (not just the "strong" subset) so all Spotlight reads are
+  // visible up top — matches the count badge, which already counts all directional leans. Strong ones
+  // still stand out via the brighter lean color (confidence ≥ 3 → NEON).
+  const featured = directional
   const featuredRanked = featured.map((s, i) => ({ ...s, rank: ranked.find(r => r.ev.id === s.ev.id)?.rank ?? i + 1 }))
   const loop = [...featuredRanked, ...featuredRanked]
   // Conviction color: 3+ factors = bright NEON (strong), exactly 2 = white (weakest that still qualifies).
   const leanColor = (ou) => (ou.confidence >= 3 ? NEON : TEXT)
   const Chip = ({ ev, ou, rank }) => (
     <button onClick={() => onOpen?.(ev)} style={{ background: 'none', border: 'none', cursor: onOpen ? 'pointer' : 'default', padding: 0, fontFamily: R, fontWeight: 700, fontSize: '13px', color: TEXT, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+      <RankBadge rank={rank} />
       {ev.away_abbr}@{ev.home_abbr}{' '}
       <span style={{ color: leanColor(ou) }}>{ou.lean === 'OVER' ? '📈 OVER' : '📉 UNDER'}{ou.total?.current != null ? ` ${ou.total.current}` : ''}</span>
       {ou.total?.open != null && ou.total?.current != null && ou.total.open !== ou.total.current && (
         <span style={{ color: (ou.edge && ou.edge.startsWith('value')) ? NEON : MUTED, fontSize: '11px' }}>{' '}{ou.total.open}→{ou.total.current}</span>
       )}
-      <RankBadge rank={rank} />
+      {/* If the game also has a team ML/RL call, ride it as its own chip to the right of the total. */}
+      {teamLeanLines(ou.proj2?.bets, ev.away_abbr, ev.home_abbr).map((ln) => (
+        <span key={ln.market} style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 6px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.04)', fontSize: '11px', fontWeight: 700, color: NEON_T, verticalAlign: 'middle' }}>{ln.label}</span>
+      ))}
     </button>
   )
   return (
@@ -245,21 +208,22 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
                         )
                       })()}
                     </span>
-                    {(() => {
-                      // Team leans (ML / Run Line) the model persists + grades — surfaced under the total, brand-safe.
-                      const tl = teamLeanLines(ou.proj2?.bets, ev.away_abbr, ev.home_abbr)
-                      return tl.length ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', fontFamily: R, fontSize: '9px' }}>
-                          <span style={{ color: MUTED, fontWeight: 700, letterSpacing: '0.12em' }}>MODEL</span>
-                          {tl.map((ln, i) => <span key={ln.market} style={{ color: NEON_T, fontWeight: 700, whiteSpace: 'nowrap' }}>{i > 0 ? '· ' : ''}{ln.label}</span>)}
-                        </span>
-                      ) : null
-                    })()}
+                    {onAddToSlip
+                      ? <CallChips game={ev} ou={ou} onAddToSlip={onAddToSlip} token={token} style={{ marginTop: '6px' }} />
+                      : (() => {
+                          // Read-only context (no slip handler): show the team leans as plain text.
+                          const tl = teamLeanLines(ou.proj2?.bets, ev.away_abbr, ev.home_abbr)
+                          return tl.length ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: '4px', fontFamily: R, fontSize: '9px' }}>
+                              <span style={{ color: MUTED, fontWeight: 700, letterSpacing: '0.12em' }}>MODEL</span>
+                              {tl.map((ln) => <span key={ln.market} style={{ color: NEON_T, fontWeight: 700, whiteSpace: 'nowrap' }}>{ln.label}</span>)}
+                            </span>
+                          ) : null
+                        })()}
                   </span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                   <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: ou.confidence >= 3 ? NEON : MUTED }}>{ou.confidence}<span style={{ fontSize: '7px', letterSpacing: '0.1em' }}> FACTOR{ou.confidence === 1 ? '' : 'S'}</span></span>
-                  {onAddToSlip && <button onClick={async e => { e.stopPropagation(); onAddToSlip(await enrichWithBooks(signalToLeg(ev, ou), ev, ou, token)) }} title="Add to slip" style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: NEON_T, background: 'rgba(189,255,0,0.1)', border: `1px solid ${NEON}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ SLIP</button>}
                 </span>
               </div>
             ))}
@@ -373,50 +337,46 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
             )
           })()}
           {(() => {
-            // Record panel as a labeled grid: rows = time period, columns = Spotlight (strong) vs
-            // All leans, each with its own win %. The column headers say which number is which, so
-            // you read it by position instead of decoding a sentence.
-            const s = record?.strong, a = record?.all
+            // Record MATRIX — rows = Today / Yesterday / All-time, columns = each call type (titles on
+            // top), plus an ALL "master" column that combines everything per period. One compact box.
             const fmtRec = (r) => r && (r.w + r.l + r.p) > 0 ? `${r.w}-${r.l}${r.p ? `-${r.p}` : ''}` : '—'
             const pct = (r) => { const n = r ? r.w + r.l : 0; return n >= 3 ? `${Math.round((r.w / n) * 100)}%` : '' }
-            const cell = (rec, color) => (
-              <div style={{ textAlign: 'center', borderTop: `1px solid ${BORDER}`, paddingTop: '7px' }}>
-                <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color }}>{fmtRec(rec)}</span>
-                {pct(rec) && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, marginLeft: '4px' }}>{pct(rec)}</span>}
-              </div>
-            )
-            const periodLabel = (txt) => (
-              <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, borderTop: `1px solid ${BORDER}`, paddingTop: '7px' }}>{txt}</div>
-            )
-            const grid = { display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr', gap: '5px 10px', alignItems: 'center' }
+            const sumRec = (...recs) => recs.reduce((acc, r) => ({ w: acc.w + (r?.w || 0), l: acc.l + (r?.l || 0), p: acc.p + (r?.p || 0) }), { w: 0, l: 0, p: 0 })
+            const propP = { today: propRec?.today, yesterday: propRec?.yesterday, allTime: propRec?.overall }
+            const cols = [
+              { key: 'O/U',  sub: 'totals', get: (p) => record?.all?.[p] },
+              { key: 'TEAM', sub: 'ML',     get: (p) => record?.ml?.[p] },
+              { key: 'RUN',  sub: 'line',   get: (p) => record?.rl?.[p] },
+              { key: 'PHLT', sub: 'prm',    get: (p) => p === 'allTime' ? propRec?.byTier?.A : null },
+              { key: 'PHLT', sub: 'str',    get: (p) => p === 'allTime' ? propRec?.byTier?.B : null },
+              { key: 'PHLT', sub: 'cau',    get: (p) => p === 'allTime' ? propRec?.byTier?.C : null },
+              { key: 'ALL',  sub: 'master', master: true, get: (p) => sumRec(record?.all?.[p], record?.ml?.[p], record?.rl?.[p], propP[p]) },
+            ]
+            const periods = [['today', 'Today'], ['yesterday', 'Yest'], ['allTime', 'All-time']]
             return (
-              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
-                <div style={grid}>
-                  <div />
-                  <div style={{ textAlign: 'center', fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.08em', color: NEON_T, lineHeight: 1.3 }}>SPOTLIGHT<br /><span style={{ color: MUTED }}>(strong)</span></div>
-                  <div style={{ textAlign: 'center', fontFamily: R, fontSize: '8.5px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED, lineHeight: 1.3 }}>ALL<br /><span style={{ color: MUTED }}>leans</span></div>
-                  {periodLabel('Today')}     {cell(s?.today, NEON_T)}     {cell(a?.today, TEXT)}
-                  {periodLabel('Yesterday')} {cell(s?.yesterday, TEXT)}  {cell(a?.yesterday, TEXT)}
-                  {periodLabel('All-time')}  {cell(s?.allTime, TEXT)}    {cell(a?.allTime, TEXT)}
-                </div>
-                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, fontFamily: R, fontSize: '8.5px', color: MUTED, letterSpacing: '0.03em', lineHeight: 1.5 }}>
-                  <span style={{ color: NEON_T }}>Spotlight</span> = high-confidence leans we feature · <span style={{ color: TEXT }}>All</span> = every model lean
-                </div>
-                {/* Other model records — team picks (ML/RL) + PHLT hitter props, self-graded (BETA, building). */}
-                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${BORDER}`, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {[
-                    { label: '🏆 Team picks (ML / RL)', r: record?.team?.allTime },
-                    { label: 'PHLT hitter props', r: propRec?.overall },
-                  ].map(({ label, r }) => (
-                    <div key={label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.04em', color: MUTED, textTransform: 'uppercase' }}>{label}</span>
-                      <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: TEXT }}>
-                        {fmtRec(r)}{pct(r) && <span style={{ fontSize: '9px', color: MUTED, marginLeft: '4px' }}>{pct(r)}</span>}
-                      </span>
-                    </div>
+              <div style={{ marginTop: '10px', background: '#0d0d0d', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '11px 12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '0.8fr repeat(6, 0.82fr) 1fr', gap: '7px 4px', alignItems: 'start', textAlign: 'center' }}>
+                  <span />
+                  {cols.map((c, i) => (
+                    <div key={i} style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, lineHeight: 1.2, color: c.master ? NEON_T : MUTED }}>{c.key}<br /><span style={{ color: MUTED, fontSize: '8px' }}>{c.sub}</span></div>
                   ))}
-                  <span style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.03em' }}>all-time · self-graded · BETA — builds as games settle</span>
+                  {periods.map(([pk, plabel]) => (
+                    <Fragment key={pk}>
+                      <div style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: MUTED, textAlign: 'left', borderTop: `1px solid ${BORDER}`, paddingTop: '7px' }}>{plabel}</div>
+                      {cols.map((c, i) => {
+                        const r = c.get(pk)
+                        const has = r && (r.w + r.l + r.p) > 0
+                        return (
+                          <div key={i} style={{ borderTop: `1px solid ${c.master ? 'rgba(189,255,0,0.3)' : BORDER}`, paddingTop: '7px' }}>
+                            <div style={{ fontFamily: R, fontSize: c.master ? '13px' : '12px', fontWeight: 700, color: c.master ? NEON : (has ? TEXT : 'rgba(255,255,255,0.22)') }}>{fmtRec(r)}</div>
+                            {pct(r) && <div style={{ fontFamily: R, fontSize: '8.5px', fontWeight: 700, color: MUTED }}>{pct(r)}</div>}
+                          </div>
+                        )
+                      })}
+                    </Fragment>
+                  ))}
                 </div>
+                <div style={{ marginTop: '9px', fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.03em', textAlign: 'center', lineHeight: 1.5 }}>self-graded · BETA — builds as games settle · ML/RL reset at the Jun&nbsp;22 fix</div>
               </div>
             )
           })()}

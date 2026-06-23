@@ -36,10 +36,10 @@ describe('gameProjection', () => {
     home: { offXwoba: LG.XWOBA, starterXera: LG.XERA, bullpenEra: LG.PEN_ERA },
     parkMult: 1, weatherRunsPerSide: 0,
   }
-  it('a fully neutral game projects ~league total, ~0 margin', () => {
+  it('a fully neutral game projects ~league total, and the margin is exactly the home-field edge', () => {
     const p = gameProjection(neutral)
     expect(p.total).toBeCloseTo(LG.TEAM_RUNS * 2, 1)
-    expect(Math.abs(p.margin)).toBeLessThan(0.2)
+    expect(p.margin).toBeCloseTo(LG.HFA_RUNS, 2) // home edge, not a 50/50 coin flip
   })
   it('the ACE is credited to the side he faces, not averaged away (Skenes case)', () => {
     const p = gameProjection({
@@ -53,7 +53,7 @@ describe('gameProjection', () => {
   it('total = awayRuns + homeRuns and margin = homeRuns - awayRuns exactly', () => {
     const p = gameProjection(neutral)
     expect(p.total).toBeCloseTo(p.awayRuns + p.homeRuns, 5)
-    expect(p.margin).toBeCloseTo(p.homeRuns - p.awayRuns, 5)
+    expect(p.margin).toBeCloseTo(p.homeRuns - p.awayRuns + LG.HFA_RUNS, 5) // margin carries the home-field edge
   })
 })
 
@@ -135,11 +135,16 @@ describe('deriveBets', () => {
     expect(b.ml.pick).toBe('AWAY')
     expect(b.ml.winProb).toBeGreaterThan(0.5)
   })
-  it('RL: favorite is the ML side; coverProb is reported for -1.5', () => {
+  it('RL: a thin favorite (1.3 runs) does NOT cover -1.5 → no pick, but coverProb is still reported', () => {
     const b = deriveBets({ proj, marketTotal: 8.5 })
-    expect(b.rl.pick).toBe('AWAY -1.5')
+    expect(b.rl.pick).toBe(null)
     expect(b.rl.coverProb).toBeGreaterThan(0)
-    expect(b.rl.coverProb).toBeLessThan(1)
+    expect(b.rl.coverProb).toBeLessThan(0.52)
+  })
+  it('RL: a thick favorite clears -1.5 → emits the run-line pick', () => {
+    const b = deriveBets({ proj: { awayRuns: 6.0, homeRuns: 3.0, total: 9.0, margin: -3.0 }, marketTotal: 8.5 })
+    expect(b.rl.pick).toBe('AWAY -1.5')
+    expect(b.rl.coverProb).toBeGreaterThan(0.52)
   })
   it('a true pick-em (margin 0) yields no ML edge side (null pick)', () => {
     const b = deriveBets({ proj: { awayRuns: 4.3, homeRuns: 4.3, total: 8.6, margin: 0 }, marketTotal: 8.5 })
