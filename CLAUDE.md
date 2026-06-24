@@ -126,6 +126,7 @@ workflow/
 ## SUPABASE TABLES
 - `bets` — all bet data including ladder_session field
 - `user_settings` — settings including ladder_session_key
+- `deleted_bets` — deletion tombstones (user_id + client_id); read on load so a deleted bet can't resurrect via stale-device merge (S68 sync fix; see `src/lib/reconcileBets.js`)
 - `subscriptions` — Stripe subscription status
 - `push_subscriptions` — web push tokens
 

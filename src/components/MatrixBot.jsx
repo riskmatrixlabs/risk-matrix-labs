@@ -17,7 +17,7 @@ import { getScan, putScan } from '../lib/scanCache.js'
 import { kellyStake } from '../lib/kelly.js'
 import { legFromRow, pickShareText, boardShareText } from '../lib/botSlip.js'
 import { labelFor, PROP_MARKETS } from '../lib/propMarkets.js'
-import { LineShop } from './LiveCenter.jsx'
+import { LineShop, getLeanGames, GradedFlag, TeamGradedFlags, LiveResultChip } from './LiveCenter.jsx'
 import { BookMoveChart } from './BookMoveChart.jsx'
 import CallChips from './CallChips.jsx'
 import OddsGrid from './OddsGrid.jsx'
@@ -757,6 +757,7 @@ function LookFrame({ onBack, children }) {
 // Matchup header for CH2 — logos, records, status/score, MLB pitchers (FREE via ESPN game-info).
 function GameCard({ game, sport, token, onAddToSlip }) {
   const [info, setInfo] = useState(null)
+  const [graded, setGraded] = useState(null)
   useEffect(() => {
     if (!game?.away || !game?.home || !token) { setInfo(null); return }
     let live = true
@@ -766,6 +767,14 @@ function GameCard({ game, sport, token, onAddToSlip }) {
       .catch(() => {})
     return () => { live = false }
   }, [game?.away, game?.home, sport, token])
+  // Graded model results (O/U + ML/RL) keyed by external_event_id — same source the Game Center
+  // OuFlag uses, so a final card checks off ✓HIT/✗MISS for every call it made.
+  useEffect(() => {
+    if (!token || !game?.external_event_id) { setGraded(null); return }
+    let cancel = false
+    getLeanGames(token).then(g => { if (!cancel) setGraded(g[String(game.external_event_id)] || null) })
+    return () => { cancel = true }
+  }, [game?.external_event_id, token])
 
   const col = (t, fbAbbr) => (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: 0 }}>
@@ -783,6 +792,12 @@ function GameCard({ game, sport, token, onAddToSlip }) {
   const ouLabel = ou ? (ou.lean === 'OVER' ? '📈 LEANS OVER' : ou.lean === 'UNDER' ? '📉 LEANS UNDER' : '➖ COIN FLIP')
     + (t?.current != null ? ` vs ${t.current}` : '') : null
   const moveArrow = t && t.dir > 0 ? '▲' : t && t.dir < 0 ? '▼' : null
+  // Grading state — mirrors LiveCenter's OuFlag. Final & graded → lean→final→result; live & ungraded
+  // → running total vs the locked line.
+  const isGraded = !!graded?.result
+  const evForGrade = { away_abbr: game.away_abbr || up(game.away), home_abbr: game.home_abbr || up(game.home) }
+  const liveTotal = (isLive && info?.away?.score != null && info?.home?.score != null) ? Number(info.away.score) + Number(info.home.score) : null
+  const liveLine = graded?.line ?? t?.current ?? null
   return (
     <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -797,32 +812,52 @@ function GameCard({ game, sport, token, onAddToSlip }) {
       </div>
       {/* Free pre-game odds board — Game-Center-style buttons (Run Line · Total · ML), tap to add. $0. */}
       <OddsGrid game={game} total={info?.ou?.total?.current} onAddToSlip={onAddToSlip} token={token} />
+      {/* Finished & graded but the live model no longer returns a lean → grade-only chip from the
+          locked snapshot, so the card still shows how every call did. */}
+      {!ou && isGraded && (
+        <div style={{ marginTop: '11px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${BORDER}`, background: 'transparent' }}>
+          <GradedFlag g={graded} size={11} />
+          <TeamGradedFlags g={graded} event={evForGrade} />
+        </div>
+      )}
       {ou && (
-        <div style={{ marginTop: '11px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${ou.strong ? NEON : BORDER}`, background: ou.strong ? 'rgba(189,255,0,0.07)' : 'transparent' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-            <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>{ouLabel}</span>
-            <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ou.reason}</span>
-          </div>
-          {/* anchored extras: since-open move on the number + value/late verdict */}
-          {(moveArrow || ou.edge) && (
-            <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              {moveArrow && t?.open != null && (
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>
-                  total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : DANGER }}>{moveArrow} since open</span>
-                </span>
+        <div style={{ marginTop: '11px', padding: '9px 11px', borderRadius: '10px', border: `1px solid ${ou.strong && !isGraded ? NEON : BORDER}`, background: ou.strong && !isGraded ? 'rgba(189,255,0,0.07)' : 'transparent' }}>
+          {isGraded ? (
+            <>
+              <GradedFlag g={graded} size={11} />
+              <TeamGradedFlags g={graded} event={evForGrade} />
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: ou.strong ? NEON_T : MUTED, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>{ouLabel}</span>
+                {/* Live, not yet graded → check the lean off in real time (running total vs the line). */}
+                {liveTotal != null && ou.lean !== 'LEAN'
+                  ? <LiveResultChip lean={ou.lean} line={liveLine} total={liveTotal} size={10} />
+                  : <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ou.reason}</span>}
+              </div>
+              {/* anchored extras: since-open move on the number + value/late verdict */}
+              {(moveArrow || ou.edge) && (
+                <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {moveArrow && t?.open != null && (
+                    <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>
+                      total <span style={{ color: TEXT }}>{t.open}→{t.current}</span> <span style={{ color: t.dir > 0 ? NEON_T : DANGER }}>{moveArrow} since open</span>
+                    </span>
+                  )}
+                  {ou.edge && (
+                    <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : DANGER, letterSpacing: '0.03em' }}>{ou.edge}</span>
+                  )}
+                </div>
               )}
-              {ou.edge && (
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: ou.edge.startsWith('value') ? NEON_T : DANGER, letterSpacing: '0.03em' }}>{ou.edge}</span>
+              {/* Tap-to-add call chips — total + any ML/RL — same as Spotlight, so you can add from the card. */}
+              {onAddToSlip && (
+                <CallChips
+                  game={{ away_team: game.away, home_team: game.home, away_abbr: game.away_abbr || up(game.away), home_abbr: game.home_abbr || up(game.home) }}
+                  ou={ou} onAddToSlip={onAddToSlip} token={token}
+                  style={{ marginTop: '8px', display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%' }}
+                />
               )}
-            </div>
-          )}
-          {/* Tap-to-add call chips — total + any ML/RL — same as Spotlight, so you can add from the card. */}
-          {onAddToSlip && (
-            <CallChips
-              game={{ away_team: game.away, home_team: game.home, away_abbr: game.away_abbr || up(game.away), home_abbr: game.home_abbr || up(game.home) }}
-              ou={ou} onAddToSlip={onAddToSlip} token={token}
-              style={{ marginTop: '8px', display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%' }}
-            />
+            </>
           )}
         </div>
       )}

@@ -1,4 +1,4 @@
-const CACHE = 'rml-v503';
+const CACHE = 'rml-v504';
 const PRECACHE = [
   '/',
   '/manifest.json',

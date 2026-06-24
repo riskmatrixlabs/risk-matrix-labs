@@ -127,7 +127,7 @@ function FormTab({ awayAbbr, homeAbbr, awayL5, homeL5 }) {
 // Graded model leans (one shared fetch for all flags). Maps external_event_id → {lean,line,result,finalTotal}
 // for today+yesterday so each flag can show ✓HIT/✗MISS once its game is final & graded.
 let _leanGamesPromise = null
-function getLeanGames(token) {
+export function getLeanGames(token) {
   if (!_leanGamesPromise) {
     _leanGamesPromise = fetch('/api/lean-record', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null).then(j => j?.games || {}).catch(() => ({}))
@@ -139,7 +139,7 @@ function getLeanGames(token) {
 // → the final total → hit or miss. Uses graded.line, never the live line, so a game that moved
 // post-lock (lean shown at 8.5, line now 9.5) can't look like a contradiction. The "why" is dropped
 // once a game is final — the result speaks for itself.
-function GradedFlag({ g, size = 10 }) {
+export function GradedFlag({ g, size = 10 }) {
   if (!g?.result) return null
   const arrow = g.lean === 'OVER' ? '📈' : g.lean === 'UNDER' ? '📉' : '➖'
   const side  = g.lean === 'OVER' ? 'Over' : g.lean === 'UNDER' ? 'Under' : 'Lean'
@@ -156,7 +156,7 @@ function GradedFlag({ g, size = 10 }) {
 
 // Team calls (ML / Run Line) graded — so a FINISHED game shows the result of EVERY call the card made,
 // not just the total. Reads g.ml / g.rl from the lean-record games map ({pick, result}).
-function TeamGradedFlags({ g, event }) {
+export function TeamGradedFlags({ g, event }) {
   const abbrOf = (side) => side === 'HOME' ? (event?.home_abbr || 'HOME') : side === 'AWAY' ? (event?.away_abbr || 'AWAY') : side
   const rows = []
   for (const [m, suffix] of [['ml', 'ML'], ['rl', '-1.5']]) {
@@ -190,7 +190,7 @@ const BetaTag = ({ size = 7 }) => (
 
 // Live result chip — running total vs the lean line, so the card checks itself off as the game goes,
 // same as the Spotlight panel (green ✓ once an Over cashes, red ✗ once an Under busts, amber ● alive).
-function LiveResultChip({ lean, line, total, size = 9 }) {
+export function LiveResultChip({ lean, line, total, size = 9 }) {
   if (line == null || total == null) return null
   const won = lean === 'OVER' && total > line
   const lost = lean === 'UNDER' && total >= line

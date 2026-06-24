@@ -72,6 +72,20 @@ export const syncAllBets = (bets, userId, token) =>
     { onConflict: 'client_id,user_id' }
   )
 
+// Deletion tombstones — record client_ids that were deleted so no device (this one or
+// another) can resurrect them by merging stale localStorage on the next load.
+export const fetchDeletedBetIds = (userId, token) =>
+  authedClient(token).from('deleted_bets').select('client_id').eq('user_id', userId)
+
+export const tombstoneBets = (clientIds, userId, token) => {
+  const ids = (clientIds || []).map(String).filter(Boolean)
+  if (!ids.length) return Promise.resolve({ error: null })
+  return authedClient(token).from('deleted_bets').upsert(
+    ids.map(id => ({ user_id: userId, client_id: id })),
+    { onConflict: 'user_id,client_id' }
+  )
+}
+
 // Settings / session state
 export const fetchSettings = (userId, token) =>
   authedClient(token).from('user_settings').select('*').eq('user_id', userId).single()

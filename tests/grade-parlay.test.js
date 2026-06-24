@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gradeParlay, combineAmericanOdds } from '../src/lib/gradeParlay.js'
+import { gradeParlay, combineAmericanOdds, manualParlayWinOdds } from '../src/lib/gradeParlay.js'
 
 const EV = {
   external_event_id: '401815842', sport: 'MLB', status: 'FT',
@@ -56,5 +56,41 @@ describe('gradeParlay', () => {
       { pick: 'Over 5', odds: -110, event: 'Nonexistent vs Matchup', sport: 'MLB' },
     ]), [EV])
     expect(r.result).toBeNull()
+  })
+})
+
+describe('manualParlayWinOdds (push-aware manual settle)', () => {
+  const ticket = combineAmericanOdds([-115, -181]) // both legs in the ticket
+
+  it('no leg pushed → combined survivor odds (= full ticket)', () => {
+    expect(manualParlayWinOdds(
+      [{ odds: -115 }, { odds: -181 }], ticket,
+    )).toBe(combineAmericanOdds([-115, -181]))
+  })
+
+  it('one leg pushed → pays the surviving leg odds, not the full ticket', () => {
+    const odds = manualParlayWinOdds(
+      [{ odds: -115, pushed: true }, { odds: -181 }], ticket,
+    )
+    expect(odds).toBe(-181)
+    expect(odds).not.toBe(ticket) // the bug: it used to pay full ticket
+  })
+
+  it('all legs pushed → null (caller treats as PUSH, $0)', () => {
+    expect(manualParlayWinOdds(
+      [{ odds: -115, pushed: true }, { odds: -181, pushed: true }], ticket,
+    )).toBeNull()
+  })
+
+  it('survivors missing per-leg prices → falls back to the entered ticket odds', () => {
+    expect(manualParlayWinOdds(
+      [{ odds: 0, pushed: true }, { odds: 0 }, { odds: 0 }], -110,
+    )).toBe(-110)
+  })
+
+  it('3-leg ticket, one pushed → combined odds of the two survivors', () => {
+    expect(manualParlayWinOdds(
+      [{ odds: -110 }, { odds: 150, pushed: true }, { odds: -120 }], 600,
+    )).toBe(combineAmericanOdds([-110, -120]))
   })
 })

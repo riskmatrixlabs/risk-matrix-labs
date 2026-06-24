@@ -20,13 +20,15 @@ import { useMobile } from './hooks/useMobile'
 import {
   supabase, signOut,
   fetchBets, syncAllBets, upsertBet, deleteBet as dbDeleteBet, deleteAllBets,
+  fetchDeletedBetIds, tombstoneBets,
   fetchSettings, upsertSettings,
   fetchTemplates, upsertTemplate, deleteTemplate as dbDeleteTemplate,
   rowToBet, betToRow,
 } from './lib/supabase'
+import { reconcileBets } from './lib/reconcileBets.js'
 import { matchBetToEvent, findEventForBet } from './lib/betMatch.js'
 import { gradeBetResult } from './lib/gradeBetResult.js'
-import { gradeParlay } from './lib/gradeParlay.js'
+import { gradeParlay, manualParlayWinOdds } from './lib/gradeParlay.js'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine, LineChart, Line,
@@ -452,7 +454,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
   const { isMobile } = useMobile()
   const [form, setForm] = useState(initial
     ? { ...initial, odds: String(initial.odds), units: String(initial.units), stake: String(initial.stake),
-        legs: Array.isArray(initial.legs) ? initial.legs.map(l => ({ event: l.event || '', pick: l.pick || '', odds: l.odds == null ? '' : String(l.odds) })) : [] }
+        legs: Array.isArray(initial.legs) ? initial.legs.map(l => ({ event: l.event || '', pick: l.pick || '', odds: l.odds == null ? '' : String(l.odds), pushed: !!l.pushed })) : [] }
     : { ...EMPTY, date: new Date().toISOString().slice(0, 10) }
   )
   const isEdit = !!initial?.id
@@ -472,7 +474,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
     legs: isMultiLegType(t) && (!p.legs || p.legs.length === 0) ? [{ event: '', pick: '', odds: '' }, { event: '', pick: '', odds: '' }] : p.legs,
   }))
   const cleanLegs = () => legs
-    .map(l => ({ event: (l.event || '').trim(), pick: (l.pick || '').trim(), odds: parseInt(String(l.odds).replace(/[−–—]/g, '-').replace(/[^0-9-]/g, '')) || 0 }))
+    .map(l => ({ event: (l.event || '').trim(), pick: (l.pick || '').trim(), odds: parseInt(String(l.odds).replace(/[−–—]/g, '-').replace(/[^0-9-]/g, '')) || 0, pushed: !!l.pushed }))
     .filter(l => l.pick || l.event)
 
   // Bidirectional: units ↔ stake
@@ -512,12 +514,19 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
       return profit
     }
     const u = effectiveUnits
-    const win  = odds > 0 ? u * odds / 100 : u * 100 / Math.abs(odds)
-    const loss = u
-    if (form.result === 'W') return win
-    if (form.result === 'L') return -loss
+    if (form.result === 'L') return -u
     if (form.result === 'P') return 0
-    return win
+    // WIN — for a parlay, drop any leg the operator marked PUSH and recompute the
+    // payout from the surviving legs' odds (same push-reduction as auto-settle).
+    // A leg with its own price is required to reduce; otherwise we pay full ticket.
+    let payoutOdds = odds
+    if (multiLeg) {
+      const reduced = manualParlayWinOdds(legs, odds)
+      if (reduced === null) return 0          // all legs pushed → push ($0)
+      payoutOdds = reduced
+    }
+    // Falls through here for both 'W' and 'Open' (preview) — same potential payout.
+    return payoutOdds > 0 ? u * payoutOdds / 100 : u * 100 / Math.abs(payoutOdds)
   }
 
   const submit = (e) => {
@@ -533,7 +542,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
       ...form,
       event: eventOut,
       pick:  pickOut,
-      legs:  multiLeg ? cl.map(l => ({ pick: l.pick, odds: l.odds, event: l.event || null, sport: form.sport, book: form.book || null })) : null,
+      legs:  multiLeg ? cl.map(l => ({ pick: l.pick, odds: l.odds, event: l.event || null, sport: form.sport, book: form.book || null, pushed: !!l.pushed })) : null,
       odds,
       units: +effectiveUnits.toFixed(2),
       stake: +effectiveStake.toFixed(2),
@@ -726,10 +735,23 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
                 {legs.map((leg, i) => (
                   <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED }}>LEG {i + 1}</span>
-                      {legs.length > 2 && (
-                        <button type="button" onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, fontFamily: R, fontSize: '14px', lineHeight: 1, cursor: 'pointer', padding: '0 2px' }}>×</button>
-                      )}
+                      <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: leg.pushed ? NEON_T : MUTED }}>LEG {i + 1}{leg.pushed ? ' · PUSH' : ''}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* PUSH toggle — only meaningful on a WON ticket; marks this leg as a
+                            push so its odds drop out of the payout (reduced-odds win). */}
+                        {form.result === 'W' && (
+                          <button type="button" onClick={() => setLeg(i, 'pushed', !leg.pushed)} style={{
+                            background: leg.pushed ? `${NEON}22` : 'var(--card2)',
+                            border: `1px solid ${leg.pushed ? NEON : 'var(--border2)'}`,
+                            borderRadius: '6px', color: leg.pushed ? NEON_T : MUTED,
+                            fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.1em',
+                            padding: '4px 8px', cursor: 'pointer',
+                          }}>PUSH</button>
+                        )}
+                        {legs.length > 2 && (
+                          <button type="button" onClick={() => removeLeg(i)} style={{ background: 'none', border: 'none', color: RED, fontFamily: R, fontSize: '14px', lineHeight: 1, cursor: 'pointer', padding: '0 2px' }}>×</button>
+                        )}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input value={leg.pick} onChange={e => setLeg(i, 'pick', e.target.value)} placeholder="Pick  ·  Over 8.5"
@@ -743,7 +765,7 @@ function AddBetModal({ onAdd, onClose, unitSize, initial, onDelete, token }) {
                 ))}
               </div>
               <button type="button" onClick={addLeg} style={{ marginTop: '10px', width: '100%', background: 'var(--card2)', border: `1px dashed var(--border2)`, borderRadius: '10px', color: NEON_T, fontFamily: R, fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', padding: '10px', cursor: 'pointer' }}>+ ADD LEG</button>
-              <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.04em', marginTop: '8px', lineHeight: 1.5 }}>Enter the combined ticket price in <b style={{ color: NEON_T }}>ODDS</b> above. Each leg's own price is optional.</div>
+              <div style={{ fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.04em', marginTop: '8px', lineHeight: 1.5 }}>Enter the combined ticket price in <b style={{ color: NEON_T }}>ODDS</b> above. On a <b style={{ color: NEON_T }}>WIN</b>, tag any pushed leg <b style={{ color: NEON_T }}>PUSH</b> — its price drops out and the payout recomputes from the surviving legs (per-leg odds required to reduce).</div>
             </div>
           )}
 
@@ -2593,11 +2615,14 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           { data: betRows,  error: betErr  },
           { data: settings, error: settErr },
           { data: tmplRows },
+          { data: tombRows },
         ] = await Promise.all([
           fetchBets(userId, token),
           fetchSettings(userId, token),
           fetchTemplates(userId, token),
+          fetchDeletedBetIds(userId, token),
         ])
+        const tombstoneIds = (tombRows || []).map(r => r.client_id)
 
         const localSave = loadSession(userId)
         const localBets = localSave?.bets || []
@@ -2615,20 +2640,27 @@ export default function App({ user, session, subStatus, isDemo = false }) {
           }
         } else if (betRows?.length > 0) {
           const cloudBets = betRows.map(rowToBet)
-          // Merge: add any localStorage bets not present in cloud (by id)
-          const cloudIds = new Set(cloudBets.map(b => String(b.id)))
-          const orphans  = localBets.filter(b => !cloudIds.has(String(b.id)))
-          const merged   = [...cloudBets, ...orphans]
+          // Delete-aware merge: keep genuine offline-only local bets, but DROP any local bet
+          // that was deleted elsewhere (tombstoned) so it can't resurrect + re-upload. See
+          // src/lib/reconcileBets.js for the bug this guards against.
+          const { bets: merged, orphans } = reconcileBets(cloudBets, localBets, tombstoneIds)
           if (orphans.length > 0) {
             console.log('[RML] merged', orphans.length, 'local-only bets into cloud data — will up-sync')
           }
+          if (tombstoneIds.length > 0) {
+            console.log('[RML] tombstones active:', tombstoneIds.length, '— stale deleted bets suppressed')
+          }
           setBets(merged)
         } else {
-          // Cloud empty — check localStorage before deciding anything
-          if (localBets.length > 0) {
-            // User had data locally (e.g. session expired mid-session) — restore it
-            setBets(localBets)
-            console.log('[RML] restored bets from localStorage (cloud was empty):', localBets.length)
+          // Cloud empty — check localStorage before deciding anything. Still honour tombstones:
+          // a full reset leaves the cloud empty, so blindly restoring local would resurrect
+          // every just-deleted bet (the "reset doesn't stick" bug).
+          const { bets: restorable } = reconcileBets([], localBets, tombstoneIds)
+          if (restorable.length > 0) {
+            // User had genuine local-only data (e.g. session expired mid-session) — restore it
+            setBets(restorable)
+            console.log('[RML] restored bets from localStorage (cloud was empty):', restorable.length,
+              tombstoneIds.length ? `(suppressed ${localBets.length - restorable.length} tombstoned)` : '')
           } else {
             // No bets anywhere — candidate for onboarding, but only if they have NO cloud
             // settings either (decided after settings load below).
@@ -2872,6 +2904,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         return false   // keep it in local so the UI matches the cloud
       }
       setSyncError(null)
+      // Record a tombstone so no device can resurrect this bet by merging stale localStorage.
+      tombstoneBets([String(id)], userId, tokenRef.current).catch(() => {})
       setBets(b => b.filter(x => x.id !== id))
       // re-enable outbound sync after the setBets-triggered effect has cancelled the stale timer
       setTimeout(() => { syncSuspendedRef.current = false }, 100)
@@ -2887,12 +2921,15 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     syncSuspendedRef.current = true                      // block any in-flight stale upsert BEFORE we delete
     if (userId && cloudSyncedRef.current) {
       realtimeIgnoreUntil.current = Date.now() + 10000   // ignore the delete echo while we reset
+      const idsToTombstone = bets.map(b => String(b.id)) // capture before we wipe local state
       const { error } = await deleteAllBets(userId, tokenRef.current)
       if (error) {
         syncSuspendedRef.current = false
         setSyncError(`Reset failed: ${error.message || error.code || 'unknown'}. Nothing was cleared — try again.`)
         return   // abort: don't wipe local while the cloud still has the data (it would resurrect)
       }
+      // Tombstone every cleared bet so no other device can resurrect them on its next load.
+      await tombstoneBets(idsToTombstone, userId, tokenRef.current).catch(() => {})
       setSyncError(null)
     }
     localStorage.removeItem(LS_KEY)
@@ -2906,7 +2943,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     setLadderStarting(LADDER_STARTING_BR)
     setRiskSettings({ maxRiskPerBetPct: 3, maxRiskTodayPct: 10, stopLossPct: 10, profitLockPct: 20, unitPct: 2 })
     // the settings auto-sync (debounced) pushes bankroll=0 etc. to the cloud right after this.
-  }, [userId, token])
+  }, [userId, token, bets])
 
   // Bets-only reset — clears tracked bets but KEEPS bankroll/settings ("New Bankroll, keep history").
   // Same sync-suppression guard as resetSession so the cloud copy can't resurrect the deleted bets.
@@ -2915,18 +2952,20 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     syncSuspendedRef.current = true
     if (userId && cloudSyncedRef.current) {
       realtimeIgnoreUntil.current = Date.now() + 10000
+      const idsToTombstone = bets.map(b => String(b.id)) // capture before wiping local state
       const { error } = await deleteAllBets(userId, tokenRef.current)
       if (error) {
         syncSuspendedRef.current = false
         setSyncError(`Reset failed: ${error.message || error.code || 'unknown'}. Nothing was cleared — try again.`)
         return false
       }
+      await tombstoneBets(idsToTombstone, userId, tokenRef.current).catch(() => {})
       setSyncError(null)
     }
     setBets([])   // local session auto-save persists empty bets but keeps bankroll/settings
     setTimeout(() => { syncSuspendedRef.current = false }, 100)
     return true
-  }, [userId, token])
+  }, [userId, token, bets])
 
   // ── Save template ──
   const saveTemplate = useCallback(() => {
