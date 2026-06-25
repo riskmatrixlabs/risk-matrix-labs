@@ -361,6 +361,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
   const [events, setEvents]   = useState([])
   const [feed, setFeed]       = useState({ status: 'idle', edges: [], scanned: 0, credits: null })
   const [props, setProps]     = useState(null)
+  const [propCooling, setPropCooling] = useState(false)   // anti-mash cooldown on the manual paid pull
   const [err, setErr]         = useState('')
   const [view, setView]       = useState(initialView) // tv | board (board = via Analyze Bet door)
   const [sportF, setSportF]   = useState('ALL')       // filters replace tabs (toggled by the gear)
@@ -555,8 +556,22 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
           {(props.edges || []).length === 0 && (
             <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>No cached props for today's slate yet</span>
           )}
-          <button onClick={() => token && scanProps()} disabled={!token} title="Pulls live props from the paid odds feed — spends credits"
-            style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: NEON_T, background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '6px', padding: '5px 11px', cursor: token ? 'pointer' : 'not-allowed' }}>↻ Pull props · uses credits</button>
+          {(() => {
+            const busy = props?.status === 'scanning'
+            const disabled = !token || busy || propCooling
+            const onPull = () => {
+              if (disabled) return
+              setPropCooling(true); setTimeout(() => setPropCooling(false), 30000)  // 30s anti-mash
+              scanProps()   // force=false → respects the 90-min shared cache, so this only spends on STALE games
+            }
+            return (
+              <button onClick={onPull} disabled={disabled}
+                title="Refreshes props from the paid feed — only spends on games whose cached line is stale (cache is shared + auto-warmed)"
+                style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: disabled ? MUTED : NEON_T, background: disabled ? 'transparent' : 'rgba(189,255,0,0.06)', border: `1px solid ${disabled ? 'var(--border2)' : 'rgba(189,255,0,0.35)'}`, borderRadius: '6px', padding: '5px 11px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+                {busy ? '↻ Pulling…' : propCooling ? '✓ Just pulled · cached' : '↻ Refresh props'}
+              </button>
+            )
+          })()}
         </div>
       )}
 
