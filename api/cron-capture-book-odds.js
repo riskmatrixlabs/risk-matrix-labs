@@ -45,14 +45,16 @@ export default async function handler(req, res) {
   const provider = getProvider()
   const snapshots = []
   let creditsRemaining = null
+  const errors = []          // paid-fetch failures, surfaced so the run can't fail silently
+  let sportsOk = 0
 
   for (const [sport, evs] of Object.entries(bySport)) {
     if (!SPORT_KEYS[sport]) continue
     let games
     try {
       const r = await provider.fetchOdds({ sport, markets: ['h2h'], regions: ['us', 'us2', 'eu'] })
-      games = r.games; creditsRemaining = r.credits?.remaining ?? creditsRemaining
-    } catch (e) { console.warn(`capture ${sport} failed:`, e.message); continue }
+      games = r.games; creditsRemaining = r.credits?.remaining ?? creditsRemaining; sportsOk++
+    } catch (e) { console.warn(`capture ${sport} failed:`, e.message); errors.push({ sport, error: e.message }); continue }
 
     for (const ev of evs) {
       const g = games.find(x => lastWord(x.home_team) === lastWord(ev.home_team) && lastWord(x.away_team) === lastWord(ev.away_team))
@@ -73,5 +75,19 @@ export default async function handler(req, res) {
     const { error: insErr } = await supabase.from('odds_history').insert(snapshots)
     if (insErr) return res.status(500).json({ error: insErr.message, attempted: snapshots.length })
   }
-  return res.status(200).json({ captured: snapshots.length, games: events.length, creditsRemaining })
+
+  const LOW_CREDIT = 500
+  const lowCredit = creditsRemaining != null && creditsRemaining < LOW_CREDIT
+  if (lowCredit) console.warn(`[cron-capture-book-odds] LOW CREDITS: ${creditsRemaining} remaining`)
+
+  // FAIL LOUDLY: a non-empty slate that captured nothing because every paid fetch errored
+  // (bad ODDS_API_KEY / no credits / provider down) must NOT return 200 — that silent
+  // captured:0 is exactly how this rotted 4 days unnoticed. A benign "no book matched" zero
+  // (sportsOk > 0, no errors) still returns 200.
+  if (snapshots.length === 0 && errors.length > 0 && sportsOk === 0) {
+    console.error('[cron-capture-book-odds] ALL paid fetches failed:', JSON.stringify(errors))
+    return res.status(502).json({ captured: 0, sportsAttempted: Object.keys(bySport).length, sportsOk, errors, creditsRemaining, lowCredit, alert: 'odds capture failed for all sports — check ODDS_API_KEY / credits' })
+  }
+
+  return res.status(200).json({ captured: snapshots.length, games: events.length, sportsOk, errors: errors.length ? errors : undefined, creditsRemaining, lowCredit })
 }

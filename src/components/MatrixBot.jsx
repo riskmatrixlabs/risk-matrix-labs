@@ -424,20 +424,22 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
   // NO auto-refresh — scanning costs Odds-API credits, so it only runs when the user taps
   // RUN SCAN / REFRESH. (Was a 2-min force-refetch across all sports = a constant credit drain.)
 
-  // Selecting PROPS in the gear IS the trigger — scan props once when it's first chosen.
+  // Selecting PROPS auto-loads from CACHE ONLY (0 credits) — a paid pull is tap-only (the
+  // "Pull props · uses credits" button). Auto-spending per-game on a cold cache was a leak.
   useEffect(() => {
-    if (marketF === 'props' && token && preGames.length && props == null) scanProps()
+    if (marketF === 'props' && token && preGames.length && props == null) scanProps({ cacheOnly: true })
   }, [marketF, token, preGames.length])
 
-  // Props are per-game (one call each) — pulled on tap, merged into the same feed.
-  async function scanProps() {
+  // Props are per-game (one call each). cacheOnly=true → reads the warm cache for FREE (auto-load);
+  // cacheOnly=false → explicit paid refresh that spends Odds-API credits.
+  async function scanProps({ cacheOnly = false } = {}) {
     if (!token || props?.status === 'scanning' || !preGames.length) return
     setProps({ status: 'scanning', edges: [], scanned: 0 })
     const all = []
     let scanned = 0
     for (const ev of preGames) {
       try {
-        const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(ev._sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}`, { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch(`/api/scan-props?sport=${encodeURIComponent(ev._sport)}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${cacheOnly ? '&cacheOnly=1' : ''}`, { headers: { Authorization: `Bearer ${token}` } })
         if (res.ok) {
           const j = await res.json()
           if (j?.found) {
@@ -548,8 +550,14 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
       {marketF === 'props' && props?.status === 'scanning' && (
         <div style={{ textAlign: 'center', padding: '6px', marginBottom: '8px', fontFamily: 'Courier New, monospace', fontSize: '11px', color: 'rgba(189,255,0,0.6)' }}>SCANNING PROPS… {props.scanned}/{preGames.length}</div>
       )}
-      {marketF === 'props' && props?.status === 'done' && (props.edges || []).length === 0 && (
-        <div style={{ textAlign: 'center', padding: '6px', marginBottom: '8px', fontFamily: R, fontSize: '10px', color: MUTED }}>No props for today's slate · try after lineups post</div>
+      {marketF === 'props' && props?.status === 'done' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', padding: '6px', marginBottom: '8px' }}>
+          {(props.edges || []).length === 0 && (
+            <span style={{ fontFamily: R, fontSize: '10px', color: MUTED }}>No cached props for today's slate yet</span>
+          )}
+          <button onClick={() => token && scanProps()} disabled={!token} title="Pulls live props from the paid odds feed — spends credits"
+            style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: NEON_T, background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '6px', padding: '5px 11px', cursor: token ? 'pointer' : 'not-allowed' }}>↻ Pull props · uses credits</button>
+        </div>
       )}
 
       {view === 'board' && (
