@@ -23,3 +23,9 @@ alter table public.scan_locks        enable row level security;
 -- No policies created on purpose: service_role bypasses RLS, anon/auth get nothing.
 revoke all on public.odds_credit_state from anon, authenticated;
 revoke all on public.scan_locks        from anon, authenticated;
+
+-- REQUIRED: new public tables do NOT auto-grant service_role — without this the server's
+-- service-role client gets "permission denied" and the breaker/lock writes fail SILENTLY
+-- (supabase-js .upsert returns {error}, it does not throw). See memory rml-supabase-grants-gotcha.
+grant select, insert, update, delete on public.odds_credit_state to service_role;
+grant select, insert, update, delete on public.scan_locks        to service_role;

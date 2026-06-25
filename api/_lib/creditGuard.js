@@ -34,12 +34,16 @@ export async function recordCredits(supabase, remaining) {
   const db = supabase || client()
   if (!db) return
   try {
-    await db.from('odds_credit_state').upsert(
+    // supabase-js does NOT throw on a failed write — it returns { error }. Check it explicitly,
+    // otherwise a permission/constraint failure is swallowed silently (it was: a missing
+    // service_role grant left the breaker frozen on its seed value — see migration + grants memory).
+    const { error } = await db.from('odds_credit_state').upsert(
       { id: true, remaining, updated_at: new Date().toISOString() },
       { onConflict: 'id' }
     )
+    if (error) console.error('recordCredits write failed:', error.message)
   } catch (e) {
-    console.error('recordCredits failed:', e?.message || e)
+    console.error('recordCredits threw:', e?.message || e)
   }
 }
 
