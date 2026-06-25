@@ -265,47 +265,6 @@ function PlayerSearch({ token, onSelect, onClose }) {
 // Mirrors the Spotlight panel's prop-record fetch (free DB read, no Odds-API credits) and surfaces
 // the headline number — all-time W/L (with win%, pushes excluded) + today's running line — right at
 // the top of the Matrix Bot. BETA, honest, brand-styled. Renders nothing until there's a graded row.
-function PhltRecordBar({ token }) {
-  const [rec, setRec] = useState(null)
-  useEffect(() => {
-    if (!token) return
-    let cancel = false
-    fetch('/api/prop-record', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(j => { if (!cancel && j) setRec(j) })
-      .catch(() => {})
-    return () => { cancel = true }
-  }, [token])
-
-  const all = rec?.overall
-  const today = rec?.today
-  if (!all || all.n <= 0) return null   // nothing graded yet → stay invisible, never show "0-0"
-
-  const fmt = (r) => r && (r.w + r.l + r.p) > 0 ? `${r.w}-${r.l}${r.p ? `-${r.p}` : ''}` : '—'
-  const todayHas = today && (today.w + today.l + today.p) > 0
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', padding: '7px 12px', border: `1px solid rgba(189,255,0,0.25)`, borderRadius: '10px', background: 'rgba(189,255,0,0.04)' }}>
-      <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', flexShrink: 0 }}>⬡ PHLT Record</span>
-      <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px', flexShrink: 0 }}>BETA</span>
-      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '5px' }}>
-        <span style={{ fontFamily: R, fontSize: '14px', fontWeight: 700, color: TEXT }}>{fmt(all)}</span>
-        {all.winPct != null && (all.w + all.l) >= 3 && (
-          <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>{all.winPct}%</span>
-        )}
-        <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>all-time</span>
-      </span>
-      {todayHas && (
-        <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '5px', paddingLeft: '8px', borderLeft: `1px solid ${BORDER}` }}>
-          <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: TEXT }}>{fmt(today)}</span>
-          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.08em', color: MUTED, textTransform: 'uppercase' }}>today</span>
-        </span>
-      )}
-      <span style={{ marginLeft: 'auto', fontFamily: R, fontSize: '8px', color: MUTED, letterSpacing: '0.03em', flexShrink: 0 }}>self-graded · builds as games settle</span>
-    </div>
-  )
-}
-
 export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token = null, unitSize = 0, bankroll = 0, initialView = 'tv', sportFilter = 'ALL', resultFilter = 'ALL', setSportFilter, setResultFilter, goToBetLog, onResetBets, isDemo = false, ladderSessionKey = null, onOpenRecord }) {
   const [channel, setChannel] = useState('find')   // find | look | track
   const [sport, setSport]     = useState('MLB')
@@ -320,10 +279,6 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
       {/* ⬡ Spotlight — unified across pillars; tap a signal → CH2 LOOK for that game */}
       <div style={{ marginBottom: '12px' }}>
         <SpotlightTicker token={token} onAddToSlip={onAddToSlip} onOpen={ev => tuneTo({ away: ev.away_team, home: ev.home_team, away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, away_logo: ev.away_logo, home_logo: ev.home_logo, sport: 'MLB', external_event_id: ev.external_event_id, commenceTime: ev.start_time })} onOpenRecord={onOpenRecord} />
-      </div>
-      {/* ⬡ PHLT hitter-prop model record — compact top-bar readout (free DB read) */}
-      <div style={{ marginBottom: '12px' }}>
-        <PhltRecordBar token={token} />
       </div>
       {/* channel dial */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
