@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
 import { getProvider } from './_lib/oddsProviders/index.js'
 import { SPORT_KEYS } from './_lib/oddsProviders/theOddsApi.js'
+import { creditFloorBlocked, recordCredits, getKnownCredits } from './_lib/creditGuard.js'
 
 export const config = { maxDuration: 30 }
 
@@ -25,6 +26,13 @@ function db() {
 
 export default async function handler(req, res) {
   const supabase = db()
+
+  // Hard credit floor — never capture when the known balance is below the shared floor.
+  if (await creditFloorBlocked(supabase)) {
+    const { remaining } = await getKnownCredits(supabase)
+    return res.status(200).json({ skipped: 'low credits', remaining })
+  }
+
   const nowMs = Date.now()
   const nowIso = new Date(nowMs).toISOString()
   const tilIso = new Date(nowMs + WINDOW_MS).toISOString()
@@ -54,6 +62,7 @@ export default async function handler(req, res) {
     try {
       const r = await provider.fetchOdds({ sport, markets: ['h2h'], regions: ['us', 'us2', 'eu'] })
       games = r.games; creditsRemaining = r.credits?.remaining ?? creditsRemaining; sportsOk++
+      await recordCredits(supabase, r.credits?.remaining)
     } catch (e) { console.warn(`capture ${sport} failed:`, e.message); errors.push({ sport, error: e.message }); continue }
 
     for (const ev of evs) {

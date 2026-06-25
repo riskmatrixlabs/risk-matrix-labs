@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
 import { scanGameProps } from './scan-props.js'
 import { readLatestCredits } from './_lib/scanStore.js'
+import { creditFloorBlocked } from './_lib/creditGuard.js'
 
 export const config = { maxDuration: 60 }
 
@@ -30,7 +31,12 @@ export default async function handler(req, res) {
   }
 
   // Hard credit floor — never start warming props when the known balance is already low.
+  // Two floors compose: the shared account-wide hard floor (creditGuard, CREDIT_FLOOR) AND the
+  // higher prop-specific PROP_WARM_FLOOR below. Either trips → skip without spending.
   let credits = await readLatestCredits()
+  if (await creditFloorBlocked()) {
+    return res.status(200).json({ skipped: 'low credits', remaining: credits })
+  }
   if (credits != null && credits < PROP_WARM_FLOOR) {
     return res.status(200).json({ ok: true, skipped: 'low-credit', credits, floor: PROP_WARM_FLOOR })
   }

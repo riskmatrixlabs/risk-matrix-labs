@@ -9,6 +9,7 @@ import { SPORT_KEYS, fetchSportEvents, fetchEventOdds } from './_lib/oddsProvide
 import { compareBooks, REPUTABLE_BOOKS } from '../src/lib/edgeFilter.js'
 import { americanToDecimal } from '../src/lib/devig.js'
 import { readScan, writeScan, isFresh } from './_lib/scanStore.js'
+import { creditFloorBlocked, recordCredits } from './_lib/creditGuard.js'
 
 export const config = { maxDuration: 20 }
 
@@ -124,8 +125,11 @@ async function loadEventIds(sport) {
 export async function warmSlate(sport) {
   const sp = String(sport).toUpperCase()
   if (!SPORT_KEYS[sp]) return { skipped: 'unsupported sport' }
+  // Hard floor: never warm the slate when we know credits are below the shared floor.
+  if (await creditFloorBlocked()) return { skipped: 'low credits' }
   const provider = getProvider()
   const { games, credits } = await provider.fetchOdds({ sport: sp, markets: ['h2h', 'spreads', 'totals'], regions: ['us', 'us2'] })
+  await recordCredits(null, credits.remaining)
   const evMap = await loadEventIds(sp)
   let written = 0, snapped = 0
   for (const game of games || []) {
@@ -175,6 +179,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...cached.payload, cached: true })
   }
   if (cacheOnly) return res.status(200).json({ found: false, notCached: true })
+
+  // CIRCUIT BREAKER: below the shared hard floor → don't spend. Serve stale cache if present,
+  // else an honest empty. Fail-open: unknown/error => not blocked (spends). cacheOnly already
+  // returned above, so this only gates real (paid) pulls.
+  if (await creditFloorBlocked()) {
+    if (cached?.payload) return res.status(200).json({ ...cached.payload, cached: true, creditFloor: true })
+    return res.status(200).json({ found: false, creditFloor: true })
+  }
 
   if (full) {
     try {
@@ -228,6 +240,7 @@ export default async function handler(req, res) {
         fetchedAt: new Date().toISOString(),
       }
       await writeScan(ckSport, ckGame, payload, payload.creditsRemaining)
+      await recordCredits(null, payload.creditsRemaining)
       await persistSnapshots({ eventId, sport, away: baseGame.away_team, home: baseGame.home_team, markets })
       return res.status(200).json(payload)
     } catch (e) {
@@ -255,6 +268,7 @@ export default async function handler(req, res) {
       fetchedAt: new Date().toISOString(),
     }
     await writeScan(ckSport, ckGame, payload, credits.remaining)
+    await recordCredits(null, credits.remaining)
     await persistSnapshots({ eventId, sport, away: game.away_team, home: game.home_team, markets: payload.markets })
     return res.status(200).json(payload)
   } catch (e) {

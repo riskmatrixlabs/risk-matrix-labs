@@ -13,6 +13,7 @@ import { SPORT_KEYS } from './_lib/oddsProviders/theOddsApi.js'
 import {
   todayStr, readScan, readLatestCredits, writeScan, isFresh, isLowCredit,
 } from './_lib/scanStore.js'
+import { creditFloorBlocked, recordCredits } from './_lib/creditGuard.js'
 
 export const config = { maxDuration: 20 }
 
@@ -36,13 +37,17 @@ export default async function handler(req, res) {
     }
 
     // 2) Credit floor → pause before spending. Uses the last-known balance we persisted.
+    //    Two floors compose: the legacy per-store low-credit floor AND the shared hard floor
+    //    (creditGuard, the account-wide circuit breaker). Either one trips → serve cache only.
     const lastCredits = cached?.credits_remaining ?? (await readLatestCredits())
-    if (isLowCredit(lastCredits)) {
+    if (isLowCredit(lastCredits) || (await creditFloorBlocked())) {
+      if (cached?.payload) return res.status(200).json({ ...cached.payload, cached: true, paused: true })
       return res.status(200).json({ error: 'scans paused — low credit', paused: true })
     }
 
     // 3) Real (paid) scan.
     const { edges, credits, gameCount, provider } = await fetchEdges({ sport })
+    await recordCredits(null, credits.remaining)
     const payload = {
       sport,
       provider,

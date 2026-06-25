@@ -6,7 +6,17 @@ import { fetchSportEvents, fetchEventOdds, SPORT_KEYS } from './_lib/oddsProvide
 import { propEdges } from '../src/lib/propEdges.js'
 import { PROP_MARKETS, PROP_MARKETS_FULL } from '../src/lib/propMarkets.js'
 import { readScan, writeScan, isFresh, capturePropSnapshots, fetchPropOpens } from './_lib/scanStore.js'
+import { creditFloorBlocked, recordCredits } from './_lib/creditGuard.js'
+import { acquireLock, releaseLock } from './_lib/scanLock.js'
+import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'
 import { buildIndex, norm } from './player-search.js'
+
+// Service-role client for the credit guard + single-flight lock (same env/transport as scanStore).
+function db() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
+}
 
 export const config = { maxDuration: 20 }
 
@@ -59,6 +69,27 @@ export async function scanGameProps({ sport, away, home, full = false, cacheOnly
     if (cacheOnly) return { payload: { found: false, notCached: true }, served: 'none' }
   }
 
+  // ── CREDIT SAFETY (applies even to force=true, so a forced REFRESH can't drain below floor) ──
+  const supa = db()
+
+  // (1) CIRCUIT BREAKER: if we KNOW we're below the credit floor, do NOT spend. Serve stale cache
+  //     if one exists, else an honest empty. Fail-open: unknown/error => not blocked (spends).
+  if (!cacheOnly && (await creditFloorBlocked(supa))) {
+    const cached = await readScan(ckSport, ckGame)
+    if (cached?.payload) return { payload: { ...cached.payload, cached: true, creditFloor: true }, served: 'cache' }
+    return { payload: { found: false, creditFloor: true }, served: 'none' }
+  }
+
+  // (2) SINGLE-FLIGHT: only one worker pulls a given game at once. Losers re-read the cache the
+  //     winner is writing. Fail-open: a lock error returns true (we proceed) rather than hang.
+  const lockKey = `props:${ckSport}:${ckGame}`
+  if (!(await acquireLock(supa, lockKey))) {
+    const cached = await readScan(ckSport, ckGame)
+    if (cached?.payload) return { payload: { ...cached.payload, cached: true }, served: 'cache' }
+    return { payload: { found: false, inFlight: true }, served: 'none' }
+  }
+
+  try {
   const { events } = await fetchSportEvents({ sport })
   const match = events.find(e => lastWord(e.home_team) === lastWord(home) && lastWord(e.away_team) === lastWord(away))
   if (!match) return { payload: { found: false }, served: 'live' }
@@ -74,6 +105,7 @@ export async function scanGameProps({ sport, away, home, full = false, cacheOnly
   }
   if (!game) {
     if (lastErr) throw lastErr
+    await recordCredits(supa, credits.remaining)
     return { payload: { found: false, creditsRemaining: credits.remaining }, served: 'live' }
   }
 
@@ -98,7 +130,12 @@ export async function scanGameProps({ sport, away, home, full = false, cacheOnly
     scannedAt: new Date().toISOString(),
   }
   await writeScan(ckSport, ckGame, payload, credits.remaining)
+  await recordCredits(supa, credits.remaining)
   return { payload, served: 'live' }
+  } finally {
+    // Always free the single-flight lock, even on a thrown odds-API failure.
+    await releaseLock(supa, lockKey)
+  }
 }
 
 export default async function handler(req, res) {

@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
 import { warmSlate } from './game-lines.js'
 import { readScan, writeScan, todayStr } from './_lib/scanStore.js'
+import { creditFloorBlocked, getKnownCredits } from './_lib/creditGuard.js'
 
 export const config = { maxDuration: 40 }
 
@@ -21,6 +22,12 @@ export default async function handler(req, res) {
   // Optional guard — if CRON_SECRET is set, require it (Vercel sends it as a Bearer header).
   if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'unauthorized' })
+  }
+
+  // Hard credit floor — never warm lines when the known balance is below the shared floor.
+  if (await creditFloorBlocked()) {
+    const { remaining } = await getKnownCredits()
+    return res.status(200).json({ skipped: 'low credits', remaining })
   }
 
   // Only warm sports that actually have games in the window (free Supabase read) — no wasted credits.
