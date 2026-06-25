@@ -19,7 +19,7 @@ function RankBadge({ rank }) {
   )
 }
 
-export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
+export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenRecord }) {
   const [signals, setSignals] = useState([])
   const [open, setOpen] = useState(false)
   const [record, setRecord] = useState(null)  // model lean track record (strong subset = Spotlight)
@@ -151,7 +151,15 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip }) {
 
       {open && (
         <div style={{ marginTop: '6px', border: `1px solid ${BORDER}`, borderRadius: '10px', background: CARD, padding: '12px 14px' }}>
-          <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase', marginBottom: '2px' }}>⬡ Spotlight — Today, ranked strongest first</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
+            <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ Spotlight — Today, ranked strongest first</div>
+            {onOpenRecord && (
+              <button onClick={(e) => { e.stopPropagation(); onOpenRecord() }} title="See the full graded model record"
+                style={{ flexShrink: 0, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '5px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Full Record →
+              </button>
+            )}
+          </div>
           <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, marginBottom: '6px' }}>#1 = strongest model lean · LINE = open → current total (green = moved to a better number)</div>
           {/* Honest beta disclaimer — the model is experimental and being calibrated; not advice. */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '8px', padding: '6px 8px', borderRadius: '6px', background: 'rgba(255,174,43,0.08)', border: '1px solid rgba(255,174,43,0.3)' }}>

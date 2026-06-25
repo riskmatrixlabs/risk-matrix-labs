@@ -14,6 +14,7 @@ function genUUID() {
 import { useSwipeable } from 'react-swipeable'
 import { BetCard as UniBetCard, BetTicket as UniBetTicket } from './components/BetCard.jsx'
 import UniSpotlightTicker from './components/SpotlightTicker.jsx'
+import PerformancePage from './components/PerformancePage.jsx'
 import { normalizeBet } from './lib/betCard.js'
 import { gradeBet } from './lib/gradeBet.js'
 import { useMobile } from './hooks/useMobile'
@@ -4540,10 +4541,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
       {/* TABS — desktop only: 3-pillar primary + dashboard secondary (matches mobile's 3 doors) */}
       {!isMobile && (() => {
-        const DASH = ['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners']
+        const DASH = ['overview', 'analytics', 'performance', 'ladder', 'bet log', 'rr engine', 'session', 'partners']
         const inDash = DASH.includes(tab)
         const primary = [['live', 'Game Center'], ['__dash__', 'Dashboard'], ['bot', 'Matrix Bot']]
-        const sub = [['overview', 'Analytics'], ['analytics', 'Overview'], ['ladder', 'Ladder'], ['bet log', 'Bet Log'], ['rr engine', 'RR Engine'], ['session', 'Session'], ['partners', 'Partners']]
+        const sub = [['overview', 'Analytics'], ['analytics', 'Overview'], ['performance', 'Record'], ['ladder', 'Ladder'], ['bet log', 'Bet Log'], ['rr engine', 'RR Engine'], ['session', 'Session'], ['partners', 'Partners']]
         const activePrimary = (t) => t === '__dash__' ? inDash : tab === t
         return (
           <>
@@ -4640,7 +4641,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       {/* ⬡ Spotlight — unified across pillars; on Dashboard a tap jumps to Game Center */}
       {['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners'].includes(tab) && (
         <div style={{ marginBottom: '10px' }}>
-          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} onAddToSlip={addToSlip} />
+          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} onAddToSlip={addToSlip} onOpenRecord={() => setTab('performance')} />
         </div>
       )}
 
@@ -5475,9 +5476,12 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} onAddToSlip={addToSlip} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
-        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} />}
+        {/* ══ ALL-TIME PERFORMANCE (model record, graded in public) ══ */}
+        {tab === 'performance' && <PerformancePage token={token} />}
+
+        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} onOpenRecord={() => setTab('performance')} />}
         {tab === 'bot'  && <MatrixBot initialView={botView} onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll}
-          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} isDemo={isDemo} ladderSessionKey={ladderSessionKey} />}
+          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} isDemo={isDemo} ladderSessionKey={ladderSessionKey} onOpenRecord={() => setTab('performance')} />}
 
       </div>
 

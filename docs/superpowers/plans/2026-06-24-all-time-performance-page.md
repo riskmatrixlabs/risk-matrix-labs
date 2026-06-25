@@ -171,6 +171,36 @@ empty/zero rows, date-range windowing.
 - **Test on prod build only** for `/api` (CLAUDE.md:82-84); bump `public/sw.js` CACHE before deploy.
 - `npm run ship` is guarded (test + check:undef + build) — keep tests green (currently 534).
 
+## ⭐ REFINEMENT (Session 68, owner-directed) — DETAILED CALL LIST + logos + panel entry
+
+Owner's ask: the page is "where you list ALL calls, detailed, **with logos** + **settings/filters**" — not just the tally matrix. And the **entry point is a button in the Spotlight panel's top-right corner**, not a new nav item front-and-center.
+
+### Entry point — `FULL RECORD →` button (Spotlight panel corner)
+- Location: `src/components/SpotlightTicker.jsx:154` — the panel header line `⬡ Spotlight — Today, ranked strongest first`. Make that a `justify-content: space-between` flex row; pin a small ghost button to the **right corner** (Rajdhani 9–10px, neon text, 1px neon-dim border, transparent bg). NO height added, NO side-by-side waste.
+- Behavior: new optional prop `onOpenRecord` on `SpotlightTicker`; parents (`LiveCenter.jsx` Game Center + `MatrixBot.jsx` top bar) pass a handler → `setTab('performance')`. Panel renders in BOTH pillars → two doors for free.
+- Label decided: `FULL RECORD →`.
+
+### Detailed per-call row (THE main content — with logos)
+Reuse, don't reinvent (per the S68 research sweep):
+- **Logos:** join `lean_results`/`prop_results` → `events` on `external_event_id` → `events.away_logo`/`home_logo` (`src/lib/events.js:11`). Render with the existing **`Avatar`** (`src/components/BetCard.jsx:111`): **dual diagonal crests for O/U totals**, **single crest for ML/RL** (resolve via `pick_side` HOME/AWAY), **`LEAGUE_LOGO[sport]` fallback** (`MatrixBot.jsx:31`).
+- **Result chips:** reuse `GradedFlag` / `TeamGradedFlags` / `LiveResultChip` (`LiveCenter.jsx:142/159/193`) — ✓HIT / ✗MISS / ● alive.
+- **Row anatomy (left→right):** crest(s) · `AWAY@HOME` · the call (`OVER 8.5` colored by side / `TB ML` / PHLT `player hits o0.5` + tier badge) · `LINE open→final` · CLV · result chip · date. Strong leans get the neon-tint background (match Spotlight row `:168`).
+- Group/sort: newest first; section dividers by date; PHLT props grouped under their game.
+
+### New endpoint — `api/all-time-calls.js` (per-call rows; the existing record APIs are aggregate-only)
+- `GET /api/all-time-calls?model=&strong=&sport=&from=&to=` → `{ leans:[...], props:[...] }`, each row already joined to `events(away_logo,home_logo,away_abbr,home_abbr,away_team,home_team,sport,status,away_score,home_score)`.
+- Pattern-match `lean-record.js`: `requireAuth`, service-role `db()`, `Cache-Control: no-store`, fail-soft `{ok:false,leans:[],props:[]}` at 200. `.order('game_date',{ascending:false})` + `.limit(2000)` (date-filter for older). FREE (0 Odds-API).
+- Carry the **ML/RL `game_date >= '2026-06-23'` gate** (`lean-record.js:43`) into `applyFilters`.
+
+### Settings / filter chip row (sticky top, mobile-first)
+Model (All · O/U · ML · Run Line · PHLT) · Strong-only toggle · Date range (All · 7d · 30d · Month) · Sport. PHLT→Tier (A/B/C) appears when Model=PHLT. All client-filtered off the fetched rows (or re-query the endpoint for big ranges).
+
+### Build order (revised)
+1. Corner button + `onOpenRecord` wiring + empty `'performance'` route (ships immediately, button can be flag-gated until page lands).
+2. `api/all-time-calls.js` + `src/lib/performance.js` (`applyFilters`, `unitsRoi`, `avgClv`, helpers) + Vitest.
+3. `PerformancePage.jsx`: filter chips + summary tiles (Record/Win%/CLV/units/n) + **detailed call list with logos** + record matrix. Reuse `Avatar`/result chips/`botShared` tokens.
+4. Chrome-verify live (prod only — `/api` doesn't run in vite preview), bump `sw.js`, ship.
+
 ## Critical Files for Implementation
 - /Users/michaeltejeda/Desktop/risk-matrix-labs/src/components/SpotlightTicker.jsx
 - /Users/michaeltejeda/Desktop/risk-matrix-labs/api/lean-record.js
