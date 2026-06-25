@@ -2466,6 +2466,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [shareCardBet, setShareCardBet] = useState(null)   // null = closed, 'session' = session card, bet obj = bet card
   const [editingBet,   setEditingBet]   = useState(null)
   const [tab,          setTab]          = useState(isDemo ? 'overview' : (saved.current?.tab ?? 'overview'))
+  const recordReturnRef = useRef('live')   // where ← Back on the Full Record page returns to
   const [botView,      setBotView]      = useState('tv')   // which view the Matrix Bot opens on: 'tv' (default) | 'board' (via Analyze Bet door)
   const [initialBet,   setInitialBet]   = useState(null)
   const [riskSettings, setRiskSettings] = useState(saved.current?.riskSettings ?? {
@@ -4541,10 +4542,10 @@ export default function App({ user, session, subStatus, isDemo = false }) {
 
       {/* TABS — desktop only: 3-pillar primary + dashboard secondary (matches mobile's 3 doors) */}
       {!isMobile && (() => {
-        const DASH = ['overview', 'analytics', 'performance', 'ladder', 'bet log', 'rr engine', 'session', 'partners']
+        const DASH = ['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners']
         const inDash = DASH.includes(tab)
         const primary = [['live', 'Game Center'], ['__dash__', 'Dashboard'], ['bot', 'Matrix Bot']]
-        const sub = [['overview', 'Analytics'], ['analytics', 'Overview'], ['performance', 'Record'], ['ladder', 'Ladder'], ['bet log', 'Bet Log'], ['rr engine', 'RR Engine'], ['session', 'Session'], ['partners', 'Partners']]
+        const sub = [['overview', 'Analytics'], ['analytics', 'Overview'], ['ladder', 'Ladder'], ['bet log', 'Bet Log'], ['rr engine', 'RR Engine'], ['session', 'Session'], ['partners', 'Partners']]
         const activePrimary = (t) => t === '__dash__' ? inDash : tab === t
         return (
           <>
@@ -4641,7 +4642,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
       {/* ⬡ Spotlight — unified across pillars; on Dashboard a tap jumps to Game Center */}
       {['overview', 'analytics', 'ladder', 'bet log', 'rr engine', 'session', 'partners'].includes(tab) && (
         <div style={{ marginBottom: '10px' }}>
-          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} onAddToSlip={addToSlip} onOpenRecord={() => setTab('performance')} />
+          <UniSpotlightTicker token={token} onOpen={() => setTab('live')} onAddToSlip={addToSlip} onOpenRecord={() => { recordReturnRef.current = tab; setTab('performance') }} />
         </div>
       )}
 
@@ -5476,12 +5477,13 @@ export default function App({ user, session, subStatus, isDemo = false }) {
         {tab === 'rr engine' && <RREngine unitSize={stats.unitSize} darkMode={darkMode} isDemo={isDemo} token={token} floatPicks={rrFloat} onFloatConsumed={() => setRrFloat(null)} onAddToSlip={addToSlip} />}
         {tab === 'session' && <SessionRecap bets={bets} stats={stats} tilt={tilt} masterBankroll={masterBankroll} riskSettings={riskSettings} darkMode={darkMode} />}
         {tab === 'partners' && <PartnersPage darkMode={darkMode} isMobile={isMobile} />}
-        {/* ══ ALL-TIME PERFORMANCE (model record, graded in public) ══ */}
-        {tab === 'performance' && <PerformancePage token={token} />}
+        {/* ══ ALL-TIME PERFORMANCE (model record, graded in public) — reached only via the
+              Spotlight "Full Record →" button; no nav tab. ══ */}
+        {tab === 'performance' && <PerformancePage token={token} onBack={() => setTab(recordReturnRef.current || 'live')} />}
 
-        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} onOpenRecord={() => setTab('performance')} />}
+        {tab === 'live' && <LiveCenter onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} onOpenRecord={() => { recordReturnRef.current = 'live'; setTab('performance') }} />}
         {tab === 'bot'  && <MatrixBot initialView={botView} onLogPosition={handleLogPosition} onAddToSlip={addToSlip} bets={bets} token={token} unitSize={masterBankroll * ((riskSettings.unitPct || 1) / 100)} bankroll={masterBankroll}
-          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} isDemo={isDemo} ladderSessionKey={ladderSessionKey} onOpenRecord={() => setTab('performance')} />}
+          sportFilter={sportFilter} resultFilter={resultFilter} setSportFilter={setSportFilter} setResultFilter={setResultFilter} goToBetLog={() => setTab('bet log')} onResetBets={resetBetsOnly} isDemo={isDemo} ladderSessionKey={ladderSessionKey} onOpenRecord={() => { recordReturnRef.current = 'bot'; setTab('performance') }} />}
 
       </div>
 

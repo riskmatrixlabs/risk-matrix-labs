@@ -108,7 +108,7 @@ function CallRow({ call }) {
   )
 }
 
-export default function PerformancePage({ token }) {
+export default function PerformancePage({ token, onBack }) {
   const [data, setData] = useState(null)   // { leans, props }
   const [loading, setLoading] = useState(true)
   const [model, setModel] = useState('all')
@@ -153,6 +153,9 @@ export default function PerformancePage({ token }) {
     <div style={{ maxWidth: '620px', margin: '0 auto', padding: '14px 12px 40px' }}>
       {/* Header */}
       <div style={{ marginBottom: '12px' }}>
+        {onBack && (
+          <button onClick={onBack} style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: '5px' }}>← Back</button>
+        )}
         <div style={{ fontFamily: R, fontSize: '18px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: NEON_T }}>⬡ Full Record</div>
         <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '2px' }}>Every model call, graded in public — self-graded from final results.</div>
       </div>
