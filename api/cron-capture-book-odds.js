@@ -25,6 +25,12 @@ function db() {
 }
 
 export default async function handler(req, res) {
+  // Optional guard — if CRON_SECRET is set, require it (Vercel sends it as a Bearer header).
+  // Without this an arbitrary caller could trigger paid Odds-API fetches (~12 credits/run).
+  if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+
   const supabase = db()
 
   // Hard credit floor — never capture when the known balance is below the shared floor.
