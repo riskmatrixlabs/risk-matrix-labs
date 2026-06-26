@@ -1704,6 +1704,12 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
   const homeHit    = meta.home_hitting  || []
   const awayPitch2 = meta.away_pitching || []
   const homePitch2 = meta.home_pitching || []
+  // Pre-game fallback: ESPN populates the two probable starters into the box score at DIFFERENT
+  // times, so one team's pitching can briefly be empty while the other shows. Seed an empty side
+  // from the Probable Pitcher (zeros) so a card never shows one pitcher and not the other.
+  const probRow = (p) => p?.name ? { name: p.name, ip: '--.--', h: 0, r: 0, er: 0, hr: 0, bb: 0, k: 0, pc_st: '-----' } : null
+  const awayPitchRows = awayPitch2.length > 0 ? awayPitch2 : (probRow(awayPitch) ? [probRow(awayPitch)] : [])
+  const homePitchRows = homePitch2.length > 0 ? homePitch2 : (probRow(homePitch) ? [probRow(homePitch)] : [])
 
   function EmptyState({ label }) {
     return (
@@ -2331,7 +2337,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
 
           {/* ── Box Score: Pitching (MLB) — shown ABOVE hitting; K column lit neon ── */}
           {dtab === 'Box Score' && event.sport === 'MLB' && (
-            awayPitch2.length > 0 || homePitch2.length > 0 ? (
+            awayPitchRows.length > 0 || homePitchRows.length > 0 ? (
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '8px', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}` }}>
                   {[{ key: 'away', label: `${event.away_abbr}` }, { key: 'home', label: `${event.home_abbr}` }].map((t, i) => (
@@ -2348,7 +2354,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
                       </tr>
                     </thead>
                     <tbody>
-                      {(pitchTeam === 'away' ? awayPitch2 : homePitch2).map((p, i, arr) => (
+                      {(pitchTeam === 'away' ? awayPitchRows : homePitchRows).map((p, i, arr) => (
                         <tr key={i} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
                           <td style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT, padding: '9px 8px', whiteSpace: 'nowrap' }}>{p.name}</td>
                           {[p.ip, p.h, p.r, p.er, p.bb, p.k, p.pc_st].map((v, j) => (
