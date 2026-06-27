@@ -26,6 +26,7 @@ import SpotlightTicker from './SpotlightTicker.jsx'
 import { normalizeBet, computeRecord, groupByDate } from '../lib/betCard.js'
 import { operatorFromBetLog } from '../lib/evBrainFeeds.js'
 import { BetCard, BetTicket } from './BetCard.jsx'
+import { resolveBetLogos } from '../lib/teamLogos.js'
 
 // League logos (ESPN transparent PNGs) — clean fallback when a bet's team side can't be resolved.
 const LEAGUE_LOGO = {
@@ -105,6 +106,19 @@ export function withLogos(n, ev, players = [], boxByEvent = null, events = [], w
       const side = teamSide(leg.title, gameEv) || teamSide(leg.subtitle, gameEv)
       if (side === 'away') logo = gameEv.away_logo
       else if (side === 'home') logo = gameEv.home_logo
+    }
+    // Game aged out of the events window → no gameEv match → resolve the crest from the
+    // TEAM itself (logos are constant) so old bets still show real crests. Real event
+    // logos above ALWAYS win; this only fills what's missing, before the league fallback.
+    if (!logo || (isTotalPick && !logo2)) {
+      const rl = resolveBetLogos({
+        sport: leg.sport || n.sport,
+        title: leg.title,
+        event: leg.subtitle || n.event,
+        isTotal: isTotalPick,
+      })
+      if (!logo) logo = rl.logo
+      if (isTotalPick && !logo2) logo2 = rl.logo2
     }
     if (!logo) logo = LEAGUE_LOGO[String(leg.sport || n.sport || '').toUpperCase()] || null
     leg.logo = logo
