@@ -946,6 +946,17 @@ function LadderTracker({ bets, setBets, ladderStarting, setLadderStarting, ladde
   const finalBankroll = computed.length ? computed[computed.length - 1].bankOut : ladderStarting
 
   const settleRow = (id, result) => {
+    // Guard: don't let a LIVE or upcoming game get marked W/L by accident (the "edited a rung
+    // mid-game and it flipped to W" bug). Confirm before settling a bet whose game isn't final.
+    if (result === 'W' || result === 'L') {
+      const row = computed.find(r => r.id === id)
+      const ev = row ? findEventForBet(row, betEvents) : null
+      if (ev && ev.status !== 'FT' && ev.status !== 'AOT') {
+        const live = ev.status === 'IP'
+        const ok = window.confirm(`${row.pick || 'This rung'}'s game ${live ? 'is still live' : "hasn't started"} — settle it as ${result} anyway?`)
+        if (!ok) return
+      }
+    }
     if (result === 'L') {
       const row = computed.find(r => r.id === id)
       if (row && row.stake > row.bankIn) {
