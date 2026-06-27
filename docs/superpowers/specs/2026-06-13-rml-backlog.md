@@ -3,7 +3,30 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
-## 🟢 CURRENT STATE — Session 68 (SW v510, on main · 2026-06-23→25)
+## 🟢 CURRENT STATE — Session 68 FINAL (SW v518, on main · 2026-06-23→27)
+**Marathon session — ~18 deploys, all Chrome-verified. Owner ROTATED the Odds-API key (100k credits LIVE, paid feed flowing). The app is materially more robust than session start.** Late shipments after the credit-safety layer:
+- 🟢 **OG share image cache-bust v3** (v511) — `og-image.png?v=3` on app+landing. iMessage previews cache per-device by URL; bump only fixes fresh scrapes — to unstick your own phone, share `riskmatrixlabs.com/?v=3` once. The live card is the good branded one.
+- 🟢 **Removed redundant PHLT record bar** (v512) — Full Record page + Spotlight matrix already show it; bar was clutter.
+- 🟢 **SECURITY review (3-agent) — CLEAN** (v513). No secrets leaked (no hardcoded keys, none logged, none in the client bundle, `.env*` gitignored). RLS verified: `deleted_bets` per-user, `odds_credit_state`/`scan_locks` service-role-only. **Fixed the one hole:** `cron-capture-book-odds` had no `CRON_SECRET` guard (siblings did) → publicly triggerable paid fetch; now 401s (verified).
+- 🟢 **Box score: pre-game pitching falls back to the Probable Pitcher** (v515) — ESPN posts the two probables at different times, so a card could show one team's pitcher and not the other ("no data for Cubs"). Now seeds the missing side from the probable.
+- 🟢 **Bet cards: team crests resolve from the TEAM, not just a live event** (v516) — `src/lib/teamLogos.js` maps every MLB/NBA/NHL/WNBA team (name/city/nickname/abbr) → ESPN logo; `withLogos` backfills before the league badge. Old bets keep real crests forever. All abbrs CDN-verified 200.
+- 🟢 **CRITICAL credit-safety fix** (v514) — `odds_credit_state`+`scan_locks` were created WITHOUT `service_role` grants → the breaker + lock were silently INERT (supabase-js `.upsert` returns `{error}`, doesn't throw). Granted + `recordCredits` now checks the error. **Breaker now tracks live** (~99.2k). The [[rml-supabase-grants-gotcha]] again.
+- 🟢 **Ladder: confirm before settling a non-final game** (v517) — a stray tap on W/L (next to the stake field) silently settled a LIVE bet, which auto-settle then skips. `settleRow` now confirms if the game is IP/NS.
+- 🟢 **Props: roster index self-refreshes (~3h)** (v518) — was built once each morning + only rebuilt when fully missing, so a late-posting game's players had NO headshots all day (WNBA Fever faces blank → league badge). Now refreshes stale, keeps old on failure. Cleared today's stale WNBA index.
+
+### 🔴 OPEN — START NEXT SESSION HERE
+1. **🔴 LADDER rung 2 (NYY@BOS Under 8.5) is STILL `W` in the DB** — owner edited the stake mid-live-game and it flipped to W. I reverted it in the DB but the **open app re-pushed W** (running app's memory wins over a DB write — the classic sync race). **The owner must un-settle it IN-APP** (edit rung 2 → set result to OPEN → save) OR fully QUIT the app, ping me, I flip the DB, they reopen. Until then rung 2 shows a phantom +$75.68. Active ladder session `61c6ebd6-1129-48d3-b7ea-1fde6a220553`, start $48.
+2. **🟡 LADDER rungs 3–6 stakes are stale projections** (rung 3 $70 < rung 2 $84 — a ladder must climb). After rung 2 settles for real, recompute 3–6 from the realized pot (rung's `bankIn`/`bankOut`). The ladder uses `LADDER_RATIOS` proportional multipliers from the starting stake; editing a stake mid-ladder doesn't roll forward — that's the gap.
+3. **🟡 Verify the v518/v514 fixes landed:** WNBA player faces back after the next props warm; credit breaker `odds_credit_state` keeps updating (not frozen).
+
+### Buildable next (all unblocked, credits live)
+- **All-Time Performance page — Phase 3:** win%-over-time chart + CLV histogram + recent-graded-calls feed (the v0 list/tiles shipped). Plan `2026-06-24-all-time-performance-page.md`.
+- **DK-by-sportsbook line-movement chart** (was credit-blocked, now buildable).
+- EV-Brain remainder (PHLT into verdict, CLV in Operator), O/U calibration (data-blocked ~mid-July).
+
+---
+
+### 🔒 CREDIT-SAFETY LAYER (v509→v510)
 **🔒 CREDIT-SAFETY LAYER (v509→v510) — the paid key is now UNDRAINABLE by traffic at any user count.** Two server guards on EVERY paid spend site (`scan-props`/`scan-edges`/`game-lines` + all 3 paid crons): (1) **circuit breaker** (`api/_lib/creditGuard.js` + `odds_credit_state` KV) pauses paid pulls below `CREDIT_FLOOR=1000`, fail-open on unknown/error, applies even to forced `?ex=1` refresh; (2) **single-flight lock** (`api/_lib/scanLock.js` + `scan_locks`, PK-atomic, 25s self-expiry, fail-open) collapses concurrent pulls of the same game to ONE — kills the cold-cache thundering herd. Manual props "↻ Refresh" button got a 30s anti-mash cooldown + is cache-respecting. Seeded at **99,475 credits**. 561 tests. Memory `feedback-rml-no-paid-timer`. *(Built via reviewed subagent, migration applied by lead, all fail-open so a guard error never blocks a scan.)*
 
 **💰 PAID ODDS BACK ONLINE + credit-leak audit.** Owner topped up `ODDS_API_KEY` to **100k credits** (was dry since Jun 18) → verified live: per-book capture flowing again (2.5k rows / 39 books / 90 min, `provider=oddsapi`). Line shop / Compare Books / by-sportsbook chart are unblocked. **Full credit-leak audit (1 agent, exhaustive):** NO client timer hits a paid endpoint (all 8 are ESPN/Supabase free); crons ~1.6–2.5k/day (within budget, `cron-warm-props` is the swing factor). **Two fixes shipped (v508):** (1) MatrixBot props board auto-loaded `scan-props` per-game WITHOUT cacheOnly on PROPS-select → fixed to `cacheOnly:true` auto-load + tap-only "↻ Pull props · uses credits" button (the one real leak). (2) `cron-capture-book-odds` now returns **502** when all paid fetches fail (was silent `200 {captured:0}` — the 4-day-blind bug) + `lowCredit` flag (<500). Memory `feedback-rml-no-paid-timer` updated with the "auto-load = cacheOnly" rule + full audit. ⚠️ **Owner reminder:** the key pasted in chat is exposed — rotate it. **Buildable now (credits live):** DK-by-sportsbook line-movement chart (was the credit-blocked item).
