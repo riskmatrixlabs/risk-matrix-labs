@@ -21,12 +21,22 @@ function db() {
 export const config = { maxDuration: 20 }
 
 // Real ESPN headshots + team, joined onto props by player name (free roster index, cached per sport/day).
+const ROSTER_TTL_MS = 3 * 60 * 60 * 1000   // refresh the roster index every ~3h (free ESPN)
 async function rosterMap(sport) {
   try {
     const dateYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const cached = await readScan(`PLAYERS:${sport}`, dateYmd)
     let index = cached?.payload?.index
-    if (!index) { const built = await buildIndex(sport); index = built.index; await writeScan(`PLAYERS:${sport}`, dateYmd, built, null) }
+    // Rebuild when MISSING *or STALE*: the index is built early from ESPN's scoreboard, so a game
+    // whose roster wasn't posted yet would miss headshots all day (players fall back to the league
+    // badge). Refreshing every few hours lets late games' rosters in. Keep the old index if a
+    // rebuild fails so we never blank existing faces.
+    if (!index || !isFresh(cached?.scanned_at, Date.now(), ROSTER_TTL_MS)) {
+      try {
+        const built = await buildIndex(sport)
+        if (built?.index?.length) { index = built.index; await writeScan(`PLAYERS:${sport}`, dateYmd, built, null) }
+      } catch { /* keep the cached index */ }
+    }
     const byFull = {}, byLast = {}
     for (const r of index || []) {
       const n = norm(r.player)
