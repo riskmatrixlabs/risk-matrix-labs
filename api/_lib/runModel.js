@@ -109,6 +109,16 @@ export function coverProb(margin, line = 1.5) {
 export function deriveBets({ proj, marketTotal = null, totalDeadband = 1.0 } = {}) {
   const { awayRuns, homeRuns, total, margin } = proj || {}
 
+  // ── SANITY GUARD ── A real MLB game projects ~5–16 total runs and a margin within ~|7|. Anything
+  // outside is blown-up model input (a bad factor/score leak), NOT a signal — suppress every lean so
+  // it can't surface as a 20-run edge or a 100% ML/RL (the "TEX game looks off" bug). Returns the
+  // same shape as a no-edge result.
+  const sane = Number.isFinite(total) && total >= 4 && total <= 18
+             && Number.isFinite(margin) && Math.abs(margin) <= 7
+  if (!sane) {
+    return { total: { lean: 'LEAN', edge: null, projected: null }, ml: { pick: null, winProb: null, awayRuns: null, homeRuns: null }, rl: { pick: null, coverProb: null } }
+  }
+
   // ── Total ──
   let totalLean = 'LEAN', edge = null
   if (Number.isFinite(marketTotal) && Number.isFinite(total)) {

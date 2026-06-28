@@ -390,6 +390,9 @@ export default async function handler(req, res) {
           lean = edgeRuns >= 1 ? 'OVER' : edgeRuns <= -1 ? 'UNDER' : 'LEAN'  // <1-run deviation = no edge → pass
           confidence = mag >= 2.5 ? 4 : mag >= 2 ? 3 : mag >= 1.5 ? 2 : 1
           strong = mag >= 2 && lean !== 'LEAN'   // a real ≥2-run deviation surfaces as "strong"
+          // SANITY: a real factor deviation is small; |edge| > 6 runs is blown-up input, not a signal
+          // (the "TEX +20.1 edge / 100%" bug) → suppress rather than surface garbage.
+          if (mag > 6) { lean = 'LEAN'; strong = false; confidence = 1; edgeRuns = null; proj = null; why.push('⚠ implausible projection — suppressed') }
           // Extreme hitter park + OVER = the exact profile the model has been provably wrong on
           // (correlated over-projection). Never let it shout: strip STRONG, cap confidence, flag it.
           if (pf >= 1.08 && lean === 'OVER') {
