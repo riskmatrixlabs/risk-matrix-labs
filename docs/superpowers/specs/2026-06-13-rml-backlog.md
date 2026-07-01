@@ -3,8 +3,9 @@
 > ⚠️ The dated sections below (session 50 → 61) are a **historical log** — kept for context, not the live list.
 > The **CURRENT OPEN list is right here at the top.** Status: 🟢 done · 🟡 queued · 🔵 in design · ⚪ idea
 
-## 🟢 CURRENT STATE — Session 68 FINAL (SW v518, on main · 2026-06-23→27)
-**Marathon session — ~18 deploys, all Chrome-verified. Owner ROTATED the Odds-API key (100k credits LIVE, paid feed flowing). The app is materially more robust than session start.** Late shipments after the credit-safety layer:
+## 🟢 CURRENT STATE — Session 68 FINAL (SW v519, on main · 2026-06-23→27)
+**Marathon session — ~19 deploys, all Chrome-verified. Owner ROTATED the Odds-API key (100k credits LIVE, paid feed flowing). The app is materially more robust than session start.** Late shipments after the credit-safety layer:
+- 🟢 **Model sanity-clamp** (v519) — TEX@TOR Spotlight showed **EDGE +20.1 / ML 100% / RL 100%** (a blown-up ~28-run projection). `deriveBets` (runModel.js) now suppresses any projection outside ~5–16 total / |7| margin, and game-info.js drops an O/U |edge|>6 → garbage is passed, not surfaced (for ANY game). Deleted the 3 poisoned TEX lean rows so they can't grade as fake 100% picks. Root input that blew up the projection not fully diagnosed (likely a factor/live-data glitch on the late-night snapshot) — the clamp walls it off regardless.
 - 🟢 **OG share image cache-bust v3** (v511) — `og-image.png?v=3` on app+landing. iMessage previews cache per-device by URL; bump only fixes fresh scrapes — to unstick your own phone, share `riskmatrixlabs.com/?v=3` once. The live card is the good branded one.
 - 🟢 **Removed redundant PHLT record bar** (v512) — Full Record page + Spotlight matrix already show it; bar was clutter.
 - 🟢 **SECURITY review (3-agent) — CLEAN** (v513). No secrets leaked (no hardcoded keys, none logged, none in the client bundle, `.env*` gitignored). RLS verified: `deleted_bets` per-user, `odds_credit_state`/`scan_locks` service-role-only. **Fixed the one hole:** `cron-capture-book-odds` had no `CRON_SECRET` guard (siblings did) → publicly triggerable paid fetch; now 401s (verified).
