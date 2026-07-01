@@ -64,7 +64,7 @@ To attach images: upload to Canva/Google Drive/Imgur → paste URL into "Image F
 
 ## ARTIFACT TO ALWAYS UPDATE
 After every session where we add new tools, prompts, install commands, or workflow updates:
-- Update `/Users/michaeltejeda/Desktop/rml-master.html` with new information
+- Update `/Users/michaeltejeda/Desktop/_materials/sports-app/rml-master.html` with new information
 - Never let it go stale — this is the single source of truth
 
 ## DEPLOY
