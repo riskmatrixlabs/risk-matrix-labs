@@ -101,9 +101,12 @@ async function fetchSport({ key, sport, league }, dateStr) {
 
     const homeAbbr = home.team?.abbreviation ?? ''
     const awayAbbr = away.team?.abbreviation ?? ''
+    // ESPN hosts team crests under the parent league path — the Summer League slug
+    // (nba-summer-las-vegas) has no per-team PNGs (404s), so map it to nba.
+    const logoLeague = league === 'nba-summer-las-vegas' ? 'nba' : league
     const meta = {
-      home_logo: `https://a.espncdn.com/i/teamlogos/${league}/500/${homeAbbr.toLowerCase()}.png`,
-      away_logo: `https://a.espncdn.com/i/teamlogos/${league}/500/${awayAbbr.toLowerCase()}.png`,
+      home_logo: `https://a.espncdn.com/i/teamlogos/${logoLeague}/500/${homeAbbr.toLowerCase()}.png`,
+      away_logo: `https://a.espncdn.com/i/teamlogos/${logoLeague}/500/${awayAbbr.toLowerCase()}.png`,
       venue:     comp.venue?.fullName ?? null,
       venue_city: comp.venue?.address ? `${comp.venue.address.city ?? ''}, ${comp.venue.address.state ?? ''}`.replace(/^, |, $/, '') : null,
       broadcast: comp.broadcasts?.[0]?.names?.[0] ?? comp.broadcasts?.[0]?.market ?? null,

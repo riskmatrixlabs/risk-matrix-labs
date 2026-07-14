@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import html2canvas from 'html2canvas'
 import { fetchEvents, fetchLiveEvents, isLiveEvent } from '../lib/events'
+import { teamLogoUrl } from '../lib/teamLogos'
 import SpotlightTicker from './SpotlightTicker.jsx'
 import { devigTwoWay, americanToDecimal } from '../lib/devig'
 import { computeClv } from '../lib/clv'
@@ -57,15 +58,19 @@ function fmtOdds(val) {
   return val > 0 ? `+${val}` : `${val}`
 }
 
-// Team logo circle — shows logo image if available, falls back to abbr
-function TeamLogo({ logo, abbr, size = 44 }) {
-  const [err, setErr] = useState(false)
-  if (logo && !err) {
+// Team logo circle — tries the stored URL, then a URL recomputed from sport+abbr
+// (self-heals stored logos that 404, e.g. Summer League), then falls back to abbr text.
+function TeamLogo({ logo, abbr, sport, size = 44 }) {
+  const computed = sport && abbr ? teamLogoUrl(sport, abbr) : null
+  const candidates = [...new Set([logo, computed].filter(Boolean))]
+  const [i, setI] = useState(0)
+  const src = candidates[i]
+  if (src) {
     return (
       <img
-        src={logo}
+        src={src}
         alt={abbr}
-        onError={() => setErr(true)}
+        onError={() => setI(n => n + 1)}
         style={{ width: size, height: size, objectFit: 'contain', borderRadius: '50%' }}
       />
     )
@@ -381,7 +386,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px' }}>
             {/* Away: logo · abbr/record · score */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-              <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={40} />
+              <TeamLogo logo={event.away_logo} abbr={event.away_abbr} sport={event.sport} size={40} />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</div>
                 <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.away_record}</div>
@@ -408,7 +413,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
                 <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{event.home_abbr}</div>
                 <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.home_record}</div>
               </div>
-              <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={40} />
+              <TeamLogo logo={event.home_logo} abbr={event.home_abbr} sport={event.sport} size={40} />
             </div>
           </div>
         )
@@ -416,7 +421,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '12px' }}>
           {/* Away team */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-            <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={40} />
+            <TeamLogo logo={event.away_logo} abbr={event.away_abbr} sport={event.sport} size={40} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.away_abbr || event.away_team}</div>
               <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>{event.away_record || event.away_team}</div>
@@ -466,7 +471,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
               <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.home_abbr || event.home_team}</div>
               <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px', direction: 'rtl', textAlign: 'right' }}>{event.home_record || event.home_team}</div>
             </div>
-            <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={40} />
+            <TeamLogo logo={event.home_logo} abbr={event.home_abbr} sport={event.sport} size={40} />
           </div>
         </div>
       )}
@@ -1853,7 +1858,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '24px 20px 16px', gap: '12px' }}>
             {/* Away */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <TeamLogo logo={event.away_logo} abbr={event.away_abbr} size={60} />
+              <TeamLogo logo={event.away_logo} abbr={event.away_abbr} sport={event.sport} size={60} />
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.away_team}</div>
                 {event.away_record && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>{event.away_record}</div>}
@@ -1910,7 +1915,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
             </div>
             {/* Home */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <TeamLogo logo={event.home_logo} abbr={event.home_abbr} size={60} />
+              <TeamLogo logo={event.home_logo} abbr={event.home_abbr} sport={event.sport} size={60} />
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em' }}>{event.home_team}</div>
                 {event.home_record && <div style={{ fontFamily: R, fontSize: '12px', color: MUTED, fontWeight: 700 }}>{event.home_record}</div>}
