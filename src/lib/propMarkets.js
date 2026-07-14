@@ -5,6 +5,8 @@ export const PROP_MARKETS = {
   WNBA: ['player_points', 'player_rebounds', 'player_assists', 'player_threes', 'player_points_rebounds_assists'],
   NHL:  ['player_shots_on_goal', 'player_points', 'player_goals', 'player_total_saves'],
 }
+// NBA Summer League shares NBA's prop markets.
+PROP_MARKETS.NBASL = PROP_MARKETS.NBA
 
 // Expanded, opt-in prop-market set per sport (served only when a caller passes ?full=1).
 export const PROP_MARKETS_FULL = {
@@ -13,6 +15,7 @@ export const PROP_MARKETS_FULL = {
   WNBA: ['player_points', 'player_rebounds', 'player_assists', 'player_threes', 'player_points_rebounds_assists', 'player_blocks', 'player_steals', 'player_turnovers', 'player_points_rebounds', 'player_points_assists', 'player_rebounds_assists'],
   NHL:  ['player_shots_on_goal', 'player_points', 'player_goals', 'player_assists', 'player_total_saves', 'player_blocked_shots', 'player_power_play_points'],
 }
+PROP_MARKETS_FULL.NBASL = PROP_MARKETS_FULL.NBA
 
 export const MARKET_LABELS = {
   pitcher_strikeouts: 'Strikeouts', batter_hits: 'Hits', batter_total_bases: 'Total Bases',

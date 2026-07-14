@@ -8,11 +8,12 @@ import { geocode, fetchWeather } from './lib/weather.js'
 export const config = { maxDuration: 60 }
 
 const SPORTS = [
-  { key: 'MLB',  sport: 'baseball',   league: 'mlb'  },
-  { key: 'NBA',  sport: 'basketball', league: 'nba'  },
-  { key: 'NHL',  sport: 'hockey',     league: 'nhl'  },
-  { key: 'NFL',  sport: 'football',   league: 'nfl'  },
-  { key: 'WNBA', sport: 'basketball', league: 'wnba' },
+  { key: 'MLB',   sport: 'baseball',   league: 'mlb'  },
+  { key: 'NBA',   sport: 'basketball', league: 'nba'  },
+  { key: 'NBASL', sport: 'basketball', league: 'nba-summer-las-vegas' }, // NBA Summer League (Las Vegas)
+  { key: 'NHL',   sport: 'hockey',     league: 'nhl'  },
+  { key: 'NFL',   sport: 'football',   league: 'nfl'  },
+  { key: 'WNBA',  sport: 'basketball', league: 'wnba' },
 ]
 
 // Map over items with bounded concurrency (pool of `limit` workers).
@@ -294,8 +295,8 @@ async function fetchSport({ key, sport, league }, dateStr) {
           }
         }
 
-        // NBA/WNBA box score — shared parser
-        if (key === 'NBA' || key === 'WNBA') {
+        // NBA/WNBA/Summer League box score — shared parser
+        if (key === 'NBA' || key === 'WNBA' || key === 'NBASL') {
           if (s.boxscore?.players?.length) {
             const awayPlayers = s.boxscore.players.find(p => String(p.team?.id) === String(away.team?.id)) ?? s.boxscore.players[0]
             const homePlayers = s.boxscore.players.find(p => String(p.team?.id) === String(home.team?.id)) ?? s.boxscore.players[1]
@@ -305,7 +306,7 @@ async function fetchSport({ key, sport, league }, dateStr) {
         }
 
         // NHL/NBA situation (period + clock) + period/quarter linescore
-        if (key === 'NHL' || key === 'NBA' || key === 'WNBA' || key === 'NFL') {
+        if (key === 'NHL' || key === 'NBA' || key === 'WNBA' || key === 'NFL' || key === 'NBASL') {
           const period = comp.status?.period ?? null
           const clock  = comp.status?.displayClock ?? null
           if (period || clock) {

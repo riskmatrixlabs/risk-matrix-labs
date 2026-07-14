@@ -14,6 +14,7 @@ const BASE = 'https://api.the-odds-api.com/v4'
 export const SPORT_KEYS = {
   MLB:  'baseball_mlb',
   NBA:  'basketball_nba',
+  NBASL: 'basketball_nba_summer_league', // NBA Summer League (Las Vegas) — odds availability varies by season
   WNBA: 'basketball_wnba',
   NHL:  'icehockey_nhl',
 }

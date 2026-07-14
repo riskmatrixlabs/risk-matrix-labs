@@ -1,11 +1,12 @@
 import { supabase } from './supabase'
 
 const SPORT_LEAGUE = {
-  mlb:  'MLB',
-  nba:  'NBA',
-  nhl:  'NHL',
-  nfl:  'NFL',
-  wnba: 'WNBA',
+  mlb:   'MLB',
+  nba:   'NBA',
+  nbasl: 'NBASL',
+  nhl:   'NHL',
+  nfl:   'NFL',
+  wnba:  'WNBA',
 }
 
 function mapRow(row) {

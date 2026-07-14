@@ -3,6 +3,7 @@
 const SPORT_CATEGORIES = {
   MLB: ['Strikeouts', 'Home Runs', 'Batter Props', 'Pitcher Props'],
   NBA: ['Points', 'Rebounds', 'Assists', 'Threes'],
+  NBASL: ['Points', 'Rebounds', 'Assists', 'Threes'],
   WNBA: ['Points', 'Rebounds', 'Assists', 'Threes'],
   NHL: ['Points', 'Shots', 'Goals', 'Saves'],
 }
@@ -50,8 +51,9 @@ const MARKET_MAP = {
   },
 }
 MARKET_MAP.WNBA = MARKET_MAP.NBA
+MARKET_MAP.NBASL = MARKET_MAP.NBA
 
-const FALLBACK = { MLB: 'Batter Props', NBA: 'Points', WNBA: 'Points', NHL: 'Points' }
+const FALLBACK = { MLB: 'Batter Props', NBA: 'Points', NBASL: 'Points', WNBA: 'Points', NHL: 'Points' }
 
 export function categoriesForSport(sport) {
   return SPORT_CATEGORIES[sport] || ['Props']

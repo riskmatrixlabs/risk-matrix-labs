@@ -8,7 +8,8 @@
 //
 // Pure module — no I/O, never throws.
 
-const LEAGUE_PATH = { MLB: 'mlb', NBA: 'nba', NHL: 'nhl', WNBA: 'wnba' }
+// NBASL (NBA Summer League) uses full NBA team names + NBA crests → alias to nba.
+const LEAGUE_PATH = { MLB: 'mlb', NBA: 'nba', NHL: 'nhl', WNBA: 'wnba', NBASL: 'nba' }
 
 // Build a sport map by listing each team's ESPN abbr + the names it can be keyed by.
 // `defs` is [abbr, [...aliases]]. We auto-add the abbr itself as a key.
@@ -147,6 +148,8 @@ export const TEAM_ABBR = {
     ['wsh', ['Washington Mystics', 'Washington', 'Mystics', 'WAS']],
   ]),
 }
+// NBA Summer League shares NBA's team names/abbreviations.
+TEAM_ABBR.NBASL = TEAM_ABBR.NBA
 
 // Map a team identifier to its ESPN abbr (lowercase) for a sport, or null.
 // Also accepts an already-correct abbr.

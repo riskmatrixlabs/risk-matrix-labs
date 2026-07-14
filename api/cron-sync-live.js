@@ -54,11 +54,12 @@ async function notifyScoreChanges(supabase, changes) {
 }
 
 export const SPORTS = [
-  { key: 'MLB',  sport: 'baseball',   league: 'mlb'  },
-  { key: 'NBA',  sport: 'basketball', league: 'nba'  },
-  { key: 'NHL',  sport: 'hockey',     league: 'nhl'  },
-  { key: 'NFL',  sport: 'football',   league: 'nfl'  },
-  { key: 'WNBA', sport: 'basketball', league: 'wnba' },
+  { key: 'MLB',   sport: 'baseball',   league: 'mlb'  },
+  { key: 'NBA',   sport: 'basketball', league: 'nba'  },
+  { key: 'NBASL', sport: 'basketball', league: 'nba-summer-las-vegas' }, // NBA Summer League (Las Vegas)
+  { key: 'NHL',   sport: 'hockey',     league: 'nhl'  },
+  { key: 'NFL',   sport: 'football',   league: 'nfl'  },
+  { key: 'WNBA',  sport: 'basketball', league: 'wnba' },
 ]
 
 export function etDateStr(offsetDays = 0) {
@@ -505,8 +506,8 @@ export function buildLiveMeta(s, comp, away, home, key) {
       if (_goals) meta.goals = _goals
     }
 
-    // NBA / WNBA player box score, live every tick
-    if ((key === 'NBA' || key === 'WNBA') && s.boxscore?.players?.length) {
+    // NBA / WNBA / Summer League player box score, live every tick
+    if ((key === 'NBA' || key === 'WNBA' || key === 'NBASL') && s.boxscore?.players?.length) {
       meta.away_players = parseHoopsPlayers(nhlTeamGroup(s, away, 0))
       meta.home_players = parseHoopsPlayers(nhlTeamGroup(s, home, 1))
     }

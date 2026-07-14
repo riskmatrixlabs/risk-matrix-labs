@@ -25,7 +25,7 @@ const TEXT   = 'var(--text)'
 
 // Sport pills in display order. "All" (default) + "Live" (only when games are in progress)
 // are prepended dynamically in the component.
-const SPORTS = ['MLB', 'WNBA', 'NHL', 'NBA', 'NFL']
+const SPORTS = ['MLB', 'WNBA', 'NHL', 'NBA', 'NBASL', 'NFL']
 
 const DATES  = ['Yesterday', 'Today', 'Upcoming']
 
@@ -36,7 +36,7 @@ function getDetailTabs(event, meta, live, final) {
   const hasOdds = event.odds_ml_home != null || event.odds_spread_home != null || event.odds_total != null
   const statTabs = sport === 'MLB' ? ['Box Score']
     : sport === 'NHL' ? ['Goalies', 'Skaters']
-    : (sport === 'NBA' || sport === 'WNBA') ? ['Box Score']
+    : (sport === 'NBA' || sport === 'WNBA' || sport === 'NBASL') ? ['Box Score']
     : []
   const hasInsights = hasOdds || meta.trends || meta.injuries || meta.weather || meta.away_team_stats || meta.home_team_stats
   return [
@@ -2458,7 +2458,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
           )}
 
           {/* ── NBA/WNBA Box Score (Starters / Bench) ── */}
-          {dtab === 'Box Score' && (event.sport === 'NBA' || event.sport === 'WNBA') && (() => {
+          {dtab === 'Box Score' && (event.sport === 'NBA' || event.sport === 'WNBA' || event.sport === 'NBASL') && (() => {
             const awayP = meta.away_players ?? []
             const homeP = meta.home_players ?? []
             if (!awayP.length && !homeP.length) return <EmptyState label="Box Score" />

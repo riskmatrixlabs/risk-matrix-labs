@@ -74,6 +74,7 @@ const SPORTS = {
   MLB:  { sport: 'baseball',   league: 'mlb'  },
   WNBA: { sport: 'basketball', league: 'wnba' },
   NBA:  { sport: 'basketball', league: 'nba'  },
+  NBASL: { sport: 'basketball', league: 'nba-summer-las-vegas' },
   NHL:  { sport: 'hockey',     league: 'nhl'  },
 }
 const lastWord = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()

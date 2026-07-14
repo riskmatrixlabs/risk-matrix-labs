@@ -33,6 +33,7 @@ const LEAGUE_LOGO = {
   MLB:  'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png',
   NHL:  'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
   NBA:  'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+  NBASL: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
   WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
 }
 
@@ -323,7 +324,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
 // One LIVE feed across all sports (the SharpMoney/OddsJam model): scan every sport,
 // merge into a single ranked list, slice it with FILTER chips (no per-sport tabs),
 // auto-refresh on a timer. The TV and the dense board both just display this feed.
-const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // sports the provider supports today
+const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'NBASL', 'WNBA']   // sports the provider supports today
 const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
 function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, showFilters = false, setShowFilters, showSearch = false, setShowSearch, initialView = 'tv' }) {

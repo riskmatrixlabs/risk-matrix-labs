@@ -2379,7 +2379,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [betEvents, setBetEvents] = useState([])
   useEffect(() => {
     let on = true
-    const SP = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']
+    const SP = ['MLB', 'NHL', 'NBA', 'NBASL', 'WNBA', 'NFL']
     // Poll every 60s (was a one-time fetch): live scores must stay current so the dashboard bet cards'
     // live total bars + win-prob reflect the in-progress game — exactly like CH3 Track already polls.
     // Without this the dashboard held the score AS OF page load, so live tracking never updated.
@@ -2417,7 +2417,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   useEffect(() => {
     if (!token) return
     let on = true
-    const SP = ['MLB', 'NBA', 'NHL', 'WNBA']
+    const SP = ['MLB', 'NBA', 'NBASL', 'NHL', 'WNBA']
     Promise.all(SP.map(s =>
       fetch(`/api/player-search?all=1&sport=${encodeURIComponent(s)}`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)

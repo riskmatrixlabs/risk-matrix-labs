@@ -8,7 +8,9 @@ import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
 import { fetchEvents, isLiveEvent } from '../lib/events.js'
 
 // Sports the provider supports today — must match FindChannel's FEED_SPORTS.
-const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']
+const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'NBASL', 'WNBA']
+// Friendly circle labels (raw key is the fallback).
+const SPORT_LABEL = { NBASL: 'NBA SL' }
 
 // ── DEMO SAMPLE SLATE ────────────────────────────────────────────────────────
 // Shown ONLY when isDemo===true AND the real board is empty (off-day / early AM).
@@ -57,6 +59,7 @@ const LEAGUE_LOGO = {
   MLB:  'https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png',
   NHL:  'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
   NBA:  'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+  NBASL: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png', // Summer League → NBA badge
   WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
 }
 
@@ -208,7 +211,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
               }}>
                 <img src={LEAGUE_LOGO[s]} alt={s} width="22" height="22" style={{ objectFit: 'contain' }} />
               </span>
-              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: active ? NEON_T : MUTED }}>{s}</span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: active ? NEON_T : MUTED }}>{SPORT_LABEL[s] || s}</span>
             </button>
           )
         })}
