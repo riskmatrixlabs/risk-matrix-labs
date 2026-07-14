@@ -7,10 +7,11 @@ import ws from 'ws'
 import { gradeProp } from './_lib/gradeLean.js'
 import { parseBox } from './box-score.js'
 import { resolveStat } from '../src/lib/statProgress.js'
+import { matchBoxPlayer, lastNameInBox } from '../src/lib/matchBoxPlayer.js'
 
 export const config = { maxDuration: 60 }
 
-const MAX_ESPN = 80 // cap external summary fetches per run as a safety net
+const MAX_ESPN = 120 // cap external summary fetches per run (bumped so a full slate clears faster)
 
 // Match parseBox's key normalization (lowercase + accent-strip) so accented player
 // names (e.g. "José Ramírez") still resolve against the box-score map.
@@ -40,8 +41,9 @@ export default async function handler(req, res) {
   }
   const sb = db(); if (!sb) return res.status(200).json({ ok: false, note: 'no db' })
 
-  // Ungraded prop picks from the last few days (avoid scanning ancient rows).
-  const since = new Date(Date.now() - 4 * 86400e3).toISOString().slice(0, 10)
+  // Ungraded prop picks. Window was 4 days — anything older got ABANDONED forever (a game's box
+  // score can lag, a name can miss a pass); 30d lets stragglers re-grade and clears the backlog.
+  const since = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10)
   const { data: pending } = await sb.from('prop_results')
     .select('id, external_event_id, player, prop_market, prop_line, lean, game_date')
     .is('result', null).gte('game_date', since).limit(500)
@@ -64,11 +66,21 @@ export default async function handler(req, res) {
     const players = parseBox(summary)
 
     for (const row of rows) {
-      const statValue = resolveStat(players[norm(row.player)], row.prop_market)
-      const result = gradeProp({ statValue, prop_line: row.prop_line, lean: row.lean })
-      if (result == null) continue // DNP / not found / unresolvable — leave ungraded
+      // Robust match: reconciles the prop feed's stripped names ("Vladimir Guerrero", "kurodagrauer")
+      // with ESPN's box-score names ("Vladimir Guerrero Jr.", "Kuroda-Grauer") — the main grading gap.
+      const matched = matchBoxPlayer(row.player, players)
+      const statValue = resolveStat(matched, row.prop_market)
+      let result = gradeProp({ statValue, prop_line: row.prop_line, lean: row.lean })
+      let finalVal = statValue
+      // Genuine DNP: game is FINAL and no box player even shares this last name → void ('P', excluded
+      // from win% by propRecord) so the row RESOLVES instead of sitting ungraded forever. If the last
+      // name IS present but the full match failed, that's a matcher gap → leave ungraded (never guess).
+      if (result == null && matched == null && !lastNameInBox(row.player, players)) {
+        result = 'P'; finalVal = null
+      }
+      if (result == null) continue // matched but stat unresolvable, or uncertain miss — leave ungraded
       const { error } = await sb.from('prop_results')
-        .update({ result, final_value: statValue, graded_at: new Date().toISOString() })
+        .update({ result, final_value: finalVal, graded_at: new Date().toISOString() })
         .eq('id', row.id)
       if (!error) graded++
     }
