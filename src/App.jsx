@@ -2420,7 +2420,8 @@ export default function App({ user, session, subStatus, isDemo = false }) {
     const SP = ['MLB', 'NBA', 'NHL', 'WNBA']
     Promise.all(SP.map(s =>
       fetch(`/api/player-search?all=1&sport=${encodeURIComponent(s)}`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : [])
+        .then(r => r.ok ? r.json() : null)
+        .then(j => j?.players || (Array.isArray(j) ? j : []))
         .catch(() => [])
     )).then(arrs => {
       if (!on) return

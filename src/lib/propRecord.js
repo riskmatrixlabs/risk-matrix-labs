@@ -26,10 +26,13 @@ export function tallyProps(rows = [], { today = null, yesterday = null } = {}) {
   const overall = count(rows)
   const n = overall.w + overall.l + overall.p
 
-  const byTier = {}
+  const byTier = {}, byTierToday = {}, byTierYesterday = {}
   for (const key of Object.values(TIER_KEYS)) {
     const c = count(rows.filter(r => r.phlt_tier === key))
     byTier[key] = { ...c, winPct: winPct(c.w, c.l) }
+    // Per-tier splits for the recent windows, so the matrix can show Today / Yesterday too.
+    byTierToday[key] = count(rows.filter(r => r.phlt_tier === key && r.game_date === today))
+    byTierYesterday[key] = count(rows.filter(r => r.phlt_tier === key && r.game_date === yesterday))
   }
 
   const today_ = count(rows.filter(r => r.game_date === today))
@@ -38,6 +41,8 @@ export function tallyProps(rows = [], { today = null, yesterday = null } = {}) {
   return {
     overall: { ...overall, n, winPct: winPct(overall.w, overall.l) },
     byTier,
+    byTierToday,
+    byTierYesterday,
     today: today_,
     yesterday: yesterday_,
   }

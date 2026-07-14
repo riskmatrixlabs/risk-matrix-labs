@@ -16,6 +16,8 @@ const etDate = (offDays = 0) => new Date(Date.now() - 4 * 3600e3 - offDays * 864
 const EMPTY = {
   overall: { w: 0, l: 0, p: 0, n: 0, winPct: null },
   byTier: { A: { w: 0, l: 0, p: 0, winPct: null }, B: { w: 0, l: 0, p: 0, winPct: null }, C: { w: 0, l: 0, p: 0, winPct: null } },
+  byTierToday: { A: { w: 0, l: 0, p: 0 }, B: { w: 0, l: 0, p: 0 }, C: { w: 0, l: 0, p: 0 } },
+  byTierYesterday: { A: { w: 0, l: 0, p: 0 }, B: { w: 0, l: 0, p: 0 }, C: { w: 0, l: 0, p: 0 } },
   today: { w: 0, l: 0, p: 0 },
   yesterday: { w: 0, l: 0, p: 0 },
 }

@@ -155,8 +155,8 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
             <div style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ Spotlight — Today, ranked strongest first</div>
             {onOpenRecord && (
               <button onClick={(e) => { e.stopPropagation(); onOpenRecord() }} title="See the full graded model record"
-                style={{ flexShrink: 0, fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NEON_T, background: 'rgba(189,255,0,0.06)', border: `1px solid rgba(189,255,0,0.35)`, borderRadius: '5px', padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                Full Record →
+                style={{ flexShrink: 0, fontFamily: R, fontSize: '9px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0A0A0A', background: 'linear-gradient(135deg, #BDFF00, #8FE000)', border: `1px solid #BDFF00`, borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 0 10px rgba(189,255,0,0.55), 0 0 2px rgba(189,255,0,0.8)' }}>
+                Full Matrix →
               </button>
             )}
           </div>
@@ -351,13 +351,17 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
             const pct = (r) => { const n = r ? r.w + r.l : 0; return n >= 3 ? `${Math.round((r.w / n) * 100)}%` : '' }
             const sumRec = (...recs) => recs.reduce((acc, r) => ({ w: acc.w + (r?.w || 0), l: acc.l + (r?.l || 0), p: acc.p + (r?.p || 0) }), { w: 0, l: 0, p: 0 })
             const propP = { today: propRec?.today, yesterday: propRec?.yesterday, allTime: propRec?.overall }
+            // PHLT record for one tier (A/B/C) in a given period — now populated for every period.
+            const tierRec = (t, p) => p === 'today' ? propRec?.byTierToday?.[t]
+              : p === 'yesterday' ? propRec?.byTierYesterday?.[t]
+              : propRec?.byTier?.[t]
             const cols = [
               { key: 'O/U',  sub: 'totals', get: (p) => record?.all?.[p] },
               { key: 'TEAM', sub: 'ML',     get: (p) => record?.ml?.[p] },
               { key: 'RUN',  sub: 'line',   get: (p) => record?.rl?.[p] },
-              { key: 'PHLT', sub: 'prm',    get: (p) => p === 'allTime' ? propRec?.byTier?.A : null },
-              { key: 'PHLT', sub: 'str',    get: (p) => p === 'allTime' ? propRec?.byTier?.B : null },
-              { key: 'PHLT', sub: 'cau',    get: (p) => p === 'allTime' ? propRec?.byTier?.C : null },
+              { key: 'PHLT', sub: 'prm',    get: (p) => tierRec('A', p) },
+              { key: 'PHLT', sub: 'str',    get: (p) => tierRec('B', p) },
+              { key: 'PHLT', sub: 'cau',    get: (p) => tierRec('C', p) },
               { key: 'ALL',  sub: 'master', master: true, get: (p) => sumRec(record?.all?.[p], record?.ml?.[p], record?.rl?.[p], propP[p]) },
             ]
             const periods = [['today', 'Today'], ['yesterday', 'Yest'], ['allTime', 'All-time']]

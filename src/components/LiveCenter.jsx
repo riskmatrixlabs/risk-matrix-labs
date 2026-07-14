@@ -386,7 +386,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
                 <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{event.away_abbr}</div>
                 <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.away_record}</div>
               </div>
-              <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: awayLead ? TEXT : MUTED, opacity: homeLead ? 0.7 : 1, flexShrink: 0 }}>{event.away_score}</span>
+              <span style={{ fontFamily: R, fontSize: '32px', fontWeight: 800, color: awayLead ? NEON_T : MUTED, textShadow: awayLead ? '0 0 12px rgba(189,255,0,0.4)' : 'none', opacity: homeLead ? 0.7 : 1, flexShrink: 0 }}>{event.away_score}</span>
             </div>
             {/* Center: bases diamond + inning */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '0 8px' }}>
@@ -396,11 +396,14 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
                 <div style={{ position: 'absolute', width: B, height: B, borderRadius: '2px', top: '50%', right: '1px', transform: 'translateY(-50%) rotate(45deg)', background: bases[0] ? NEON : 'transparent', border: `1.5px solid ${bases[0] ? NEON : 'rgba(189,255,0,0.35)'}` }} />
                 <div style={{ position: 'absolute', width: 8, height: 8, borderRadius: '1px', bottom: '1px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', background: 'transparent', border: '1.5px solid rgba(189,255,0,0.18)' }} />
               </div>
-              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, color: '#FF3B3B', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{inningLabel}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: R, fontSize: '10px', fontWeight: 800, color: '#FF3B3B', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
+                {inningLabel}
+              </span>
             </div>
             {/* Home: score · abbr/record · logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-end', minWidth: 0 }}>
-              <span style={{ fontFamily: R, fontSize: '28px', fontWeight: 700, color: homeLead ? TEXT : MUTED, opacity: awayLead ? 0.7 : 1, flexShrink: 0 }}>{event.home_score}</span>
+              <span style={{ fontFamily: R, fontSize: '32px', fontWeight: 800, color: homeLead ? NEON_T : MUTED, textShadow: homeLead ? '0 0 12px rgba(189,255,0,0.4)' : 'none', opacity: awayLead ? 0.7 : 1, flexShrink: 0 }}>{event.home_score}</span>
               <div style={{ minWidth: 0, flex: 1, textAlign: 'right' }}>
                 <div style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: TEXT }}>{event.home_abbr}</div>
                 <div style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: MUTED }}>{event.home_record}</div>
@@ -423,9 +426,9 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '76px' }}>
             {hasScore ? (
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <span style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: (awayWin || awayLead) ? TEXT : MUTED, opacity: (homeWin || homeLead) ? 0.7 : 1 }}>{event.away_score}</span>
+                <span style={{ fontFamily: R, fontSize: '30px', fontWeight: 800, color: (awayWin || awayLead) ? (live ? NEON_T : TEXT) : MUTED, textShadow: (live && awayLead) ? '0 0 12px rgba(189,255,0,0.4)' : 'none', opacity: (homeWin || homeLead) ? 0.7 : 1 }}>{event.away_score}</span>
                 <span style={{ fontFamily: R, fontSize: '12px', color: MUTED }}>–</span>
-                <span style={{ fontFamily: R, fontSize: '24px', fontWeight: 700, color: (homeWin || homeLead) ? TEXT : MUTED, opacity: (awayWin || awayLead) ? 0.7 : 1 }}>{event.home_score}</span>
+                <span style={{ fontFamily: R, fontSize: '30px', fontWeight: 800, color: (homeWin || homeLead) ? (live ? NEON_T : TEXT) : MUTED, textShadow: (live && homeLead) ? '0 0 12px rgba(189,255,0,0.4)' : 'none', opacity: (awayWin || awayLead) ? 0.7 : 1 }}>{event.home_score}</span>
               </div>
             ) : (
               <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: centerColor, letterSpacing: live ? '0.08em' : '0', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -440,7 +443,14 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
               </span>
             )}
             {hasScore && (
-              <span style={{ fontFamily: R, fontSize: '10px', color: centerColor, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{centerLabel}</span>
+              live ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: R, fontSize: '10px', fontWeight: 800, color: '#FF3B3B', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF3B3B', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
+                  {centerLabel}
+                </span>
+              ) : (
+                <span style={{ fontFamily: R, fontSize: '10px', color: centerColor, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{centerLabel}</span>
+              )
             )}
             {live && hasScore && event.sport !== 'MLB' && event.metadata?.situation?.period && event.metadata?.situation?.clock && (() => {
               const sit = event.metadata.situation
@@ -2578,6 +2588,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
   const [selectedId,  setSelectedId] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [hasLive,     setHasLive]    = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
 
   const isLiveTab = sport === 'Live'
   const isAllTab  = sport === 'All'
@@ -2674,8 +2685,19 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
       {/* ⬡ Spotlight signals ticker — today's strong model leans, scrolling like the CH1 TV crawl */}
       <SpotlightTicker token={token} onOpen={ev => setSelectedId(ev.id)} onAddToSlip={onAddToSlip} onOpenRecord={onOpenRecord} />
 
-      {/* Filters card — sport pills + date tabs grouped */}
-      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {/* Filters card — sport pills + date tabs, tucked behind a ⚙ gear so the slate opens clean */}
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <span style={{ fontFamily: R, fontSize: '9px', color: MUTED }}>
+            Showing <span style={{ color: NEON_T, fontWeight: 700 }}>{sport === 'Live' ? 'LIVE' : sport}</span>
+            {!isLiveTab && <> · <span style={{ color: NEON_T, fontWeight: 700 }}>{dateFilter}</span></>}
+          </span>
+          <button onClick={() => setShowFilters(f => !f)} aria-label="Filter settings" title="Filter settings"
+            style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: showFilters ? NEON_T : MUTED, background: showFilters ? 'rgba(189,255,0,0.1)' : 'transparent', border: `1px solid ${showFilters ? NEON : BORDER}`, borderRadius: '7px', padding: '5px 9px', cursor: 'pointer' }}>
+            ⚙ Filters
+          </button>
+        </div>
+        {showFilters && <>
         {/* Sport pills */}
         <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '2px' }}>
           {filterTabs.map(s => {
@@ -2711,6 +2733,7 @@ export default function LiveCenter({ onLogPosition, onAddToSlip, bets = [], toke
             ))}
           </div>
         )}
+        </>}
       </div>
 
       {/* Content */}

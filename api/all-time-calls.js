@@ -27,6 +27,7 @@ function buildEventMap(events) {
       home_team: e.home_team ?? null,
       sport: e.sport ?? null,
       status: e.status ?? null,
+      start_time: e.start_time ?? m.start_time ?? null,
       away_score: e.away_score ?? null,
       home_score: e.home_score ?? null,
     }
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
     let eventMap = {}
     if (ids.length) {
       const { data: events } = await sb.from('events')
-        .select('id, external_event_id, sport, status, away_team, home_team, away_abbr, home_abbr, away_score, home_score, metadata')
+        .select('id, external_event_id, sport, status, start_time, away_team, home_team, away_abbr, home_abbr, away_score, home_score, metadata')
         .in('external_event_id', ids)
       eventMap = buildEventMap(events)
     }
