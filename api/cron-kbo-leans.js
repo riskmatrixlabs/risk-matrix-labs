@@ -15,6 +15,10 @@ function db() {
 const r1 = (n) => Math.round(n * 10) / 10
 
 export default async function handler(req, res) {
+  // Match sibling crons: reject public triggers when a CRON_SECRET is configured.
+  if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
   const sb = db(); if (!sb) return res.status(200).json({ ok: false, note: 'no db' })
   let snapped = 0, graded = 0
   try {
