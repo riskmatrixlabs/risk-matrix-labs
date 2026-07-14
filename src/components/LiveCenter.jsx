@@ -25,7 +25,7 @@ const TEXT   = 'var(--text)'
 
 // Sport pills in display order. "All" (default) + "Live" (only when games are in progress)
 // are prepended dynamically in the component.
-const SPORTS = ['MLB', 'WNBA', 'NHL', 'NBA', 'NBASL', 'NFL']
+const SPORTS = ['MLB', 'WNBA', 'NHL', 'NBA', 'NFL']   // NBA folds in Summer League (events.js LEAGUE_GROUP)
 
 const DATES  = ['Yesterday', 'Today', 'Upcoming']
 

@@ -2379,7 +2379,7 @@ export default function App({ user, session, subStatus, isDemo = false }) {
   const [betEvents, setBetEvents] = useState([])
   useEffect(() => {
     let on = true
-    const SP = ['MLB', 'NHL', 'NBA', 'NBASL', 'WNBA', 'NFL']
+    const SP = ['MLB', 'NHL', 'NBA', 'WNBA', 'NFL']   // NBA fetch folds in Summer League (events.js LEAGUE_GROUP)
     // Poll every 60s (was a one-time fetch): live scores must stay current so the dashboard bet cards'
     // live total bars + win-prob reflect the in-progress game — exactly like CH3 Track already polls.
     // Without this the dashboard held the score AS OF page load, so live tracking never updated.

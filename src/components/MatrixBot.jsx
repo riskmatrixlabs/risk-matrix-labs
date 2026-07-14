@@ -324,7 +324,7 @@ export default function MatrixBot({ onLogPosition, onAddToSlip, bets = [], token
 // One LIVE feed across all sports (the SharpMoney/OddsJam model): scan every sport,
 // merge into a single ranked list, slice it with FILTER chips (no per-sport tabs),
 // auto-refresh on a timer. The TV and the dense board both just display this feed.
-const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'NBASL', 'WNBA']   // sports the provider supports today
+const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // NBA folds in Summer League (events.js LEAGUE_GROUP)
 const MARKET_CHIPS = [['ALL', 'ALL'], ['h2h', 'ML'], ['spreads', 'SPREAD'], ['totals', 'TOTAL'], ['props', 'PROPS']]
 
 function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, showFilters = false, setShowFilters, showSearch = false, setShowSearch, initialView = 'tv' }) {
@@ -345,7 +345,7 @@ function FindChannel({ token, bankroll = 0, onPick, onPickPlayer, onAddToSlip, s
   useEffect(() => {
     let live = true
     Promise.all(FEED_SPORTS.map(s =>
-      fetchEvents(s, 'today').then(r => (r?.data || []).map(e => ({ ...e, _sport: s }))).catch(() => [])
+      fetchEvents(s, 'today').then(r => (r?.data || []).map(e => ({ ...e, _sport: e.sport || s }))).catch(() => [])
     )).then(arr => { if (live) setEvents(arr.flat()) })
     return () => { live = false }
   }, [])

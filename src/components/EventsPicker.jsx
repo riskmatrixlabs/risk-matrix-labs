@@ -8,9 +8,7 @@ import { NEON, NEON_T, R, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
 import { fetchEvents, isLiveEvent } from '../lib/events.js'
 
 // Sports the provider supports today — must match FindChannel's FEED_SPORTS.
-const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'NBASL', 'WNBA']
-// Friendly circle labels (raw key is the fallback).
-const SPORT_LABEL = { NBASL: 'NBA SL' }
+const FEED_SPORTS = ['MLB', 'NHL', 'NBA', 'WNBA']   // NBA tab folds in Summer League (see events.js LEAGUE_GROUP)
 
 // ── DEMO SAMPLE SLATE ────────────────────────────────────────────────────────
 // Shown ONLY when isDemo===true AND the real board is empty (off-day / early AM).
@@ -152,7 +150,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
         // Show the WHOLE slate (pre-game AND live) so a game card never disappears mid-game.
         // Pre-game first, live after; live games are tagged (props stay pre-game-gated).
         const rows = (res?.data || [])
-          .map(e => ({ ...e, _sport: sport, _live: isLiveEvent(e) }))
+          .map(e => ({ ...e, _sport: e.sport || sport, _live: isLiveEvent(e) }))
           .sort((a, b) => (a._live === b._live) ? 0 : (a._live ? 1 : -1))
         setEvents(rows)
       })
@@ -211,7 +209,7 @@ export default function EventsPicker({ sport, onPickSport, onPickGame, onPickPla
               }}>
                 <img src={LEAGUE_LOGO[s]} alt={s} width="22" height="22" style={{ objectFit: 'contain' }} />
               </span>
-              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: active ? NEON_T : MUTED }}>{SPORT_LABEL[s] || s}</span>
+              <span style={{ fontFamily: R, fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', color: active ? NEON_T : MUTED }}>{s}</span>
             </button>
           )
         })}

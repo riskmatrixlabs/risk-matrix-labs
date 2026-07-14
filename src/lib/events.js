@@ -9,6 +9,12 @@ const SPORT_LEAGUE = {
   wnba:  'WNBA',
 }
 
+// Some circles fold in a sibling league. NBA is out of season in July, so the NBA
+// tab shows NBA Summer League games (each card still labels itself "NBA Summer League").
+// Games keep their own `sport` value ('NBASL') so odds/props route to the SL feed.
+const LEAGUE_GROUP = { NBA: ['NBA', 'NBASL'] }
+const leaguesFor = (league) => LEAGUE_GROUP[league] || [league]
+
 function mapRow(row) {
   const m = row.metadata ?? {}
   return {
@@ -41,7 +47,7 @@ export async function fetchEvents(sport, date = 'today') {
   let query = supabase
     .from('events')
     .select('*')
-    .eq('sport', league)
+    .in('sport', leaguesFor(league))
     .order('start_time', { ascending: true })
 
   // ET day runs 04:00 UTC → next day 03:59:59 UTC (UTC-4)
