@@ -7,13 +7,17 @@ import { geocode, fetchWeather } from './lib/weather.js'
 // each with a per-game summary fetch) needs more than the 10s default.
 export const config = { maxDuration: 60 }
 
-const SPORTS = [
+// Core in-season/money sports run FIRST. Each sport's rows are written to
+// Supabase as soon as that sport finishes (see runSync below), so ordering
+// here also decides which sports are guaranteed to land inside the 60s
+// function budget if a later sport runs long or times out.
+export const SPORTS = [
   { key: 'MLB',   sport: 'baseball',   league: 'mlb'  },
+  { key: 'WNBA',  sport: 'basketball', league: 'wnba' },
   { key: 'NBA',   sport: 'basketball', league: 'nba'  },
-  { key: 'NBASL', sport: 'basketball', league: 'nba-summer-las-vegas' }, // NBA Summer League (Las Vegas)
   { key: 'NHL',   sport: 'hockey',     league: 'nhl'  },
   { key: 'NFL',   sport: 'football',   league: 'nfl'  },
-  { key: 'WNBA',  sport: 'basketball', league: 'wnba' },
+  { key: 'NBASL', sport: 'basketball', league: 'nba-summer-las-vegas' }, // NBA Summer League (Las Vegas)
 ]
 
 // Map over items with bounded concurrency (pool of `limit` workers).
@@ -435,56 +439,28 @@ async function fetchSport({ key, sport, league }, dateStr) {
   return (await mapLimit(json?.events ?? [], 8, processEvent)).filter(Boolean)
 }
 
-export default async function handler(req, res) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).end()
-  }
+// A metadata blob is "rich" if it has any detailed key beyond the 6 basic ones
+// we always build (logos, venue, venue_city, broadcast, series_summary).
+const BASE_META_KEYS = new Set(['home_logo', 'away_logo', 'venue', 'venue_city', 'broadcast', 'series_summary'])
+const isRichMeta = (m) => m && typeof m === 'object' && Object.keys(m).some(k => !BASE_META_KEYS.has(k))
 
-  // Allow manual POST to bypass game-window gate (for testing)
-  const isManual = req.method === 'POST'
-  if (!isManual && !inGameWindow()) {
-    return res.status(200).json({ skipped: true, reason: 'outside game window' })
-  }
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { realtime: { transport: ws } }
-  )
-
-  // Sync yesterday, today, and tomorrow so all three date tabs have data
-  const dates   = [etDateStr(-1), etDateStr(0), etDateStr(1)]
-  const counts  = {}
-  const allRows = []
-
-  for (const s of SPORTS) {
-    counts[s.key] = 0
-    for (const dateStr of dates) {
-      const rows = await fetchSport(s, dateStr)
-      counts[s.key] += rows.length
-      allRows.push(...rows)
-    }
-  }
-
-  if (allRows.length === 0) {
-    return res.status(200).json({ upserted: 0, counts, dates })
-  }
+// Upsert one sport's rows immediately (instead of batching the whole run into
+// one end-of-run upsert). This is the core of the timeout fix: if the function
+// runs out of time on a later sport, everything already upserted here is safe
+// in the DB — only the not-yet-reached sports are lost for this run.
+async function upsertRows(supabase, rows) {
+  if (!rows.length) return { upserted: 0 }
 
   // Preserve pre-game spread/total when ESPN drops them for live games
-  const eventIds = allRows.map(r => r.external_event_id)
+  const eventIds = rows.map(r => r.external_event_id)
   const { data: existing } = await supabase
     .from('events')
     .select('external_event_id, odds_spread_home, odds_spread_away, odds_total, metadata')
     .in('external_event_id', eventIds)
 
-  // A metadata blob is "rich" if it has any detailed key beyond the 6 basic ones
-  // we always build (logos, venue, venue_city, broadcast, series_summary).
-  const BASE_META_KEYS = new Set(['home_logo', 'away_logo', 'venue', 'venue_city', 'broadcast', 'series_summary'])
-  const isRichMeta = (m) => m && typeof m === 'object' && Object.keys(m).some(k => !BASE_META_KEYS.has(k))
-
   if (existing?.length) {
     const existingMap = Object.fromEntries(existing.map(r => [r.external_event_id, r]))
-    for (const row of allRows) {
+    for (const row of rows) {
       const prev = existingMap[row.external_event_id]
       if (!prev) continue
       if (row.odds_spread_home == null && prev.odds_spread_home != null) {
@@ -513,18 +489,15 @@ export default async function handler(req, res) {
 
   const { error } = await supabase
     .from('events')
-    .upsert(allRows, { onConflict: 'external_event_id,provider' })
+    .upsert(rows, { onConflict: 'external_event_id,provider' })
 
-  if (error) {
-    console.error('cron-sync-events upsert error:', error)
-    return res.status(500).json({ error: error.message })
-  }
+  if (error) throw error
 
   // Append odds snapshots for line movement + CLV (append-only; never blocks the sync).
   // NOTE: supabase-js .insert() resolves with { error } instead of throwing on DB
   // errors (RLS/permission), so we MUST check the returned error — not just try/catch.
   try {
-    const snaps = buildOddsSnapshots(allRows, new Date().toISOString())
+    const snaps = buildOddsSnapshots(rows, new Date().toISOString())
     if (snaps.length) {
       const { error: snapErr } = await supabase.from('odds_history').insert(snaps)
       if (snapErr) console.warn('odds_history snapshot insert error:', snapErr.message)
@@ -533,5 +506,61 @@ export default async function handler(req, res) {
     console.warn('odds_history snapshot failed:', e.message)
   }
 
-  return res.status(200).json({ upserted: allRows.length, counts, dates })
+  return { upserted: rows.length }
+}
+
+// Runs the full sync: for each sport (in money-first order), fetch all dates,
+// then upsert that sport's rows right away. A failure/timeout on one sport
+// (fetch error or DB error) is caught and logged so it degrades that sport's
+// count to whatever it already wrote, instead of losing every sport's rows
+// for the whole run.
+export async function runSync(supabase, dates) {
+  const counts = {}
+  let upserted = 0
+  const errors = {}
+
+  for (const s of SPORTS) {
+    counts[s.key] = 0
+    try {
+      const sportRows = []
+      for (const dateStr of dates) {
+        const rows = await fetchSport(s, dateStr)
+        sportRows.push(...rows)
+      }
+      counts[s.key] = sportRows.length
+      if (sportRows.length) {
+        const { upserted: n } = await upsertRows(supabase, sportRows)
+        upserted += n
+      }
+    } catch (e) {
+      console.error(`cron-sync-events: ${s.key} failed, continuing with remaining sports:`, e.message)
+      errors[s.key] = e.message
+    }
+  }
+
+  return { upserted, counts, dates, ...(Object.keys(errors).length ? { errors } : {}) }
+}
+
+export default async function handler(req, res) {
+  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).end()
+  }
+
+  // Allow manual POST to bypass game-window gate (for testing)
+  const isManual = req.method === 'POST'
+  if (!isManual && !inGameWindow()) {
+    return res.status(200).json({ skipped: true, reason: 'outside game window' })
+  }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { realtime: { transport: ws } }
+  )
+
+  // Sync yesterday, today, and tomorrow so all three date tabs have data
+  const dates  = [etDateStr(-1), etDateStr(0), etDateStr(1)]
+  const result = await runSync(supabase, dates)
+
+  return res.status(200).json(result)
 }
