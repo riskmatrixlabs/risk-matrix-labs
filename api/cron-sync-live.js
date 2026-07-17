@@ -53,13 +53,18 @@ async function notifyScoreChanges(supabase, changes) {
   return sent
 }
 
+// Core in-season/money sports run FIRST. Each sport's live rows are written to
+// Supabase as soon as that sport finishes (see runLiveSync below), so ordering
+// here also decides which sports are guaranteed to land inside the 30s
+// function budget if a later sport runs long or times out. (Same pattern as
+// cron-sync-events.js — a62842a.)
 export const SPORTS = [
   { key: 'MLB',   sport: 'baseball',   league: 'mlb'  },
+  { key: 'WNBA',  sport: 'basketball', league: 'wnba' },
   { key: 'NBA',   sport: 'basketball', league: 'nba'  },
-  { key: 'NBASL', sport: 'basketball', league: 'nba-summer-las-vegas' }, // NBA Summer League (Las Vegas)
   { key: 'NHL',   sport: 'hockey',     league: 'nhl'  },
   { key: 'NFL',   sport: 'football',   league: 'nfl'  },
-  { key: 'WNBA',  sport: 'basketball', league: 'wnba' },
+  { key: 'NBASL', sport: 'basketball', league: 'nba-summer-las-vegas' }, // NBA Summer League (Las Vegas)
 ]
 
 export function etDateStr(offsetDays = 0) {
@@ -595,30 +600,14 @@ async function fetchLiveForSport({ key, sport, league }) {
   return updates
 }
 
-export default async function handler(req, res) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).end()
-  }
-  const isManual = req.method === 'POST'
-  if (!isManual && !inGameWindow()) {
-    return res.status(200).json({ skipped: true, reason: 'outside game window' })
-  }
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { realtime: { transport: ws } }
-  )
-
-  // Gather live updates across all sports (today only)
-  const updates = []
-  for (const sport of SPORTS) updates.push(...await fetchLiveForSport(sport))
-
-  if (updates.length === 0) {
-    return res.status(200).json({ live: 0, reason: 'no in-progress games' })
-  }
-
-  // Merge live fields INTO existing metadata so static data (logos, pitchers, last5, standings) is preserved
+// Upsert one sport's live updates immediately (instead of batching the whole
+// run into one end-of-run upsert). Core of the timeout fix: if the function
+// runs out of time on a later sport, everything already upserted here is safe
+// in the DB — only the not-yet-reached sports miss this run's refresh.
+// Merges live fields INTO existing metadata so static data (logos, pitchers,
+// last5, standings) is preserved, and returns detected score increases so the
+// caller can notify AFTER the new scores are persisted.
+async function upsertLiveRows(supabase, updates) {
   const ids = updates.map(u => u.external_event_id)
   const { data: existing } = await supabase
     .from('events')
@@ -659,14 +648,62 @@ export default async function handler(req, res) {
     .from('events')
     .upsert(rows, { onConflict: 'external_event_id,provider' })
 
-  if (error) {
-    console.error('cron-sync-live upsert error:', error)
-    return res.status(500).json({ error: error.message })
+  if (error) throw error
+
+  return { rows, scoreChanges }
+}
+
+// Runs the live sync: for each sport (money-first order), fetch its in-progress
+// games then upsert that sport's rows right away. A failure/timeout on one
+// sport (fetch error or DB error) is caught and logged so it degrades that
+// sport's refresh only, instead of losing every sport's rows for the run.
+export async function runLiveSync(supabase) {
+  const counts = {}
+  const games = []
+  const errors = {}
+  let live = 0
+  let scoreChangeCount = 0
+  let notified = 0
+
+  for (const s of SPORTS) {
+    counts[s.key] = 0
+    try {
+      const updates = await fetchLiveForSport(s)
+      if (!updates.length) continue
+      const { rows, scoreChanges } = await upsertLiveRows(supabase, updates)
+      counts[s.key] = rows.length
+      live += rows.length
+      games.push(...rows.map(r => r.external_event_id))
+      scoreChangeCount += scoreChanges.length
+      // Fire score notifications AFTER the new scores are persisted (so a 2nd run won't re-fire).
+      try { notified += await notifyScoreChanges(supabase, scoreChanges) } catch (e) { console.warn('notify error:', e.message) }
+    } catch (e) {
+      console.error(`cron-sync-live: ${s.key} failed, continuing with remaining sports:`, e.message)
+      errors[s.key] = e.message
+    }
   }
 
-  // Fire score notifications AFTER the new scores are persisted (so a 2nd run won't re-fire).
-  let notified = 0
-  try { notified = await notifyScoreChanges(supabase, scoreChanges) } catch (e) { console.warn('notify error:', e.message) }
+  return { live, games, counts, scoreChanges: scoreChangeCount, notified, ...(Object.keys(errors).length ? { errors } : {}) }
+}
 
-  return res.status(200).json({ live: rows.length, games: rows.map(r => r.external_event_id), scoreChanges: scoreChanges.length, notified })
+export default async function handler(req, res) {
+  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).end()
+  }
+  const isManual = req.method === 'POST'
+  if (!isManual && !inGameWindow()) {
+    return res.status(200).json({ skipped: true, reason: 'outside game window' })
+  }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { realtime: { transport: ws } }
+  )
+
+  const result = await runLiveSync(supabase)
+  if (result.live === 0 && !result.errors) {
+    return res.status(200).json({ live: 0, reason: 'no in-progress games' })
+  }
+  return res.status(200).json(result)
 }
