@@ -371,3 +371,11 @@ The owner's 5 Beast engines are ported as pure tested libs (verbatim weights, `d
 - 🟡 **NHL SOG** (`nhlSog.js`, CONFIRMED) — wire before season start (Oct); TOI/shots from ESPN box scores.
 - 🟡 **Ladder/RR quality scores → CH3** (`qualityScores.js`, CONFIRMED) — inputs (PHLT, EV) already computed in-app; surface as a quality rating on ladder rungs + RR combos.
 - ⚠️ Tier mapping: internal ELITE/STRONG/LEAN/WATCH/PASS → user-facing PRIME/STRONG/CAUTION/FADE lives in `src/lib/models/tiers.js`; owner should sanity-check the LEAN+WATCH→CAUTION collapse before it hits UI copy.
+
+### 🧠 ENGINE WIRING — SHIPPED v543–v545 (2026-08-11) + follow-ups
+🟢 SHIPPED: RR MATRIX QUALITY in slip (v543) · WNBA W MODEL verdicts /api/wnba-props (v544) · NFL SHADOW side model — nflverse off+def EPA, game-info NFL branch, Spotlight `NFL · SHADOW` section, snapshot via market:'rl', gradeLean generalized to real spreads w/ push (v545). Plan: docs/superpowers/plans/2026-08-11-engine-wiring-phases.md.
+- 🟡 **WNBA verdict snapshot/grading** — verdicts render but aren't graded in public yet; needs cron-snapshot-phlt sibling + verify matchBoxPlayer/cron-grade-props handle WNBA points/reb/ast markets.
+- 🟡 **NFL shadow watch** — first leans surface when NFL events sync (Aug 12) + Spotlight opens. Watch: qbEdge sign fix is session-authored — let the graded record judge it. Injuries/weather absent → honest null (strictest reading; loosen only deliberately).
+- 🟡 **NBA + NHL wiring (Oct)** — reuse this exact pattern: verdict lib on nbaProps/nhlSog + endpoint + PropsPanel dispatch already sport-keyed.
+- 🟡 **Ladder rung scoring** — still out: rungs carry no PHLT score (`confidence` always 0). Wire when a scored pick flows slip→ladder (carry evPct/model score through addToLadder).
+- ⚠️ UI verification note: RR quality row + WNBA verdicts are auth-gated and props are cache-limited while the credit breaker is tripped — owner should eyeball both on his phone; logic is test-proven (696 green).
