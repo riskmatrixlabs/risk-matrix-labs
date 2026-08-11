@@ -362,3 +362,12 @@ Spotlight (3-pillar ticker + panel, factors hidden, +Slip w/ real free odds), to
 
 ### 🔧 MAINTENANCE (added 2026-08-11)
 - 🔴 **Bump Node engine 20.x → 24.x before Oct 1, 2026** — Vercel deprecation: deployments created on/after 2026-10-01 **fail to build** on Node 20. Fix: `package.json` `"engines": { "node": "24.x" }`, then run tests + a full `npm run ship` and verify serverless API routes (crons, scan-edges, game-lines) still work on the new runtime. Surfaced as a warning on the v541 deploy.
+
+### 🧠 MODEL ENGINE WIRING (added 2026-08-11 — libs shipped v542, formulas live in `src/lib/models/`)
+The owner's 5 Beast engines are ported as pure tested libs (verbatim weights, `docs/models/MODELS.md` = source of truth in-repo). Wiring order, same flow as the O/U model (shadow lean → graded in public → verdicts):
+- 🔴 **NFL side score → Spotlight shadow lean** — engine ready (`nflSide.js`, ⚠️ reconstruction, open to calibration). Needs data plumbing: EPA/success rate (nflverse or ESPN), QB status + injuries, rest/travel; weather already synced. NFL preseason starts Aug 13.
+- 🟡 **WNBA scoring → existing props flow** — `wnbaProps.js` CONFIRMED. WNBA live now; minutes/usage from ESPN box scores already fetched for stats cards.
+- 🟡 **NBA engine** (`nbaProps.js`, CONFIRMED, blowout-adjusted minutes) — wire before season start (Oct).
+- 🟡 **NHL SOG** (`nhlSog.js`, CONFIRMED) — wire before season start (Oct); TOI/shots from ESPN box scores.
+- 🟡 **Ladder/RR quality scores → CH3** (`qualityScores.js`, CONFIRMED) — inputs (PHLT, EV) already computed in-app; surface as a quality rating on ladder rungs + RR combos.
+- ⚠️ Tier mapping: internal ELITE/STRONG/LEAN/WATCH/PASS → user-facing PRIME/STRONG/CAUTION/FADE lives in `src/lib/models/tiers.js`; owner should sanity-check the LEAN+WATCH→CAUTION collapse before it hits UI copy.
