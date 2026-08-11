@@ -62,15 +62,18 @@ export function buildLeanRows(body) {
     })
   }
 
-  // RL — a run-line pick (e.g. 'HOME -1.5') with >= 0.50 cover prob.
+  // RL — a run-line pick (e.g. 'HOME -1.5') with >= 0.50 cover prob. NFL SHADOW leans
+  // ('nfl-shadow-*') are score-based and carry NO cover probability — we snapshot them
+  // with cover_prob null rather than fabricate one (honest null). MLB gate unchanged.
   const rlPick = b.rl_pick ? String(b.rl_pick) : ''
-  if (rlPick && Number(b.rl_cover_prob) >= 0.50) {
+  const nflShadowNoProb = b.rl_cover_prob == null && /^nfl-shadow/.test(String(b.model_version || ''))
+  if (rlPick && (Number(b.rl_cover_prob) >= 0.50 || nflShadowNoProb)) {
     rows.push({
       ...common,
-      market: 'rl',
+      market: 'rl',   // reused for NFL point spreads too — edge_runs carries POINTS there
       lean: rlPick,
       pick_side: rlPick,
-      cover_prob: Number(b.rl_cover_prob),
+      cover_prob: b.rl_cover_prob != null ? Number(b.rl_cover_prob) : null,
       total_line: null,
     })
   }

@@ -60,6 +60,31 @@ describe('gradeLeanResult — rl', () => {
   it('unparseable side → null', () => {
     expect(gradeLeanResult({ market: 'rl', pick_side: 'foo', awayScore: 4, homeScore: 3 })).toBe(null)
   })
+  // Legacy MLB rows never omit the spread, but the old code assumed -1.5 for any rl row —
+  // preserve that so old rows keep grading identically.
+  it('legacy: bare HOME (no spread token) grades as -1.5', () => {
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME', awayScore: 3, homeScore: 5 })).toBe('W')
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME', awayScore: 3, homeScore: 4 })).toBe('L')
+  })
+})
+
+describe('gradeLeanResult — rl, real parsed spreads (NFL)', () => {
+  it('HOME -3.5: margin 4 → W, margin 3 → L', () => {
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME -3.5', awayScore: 20, homeScore: 24 })).toBe('W')
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME -3.5', awayScore: 21, homeScore: 24 })).toBe('L')
+  })
+  it('AWAY +2.5: away loses by 2 → W, by 3 → L', () => {
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'AWAY +2.5', awayScore: 21, homeScore: 23 })).toBe('W')
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'AWAY +2.5', awayScore: 20, homeScore: 23 })).toBe('L')
+  })
+  it('integer spread pushes: HOME -3 with margin exactly 3 → P', () => {
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME -3', awayScore: 20, homeScore: 23 })).toBe('P')
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'AWAY +3', awayScore: 20, homeScore: 23 })).toBe('P')
+  })
+  it('underdog HOME +6.5 covers an outright loss by 6', () => {
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME +6.5', awayScore: 27, homeScore: 21 })).toBe('W')
+    expect(gradeLeanResult({ market: 'rl', pick_side: 'HOME +6.5', awayScore: 28, homeScore: 21 })).toBe('L')
+  })
 })
 
 describe('gradeLeanResult — guards', () => {

@@ -100,6 +100,7 @@
 
 - Fetch nflverse team-level stats (prior season = early-season prior; URL: the nflverse-data GitHub release CSV for team stats regular season). Parse to per-team `{ offEpaPerPlay, defEpaPerPlayAllowed, sackRateAllowed, explosiveRate, turnoverMargin, playsPerGame }`. Cache in `scan_cache` (existing table/pattern from `api/_lib/scanStore.js`) for 24h, keyed `NFLSTATS:<season>`. Pure parser exported separately for tests; network fn documented + fail-soft (null → callers emit no lean).
 - [ ] Tests on a fixture CSV snippet → PASS; commit `feat(nfl): nflverse team stats source`
+- *(Phase 3b note: the season file has no opponent-EPA column, so `defEpaPerPlayAllowed` is derived from the WEEKLY file `stats_team_week_<season>.csv` (has `opponent_team`): mean over T's games of the opponent's off EPA/play; cached separately as `NFLDEF:<season>`.)*
 
 ### Task 3.2: `src/lib/nflLean.js` — factor derivation + lean builder
 
@@ -107,9 +108,9 @@
 
 - `nflLean({ homeStats, awayStats, weather, injuries, oddsSpreadHome, oddsTotal, restDaysHome, restDaysAway }) -> { side:'HOME'|'AWAY', score, tier, factors } | null`
 - Nine factors 0–1, each documented; **all-or-nothing** (any underivable → null):
-  - `qbEdge` = clamp01(0.5 + (own offEpaPerPlay − opp defEpaPerPlayAllowed) × 2.5) — EPA differential as the QB/passing proxy until player-level data lands (documented as proxy)
+  - `qbEdge` = clamp01(0.5 + ((own offEpaPerPlay − LEAGUE_AVG_EPA) + (opp defEpaPerPlayAllowed − LEAGUE_AVG_EPA)) × 2.5) — EPA differential as the QB/passing proxy until player-level data lands (documented as proxy). LEAGUE_AVG_EPA ≈ 0.01 documented const, replaced by the computed league mean from the fetched stats when available. *(Corrected during Phase 3b: the original `own.off − opp.defAllowed` form was backwards — it penalized facing a BAD defense. Session-authored derivation, not an owner-confirmed weight; `nflSideScore` weights untouched.)*
   - `offensiveLine` = clamp01(1 − sackRateAllowed / 0.12)
-  - `defensiveMatchup` = clamp01(0.5 + (opp offEpa faced vs own defEpaAllowed) × 2.5)
+  - `defensiveMatchup` = clamp01(0.5 − ((opp offEpaPerPlay − LEAGUE_AVG_EPA) + (own defEpaPerPlayAllowed − LEAGUE_AVG_EPA)) × 2.5) — inverted mirror of qbEdge (hot opp offense + leaky own defense drag it down); same Phase-3b sign correction
   - `explosivePlay` = clamp01(explosiveRate / 0.14)
   - `turnoverRegression` = clamp01(0.5 − turnoverMargin × 0.05) (extreme margins regress)
   - `injuryEdge` = from synced `metadata.injuries` counts weighted by status (Out=1, Doubtful=0.6, Questionable=0.3): clamp01(0.5 + (oppWeighted − ownWeighted) × 0.08)

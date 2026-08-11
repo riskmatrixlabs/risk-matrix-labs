@@ -39,15 +39,23 @@ export function gradeLeanResult({ market, lean, pick_side, total_line, awayScore
     return 'P'
   }
 
-  // RUN LINE — pick_side like 'HOME -1.5' / 'AWAY -1.5'. Favorite covers -1.5
-  // when its winning margin >= 2 (integer MLB scores never push -1.5).
+  // RUN/SPREAD LINE — pick_side like 'HOME -1.5' / 'AWAY +2.5' / 'HOME -3'.
+  // Grade against the PARSED spread: signed margin + spread > 0 → W, < 0 → L, = 0 → P
+  // (integer NFL spreads can push; half-point lines never do). Legacy MLB rows always
+  // carry '-1.5' and grade identically to the old (margin >= 2) rule; a row with no
+  // parseable spread token falls back to the legacy -1.5 assumption.
   if (mkt === 'rl') {
-    const fav = String(pick_side || '').trim().split(/\s+/)[0].toUpperCase()
-    let favScore, oppScore
-    if (fav === 'HOME') { favScore = homeScore; oppScore = awayScore }
-    else if (fav === 'AWAY') { favScore = awayScore; oppScore = homeScore }
+    const parts = String(pick_side || '').trim().split(/\s+/)
+    const side = (parts[0] || '').toUpperCase()
+    let teamScore, oppScore
+    if (side === 'HOME') { teamScore = homeScore; oppScore = awayScore }
+    else if (side === 'AWAY') { teamScore = awayScore; oppScore = homeScore }
     else return null
-    return (favScore - oppScore) >= 2 ? 'W' : 'L'
+    const spread = Number.isFinite(Number(parts[1])) ? Number(parts[1]) : -1.5
+    const adj = (teamScore - oppScore) + spread
+    if (adj > 0) return 'W'
+    if (adj < 0) return 'L'
+    return 'P'
   }
 
   return null

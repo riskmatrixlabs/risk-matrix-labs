@@ -14,7 +14,7 @@ export const config = { maxDuration: 60 }
 
 const FINAL_STATUSES = new Set(['FT', 'AOT', 'FINAL', 'Final', 'final'])
 // sport key → ESPN [sport, league] path segment (matches cron-sync-events).
-const ESPN_PATH = { MLB: ['baseball', 'mlb'], NBA: ['basketball', 'nba'], NHL: ['hockey', 'nhl'], WNBA: ['basketball', 'wnba'] }
+const ESPN_PATH = { MLB: ['baseball', 'mlb'], NBA: ['basketball', 'nba'], NHL: ['hockey', 'nhl'], WNBA: ['basketball', 'wnba'], NFL: ['football', 'nfl'] }
 const MAX_ESPN = 80 // cap external calls per run as a safety net
 
 function db() {

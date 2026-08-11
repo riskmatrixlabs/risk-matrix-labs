@@ -14,6 +14,8 @@ import { loadHandednessDelta } from './_lib/handedness.js'
 import { loadUmpireDelta } from './_lib/umpire.js'
 import { gameProjection, deriveBets, anchorProjection } from './_lib/runModel.js'
 import { loadBullpenFatigue } from './_lib/bullpenFatigue.js'
+import { fetchNflTeamStats } from './_lib/nflTeamStats.js'
+import { nflLean, leagueAvgOffEpa, NFL_MODEL_VERSION } from '../src/lib/nflLean.js'
 
 export const config = { maxDuration: 20 }
 
@@ -76,6 +78,7 @@ const SPORTS = {
   NBA:  { sport: 'basketball', league: 'nba'  },
   NBASL: { sport: 'basketball', league: 'nba-summer-las-vegas' },
   NHL:  { sport: 'hockey',     league: 'nhl'  },
+  NFL:  { sport: 'football',   league: 'nfl'  },
 }
 const lastWord = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
 
@@ -170,6 +173,59 @@ export function extremeParkEdge(delta, pf) {
   if (extremity < 0.07) return delta            // normal park → untouched
   const haircut = Math.min(extremity * 4, 0.5)  // COL(.13)→0.5 cap, CIN(.08)→0.32, SF(.09)→0.36
   return Math.round(delta * (1 - haircut) * 10) / 10
+}
+
+// ── NFL SHADOW lean — input assembly (Phase 3, 'nfl-shadow-v0') ──────────────────────────
+// Prior-season nflverse team stats serve as the early-season prior (plan Task 3.1).
+const NFL_STATS_SEASON = 2025
+
+// The synced NFL event row (spread/total + metadata injuries/weather) — same windowed
+// events-lookup pattern as totalAnchor, but anchored to the game's start when known.
+async function nflEventRow(away, home, iso) {
+  const sb = db(); if (!sb) return null
+  const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
+  try {
+    const anchor = iso && !isNaN(Date.parse(iso)) ? Date.parse(iso) : Date.now()
+    const { data: evs } = await sb.from('events')
+      .select('external_event_id, away_team, home_team, away_abbr, home_abbr, odds_spread_home, odds_total, start_time, metadata')
+      .eq('sport', 'NFL')
+      .gte('start_time', new Date(anchor - 8 * 3600e3).toISOString())
+      .lte('start_time', new Date(anchor + 20 * 3600e3).toISOString())
+      .order('start_time', { ascending: true }).limit(60)
+    return (evs || []).find(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away)) || null
+  } catch { return null }
+}
+
+// Rest days = whole days since the team's previous game in the synced `events` slate.
+// No prior row (opener / history not synced yet) → null → honest no-lean.
+async function nflRestDays(abbr, beforeIso) {
+  const sb = db(); if (!sb || !abbr || !beforeIso) return null
+  try {
+    const { data } = await sb.from('events').select('start_time').eq('sport', 'NFL')
+      .lt('start_time', beforeIso)
+      .or(`home_abbr.eq.${abbr},away_abbr.eq.${abbr}`)
+      .order('start_time', { ascending: false }).limit(1)
+    const prev = data?.[0]?.start_time
+    if (!prev) return null
+    const days = (Date.parse(beforeIso) - Date.parse(prev)) / 86400e3
+    return (Number.isFinite(days) && days > 0) ? Math.round(days) : null
+  } catch { return null }
+}
+
+// Status-weighted counts from one team's synced metadata.injuries list. Only the three
+// game designations count (Out / Doubtful / Questionable) — long-term IR is already
+// priced into the line and season stats. A missing list is indistinguishable from
+// "not synced" → null (we never fabricate a zero-injury claim).
+export function nflInjuryCounts(list) {
+  if (!Array.isArray(list)) return null
+  const c = { out: 0, doubtful: 0, questionable: 0 }
+  for (const i of list) {
+    const s = String(i?.status || '').toLowerCase()
+    if (s.startsWith('out')) c.out++
+    else if (s.startsWith('doubt')) c.doubtful++
+    else if (s.startsWith('question')) c.questionable++
+  }
+  return c
 }
 
 async function getJson(url, ms = 6000) {
@@ -442,10 +498,51 @@ export default async function handler(req, res) {
     } catch { /* O-U is a bonus — ignore failures */ }
   }
 
+  // NFL — SHADOW side lean (Phase 3, additive). All inputs real: nflverse prior-season team
+  // stats (off + weekly-derived def EPA), synced event spread/injuries/weather, rest days from
+  // the events slate. HONEST NULL: any missing input (or score below the LEAN threshold) →
+  // nfl.lean null. Never blocks the card; `ou` stays null for NFL.
+  let nfl = null
+  if (sport === 'NFL') {
+    try {
+      const [stats, evRow] = await Promise.all([
+        fetchNflTeamStats(NFL_STATS_SEASON).catch(() => null),
+        nflEventRow(away, home, iso),
+      ])
+      const m = evRow?.metadata || {}
+      const injHome = m.injuries ? nflInjuryCounts(m.injuries.home) : null
+      const injAway = m.injuries ? nflInjuryCounts(m.injuries.away) : null
+      const injuries = (injHome && injAway) ? { home: injHome, away: injAway } : null
+      // Indoor flag straight from ESPN's venue; outdoor games use the synced open-meteo blob.
+      const indoor = comp.venue?.indoor === true
+      const weather = indoor ? { indoor: true }
+        : (m.weather ? { indoor: false, windMph: m.weather.windMph ?? null, precipPct: m.weather.precipPct ?? null } : null)
+      const [restDaysHome, restDaysAway] = evRow?.start_time
+        ? await Promise.all([
+            nflRestDays(evRow.home_abbr || hSide.abbr, evRow.start_time),
+            nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time),
+          ])
+        : [null, null]
+      const lean = nflLean({
+        homeStats: stats?.[String(hSide.abbr).toUpperCase()] || null,
+        awayStats: stats?.[String(aSide.abbr).toUpperCase()] || null,
+        weather, injuries,
+        oddsSpreadHome: evRow?.odds_spread_home != null ? Number(evRow.odds_spread_home) : null,
+        oddsTotal: evRow?.odds_total != null ? Number(evRow.odds_total) : null,
+        restDaysHome, restDaysAway,
+        leagueAvgEpa: leagueAvgOffEpa(stats),
+      })
+      nfl = lean
+        ? { lean: lean.side, score: lean.score, tier: lean.tier, factors: lean.factors, modelVersion: lean.modelVersion, shadow: true }
+        : { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true }
+    } catch { nfl = { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true } }
+  }
+
   return res.status(200).json({
     found: true,
     status: { state: st.state || 'pre', detail: st.shortDetail || st.detail || '', completed: !!st.completed },
     away: aSide, home: hSide, ou,
+    ...(sport === 'NFL' ? { nfl } : {}),
   })
   } catch (e) {
     return res.status(200).json({ found: false, error: String(e?.message || e) })

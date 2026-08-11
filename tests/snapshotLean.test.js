@@ -71,4 +71,23 @@ describe('buildLeanRows', () => {
   it('nothing qualifies → []', () => {
     expect(buildLeanRows({ ...base, lean: 'LEAN' })).toEqual([])
   })
+
+  // ── NFL shadow rl rows: score-based lean, NO cover prob exists (we don't fabricate one) ──
+  it('nfl-shadow rl with null cover prob → accepted (shadow gate)', () => {
+    const rows = buildLeanRows({ ...base, sport: 'NFL', rl_pick: 'HOME -3.5', model_version: 'nfl-shadow-v0' })
+    expect(rows.map(r => r.market)).toEqual(['rl'])
+    expect(rows[0].pick_side).toBe('HOME -3.5')
+    expect(rows[0].cover_prob).toBeNull()
+    expect(rows[0].model_version).toBe('nfl-shadow-v0')
+    expect(rows[0].sport).toBe('NFL')
+  })
+  it('null cover prob WITHOUT the shadow model version → still skipped (MLB contract unchanged)', () => {
+    const rows = buildLeanRows({ ...base, rl_pick: 'HOME -1.5', model_version: 'ou-s65-phase2' })
+    expect(rows).toEqual([])
+  })
+  it('regression: MLB rl gate byte-identical (0.49 skipped, 0.55 accepted with prob kept)', () => {
+    expect(buildLeanRows({ ...base, rl_pick: 'HOME -1.5', rl_cover_prob: 0.49 })).toEqual([])
+    const rows = buildLeanRows({ ...base, rl_pick: 'HOME -1.5', rl_cover_prob: 0.55 })
+    expect(rows[0].cover_prob).toBe(0.55)
+  })
 })

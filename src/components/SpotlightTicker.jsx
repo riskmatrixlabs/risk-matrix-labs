@@ -61,6 +61,50 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
     if (kbo.length === 0 && (kboYest?.games?.length > 0)) setKboView('yesterday')
   }, [kbo, kboYest])
 
+  // ⬡ NFL — SHADOW side model (BETA). Free: synced events + the server-side NFL branch of
+  // game-info (nflverse stats + synced odds/injuries/weather). Pre-game leans are snapshotted
+  // through the lean pipeline (market 'rl' — edge carries POINTS) so the record self-grades.
+  // Mirrors the KBO collapsed-section pattern below.
+  const [nflGames, setNflGames] = useState([])
+  const [nflOpen, setNflOpen] = useState(false)
+  useEffect(() => {
+    if (!token) { setNflGames([]); return }
+    let cancel = false
+    const load = async () => {
+      let todays = []
+      try {
+        const { data } = await fetchEvents('nfl', 'today')
+        todays = (data || []).filter(e => e.away_team && e.home_team)
+      } catch { todays = [] }
+      if (!todays.length) { if (!cancel) setNflGames([]); return }
+      const res = await Promise.all(todays.map(async (ev) => {
+        try {
+          // Pre-game only — the shadow lean is locked before kickoff, never re-read live.
+          if (!ev.start_time || Date.parse(ev.start_time) <= Date.now()) return null
+          const iso = `&iso=${encodeURIComponent(ev.start_time)}`
+          const r = await fetch(`/api/game-info?sport=NFL&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
+          if (!r.ok) return null
+          const j = await r.json()
+          if (!j?.nfl?.lean) return null // honest null — no lean, nothing to show or snapshot
+          // Market spread for the leaned side, from the synced events row (home line flips for AWAY).
+          const sp = ev.odds_spread_home != null ? Number(ev.odds_spread_home) : null
+          const sideSpread = Number.isFinite(sp) ? (j.nfl.lean === 'HOME' ? sp : -sp) : null
+          if (sideSpread != null && (ev.external_event_id || ev.id)) {
+            const fmtSp = sideSpread > 0 ? `+${sideSpread}` : `${sideSpread}`
+            // Fire-and-forget snapshot; the endpoint locks the first pre-game lean per game/day.
+            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ sport: 'NFL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, rl_pick: `${j.nfl.lean} ${fmtSp}`, model_version: j.nfl.modelVersion }) }).catch(() => {})
+          }
+          return { ev, nfl: j.nfl, spread: sideSpread }
+        } catch { return null }
+      }))
+      if (!cancel) setNflGames(res.filter(Boolean).sort((a, b) => (b.nfl.score || 0) - (a.nfl.score || 0)))
+    }
+    load()
+    const id = setInterval(load, 180000)
+    return () => { cancel = true; clearInterval(id) }
+  }, [token])
+
   useEffect(() => {
     if (!token) { setSignals([]); return }
     let cancel = false
@@ -340,6 +384,42 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
                 })}
               </div>
               )}
+              </>)}
+            </div>
+            )
+          })()}
+          {nflGames.length > 0 && (() => {
+            // NFL · SHADOW — collapsed section mirroring the KBO pattern above. Shadow mode:
+            // the side model runs in public and self-grades, but leans are informational only.
+            const tierColor = (t) => (t === 'PRIME' || t === 'STRONG') ? NEON : t === 'CAUTION' ? '#FFAE2B' : '#FF3B3B'
+            return (
+            <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
+              <button onClick={() => setNflOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ NFL · SHADOW ({nflGames.length})</span>
+                <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
+                <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: nflOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              </button>
+              {nflOpen && (<>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — side leans shown for transparency while the record builds · not advice</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {nflGames.map(({ ev, nfl: n, spread }, i) => (
+                  <div key={ev.id || ev.external_event_id} onClick={() => onOpen?.(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{i + 1}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: tierColor(n.tier) }}>
+                          {n.lean === 'HOME' ? ev.home_abbr : ev.away_abbr}{spread != null ? ` ${spread > 0 ? `+${spread}` : spread}` : ''}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                          <span style={{ color: MUTED }}>SCORE</span><span style={{ color: TEXT, fontWeight: 700 }}>{n.score}</span>
+                          <span style={{ color: tierColor(n.tier), fontWeight: 700 }}>{n.tier}</span>
+                        </span>
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
               </>)}
             </div>
             )
