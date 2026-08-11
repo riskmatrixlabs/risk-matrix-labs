@@ -163,3 +163,57 @@
 **Caveat carried forward:** `powerPlayRole` in nhlVerdict remains a session-authored structural
 proxy from shot volume (range 0.25–0.75) — no free per-player PP-TOI source yet; replace when a
 real source lands.
+
+---
+
+## PHASE 5 — NFL + NHL game totals as O/U SHADOW leans (built 2026-08-11)
+
+**Goal:** wire NFL and NHL game totals through the EXISTING total-market lean pipeline
+(snapshot-lean market 'total' → cron-grade-leans grades totals sport-agnostically → Full
+Matrix chips), same shadow/BETA posture as the side model.
+
+**Built:**
+
+- `src/lib/nflTotal.js` ('nfl-total-shadow-v0', tests `tests/nfl-total.test.js`): built ON
+  `nflExpectedPoints`/`nflProjectedTotal` (verbatim). Per side: own offEpaPerPlay ×
+  playsPerGame; oppAdj = clamp(1 + (opp defEpaAllowed − leagueAvgEpa) × K, 0.85..1.15) with
+  K = 2.5 (documented: ±0.06 def-EPA deviations map onto the ±0.15 clamp band); rzAdj = 1
+  DOCUMENTED NEUTRAL (no red-zone source yet — a neutral multiplier on an adjustment over a
+  real base signal, NOT a fabricated base input); weatherAdj = indoor → 1 else
+  1 − clamp01((windMph−8)/40 + precipPct/200) from SYNCED weather. Scale note: EPA×plays is
+  NET points added, so gross per side = 21.5 (league-average team points) + epaPart. Emits
+  only when odds_total present AND |proj − line| ≥ 3 pts; confidence 1/2/3 at 3/5/7,
+  strong ≥ 6. All-or-nothing honest null.
+- `api/_lib/teamScoring.js` (tests `tests/team-scoring.test.js`): sogAllowed.js pattern
+  generalized — pure `scoredAvg`/`concededAvg` over a team's last ≤15 synced finals, ≥5
+  required, else null. Guarded against Number(null)→0 turning a missing score into a fake
+  shutout (caught by the test).
+- `src/lib/nhlTotal.js` ('nhl-total-shadow-v0', tests `tests/nhl-total.test.js`): built ON
+  `nhlExpectedGoals` (CONFIRMED formula, verbatim). teamXgf = scoredAvg from our OWN synced
+  finals; oppDefAdj = clamp(oppConcededAvg / 3.0, 0.8..1.2) (3.0 = documented league
+  reference); goalieAdj = 1 and specialTeamsAdj = 1 DOCUMENTED NEUTRAL (awaiting sources);
+  restAdj = b2b (≤1 day) → 0.95 else 1, null rest → null. Emits only when odds_total present
+  AND |proj − line| ≥ 0.6 goals; confidence 1/2/3 at 0.6/1.0/1.4, strong ≥ 1.2.
+- `api/game-info.js`: NFL branch now also computes the totals side → `nfl.total = { lean,
+  proj, edgePoints, confidence, strong, line, modelVersion }` (null when no lean). New NHL
+  branch (NHL already in SPORTS): assembles scored/conceded averages from synced finals
+  (same query as derivedSogAllowed), rest days + event row via the sport-parameterized
+  helpers → response carries `nhlTotal: { lean, proj, edgeGoals, confidence, strong, line,
+  modelVersion, shadow: true }` (lean null on missing inputs); `ou` stays null for NHL.
+- `src/components/SpotlightTicker.jsx`: NFL loop snapshots the total lean as its OWN
+  snapshot-lean POST (market 'total' body: lean/total_line/confidence/strong/edge_runs —
+  points — /model_version, so the row carries the totals model version) and renders an
+  `O/U <line> <lean>` chip in the NFL·SHADOW rows; games with only a total lean now render
+  (side chip/score box gated on n.lean). New collapsed `⬡ NHL · SHADOW` section + loop
+  mirroring NFL (fetchEvents('nhl','today'), pre-game only, BETA tag, honest empty until
+  October).
+- `api/_lib/leanSplit.js` + `api/lean-record.js` (tests extended in
+  `tests/lean-split.test.js`): MLB-facing sets now exclude BOTH shadow sports (NFL + NHL);
+  new `nflTotals`/`nhlTotals` splits exposed as `rec(...)` blocks in the response. Grading
+  needs no change: gradeLean's total path is sport-agnostic and cron-grade-leans' ESPN_PATH
+  already has NHL.
+
+**Honest gaps (recorded):** NFL rzAdj and NHL goalie/special-teams adjustments are neutral 1
+awaiting real sources; NHL leans cannot emit until ≥5 synced finals per team exist (season
+start) and rest days resolve; NFL totals need the weekly-derived def EPA (NFLDEF cache) —
+same dependency as the side model.

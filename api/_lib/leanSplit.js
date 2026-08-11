@@ -17,16 +17,19 @@ export function tally(rows) {
 }
 
 export const isNfl = (r) => String(r.sport || '').toUpperCase() === 'NFL'
+export const isNhl = (r) => String(r.sport || '').toUpperCase() === 'NHL'
+// Shadow-model sports — their rows must never pollute the MLB-facing sets.
+export const isShadowSport = (r) => isNfl(r) || isNhl(r)
 
 // Team ML/RL had a home-field-advantage bug fixed Jun 22 ET. Only COUNT graded ML/RL games from
 // the next slate forward so the broken version's losses don't pollute the record. O/U was
 // unaffected (HFA doesn't touch totals) → it counts all.
 export const ML_FIX_DATE = '2026-06-23'
 
-// rows → the market splits lean-record serves. All non-NFL sets exclude sport='NFL';
-// nflRl = NFL rl rows only (the shadow record).
+// rows → the market splits lean-record serves. All MLB-facing sets exclude the shadow
+// sports (NFL + NHL); nflRl = NFL rl rows, nflTotals / nhlTotals = each shadow totals record.
 export function splitLeanRows(rows) {
-  const base = rows.filter(r => !isNfl(r))
+  const base = rows.filter(r => !isShadowSport(r))
   const totals = base.filter(r => (r.market || 'total') === 'total')
   const mlAll = base.filter(r => r.market === 'ml')
   const rlAll = base.filter(r => r.market === 'rl')
@@ -35,5 +38,7 @@ export function splitLeanRows(rows) {
   const teamRows = [...mlAll, ...rlAll]
   const strong = totals.filter(r => r.strong)
   const nflRl = rows.filter(r => isNfl(r) && r.market === 'rl')
-  return { totals, mlAll, rlAll, mlRows, rlRows, teamRows, strong, nflRl }
+  const nflTotals = rows.filter(r => isNfl(r) && (r.market || 'total') === 'total')
+  const nhlTotals = rows.filter(r => isNhl(r) && (r.market || 'total') === 'total')
+  return { totals, mlAll, rlAll, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals }
 }

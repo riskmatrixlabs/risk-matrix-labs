@@ -16,6 +16,9 @@ import { gameProjection, deriveBets, anchorProjection } from './_lib/runModel.js
 import { loadBullpenFatigue } from './_lib/bullpenFatigue.js'
 import { fetchNflTeamStats } from './_lib/nflTeamStats.js'
 import { nflLean, leagueAvgOffEpa, NFL_MODEL_VERSION } from '../src/lib/nflLean.js'
+import { nflTotal } from '../src/lib/nflTotal.js'
+import { nhlTotal, NHL_TOTAL_MODEL_VERSION } from '../src/lib/nhlTotal.js'
+import { scoredAvg, concededAvg } from './_lib/teamScoring.js'
 
 export const config = { maxDuration: 20 }
 
@@ -179,16 +182,17 @@ export function extremeParkEdge(delta, pf) {
 // Prior-season nflverse team stats serve as the early-season prior (plan Task 3.1).
 const NFL_STATS_SEASON = 2025
 
-// The synced NFL event row (spread/total + metadata injuries/weather) — same windowed
+// The synced event row (spread/total + metadata injuries/weather) — same windowed
 // events-lookup pattern as totalAnchor, but anchored to the game's start when known.
-async function nflEventRow(away, home, iso) {
+// Sport-parameterized (default NFL) so the NHL totals branch reuses it unchanged.
+async function nflEventRow(away, home, iso, sportKey = 'NFL') {
   const sb = db(); if (!sb) return null
   const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   try {
     const anchor = iso && !isNaN(Date.parse(iso)) ? Date.parse(iso) : Date.now()
     const { data: evs } = await sb.from('events')
       .select('external_event_id, away_team, home_team, away_abbr, home_abbr, odds_spread_home, odds_total, start_time, metadata')
-      .eq('sport', 'NFL')
+      .eq('sport', sportKey)
       .gte('start_time', new Date(anchor - 8 * 3600e3).toISOString())
       .lte('start_time', new Date(anchor + 20 * 3600e3).toISOString())
       .order('start_time', { ascending: true }).limit(60)
@@ -198,10 +202,11 @@ async function nflEventRow(away, home, iso) {
 
 // Rest days = whole days since the team's previous game in the synced `events` slate.
 // No prior row (opener / history not synced yet) → null → honest no-lean.
-async function nflRestDays(abbr, beforeIso) {
+// Sport-parameterized (default NFL) so the NHL totals branch reuses it unchanged.
+async function nflRestDays(abbr, beforeIso, sportKey = 'NFL') {
   const sb = db(); if (!sb || !abbr || !beforeIso) return null
   try {
-    const { data } = await sb.from('events').select('start_time').eq('sport', 'NFL')
+    const { data } = await sb.from('events').select('start_time').eq('sport', sportKey)
       .lt('start_time', beforeIso)
       .or(`home_abbr.eq.${abbr},away_abbr.eq.${abbr}`)
       .order('start_time', { ascending: false }).limit(1)
@@ -523,19 +528,66 @@ export default async function handler(req, res) {
             nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time),
           ])
         : [null, null]
+      const homeStats = stats?.[String(hSide.abbr).toUpperCase()] || null
+      const awayStats = stats?.[String(aSide.abbr).toUpperCase()] || null
+      const oddsTotalNfl = evRow?.odds_total != null && Number(evRow.odds_total) > 0 ? Number(evRow.odds_total) : null
       const lean = nflLean({
-        homeStats: stats?.[String(hSide.abbr).toUpperCase()] || null,
-        awayStats: stats?.[String(aSide.abbr).toUpperCase()] || null,
+        homeStats, awayStats,
         weather, injuries,
         oddsSpreadHome: evRow?.odds_spread_home != null ? Number(evRow.odds_spread_home) : null,
-        oddsTotal: evRow?.odds_total != null ? Number(evRow.odds_total) : null,
+        oddsTotal: oddsTotalNfl,
         restDaysHome, restDaysAway,
         leagueAvgEpa: leagueAvgOffEpa(stats),
       })
+      // Totals side of the same engine ('nfl-total-shadow-v0') — additive, honest null.
+      const tot = nflTotal({ homeStats, awayStats, weather, oddsTotal: oddsTotalNfl, leagueAvgEpa: leagueAvgOffEpa(stats) })
+      const total = tot
+        ? { lean: tot.lean, proj: tot.proj, edgePoints: tot.edgePoints, confidence: tot.confidence, strong: tot.strong, line: oddsTotalNfl, modelVersion: tot.modelVersion }
+        : null
       nfl = lean
-        ? { lean: lean.side, score: lean.score, tier: lean.tier, factors: lean.factors, modelVersion: lean.modelVersion, shadow: true }
-        : { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true }
-    } catch { nfl = { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true } }
+        ? { lean: lean.side, score: lean.score, tier: lean.tier, factors: lean.factors, modelVersion: lean.modelVersion, shadow: true, total }
+        : { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true, total }
+    } catch { nfl = { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true, total: null } }
+  }
+
+  // NHL — SHADOW game-total lean ('nhl-total-shadow-v0', additive). All inputs real: our OWN
+  // synced final events (scored/conceded averages), synced odds_total, rest days from the slate.
+  // HONEST NULL: any missing input (or edge below the noise band) → nhlTotal.lean null.
+  // Never blocks the card; `ou` stays null for NHL.
+  let nhlTotalBlock = null
+  if (sport === 'NHL') {
+    try {
+      const sb = db()
+      const evRow = await nflEventRow(away, home, iso, 'NHL')
+      const homeName = evRow?.home_team || home, awayName = evRow?.away_team || away
+      // Last ≤15 finals per team from our own synced events (same query as derivedSogAllowed).
+      const finals = async (team) => {
+        if (!sb || !team) return []
+        try {
+          const { data } = await sb.from('events')
+            .select('away_team, home_team, away_score, home_score, status')
+            .eq('sport', 'NHL')
+            .or(`home_team.eq.${JSON.stringify(String(team))},away_team.eq.${JSON.stringify(String(team))}`)
+            .in('status', ['FT', 'AOT', 'FINAL', 'Final', 'final'])
+            .order('start_time', { ascending: false }).limit(15)
+          return data || []
+        } catch { return [] }
+      }
+      const [hRows, aRows, restDaysHome, restDaysAway] = await Promise.all([
+        finals(homeName), finals(awayName),
+        evRow?.start_time ? nflRestDays(evRow.home_abbr || hSide.abbr, evRow.start_time, 'NHL') : null,
+        evRow?.start_time ? nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time, 'NHL') : null,
+      ])
+      const oddsTotalNhl = evRow?.odds_total != null && Number(evRow.odds_total) > 0 ? Number(evRow.odds_total) : null
+      const t = nhlTotal({
+        homeScoredAvg: scoredAvg(hRows, homeName), homeConcededAvg: concededAvg(hRows, homeName),
+        awayScoredAvg: scoredAvg(aRows, awayName), awayConcededAvg: concededAvg(aRows, awayName),
+        restDaysHome, restDaysAway, oddsTotal: oddsTotalNhl,
+      })
+      nhlTotalBlock = t
+        ? { lean: t.lean, proj: t.proj, edgeGoals: t.edgeGoals, confidence: t.confidence, strong: t.strong, line: oddsTotalNhl, modelVersion: t.modelVersion, shadow: true }
+        : { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true }
+    } catch { nhlTotalBlock = { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true } }
   }
 
   return res.status(200).json({
@@ -543,6 +595,7 @@ export default async function handler(req, res) {
     status: { state: st.state || 'pre', detail: st.shortDetail || st.detail || '', completed: !!st.completed },
     away: aSide, home: hSide, ou,
     ...(sport === 'NFL' ? { nfl } : {}),
+    ...(sport === 'NHL' ? { nhlTotal: nhlTotalBlock } : {}),
   })
   } catch (e) {
     return res.status(200).json({ found: false, error: String(e?.message || e) })
