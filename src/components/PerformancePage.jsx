@@ -128,14 +128,15 @@ const LEAGUE_LOGO = {
   NFL: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
 }
 
-// Sport chip ordering for the header filter row — majors first, anything new alphabetical after.
-const SPORT_ORDER = ['MLB', 'WNBA', 'NFL']
+// Sport chips for the header filter row. Every MODELED sport always shows (owner's call —
+// the tab exists before the record does; an empty tab reads the honest "record builds as
+// games settle" state), plus anything unexpected found in the data, alphabetical after.
+const MODELED_SPORTS = ['MLB', 'WNBA', 'NFL', 'NBA', 'NHL']
 export function sportChips(rows) {
   const seen = new Set()
   for (const r of rows) { const s = String(r.sport || r.event?.sport || '').toUpperCase(); if (s) seen.add(s) }
-  const head = SPORT_ORDER.filter(s => seen.has(s))
-  const rest = [...seen].filter(s => !SPORT_ORDER.includes(s)).sort()
-  return [...head, ...rest]
+  const rest = [...seen].filter(s => !MODELED_SPORTS.includes(s) && s !== 'NBASL').sort()
+  return [...MODELED_SPORTS, ...rest]
 }
 
 // Live scoreboard + lean-tracking for the empty middle of an in-progress lean row.
@@ -312,7 +313,11 @@ export default function PerformancePage({ token, onBack }) {
     // PHLT rating-tier sub-filter (only meaningful on the PHLT model)
     if (model === 'phlt' && tier !== 'all') rows = rows.filter(r => r.phlt_tier === tier)
     // Header sport chips — narrow to one league (client-side, free)
-    if (sportFilter !== 'ALL') rows = rows.filter(r => String(r.sport || r.event?.sport || '').toUpperCase() === sportFilter)
+    // NBASL (Summer League) folds under the NBA chip — same rule as the rest of the app.
+    if (sportFilter !== 'ALL') rows = rows.filter(r => {
+      const s = String(r.sport || r.event?.sport || '').toUpperCase()
+      return (s === 'NBASL' ? 'NBA' : s) === sportFilter
+    })
     // Today's-game drawer selection — narrow to one game
     if (gameFilter) rows = rows.filter(r => String(r.external_event_id) === String(gameFilter))
     return rows.sort((a, b) => String(b.game_date).localeCompare(String(a.game_date)))
