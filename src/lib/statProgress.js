@@ -79,8 +79,11 @@ export function resolveStat(stats, market) {
   if (m.includes('block')) return v('blocks')
   if (m.includes('three') || m.includes('3pt') || m.includes('3-point')) return null
   if (m.includes('point') || /\bpts?\b/.test(m)) return v('points')
+  // Shots-on-goal markets ('player_shots_on_goal', 'Shots On Goal') MUST resolve before the
+  // plain goal branch — the phrase contains "goal" and would otherwise grade against goals.
+  if (m.includes('shots on goal') || m.includes('shots_on_goal') || m.includes('sog')) return v('shotsTotal') ?? v('shots')
   if (m.includes('goal')) return v('goals')
-  if (m.includes('shot') || m.includes('sog')) return v('shotsTotal') ?? v('shots')
+  if (m.includes('shot')) return v('shotsTotal') ?? v('shots')
   if (m.includes('save')) return v('saves')
   if (m.includes('run')) return v('runs')
   return null

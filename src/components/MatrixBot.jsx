@@ -1259,10 +1259,19 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
   }, [sport, token])
 
   // Model verdicts — once props load, score every player server-side (FREE sources, cached).
-  // Dispatch by sport: MLB → PHLT v2.2 (/api/phlt, unchanged), WNBA → /api/wnba-props (BETA).
+  // Dispatch by sport: MLB → PHLT v2.2 (/api/phlt, unchanged), WNBA → /api/wnba-props,
+  // NBA/NBASL → /api/nba-props, NHL → /api/nhl-props (all BETA, same verdicts contract).
   // Other sports: no model yet → no fetch (honest null, like before).
   useEffect(() => {
-    if (!token || (sport !== 'MLB' && sport !== 'WNBA') || !game?.away) { setPhlt({}); return }
+    // Modeled non-MLB sports share one contract: endpoint + primary market per sport.
+    const MODEL = {
+      WNBA: { url: '/api/wnba-props', primary: 'player_points' },
+      NBA: { url: '/api/nba-props', primary: 'player_points' },
+      NBASL: { url: '/api/nba-props', primary: 'player_points' },  // Summer League → NBA model
+      NHL: { url: '/api/nhl-props', primary: 'player_shots_on_goal' },
+    }
+    const model = MODEL[sport]
+    if (!token || (sport !== 'MLB' && !model) || !game?.away) { setPhlt({}); return }
     const rows = [...(data?.edges || []), ...(data?.lineShopOnly || [])]
     const names = [...new Set(rows.map(p => p.player).filter(Boolean))].slice(0, 30)
     if (!names.length) return
@@ -1270,19 +1279,20 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
     const iso = game.commenceTime ? `&iso=${encodeURIComponent(game.commenceTime)}` : ''
     const base = `away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${iso}&names=${encodeURIComponent(names.join('|'))}`
     let url = `/api/phlt?sport=${sport}&${base}`
-    if (sport === 'WNBA') {
-      // WNBA needs each player's real prop context (market/line/evPct) so the server never has
-      // to invent a lineValue. Pick one prop per player: prefer Points, then highest evPct.
+    if (model) {
+      // These models need each player's real prop context (market/line/evPct) so the server
+      // never has to invent a lineValue. Pick one prop per player: prefer the sport's primary
+      // market (points / shots on goal), then highest evPct.
       const pick = {}
       for (const p of rows) {
         if (!p.player) continue
         const c = pick[p.player]
-        const better = !c || ((p.market === 'player_points') - (c.market === 'player_points')) > 0 ||
+        const better = !c || ((p.market === model.primary) - (c.market === model.primary)) > 0 ||
           (p.market === c.market && (p.evPct ?? -99) > (c.evPct ?? -99))
         if (better) pick[p.player] = p
       }
       const q = names.map(n => pick[n] || {})
-      url = `/api/wnba-props?${base}&markets=${encodeURIComponent(q.map(p => p.market || '').join('|'))}&lines=${encodeURIComponent(q.map(p => p.point ?? '').join('|'))}&evs=${encodeURIComponent(q.map(p => p.evPct ?? '').join('|'))}`
+      url = `${model.url}?${base}&markets=${encodeURIComponent(q.map(p => p.market || '').join('|'))}&lines=${encodeURIComponent(q.map(p => p.point ?? '').join('|'))}&evs=${encodeURIComponent(q.map(p => p.evPct ?? '').join('|'))}`
     }
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null).then(j => { if (!cancel && j?.verdicts) setPhlt(j.verdicts) }).catch(() => {})
@@ -1334,7 +1344,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: big ? '3px 8px' : '2px 6px', borderRadius: '6px', border: `1px solid ${c}`, background: `${c}1a`, fontFamily: R, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}>
         <span style={{ fontSize: big ? '12px' : '10px', color: c, letterSpacing: '0.04em' }}>{text}</span>
         <span style={{ fontSize: big ? '11px' : '9px', color: c, opacity: 0.85 }}>{v.score}</span>
-        {sport === 'WNBA' && <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>}
+        {sport !== 'MLB' && <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>}
       </span>
     )
   }
@@ -1428,7 +1438,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       {phltBadge(v, true)}
                       <span style={{ minWidth: 0, flex: 1, textAlign: 'left', fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {sport === 'WNBA' ? 'W MODEL' : 'PHLT · TO HIT'}{v.vs ? ` · vs ${v.vs}` : ''}
+                        {({ WNBA: 'W MODEL', NBA: 'NBA MODEL', NBASL: 'NBA MODEL', NHL: 'SOG MODEL' })[sport] || 'PHLT · TO HIT'}{v.vs ? ` · vs ${v.vs}` : ''}
                       </span>
                       <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, transform: exp ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>▾</span>
                     </button>

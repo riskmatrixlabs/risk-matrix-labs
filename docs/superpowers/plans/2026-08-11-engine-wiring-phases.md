@@ -132,3 +132,34 @@
 - [ ] SW → `rml-v545`, ship
 - [ ] Verify live: authed request to deployed `/api/game-info?sport=NFL&away=...&home=...&iso=2026-08-13` for a real Thu game (ESPN slate exists) → returns `nfl` block or honest null; cron-grade-leans dry: no NFL rows yet (games land in events at next sync). Chrome: Spotlight NFL section renders (empty state OK until events sync). Screenshot.
 - [ ] Backlog: record follow-ups (player-level QB data, snap counts; WNBA snapshot/grading; NBA/NHL wiring at season start reusing this exact pattern).
+
+---
+
+## PHASE 4 — Model loops self-running (WNBA/NBA/NHL snapshot → grade → Full Matrix)
+
+**Built (2026-08-11, follow-on to engines 4a/4b — the WNBA/NBA/NHL verdict libs + endpoints):**
+
+- `api/cron-snapshot-model-props.js` (crons 16:00 + 22:00 UTC in vercel.json, same idiom as
+  cron-snapshot-phlt): for each pre-game WNBA/NBA/NBASL/NHL game today, reads the game's CACHED
+  props from scan_cache via `scanGameProps({ cacheOnly: true })` (NEVER a paid fetch; no cache →
+  skip honestly), picks one prop per player (primary market — points / shots-on-goal — else
+  highest evPct), scores via the sport's `*VerdictsForGame`, and locks the top non-faded A/B/C
+  picks (score ≥ 52, ≤8/game) into `prop_results` with the REAL prop_market + prop_line, lean
+  OVER. Pure pick/filter logic extracted to `api/_lib/modelPropPicks.js` (tested).
+- `api/cron-grade-props.js` generalized: sport-aware ESPN summary path (baseball/mlb,
+  basketball/wnba, basketball/nba, hockey/nhl; NBASL → basketball/nba-summer-las-vegas, the
+  league its event ids actually live under; null sport → mlb, byte-identical for legacy rows).
+  `resolveStat` extended: shots-on-goal markets now resolve BEFORE the plain "goal" branch
+  (`player_shots_on_goal` previously graded against goals) — fixture tests in
+  `tests/grade-props-sports.test.js` cover basketball PTS/REB/AST + NHL shotsTotal.
+- NHL `opponentSogAllowed` REAL derivation (`api/_lib/sogAllowed.js` + `derivedSogAllowed` in
+  api/nhl-props.js): a team's shots allowed per game = mean of the OPPOSING side's box sog
+  (metadata team stats, our own synced events) over its last ~10 completed games; <3 usable
+  games → null (honest no-verdict). Field-probe stays first choice.
+- Client dispatch (`MatrixBot.jsx` PropsPanel): NBA/NBASL → /api/nba-props, NHL → /api/nhl-props
+  (same names/markets/lines/evs contract); BETA pill now on any non-MLB modeled verdict; titles
+  W MODEL / NBA MODEL / SOG MODEL.
+
+**Caveat carried forward:** `powerPlayRole` in nhlVerdict remains a session-authored structural
+proxy from shot volume (range 0.25–0.75) — no free per-player PP-TOI source yet; replace when a
+real source lands.

@@ -1,19 +1,22 @@
-// WNBA prop verdicts — mirrors api/phlt.js: client sends the prop players it already has,
-// we fetch (cached) ESPN gamelogs per player (MIN + the stat per game), the synced event row
-// (odds_total / odds_spread_home) from Supabase, run the PURE scorer (src/lib/wnbaVerdict.js,
-// built on the CONFIRMED wnbaProps engine) and return one verdict per requested name.
+// NBA prop verdicts — mirrors api/wnba-props.js (which mirrors api/phlt.js): client sends the
+// prop players it already has, we fetch (cached) ESPN gamelogs per player (MIN + the stat per
+// game), the synced event row (odds_total / odds_spread_home / metadata.injuries) from Supabase,
+// run the PURE scorer (src/lib/nbaVerdict.js, built on the CONFIRMED nbaProps engine) and return
+// one verdict per requested name.
 // HONEST-NULL: any player whose inputs can't be derived gets { score: null } — never a filler.
+// Injury gate: a player synced as Out/Doubtful gets NO verdict; Questionable feeds the engine's
+// injuryRole input at 0.35 (see src/lib/nbaVerdict.js derivation notes).
 // Free sources only (ESPN + already-synced Supabase rows) — zero Odds-API credits.
 import { requireAuth } from './_lib/auth.js'
 import { readScan, writeScan, isFresh, todayStr } from './_lib/scanStore.js'
 import { buildIndex } from './player-search.js'
 import { createClient } from '@supabase/supabase-js'
 import ws from 'ws'
-import { wnbaVerdict, LEAGUE_REF_PER_MIN } from '../src/lib/wnbaVerdict.js'
+import { nbaVerdict, LEAGUE_REF_PER_MIN } from '../src/lib/nbaVerdict.js'
 
 export const config = { maxDuration: 30 }
 
-const ESPN = { sport: 'basketball', league: 'wnba' }
+const ESPN = { sport: 'basketball', league: 'nba' }
 const FORM_TTL_MS = 30 * 60 * 1000   // a player's recent form is stable within the slate (like PHLT)
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.'`’\-]/g, '').replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/\s+/g, ' ').trim()
 const toNum = (v) => { const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : null }
@@ -50,24 +53,36 @@ async function rosterIndex(sport) {
   return { byFull, byLast }
 }
 
-// The synced event row for this matchup — odds_total (pace proxy) + odds_spread_home (blowout
-// risk). Same soonest-matching-row pattern as game-info.js totalAnchor. Missing → no verdicts.
-async function eventOdds(away, home) {
+// The synced event row for this matchup — odds_total (pace proxy), odds_spread_home (blowout
+// risk) AND metadata.injuries (per-team Out/Doubtful/Questionable lists from the ESPN sync).
+// Same soonest-matching-row pattern as api/wnba-props.js eventOdds, anchored to the game's
+// start when known. Missing odds → no verdicts (injuries may honestly be absent → not listed).
+async function eventContext(away, home, iso) {
   const sb = db(); if (!sb) return null
   const lw = (s) => String(s || '').toLowerCase().trim().split(/\s+/).pop()
   try {
+    const anchor = iso && !isNaN(Date.parse(iso)) ? Date.parse(iso) : Date.now()
     const { data: evs } = await sb.from('events')
-      .select('external_event_id, away_team, home_team, odds_total, odds_spread_home, start_time')
-      .eq('sport', 'WNBA')
-      .gte('start_time', new Date(Date.now() - 8 * 3600e3).toISOString())
-      .lte('start_time', new Date(Date.now() + 30 * 3600e3).toISOString())
+      .select('external_event_id, away_team, home_team, odds_total, odds_spread_home, start_time, metadata')
+      .eq('sport', 'NBA')
+      .gte('start_time', new Date(anchor - 8 * 3600e3).toISOString())
+      .lte('start_time', new Date(anchor + 30 * 3600e3).toISOString())
       .order('start_time', { ascending: true }).limit(60)
     const matches = (evs || []).filter(e => lw(e.home_team) === lw(home) && lw(e.away_team) === lw(away))
     const hasOdds = (e) => e.odds_total != null && Number(e.odds_total) > 0 && e.odds_spread_home != null
     const ev = matches.find(hasOdds) || null
     if (!ev) return null
-    return { oddsTotal: Number(ev.odds_total), oppSpread: Number(ev.odds_spread_home) }
+    return { oddsTotal: Number(ev.odds_total), oppSpread: Number(ev.odds_spread_home), injuries: ev.metadata?.injuries || null }
   } catch { return null }
+}
+
+// Normalized name → injury status from the synced metadata.injuries {away:[],home:[]} lists.
+function injuryStatusMap(injuries) {
+  const map = {}
+  for (const side of ['away', 'home'])
+    for (const i of (injuries?.[side] || []))
+      if (i?.name && i?.status) map[norm(i.name)] = String(i.status).toLowerCase()
+  return map
 }
 
 // A player's minutes + stat form from the ESPN gamelog (newest-first by real game date —
@@ -75,7 +90,7 @@ async function eventOdds(away, home) {
 export async function playerForm(id, statLabel) {
   if (!id) return null
   const date = todayStr()
-  const key = `WNBAGL:${id}:${statLabel}`
+  const key = `NBAGL:${id}:${statLabel}`
   const cached = await readScan(key, date)
   if (cached?.payload && isFresh(cached.scanned_at, Date.now(), FORM_TTL_MS)) return cached.payload
 
@@ -115,11 +130,12 @@ export async function playerForm(id, statLabel) {
   return form
 }
 
-// Reusable per-game WNBA verdict compute (like phltVerdictsForGame) — a snapshot cron can import
-// this without HTTP. Pure refactor of the handler core: same inputs, same verdict assembly.
-// `names`/`markets`/`lines`/`evs` are per-index aligned arrays; missing entries → no verdict.
-export async function wnbaVerdictsForGame({ away, home, iso, names = [], markets = [], lines = [], evs = [] } = {}) { // eslint-disable-line no-unused-vars
-  const [roster, odds] = await Promise.all([rosterIndex('WNBA'), eventOdds(away, home)])
+// Reusable per-game NBA verdict compute (like phltVerdictsForGame) — a snapshot cron can import
+// this without HTTP. `names`/`markets`/`lines`/`evs` are per-index aligned arrays; missing
+// entries → that player gets no verdict.
+export async function nbaVerdictsForGame({ away, home, iso, names = [], markets = [], lines = [], evs = [] } = {}) {
+  const [roster, ctx] = await Promise.all([rosterIndex('NBA'), eventContext(away, home, iso)])
+  const injMap = ctx ? injuryStatusMap(ctx.injuries) : {}
 
   const verdicts = {}
   await Promise.all(names.map(async (name, i) => {
@@ -130,19 +146,23 @@ export async function wnbaVerdictsForGame({ away, home, iso, names = [], markets
     const line = toNum(lines[i]), evPct = toNum(evs[i])
     if (!r?.id) { verdicts[name] = { score: null, tier: null, note: 'no roster match' }; return }
     if (!statLabel || !LEAGUE_REF_PER_MIN[market]) { verdicts[name] = { score: null, tier: null, note: 'market not modeled' }; return }
-    if (!odds) { verdicts[name] = { score: null, tier: null, note: 'no synced odds for game' }; return }
+    if (!ctx) { verdicts[name] = { score: null, tier: null, note: 'no synced odds for game' }; return }
+    const injuryStatus = injMap[nn] || null
+    if (injuryStatus && (injuryStatus.startsWith('out') || injuryStatus.startsWith('doubt'))) {
+      verdicts[name] = { score: null, tier: null, note: `injury: ${injuryStatus}` }; return
+    }
     const form = await playerForm(r.id, statLabel)
     if (!form) { verdicts[name] = { score: null, tier: null, note: 'no gamelog' }; return }
-    const v = wnbaVerdict({
-      market,
+    const v = nbaVerdict({
+      market, injuryStatus,
       perMinRate: form.seasonRate, last5Minutes: form.last5Minutes, seasonMinutes: form.seasonMinutes,
       recentMaxMinutes: form.recentMaxMinutes, last5Rate: form.last5Rate, seasonRate: form.seasonRate,
-      oddsTotal: odds.oddsTotal, oppSpread: odds.oppSpread, evPct, line,
+      oddsTotal: ctx.oddsTotal, oppSpread: ctx.oppSpread, evPct, line,
     })
     verdicts[name] = v ? { ...v, team: r.team || null } : { score: null, tier: null, note: 'missing inputs' }
   }))
 
-  return { verdicts, hadOdds: !!odds }
+  return { verdicts, hadOdds: !!ctx }
 }
 
 export default async function handler(req, res) {
@@ -156,13 +176,13 @@ export default async function handler(req, res) {
   // real observed values lineValue/edge need. Missing entry → that player gets no verdict.
   const split = (k) => String(req.query[k] || '').split('|').map(s => s.trim())
 
-  const { verdicts, hadOdds } = await wnbaVerdictsForGame({
+  const { verdicts, hadOdds } = await nbaVerdictsForGame({
     away, home, iso: req.query.iso, names,
     markets: split('markets'), lines: split('lines'), evs: split('evs'),
   })
 
   return res.status(200).json({
-    ok: true, sport: 'WNBA', verdicts,
+    ok: true, sport: 'NBA', verdicts,
     meta: { matched: Object.values(verdicts).filter(v => v.score != null).length, requested: names.length, hadOdds },
   })
 }

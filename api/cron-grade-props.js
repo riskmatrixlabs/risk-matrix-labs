@@ -22,11 +22,23 @@ function db() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { realtime: { transport: ws } })
 }
 
-// Fetch the ESPN MLB summary for one event. Returns the parsed summary only when the
-// game is actually FINAL; otherwise null (so we skip and leave its rows ungraded).
-async function finalSummary(id) {
+// Sport → ESPN summary path. Rows with a null/unknown sport are the legacy PHLT rows → mlb
+// (byte-identical behavior for them). NBASL (Summer League) event ids live under ESPN's
+// dedicated summer-league path (same mapping cron-sync-live/player-stats use), not plain nba.
+const ESPN_PATH = {
+  MLB: ['baseball', 'mlb'],
+  WNBA: ['basketball', 'wnba'],
+  NBA: ['basketball', 'nba'],
+  NBASL: ['basketball', 'nba-summer-las-vegas'],
+  NHL: ['hockey', 'nhl'],
+}
+
+// Fetch the ESPN summary for one event (sport-aware path). Returns the parsed summary only
+// when the game is actually FINAL; otherwise null (so we skip and leave its rows ungraded).
+async function finalSummary(id, sport) {
+  const [g, l] = ESPN_PATH[String(sport || '').toUpperCase()] || ESPN_PATH.MLB
   try {
-    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event=${id}`, { signal: AbortSignal.timeout(7000) })
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${g}/${l}/summary?event=${id}`, { signal: AbortSignal.timeout(7000) })
     if (!r.ok) return null
     const d = await r.json()
     const t = d?.header?.competitions?.[0]?.status?.type
@@ -45,7 +57,7 @@ export default async function handler(req, res) {
   // score can lag, a name can miss a pass); 30d lets stragglers re-grade and clears the backlog.
   const since = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10)
   const { data: pending } = await sb.from('prop_results')
-    .select('id, external_event_id, player, prop_market, prop_line, lean, game_date')
+    .select('id, external_event_id, sport, player, prop_market, prop_line, lean, game_date')
     .is('result', null).gte('game_date', since).limit(500)
   if (!pending?.length) return res.status(200).json({ ok: true, graded: 0, checked: 0, note: 'nothing pending' })
 
@@ -61,7 +73,7 @@ export default async function handler(req, res) {
   for (const [eid, rows] of Object.entries(byEvent)) {
     if (espnCalls >= MAX_ESPN) break
     espnCalls++
-    const summary = await finalSummary(eid)
+    const summary = await finalSummary(eid, rows[0]?.sport)
     if (!summary) continue // not final yet (or fetch failed) — leave rows ungraded
     const players = parseBox(summary)
 
