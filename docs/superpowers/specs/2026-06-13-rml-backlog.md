@@ -359,3 +359,6 @@ Spotlight (3-pillar ticker + panel, factors hidden, +Slip w/ real free odds), to
 **Pending/blocked:** ANTHROPIC_API_KEY (OCR, owner-pending) · NFL · umpire + lineups for O/U (no free data) · bullpen FATIGUE (needs daily IP accumulation).
 
 **Done this session, do NOT redo:** CH3 TRACK redesign (was item #4 — DONE), universal bet cards, live stat bars, win rings, slip multi-add fix.
+
+### 🔧 MAINTENANCE (added 2026-08-11)
+- 🔴 **Bump Node engine 20.x → 24.x before Oct 1, 2026** — Vercel deprecation: deployments created on/after 2026-10-01 **fail to build** on Node 20. Fix: `package.json` `"engines": { "node": "24.x" }`, then run tests + a full `npm run ship` and verify serverless API routes (crons, scan-edges, game-lines) still work on the new runtime. Surfaced as a warning on the v541 deploy.
