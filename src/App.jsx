@@ -46,6 +46,7 @@ import { BOOK_NAMES } from './components/botShared.jsx'
 import { booksForState, OFFSHORE, NATIONWIDE } from './lib/geoBooks'
 import { placeLink, copyPickAndOpen, copyTextSync, deepLinksToBet } from './lib/betLinks'
 import { gameKey, kCombos, slipEligibility, validRoundRobinCombos } from './lib/slipModes'
+import { rrQuality } from './lib/rrQuality'
 
 const getKeys = (userId) => ({
   LS_KEY:   `rml_session_v1_${userId}`,
@@ -3743,6 +3744,22 @@ export default function App({ user, session, subStatus, isDemo = false }) {
                           {payoutVal > 0 && <span style={{ fontFamily: R, fontSize: '16px', fontWeight: 700, color: NEON_T, whiteSpace: 'nowrap' }}>{isStraights ? 'total ' : ''}→ ${payoutVal.toFixed(2)}</span>}
                         </div>
                         <button onClick={addAllToLadder} style={{ width: '100%', marginTop: '10px', padding: '11px', borderRadius: '8px', border: '1px solid rgba(245,166,35,0.5)', background: 'rgba(245,166,35,0.1)', color: '#F5A623', cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🪜 Add all to Ladder</button>
+                        {/* Round-robin MATRIX QUALITY (BETA) — canonical roundRobinScore via rrQuality; renders ONLY when every input is real (any leg missing evPct, or no bankroll → nothing). */}
+                        {rrOk && (() => {
+                          const combos = validRoundRobinCombos(enabled, Math.min(rrSize, maxRrSize))
+                          const rq = rrQuality(enabled, { rrSize, stakePerCombo: Number(rrStake) || 0, totalCombos: combos.length, bankroll: masterBankroll })
+                          if (!rq) return null
+                          const tc = rq.tier === 'CAUTION' ? '#FFAE2B' : rq.tier === 'FADE' ? '#FF3B3B' : '#BDFF00'
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '10px', padding: '8px 11px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.1em', color: MUTED }}>MATRIX QUALITY</span>
+                                <span style={{ fontFamily: R, fontSize: '7px', fontWeight: 700, letterSpacing: '0.08em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '0 3px', flexShrink: 0, whiteSpace: 'nowrap' }}>BETA</span>
+                              </span>
+                              <span style={{ fontFamily: R, fontSize: '13px', fontWeight: 700, color: tc, whiteSpace: 'nowrap' }}>{Math.round(rq.score)} · {rq.tier}</span>
+                            </div>
+                          )
+                        })()}
                         {enabled.length >= 2 && (
                           <button onClick={() => { setRrFloat(enabled.map(l => ({ pick: l.pick, odds: l.odds, event: l.event }))); setSlipOpen(false); setTab('rr engine') }} style={{ width: '100%', marginTop: '8px', padding: '11px', borderRadius: '8px', border: `1px solid ${NEON}`, background: 'rgba(189,255,0,0.08)', color: NEON_T, cursor: 'pointer', fontFamily: R, fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>🎲 Float to RR — see all combo results</button>
                         )}
