@@ -125,6 +125,17 @@ const LEAGUE_LOGO = {
   WNBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
   NBA: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
   NHL: 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+  NFL: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+}
+
+// Sport chip ordering for the header filter row — majors first, anything new alphabetical after.
+const SPORT_ORDER = ['MLB', 'WNBA', 'NFL']
+export function sportChips(rows) {
+  const seen = new Set()
+  for (const r of rows) { const s = String(r.sport || r.event?.sport || '').toUpperCase(); if (s) seen.add(s) }
+  const head = SPORT_ORDER.filter(s => seen.has(s))
+  const rest = [...seen].filter(s => !SPORT_ORDER.includes(s)).sort()
+  return [...head, ...rest]
 }
 
 // Live scoreboard + lean-tracking for the empty middle of an in-progress lean row.
@@ -256,6 +267,7 @@ export default function PerformancePage({ token, onBack }) {
   const [gameFilter, setGameFilter] = useState(null)  // external_event_id → narrow list to one game
   const [drawerOpen, setDrawerOpen] = useState(false) // today's-games slide-out
   const [result, setResult] = useState('all')         // status panel: all | W | L | live | settled
+  const [sportFilter, setSportFilter] = useState('ALL') // header sport chips: ALL | MLB | WNBA | NFL | …
 
   useEffect(() => {
     let alive = true
@@ -299,10 +311,15 @@ export default function PerformancePage({ token, onBack }) {
     let rows = applyFilters([...leans, ...props], { model, strong, from, to })
     // PHLT rating-tier sub-filter (only meaningful on the PHLT model)
     if (model === 'phlt' && tier !== 'all') rows = rows.filter(r => r.phlt_tier === tier)
+    // Header sport chips — narrow to one league (client-side, free)
+    if (sportFilter !== 'ALL') rows = rows.filter(r => String(r.sport || r.event?.sport || '').toUpperCase() === sportFilter)
     // Today's-game drawer selection — narrow to one game
     if (gameFilter) rows = rows.filter(r => String(r.external_event_id) === String(gameFilter))
     return rows.sort((a, b) => String(b.game_date).localeCompare(String(a.game_date)))
-  }, [data, model, strong, range, tier, gameFilter])
+  }, [data, model, strong, range, tier, gameFilter, sportFilter])
+
+  // Distinct sports present in the loaded calls — drives the header chip row.
+  const sports = useMemo(() => data ? sportChips([...(data.leans || []), ...(data.props || [])]) : [], [data])
 
   const isSettled = isSettledCall
   // Live counts for the status panel (from the base set, before the status filter is applied).
@@ -384,6 +401,20 @@ export default function PerformancePage({ token, onBack }) {
           </div>
         </div>
         <div style={{ fontFamily: R, fontSize: '10px', color: MUTED, marginTop: '2px' }}>Every model call, graded in public — self-graded from final results.</div>
+        {/* Sport chips — ALL + one per league present in the loaded calls (derived, not hardcoded) */}
+        {sports.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '8px' }}>
+            {['ALL', ...sports].map(s => (
+              <button key={s} onClick={() => setSportFilter(s)} aria-pressed={sportFilter === s} style={{
+                fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: '4px 10px', borderRadius: '100px', cursor: 'pointer', whiteSpace: 'nowrap',
+                border: `1px solid ${sportFilter === s ? NEON : BORDER}`,
+                background: sportFilter === s ? 'rgba(189,255,0,0.12)' : 'transparent',
+                color: sportFilter === s ? NEON_T : MUTED, transition: 'all 0.12s',
+              }}>{s === 'ALL' ? 'All' : s}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* BETA disclaimer (mirrors Spotlight) */}
