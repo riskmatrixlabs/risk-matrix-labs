@@ -155,6 +155,49 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
     return () => { cancel = true; clearInterval(id) }
   }, [token])
 
+  // ⬡ WNBA — SHADOW game-total model (BETA), mirroring the NHL loop above. SESSION-AUTHORED
+  // totals model (the MODELS.md WNBA engine is props-only). Free: synced events + the
+  // server-side WNBA branch of game-info (our own scored/conceded averages + synced odds).
+  // Pre-game totals are snapshotted through the lean pipeline (market 'total' — graded
+  // sport-agnostically by cron-grade-leans). Honest empty: renders nothing without leans.
+  const [wnbaGames, setWnbaGames] = useState([])
+  const [wnbaOpen, setWnbaOpen] = useState(false)
+  useEffect(() => {
+    if (!token) { setWnbaGames([]); return }
+    let cancel = false
+    const load = async () => {
+      let todays = []
+      try {
+        const { data } = await fetchEvents('wnba', 'today')
+        todays = (data || []).filter(e => e.away_team && e.home_team)
+      } catch { todays = [] }
+      if (!todays.length) { if (!cancel) setWnbaGames([]); return }
+      const res = await Promise.all(todays.map(async (ev) => {
+        try {
+          // Pre-game only — the shadow lean is locked before tip-off, never re-read live.
+          if (!ev.start_time || Date.parse(ev.start_time) <= Date.now()) return null
+          const iso = `&iso=${encodeURIComponent(ev.start_time)}`
+          const r = await fetch(`/api/game-info?sport=WNBA&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
+          if (!r.ok) return null
+          const j = await r.json()
+          const t = j?.wnbaTotal
+          if (!t?.lean || t.line == null) return null // honest null — no total lean, nothing to show or snapshot
+          if (ev.external_event_id || ev.id) {
+            // Fire-and-forget snapshot; buildLeanRows' total gate needs lean + total_line.
+            // edge_runs carries POINTS for WNBA.
+            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ sport: 'WNBA', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, lean: t.lean, total_line: t.line, confidence: t.confidence, strong: !!t.strong, edge_runs: t.edgePoints, model_version: t.modelVersion }) }).catch(() => {})
+          }
+          return { ev, total: t }
+        } catch { return null }
+      }))
+      if (!cancel) setWnbaGames(res.filter(Boolean).sort((a, b) => Math.abs(b.total.edgePoints || 0) - Math.abs(a.total.edgePoints || 0)))
+    }
+    load()
+    const id = setInterval(load, 180000)
+    return () => { cancel = true; clearInterval(id) }
+  }, [token])
+
   useEffect(() => {
     if (!token) { setSignals([]); return }
     let cancel = false
@@ -508,6 +551,40 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
                           <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
                           <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgeGoals) >= 1.2 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgeGoals > 0 ? '+' : ''}{t.edgeGoals}</span>
+                        </span>
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              </>)}
+            </div>
+            )
+          })()}
+          {wnbaGames.length > 0 && (() => {
+            // WNBA · SHADOW — collapsed game-total section mirroring the NHL one above.
+            // SESSION-AUTHORED totals model, shadow mode: runs in public and self-grades;
+            // leans are informational only. Honest empty — renders nothing without leans.
+            return (
+            <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
+              <button onClick={() => setWnbaOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ WNBA · SHADOW ({wnbaGames.length})</span>
+                <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
+                <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: wnbaOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              </button>
+              {wnbaOpen && (<>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — game-total leans shown for transparency while the record builds · not advice</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {wnbaGames.map(({ ev, total: t }, i) => (
+                  <div key={ev.id || ev.external_event_id} onClick={() => onOpen?.(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{i + 1}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: t.strong ? NEON : NEON_T }}>O/U {t.line} {t.lean}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                          <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
+                          <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgePoints) >= 8 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgePoints > 0 ? '+' : ''}{t.edgePoints}</span>
                         </span>
                       </span>
                     </span>

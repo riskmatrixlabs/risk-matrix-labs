@@ -18,6 +18,7 @@ import { fetchNflTeamStats } from './_lib/nflTeamStats.js'
 import { nflLean, leagueAvgOffEpa, NFL_MODEL_VERSION } from '../src/lib/nflLean.js'
 import { nflTotal } from '../src/lib/nflTotal.js'
 import { nhlTotal, NHL_TOTAL_MODEL_VERSION } from '../src/lib/nhlTotal.js'
+import { wnbaTotal, WNBA_TOTAL_MODEL_VERSION } from '../src/lib/wnbaTotal.js'
 import { scoredAvg, concededAvg } from './_lib/teamScoring.js'
 
 export const config = { maxDuration: 20 }
@@ -590,12 +591,54 @@ export default async function handler(req, res) {
     } catch { nhlTotalBlock = { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true } }
   }
 
+  // WNBA — SHADOW game-total lean ('wnba-total-shadow-v0', additive, SESSION-AUTHORED —
+  // the MODELS.md WNBA engine is props-only). All inputs real: our OWN synced final events
+  // (scored/conceded averages), synced odds_total, rest days from the slate.
+  // HONEST NULL: any missing input (or edge below the noise band) → wnbaTotal.lean null.
+  // Never blocks the card; `ou` stays null for WNBA.
+  let wnbaTotalBlock = null
+  if (sport === 'WNBA') {
+    try {
+      const sb = db()
+      const evRow = await nflEventRow(away, home, iso, 'WNBA')
+      const homeName = evRow?.home_team || home, awayName = evRow?.away_team || away
+      // Last ≤15 finals per team from our own synced events (same query as the NHL branch).
+      const finals = async (team) => {
+        if (!sb || !team) return []
+        try {
+          const { data } = await sb.from('events')
+            .select('away_team, home_team, away_score, home_score, status')
+            .eq('sport', 'WNBA')
+            .or(`home_team.eq.${JSON.stringify(String(team))},away_team.eq.${JSON.stringify(String(team))}`)
+            .in('status', ['FT', 'AOT', 'FINAL', 'Final', 'final'])
+            .order('start_time', { ascending: false }).limit(15)
+          return data || []
+        } catch { return [] }
+      }
+      const [hRows, aRows, restDaysHome, restDaysAway] = await Promise.all([
+        finals(homeName), finals(awayName),
+        evRow?.start_time ? nflRestDays(evRow.home_abbr || hSide.abbr, evRow.start_time, 'WNBA') : null,
+        evRow?.start_time ? nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time, 'WNBA') : null,
+      ])
+      const oddsTotalWnba = evRow?.odds_total != null && Number(evRow.odds_total) > 0 ? Number(evRow.odds_total) : null
+      const t = wnbaTotal({
+        homeScoredAvg: scoredAvg(hRows, homeName), homeConcededAvg: concededAvg(hRows, homeName),
+        awayScoredAvg: scoredAvg(aRows, awayName), awayConcededAvg: concededAvg(aRows, awayName),
+        restDaysHome, restDaysAway, oddsTotal: oddsTotalWnba,
+      })
+      wnbaTotalBlock = t
+        ? { lean: t.lean, proj: t.proj, edgePoints: t.edgePoints, confidence: t.confidence, strong: t.strong, line: oddsTotalWnba, modelVersion: t.modelVersion, shadow: true }
+        : { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true }
+    } catch { wnbaTotalBlock = { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true } }
+  }
+
   return res.status(200).json({
     found: true,
     status: { state: st.state || 'pre', detail: st.shortDetail || st.detail || '', completed: !!st.completed },
     away: aSide, home: hSide, ou,
     ...(sport === 'NFL' ? { nfl } : {}),
     ...(sport === 'NHL' ? { nhlTotal: nhlTotalBlock } : {}),
+    ...(sport === 'WNBA' ? { wnbaTotal: wnbaTotalBlock } : {}),
   })
   } catch (e) {
     return res.status(200).json({ found: false, error: String(e?.message || e) })
