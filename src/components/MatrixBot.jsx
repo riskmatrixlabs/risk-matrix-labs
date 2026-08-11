@@ -1258,15 +1258,33 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
     return () => { live = false }
   }, [sport, token])
 
-  // PHLT v2.2 — once props load, score every hitter's chance to record a HIT (FREE Statcast + ESPN
-  // form, all server-side & cached). MLB only. Auto-runs on game open (Savant ≠ Odds-API credits).
+  // Model verdicts — once props load, score every player server-side (FREE sources, cached).
+  // Dispatch by sport: MLB → PHLT v2.2 (/api/phlt, unchanged), WNBA → /api/wnba-props (BETA).
+  // Other sports: no model yet → no fetch (honest null, like before).
   useEffect(() => {
-    if (!token || sport !== 'MLB' || !game?.away) { setPhlt({}); return }
-    const names = [...new Set([...(data?.edges || []), ...(data?.lineShopOnly || [])].map(p => p.player).filter(Boolean))].slice(0, 30)
+    if (!token || (sport !== 'MLB' && sport !== 'WNBA') || !game?.away) { setPhlt({}); return }
+    const rows = [...(data?.edges || []), ...(data?.lineShopOnly || [])]
+    const names = [...new Set(rows.map(p => p.player).filter(Boolean))].slice(0, 30)
     if (!names.length) return
     let cancel = false
     const iso = game.commenceTime ? `&iso=${encodeURIComponent(game.commenceTime)}` : ''
-    fetch(`/api/phlt?sport=${sport}&away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${iso}&names=${encodeURIComponent(names.join('|'))}`, { headers: { Authorization: `Bearer ${token}` } })
+    const base = `away=${encodeURIComponent(game.away)}&home=${encodeURIComponent(game.home)}${iso}&names=${encodeURIComponent(names.join('|'))}`
+    let url = `/api/phlt?sport=${sport}&${base}`
+    if (sport === 'WNBA') {
+      // WNBA needs each player's real prop context (market/line/evPct) so the server never has
+      // to invent a lineValue. Pick one prop per player: prefer Points, then highest evPct.
+      const pick = {}
+      for (const p of rows) {
+        if (!p.player) continue
+        const c = pick[p.player]
+        const better = !c || ((p.market === 'player_points') - (c.market === 'player_points')) > 0 ||
+          (p.market === c.market && (p.evPct ?? -99) > (c.evPct ?? -99))
+        if (better) pick[p.player] = p
+      }
+      const q = names.map(n => pick[n] || {})
+      url = `/api/wnba-props?${base}&markets=${encodeURIComponent(q.map(p => p.market || '').join('|'))}&lines=${encodeURIComponent(q.map(p => p.point ?? '').join('|'))}&evs=${encodeURIComponent(q.map(p => p.evPct ?? '').join('|'))}`
+    }
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null).then(j => { if (!cancel && j?.verdicts) setPhlt(j.verdicts) }).catch(() => {})
     return () => { cancel = true }
   }, [game?.away, game?.home, sport, token, data])
@@ -1316,6 +1334,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: big ? '3px 8px' : '2px 6px', borderRadius: '6px', border: `1px solid ${c}`, background: `${c}1a`, fontFamily: R, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}>
         <span style={{ fontSize: big ? '12px' : '10px', color: c, letterSpacing: '0.04em' }}>{text}</span>
         <span style={{ fontSize: big ? '11px' : '9px', color: c, opacity: 0.85 }}>{v.score}</span>
+        {sport === 'WNBA' && <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>}
       </span>
     )
   }
@@ -1409,7 +1428,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       {phltBadge(v, true)}
                       <span style={{ minWidth: 0, flex: 1, textAlign: 'left', fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        PHLT · TO HIT{v.vs ? ` · vs ${v.vs}` : ''}
+                        {sport === 'WNBA' ? 'W MODEL' : 'PHLT · TO HIT'}{v.vs ? ` · vs ${v.vs}` : ''}
                       </span>
                       <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, transform: exp ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>▾</span>
                     </button>
@@ -1418,11 +1437,9 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
                     )}
                     {exp && v.breakdown && (
                       <div style={{ marginTop: '8px' }}>
-                        {phltBar('PITCHER', v.breakdown.pitcher)}
-                        {phltBar('FORM', v.breakdown.form)}
-                        {phltBar('MATCHUP', v.breakdown.matchup)}
-                        {phltBar('PARK/WX', v.breakdown.parkWeather)}
-                        {phltBar('STREAK', v.breakdown.streak)}
+                        {/* Data-driven so PHLT (pitcher/form/matchup/parkWeather/streak) and the
+                            WNBA model (minutes/usage/form/matchup/value) share one render path. */}
+                        {Object.entries(v.breakdown).map(([k, val]) => <div key={k}>{phltBar(({ parkWeather: 'PARK/WX' })[k] || k.toUpperCase(), val)}</div>)}
                       </div>
                     )}
                   </div>
