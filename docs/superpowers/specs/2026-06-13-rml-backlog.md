@@ -379,3 +379,16 @@ The owner's 5 Beast engines are ported as pure tested libs (verbatim weights, `d
 - 🟡 **NBA + NHL wiring (Oct)** — reuse this exact pattern: verdict lib on nbaProps/nhlSog + endpoint + PropsPanel dispatch already sport-keyed.
 - 🟡 **Ladder rung scoring** — still out: rungs carry no PHLT score (`confidence` always 0). Wire when a scored pick flows slip→ladder (carry evPct/model score through addToLadder).
 - ⚠️ UI verification note: RR quality row + WNBA verdicts are auth-gated and props are cache-limited while the credit breaker is tripped — owner should eyeball both on his phone; logic is test-proven (696 green).
+
+### ✅ COMPLETE GRID — v549–v553 (2026-08-12)
+Every sport: **moneyline + over/under + props**, snapshot → self-grade → ✓/✗ on the card + own Full Matrix tab. NFL props built end-to-end (NFL was never registered with the odds provider at all). NBA totals+ML, NFL ML, WNBA totals+ML, NHL ML. Next-slate fallback so a sport with no games today shows its next slate.
+**Open follow-ups:**
+- 🔴 **Top up The Odds API** — breaker at 929<1000 since Jul 22 gates ALL props/line-shop/EV (incl. NFL Thursday). Everything else runs free.
+- 🟡 **Calibrate NFL props after preseason** — verdicts need ≥3 gamelog games (blank for much of Week 1, by design) and preseason starters play few snaps, so volume is overstated.
+- 🟡 **Verify prod ODDS_API_KEY** — local `.env.local` copy reads INVALID_KEY.
+- 🟡 **Tier map sanity-check** (LEAN+WATCH→CAUTION in `src/lib/models/tiers.js`) before it reaches more UI copy.
+- 🟡 **Ladder rung scoring** — still out; rungs carry no model score (`confidence` always 0). Wire when a scored pick flows slip→ladder.
+- 🟡 **NFL spread grading on cards** — shadow `rl` rows are in the games map but `TeamGradedFlags` labels rl with MLB run-line copy; needs its own label before surfacing.
+- 🟡 **Shadow model graduation review** — after ~2-4 weeks of graded record, decide per model: promote, recalibrate, or cut. Session-authored ones (WNBA/NBA/NHL totals+ML, NFL props) have no owner provenance — the record is the only evidence.
+- 🔴 **Node 20→24 before Oct 1** (Vercel deprecation).
+- 🔵 **NEXT PROJECT: App Store** — IAP 15–30% vs Stripe ~3%; PWA needs a native shell (Capacitor); betting-adjacent review, helped by "no picks, information only" positioning. Scope against real Apple guidelines, don't work from memory.
