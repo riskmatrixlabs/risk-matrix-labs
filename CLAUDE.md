@@ -213,3 +213,28 @@ workflow/
 - **Flows verified live:** CH1 search→CH2 and CH1 bot-pick→CH2 both carry through. Fixed a credit leak in the player-search path (PlayerProps was paid; now cacheOnly).
 
 **NEXT = build two models, both FREE (planned, not built):** **(A) PHLT v2.2** hitter-hit prop scorer (Pitcher 30/Form 30/Matchup 15/Park-Weather 10/Streak 15 → A/B/C/Avoid + fades) into Player Props — Statcast (whiff/xBA) confirmed free from **Baseball Savant CSV**, match by name. **(B) O/U totals** model on the game card — add bullpen+weather+umpire+lineups, anchor lean to the live total. Full plans + memory: `rml-phlt-model`, `rml-ou-model`, `HANDOFF-models.md`. Still open from before: ANTHROPIC_API_KEY (OCR), CH3 TRACK redesign + parlay grading, NFL.
+
+## SESSION 70 (Aug 11-12 2026 · main · SW rml-v540→v553 · 959 tests · all deployed)
+**The owner's Beast model formulas were ported in, and EVERY sport now has moneyline + over/under + props — snapshotted pre-game, self-graded after the final, graded ON THE CARD like MLB.** Full detail: memory `rml-aug11-engines-ported`, plan `docs/superpowers/plans/2026-08-11-engine-wiring-phases.md` (its recon report = an exact file:line map of the ladder/RR/props/lean pipelines — read it before touching those).
+
+**MODELS.md IS NOW IN THE REPO** — `docs/models/MODELS.md` (was only in `~/Desktop/beast-node`). The owner's CONFIRMED weights are enforced as pure libs in `src/lib/models/` (nflSide ⚠️reconstruction, nbaProps, nhlSog, wnbaProps, qualityScores, tiers) with tests that fail if anyone "improves" a weight. **Never alter a CONFIRMED weight.**
+
+| New model file | What it is |
+|---|---|
+| `src/lib/models/*` | owner's CONFIRMED formulas, verbatim (see MODELS.md) |
+| `src/lib/{wnba,nba,nhl,nflProp}Verdict.js` | per-sport PROP verdict scorers (session-authored derivations on top of the CONFIRMED engines) |
+| `src/lib/{wnba,nba,nhl,nfl}Total.js` | game TOTALS + `*Side` moneyline (⚠️ session-authored, NOT recovered formulas) |
+| `src/lib/nflLean.js` | NFL side score + `nflMoneyline` (`NFL_POINTS_PER_EPA=25` shared so side/ML/total can't drift) |
+| `src/lib/{rrQuality,mlResult,shadowSlate}.js` | RR quality score · ML result chip logic · today-vs-next-slate picker |
+| `api/{wnba,nba,nhl,nfl}-props.js` | verdict endpoints, all mirroring `api/phlt.js`; each exports a `*VerdictsForGame` core so crons can call it without HTTP |
+| `api/_lib/{nflTeamStats,teamScoring,sogAllowed,modelPropPicks,leanSplit}.js` | nflverse EPA · scoring avgs from our own synced finals · derived shots-allowed · prop pick selection · record splitting |
+| `api/cron-snapshot-model-props.js` | snapshots WNBA/NBA/NBASL/NHL/NFL prop verdicts (16+22 UTC, **cache-only — never spends a credit**) |
+
+**RULES LEARNED (do not repeat):**
+- **Honest-null is the contract.** A model emits only when EVERY input is real. Missing data → nothing shown, never a neutral filler. Say so in the file header when an adjustment is a documented neutral vs a fabricated base input.
+- **Record purity vs card display are DIFFERENT concerns.** Shadow rows are excluded from MLB tallies (`isShadowSport`/`isShadowModel` in `_lib/leanSplit.js`) but the `games` map (`buildGamesMap`) must include ALL rows or cards can never grade. This exact coupling caused a silent bug.
+- **Sport-specific data shapes bite silently.** ESPN NFL boxes use slash-combined keys (`completions/passingAttempts` = "22/37"); `resolveStat` market matching can't use `\b` (underscore is a word char) and must resolve specific-before-general (`shots on goal` BEFORE `goal`, NFL before basketball `points`).
+- **A "failed requests" counter on Vercel is not a bill.** 122 `game-info` timeouts since Jun 22 were a 20s `maxDuration` on a fan-out endpoint → now 60s.
+- Non-MLB models are BETA/SHADOW; several are session-authored, clearly headered. Let the graded record judge them — don't tune coefficients on a hunch.
+
+**⛔ CREDIT BREAKER (`api/_lib/creditGuard.js`, floor 1000):** tripped at **929 since Jul 22** → all paid Odds-API pulls paused. This gates props/line-shop/EV for EVERY sport (prop snapshot crons read the prop CACHES, and warming is paid). Sides/totals/ML models are free and unaffected. **Owner must top up.**
