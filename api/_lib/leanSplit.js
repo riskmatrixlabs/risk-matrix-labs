@@ -48,5 +48,40 @@ export function splitLeanRows(rows) {
   const nflTotals = rows.filter(r => isNfl(r) && (r.market || 'total') === 'total')
   const nhlTotals = rows.filter(r => isNhl(r) && (r.market || 'total') === 'total')
   const wnbaTotals = rows.filter(r => isWnba(r) && isShadowModel(r) && (r.market || 'total') === 'total')
-  return { totals, mlAll, rlAll, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals, wnbaTotals }
+  // Shadow MONEYLINE splits — ml picks derived from the same shadow totals projections
+  // ('wnba-total-shadow-v0' / 'nhl-total-shadow-v0'). Keyed sport + shadow model + market
+  // 'ml' so a future non-shadow ml row for either sport can never be mistaken for these.
+  const wnbaMl = rows.filter(r => isWnba(r) && isShadowModel(r) && r.market === 'ml')
+  const nhlMl = rows.filter(r => isNhl(r) && isShadowModel(r) && r.market === 'ml')
+  return { totals, mlAll, rlAll, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals, wnbaTotals, wnbaMl, nhlMl }
+}
+
+// Per-game DISPLAY map for today + yesterday, keyed by external_event_id, so a card can grade
+// EVERY call it showed. This is NOT a record tally — it must include the SHADOW rows (NFL/NHL/
+// WNBA), otherwise a graded shadow lean could never reach a card chip. The record splits above
+// stay shadow-free (record purity); this map deliberately does not.
+//   top-level = the TOTALS lean (back-compat with the MLB O/U flag)
+//   .ml / .rl = the team calls' grades
+// A game is one sport, and the map is keyed per game, so shadow rows can't contaminate an MLB
+// entry. Rows are consumed newest-first (the caller orders by game_date desc); later rows for
+// the same id only fill what an earlier row already set, matching the previous Object.assign order.
+export function buildGamesMap(rows, today, yesterday) {
+  const games = {}
+  const ensure = (id) => (games[id] ??= {})
+  const inWindow = (r) => r.game_date === today || r.game_date === yesterday
+  for (const r of rows) {
+    if (!inWindow(r)) continue
+    if ((r.market || 'total') !== 'total') continue
+    Object.assign(ensure(r.external_event_id), {
+      lean: r.lean, line: r.total_line, strong: r.strong,
+      result: r.result || null, finalTotal: r.final_total ?? null, date: r.game_date,
+      closingLine: r.closing_line ?? null, clv: r.clv ?? null,
+    })
+  }
+  for (const r of rows) {
+    if (!inWindow(r)) continue
+    if (r.market !== 'ml' && r.market !== 'rl') continue
+    ensure(r.external_event_id)[r.market] = { pick: r.pick_side || r.lean || null, result: r.result || null, date: r.game_date }
+  }
+  return games
 }

@@ -8,6 +8,7 @@ import { computeClv } from '../lib/clv'
 import { matchBetToEvent, findEventForBet, evaluateBet } from '../lib/betMatch'
 import { fetchLineMovement } from '../lib/oddsHistory'
 import { teamLeanLines } from '../lib/teamLean'
+import { mlResult } from '../lib/mlResult'
 import CallChips from './CallChips.jsx'
 import { liveConsensus } from '../lib/liveConsensus'
 import { decorate, placeLink, SIGNUP_LINKS, SIGNUP_NAMES, copyPickAndOpen } from '../lib/betLinks'
@@ -204,6 +205,41 @@ export function LiveResultChip({ lean, line, total, size = 9 }) {
   return <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, color: c, whiteSpace: 'nowrap', flexShrink: 0 }}>{mark} {total} v {line}</span>
 }
 
+// Live MONEYLINE chip — the side twin of LiveResultChip. Same visual language: amber ● while the
+// pick is alive, neon ✓ once it's a final win, red ✗ once it's a final loss. Pure grading lives in
+// src/lib/mlResult.js.
+export function MlResultChip({ pick, homeScore, awayScore, final = false, awayAbbr, homeAbbr, size = 9 }) {
+  const r = mlResult({ pick, homeScore, awayScore })
+  if (!r) return null
+  const side = String(pick).trim().toUpperCase().split(/\s+/)[0]
+  const abbr = side === 'HOME' ? (homeAbbr || 'HOME') : (awayAbbr || 'AWAY')
+  // Pre-final everything is provisional → amber ●. Final locks it to ✓ / ✗.
+  const c = final && r === 'ahead' ? NEON_T : final && r === 'behind' ? '#FF3B3B' : r === 'tied' ? MUTED : '#FFAE2B'
+  const mark = final && r === 'ahead' ? '✓' : final && r === 'behind' ? '✗' : r === 'tied' ? '=' : '●'
+  return (
+    <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, color: c, whiteSpace: 'nowrap', flexShrink: 0 }}>
+      {mark} {abbr} {awayScore}-{homeScore}
+    </span>
+  )
+}
+
+// Settled MONEYLINE call from the lean-record games map ({pick, result}) — the ML sibling of
+// GradedFlag, same ✓ HIT / ✗ MISS language.
+export function MlGradedFlag({ g, event, size = 10 }) {
+  const t = g?.ml
+  if (!t?.result) return null
+  const side = String(t.pick || '').trim().toUpperCase().split(/\s+/)[0]
+  const abbr = side === 'HOME' ? (event?.home_abbr || 'HOME') : side === 'AWAY' ? (event?.away_abbr || 'AWAY') : side
+  const c = t.result === 'W' ? NEON_T : t.result === 'L' ? '#FF3B3B' : MUTED
+  const txt = t.result === 'W' ? '✓ HIT' : t.result === 'L' ? '✗ MISS' : 'PUSH'
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, color: TEXT }}>{abbr} ML</span>
+      <span style={{ fontFamily: R, fontSize: `${size - 1}px`, fontWeight: 700, color: c, padding: '1px 6px', borderRadius: '5px', border: `1px solid ${c}`, background: t.result === 'W' ? 'rgba(189,255,0,0.1)' : t.result === 'L' ? 'rgba(255,59,59,0.1)' : 'transparent' }}>{txt}</span>
+    </span>
+  )
+}
+
 // ── O/U lean flag (MLB) — self-fetches the free game-info model (Statcast + bullpen + weather,
 // anchored to the live total). compact=list-card pill, full=detail breakdown. Shared with CH2.
 function OuFlag({ event, token, compact = false, mini = false, inline = false, onAddToSlip = null }) {
@@ -325,6 +361,170 @@ function OuFlag({ event, token, compact = false, mini = false, inline = false, o
       )}
     </div>
   )
+}
+
+// ── SHADOW model flag (WNBA / NHL / NFL) — the MLB O/U flag's template applied to every other
+// model the product runs, so "every model grades on the cards the same way". Same self-fetch of
+// /api/game-info, same three states (lean pre-game → LiveResultChip while live → GradedFlag once
+// graded), same BETA idiom, plus a SHADOW tag because these models are not yet public record.
+//
+// Per-sport read of the SAME response the MLB flag uses:
+//   WNBA → j.wnbaTotal   (total lean + line; .ml = the side call when the engine emits one)
+//   NHL  → j.nhlTotal    (same shape)
+//   NFL  → j.nfl.total   for the O/U lean, j.nfl for the side call (lean/score/tier)
+// Anything else renders nothing.
+const SHADOW_SPORTS = ['WNBA', 'NHL', 'NFL']
+
+// Pull the { total, ml } pair out of a game-info response for a shadow sport. Pure + honest-null.
+export function shadowBlocks(j, sport) {
+  if (!j) return { total: null, ml: null }
+  if (sport === 'WNBA' || sport === 'NHL') {
+    const b = sport === 'WNBA' ? j.wnbaTotal : j.nhlTotal
+    return { total: b?.lean ? b : null, ml: b?.ml?.pick ? b.ml : null }
+  }
+  if (sport === 'NFL') {
+    const t = j.nfl?.total
+    return {
+      total: t?.lean ? t : null,
+      ml: j.nfl?.lean ? { pick: j.nfl.lean, score: j.nfl.score ?? null, tier: j.nfl.tier || null } : null,
+    }
+  }
+  return { total: null, ml: null }
+}
+
+// Small amber SHADOW tag — sits next to BETA on every non-MLB model surface.
+const ShadowTag = ({ size = 7 }) => (
+  <span style={{ fontFamily: R, fontSize: `${size}px`, fontWeight: 700, letterSpacing: '0.08em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '0 3px', flexShrink: 0, whiteSpace: 'nowrap' }}>SHADOW</span>
+)
+
+function ShadowFlag({ event, token, compact = false, mini = false, inline = false }) {
+  const sport = event?.sport
+  const [blocks, setBlocks] = useState({ total: null, ml: null })
+  const [graded, setGraded] = useState(null)
+  useEffect(() => {
+    if (!token || !event?.external_event_id) return
+    let cancel = false
+    getLeanGames(token).then(g => { if (!cancel) setGraded(g[String(event.external_event_id)] || null) })
+    return () => { cancel = true }
+  }, [event?.external_event_id, token])
+  useEffect(() => {
+    if (!token || !SHADOW_SPORTS.includes(sport) || !event?.away_team || !event?.home_team) { setBlocks({ total: null, ml: null }); return }
+    let cancel = false
+    const iso = event.start_time ? `&iso=${encodeURIComponent(event.start_time)}` : ''
+    fetch(`/api/game-info?sport=${sport}&away=${encodeURIComponent(event.away_team)}&home=${encodeURIComponent(event.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(j => { if (!cancel) setBlocks(shadowBlocks(j, sport)) }).catch(() => {})
+    return () => { cancel = true }
+  }, [event?.away_team, event?.home_team, sport, token])
+
+  const { total, ml } = blocks
+  const isGraded = !!graded?.result
+  const mlGraded = !!graded?.ml?.result
+  const live = isLiveEvent(event)
+  const final = event?.status === 'FT' || event?.status === 'AOT'
+  const hasScore = event?.home_score != null && event?.away_score != null
+  const liveTotal = ((live || final) && hasScore) ? Number(event.home_score) + Number(event.away_score) : null
+  const liveLine = graded?.line ?? total?.line ?? null
+
+  // Nothing to say: no live lean AND nothing graded → render nothing (same as the MLB flag).
+  if (!total && !ml && !isGraded && !mlGraded) return null
+
+  const strong = !!total?.strong
+  const label = total?.lean === 'OVER' ? '📈 OVER' : total?.lean === 'UNDER' ? '📉 UNDER' : null
+  const mlPick = ml?.pick ?? null
+  const mlAbbr = mlPick === 'HOME' ? (event?.home_abbr || 'HOME') : mlPick === 'AWAY' ? (event?.away_abbr || 'AWAY') : null
+
+  // The lean line (pre-game / live) and the graded line (settled) — shared by every size.
+  const totalPart = isGraded ? <GradedFlag g={graded} size={inline || compact ? 10 : 13} /> : (total ? (
+    <>
+      <span style={{ fontFamily: R, fontSize: inline || compact ? '10px' : '13px', fontWeight: 700, letterSpacing: '0.06em', color: strong ? NEON_T : MUTED, whiteSpace: 'nowrap', flexShrink: 0 }}>
+        {label}{total.line != null ? ` ${total.line}` : ''}
+      </span>
+      {liveTotal != null && <LiveResultChip lean={total.lean} line={liveLine} total={liveTotal} size={inline || compact ? 10 : 11} />}
+    </>
+  ) : null)
+  const mlPart = mlGraded ? <MlGradedFlag g={graded} event={event} size={inline || compact ? 10 : 12} /> : (mlPick ? (
+    <>
+      <span style={{ fontFamily: R, fontSize: inline || compact ? '10px' : '12px', fontWeight: 700, letterSpacing: '0.04em', color: NEON_T, whiteSpace: 'nowrap', flexShrink: 0 }}>{mlAbbr} ML</span>
+      {hasScore && (live || final) && (
+        <MlResultChip pick={mlPick} homeScore={event.home_score} awayScore={event.away_score} final={final}
+          awayAbbr={event?.away_abbr} homeAbbr={event?.home_abbr} size={inline || compact ? 10 : 11} />
+      )}
+    </>
+  ) : null)
+
+  // mini — tiny badge in the list card's center column (mirrors the MLB mini pill).
+  if (mini) {
+    const arrow = total?.lean === 'OVER' ? '📈' : total?.lean === 'UNDER' ? '📉' : '➖'
+    const side = total?.lean === 'OVER' ? 'O' : total?.lean === 'UNDER' ? 'U' : '·'
+    const lineShown = isGraded ? graded.line : total?.line
+    if (!total && !isGraded) return null
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '6px', border: `1px solid ${strong ? NEON : 'rgba(255,255,255,0.12)'}`, background: strong ? 'rgba(189,255,0,0.1)' : 'transparent', fontFamily: R, fontSize: '9.5px', fontWeight: 700, color: strong ? NEON_T : MUTED, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+        {arrow} {side}{lineShown != null ? ` ${lineShown}` : ''}{isGraded ? (graded.result === 'W' ? ' ✓' : graded.result === 'L' ? ' ✗' : ' =') : ''}
+      </span>
+    )
+  }
+
+  if (inline) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 9px', borderRadius: '6px', border: `1px solid ${strong ? NEON : BORDER}`, background: strong ? 'rgba(189,255,0,0.08)' : 'transparent', minWidth: 0, maxWidth: '66%' }}>
+        <BetaTag />
+        {totalPart}
+        {totalPart && mlPart ? <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>·</span> : null}
+        {mlPart}
+      </span>
+    )
+  }
+
+  if (compact) {
+    return (
+      <div style={{ marginBottom: '7px', display: 'flex', justifyContent: 'center' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '7px', border: `1px solid ${strong ? NEON : BORDER}`, background: strong ? 'rgba(189,255,0,0.08)' : 'transparent' }}>
+          <BetaTag />
+          {totalPart}
+          {totalPart && mlPart ? <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>·</span> : null}
+          {mlPart}
+        </span>
+      </div>
+    )
+  }
+
+  // full — game detail. Same frame as the MLB block, with the SHADOW tag and the model's own
+  // supporting numbers (projection / edge / NFL side score+tier) instead of pitchers & bullpens.
+  const tierColor = ml?.tier === 'PRIME' || ml?.tier === 'STRONG' ? NEON_T : ml?.tier === 'CAUTION' ? '#FFAE2B' : ml?.tier === 'FADE' ? '#FF3B3B' : MUTED
+  const edgeNum = total?.edgePoints ?? total?.edgeGoals ?? null
+  return (
+    <div style={{ margin: '0 16px 12px', padding: '11px 13px', borderRadius: '12px', border: `1px solid ${strong ? NEON : BORDER}`, background: strong ? 'rgba(189,255,0,0.06)' : CARD }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <BetaTag size={8} />
+        <ShadowTag size={8} />
+        {totalPart}
+      </div>
+      {(mlPart) && (
+        <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontFamily: R, fontSize: '8px', fontWeight: 700, letterSpacing: '0.14em', color: MUTED, textTransform: 'uppercase' }}>MODEL</span>
+          {mlPart}
+          {!mlGraded && ml?.tier && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: tierColor }}>{ml.tier}{ml.score != null ? ` ${ml.score}` : ''}</span>}
+          {!mlGraded && ml?.winProb != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>{Math.round(ml.winProb * 100)}% win prob</span>}
+        </div>
+      )}
+      {!isGraded && total && (total.proj != null || edgeNum != null) && (
+        <div style={{ marginTop: '7px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+          {total.proj != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: MUTED }}>proj <span style={{ color: TEXT }}>{total.proj}</span>{total.line != null ? ` vs ${total.line}` : ''}</span>}
+          {edgeNum != null && <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, color: edgeNum > 0 ? NEON_T : '#FF3B3B' }}>edge {edgeNum > 0 ? '+' : ''}{edgeNum}</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Sport-aware model flag — the one entry point the cards render. MLB keeps the original
+// OuFlag verbatim (it is the template); every other model routes to ShadowFlag; unsupported
+// sports render nothing, exactly as before.
+function ModelFlag({ event, token, compact = false, mini = false, inline = false, onAddToSlip = null }) {
+  if (event?.sport === 'MLB') return <OuFlag event={event} token={token} compact={compact} mini={mini} inline={inline} onAddToSlip={onAddToSlip} />
+  if (SHADOW_SPORTS.includes(event?.sport)) return <ShadowFlag event={event} token={token} compact={compact} mini={mini} inline={inline} />
+  return null
 }
 
 // ── Game card — Apple Sports horizontal layout ──────────────────────────────
@@ -527,7 +727,7 @@ function GameCard({ event, onClick, showSport = false, token = null }) {
           <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="rgba(189,255,0,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </span>
         {/* Pre-game: show the lean. Live/final: OuFlag shows the lean + the ✓HIT/✗MISS grade once settled. */}
-        <OuFlag event={event} token={token} inline />
+        <ModelFlag event={event} token={token} inline />
       </div>
     </div>
   )
@@ -2004,7 +2204,7 @@ function GameDetail({ event: propEvent, onLogPosition, onAddToSlip, onBack, onPr
           {/* Context strip — venue / coverage + weather, always visible above every tab */}
           <GameInfo broadcast={meta.broadcast} venue={meta.venue} venueCity={meta.venue_city} series={meta.series_summary} />
           {/* O/U model — full breakdown (Statcast + bullpen + weather, anchored to total) */}
-          <OuFlag event={event} token={token} onAddToSlip={onAddToSlip} />
+          <ModelFlag event={event} token={token} onAddToSlip={onAddToSlip} />
           {meta.weather && (
             <Collapsible title="Weather" status={event.status}>
               <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '12px 14px', flexWrap: 'wrap', gap: '10px' }}>

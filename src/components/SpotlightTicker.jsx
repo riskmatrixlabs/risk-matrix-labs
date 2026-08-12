@@ -139,13 +139,22 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
           if (!r.ok) return null
           const j = await r.json()
           const t = j?.nhlTotal
-          if (!t?.lean || t.line == null) return null // honest null — no total lean, nothing to show or snapshot
-          if (ev.external_event_id || ev.id) {
+          const ml = t?.ml || null
+          const hasTotal = !!(t?.lean && t.line != null)
+          if (!hasTotal && !ml) return null // honest null — no total OR ml lean, nothing to show or snapshot
+          if (hasTotal && (ev.external_event_id || ev.id)) {
             // Fire-and-forget snapshot; buildLeanRows' total gate needs lean + total_line.
             fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ sport: 'NHL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, lean: t.lean, total_line: t.line, confidence: t.confidence, strong: !!t.strong, edge_runs: t.edgeGoals, model_version: t.modelVersion }) }).catch(() => {})
           }
-          return { ev, total: t }
+          // ML shadow lean — its OWN snapshot POST (buildLeanRows stamps ONE model_version per
+          // body, same reason the NFL loop separates side and total). ml only exists when the
+          // model's winProb cleared the 0.55 gate, matching buildLeanRows' ml gate.
+          if (ml && (ev.external_event_id || ev.id)) {
+            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ sport: 'NHL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, ml_pick: ml.pick, ml_win_prob: ml.winProb, model_version: t.modelVersion }) }).catch(() => {})
+          }
+          return { ev, total: t, ml }
         } catch { return null }
       }))
       if (!cancel) setNhlGames(res.filter(Boolean).sort((a, b) => Math.abs(b.total.edgeGoals || 0) - Math.abs(a.total.edgeGoals || 0)))
@@ -181,14 +190,23 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
           if (!r.ok) return null
           const j = await r.json()
           const t = j?.wnbaTotal
-          if (!t?.lean || t.line == null) return null // honest null — no total lean, nothing to show or snapshot
-          if (ev.external_event_id || ev.id) {
+          const ml = t?.ml || null
+          const hasTotal = !!(t?.lean && t.line != null)
+          if (!hasTotal && !ml) return null // honest null — no total OR ml lean, nothing to show or snapshot
+          if (hasTotal && (ev.external_event_id || ev.id)) {
             // Fire-and-forget snapshot; buildLeanRows' total gate needs lean + total_line.
             // edge_runs carries POINTS for WNBA.
             fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ sport: 'WNBA', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, lean: t.lean, total_line: t.line, confidence: t.confidence, strong: !!t.strong, edge_runs: t.edgePoints, model_version: t.modelVersion }) }).catch(() => {})
           }
-          return { ev, total: t }
+          // ML shadow lean — its OWN snapshot POST (buildLeanRows stamps ONE model_version per
+          // body, same reason the NFL loop separates side and total). ml only exists when the
+          // model's winProb cleared the 0.55 gate, matching buildLeanRows' ml gate.
+          if (ml && (ev.external_event_id || ev.id)) {
+            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ sport: 'WNBA', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, ml_pick: ml.pick, ml_win_prob: ml.winProb, model_version: t.modelVersion }) }).catch(() => {})
+          }
+          return { ev, total: t, ml }
         } catch { return null }
       }))
       if (!cancel) setWnbaGames(res.filter(Boolean).sort((a, b) => Math.abs(b.total.edgePoints || 0) - Math.abs(a.total.edgePoints || 0)))
@@ -539,19 +557,29 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
                 <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: nhlOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </button>
               {nhlOpen && (<>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — game-total leans shown for transparency while the record builds · not advice</div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — game-total + moneyline leans shown for transparency while the record builds · not advice</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {nhlGames.map(({ ev, total: t }, i) => (
+                {nhlGames.map(({ ev, total: t, ml }, i) => (
                   <div key={ev.id || ev.external_event_id} onClick={() => onOpen?.(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                       <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{i + 1}</span>
                       <span style={{ minWidth: 0 }}>
                         <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
-                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: t.strong ? NEON : NEON_T }}>O/U {t.line} {t.lean}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
-                          <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
-                          <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgeGoals) >= 1.2 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgeGoals > 0 ? '+' : ''}{t.edgeGoals}</span>
-                        </span>
+                        {t.lean && t.line != null && (
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: t.strong ? NEON : NEON_T }}>O/U {t.line} {t.lean}</span>
+                        )}
+                        {/* Moneyline chip from the SAME projections ('nhl-total-shadow-v0'). */}
+                        {ml && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 6px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.04)', fontFamily: R, fontSize: '11px', fontWeight: 700, color: ml.winProb >= 0.62 ? NEON : NEON_T, verticalAlign: 'middle' }}>
+                            {ml.pick === 'HOME' ? ev.home_abbr : ev.away_abbr} ML {Math.round(ml.winProb * 100)}%
+                          </span>
+                        )}
+                        {t.lean && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                            <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
+                            <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgeGoals) >= 1.2 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgeGoals > 0 ? '+' : ''}{t.edgeGoals}</span>
+                          </span>
+                        )}
                       </span>
                     </span>
                   </div>
@@ -573,19 +601,29 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
                 <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: wnbaOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </button>
               {wnbaOpen && (<>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — game-total leans shown for transparency while the record builds · not advice</div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — game-total + moneyline leans shown for transparency while the record builds · not advice</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {wnbaGames.map(({ ev, total: t }, i) => (
+                {wnbaGames.map(({ ev, total: t, ml }, i) => (
                   <div key={ev.id || ev.external_event_id} onClick={() => onOpen?.(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                       <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{i + 1}</span>
                       <span style={{ minWidth: 0 }}>
                         <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
-                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: t.strong ? NEON : NEON_T }}>O/U {t.line} {t.lean}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
-                          <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
-                          <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgePoints) >= 8 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgePoints > 0 ? '+' : ''}{t.edgePoints}</span>
-                        </span>
+                        {t.lean && t.line != null && (
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: t.strong ? NEON : NEON_T }}>O/U {t.line} {t.lean}</span>
+                        )}
+                        {/* Moneyline chip from the SAME projections ('wnba-total-shadow-v0'). */}
+                        {ml && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 6px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.04)', fontFamily: R, fontSize: '11px', fontWeight: 700, color: ml.winProb >= 0.62 ? NEON : NEON_T, verticalAlign: 'middle' }}>
+                            {ml.pick === 'HOME' ? ev.home_abbr : ev.away_abbr} ML {Math.round(ml.winProb * 100)}%
+                          </span>
+                        )}
+                        {t.lean && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                            <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
+                            <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgePoints) >= 8 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgePoints > 0 ? '+' : ''}{t.edgePoints}</span>
+                          </span>
+                        )}
                       </span>
                     </span>
                   </div>

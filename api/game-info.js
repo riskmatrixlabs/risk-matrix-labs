@@ -17,8 +17,8 @@ import { loadBullpenFatigue } from './_lib/bullpenFatigue.js'
 import { fetchNflTeamStats } from './_lib/nflTeamStats.js'
 import { nflLean, leagueAvgOffEpa, NFL_MODEL_VERSION } from '../src/lib/nflLean.js'
 import { nflTotal } from '../src/lib/nflTotal.js'
-import { nhlTotal, NHL_TOTAL_MODEL_VERSION } from '../src/lib/nhlTotal.js'
-import { wnbaTotal, WNBA_TOTAL_MODEL_VERSION } from '../src/lib/wnbaTotal.js'
+import { nhlTotal, nhlSide, NHL_TOTAL_MODEL_VERSION } from '../src/lib/nhlTotal.js'
+import { wnbaTotal, wnbaSide, WNBA_TOTAL_MODEL_VERSION } from '../src/lib/wnbaTotal.js'
 import { scoredAvg, concededAvg } from './_lib/teamScoring.js'
 
 // 60s (was 20): the MLB branch fans out to ~10 upstream fetches; slow ESPN/Statcast or a DB
@@ -583,15 +583,20 @@ export default async function handler(req, res) {
         evRow?.start_time ? nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time, 'NHL') : null,
       ])
       const oddsTotalNhl = evRow?.odds_total != null && Number(evRow.odds_total) > 0 ? Number(evRow.odds_total) : null
-      const t = nhlTotal({
+      const inputsNhl = {
         homeScoredAvg: scoredAvg(hRows, homeName), homeConcededAvg: concededAvg(hRows, homeName),
         awayScoredAvg: scoredAvg(aRows, awayName), awayConcededAvg: concededAvg(aRows, awayName),
         restDaysHome, restDaysAway, oddsTotal: oddsTotalNhl,
-      })
+      }
+      const t = nhlTotal(inputsNhl)
+      // Moneyline lean from the SAME per-side xG projections (arithmetic only, no new
+      // sources) — honest null below the 0.55 gate or on any missing input.
+      const sNhl = nhlSide(inputsNhl)
+      const mlNhl = sNhl ? { pick: sNhl.pick, winProb: sNhl.winProb } : null
       nhlTotalBlock = t
-        ? { lean: t.lean, proj: t.proj, edgeGoals: t.edgeGoals, confidence: t.confidence, strong: t.strong, line: oddsTotalNhl, modelVersion: t.modelVersion, shadow: true }
-        : { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true }
-    } catch { nhlTotalBlock = { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true } }
+        ? { lean: t.lean, proj: t.proj, edgeGoals: t.edgeGoals, confidence: t.confidence, strong: t.strong, line: oddsTotalNhl, modelVersion: t.modelVersion, shadow: true, ml: mlNhl }
+        : { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true, ml: mlNhl }
+    } catch { nhlTotalBlock = { lean: null, modelVersion: NHL_TOTAL_MODEL_VERSION, shadow: true, ml: null } }
   }
 
   // WNBA — SHADOW game-total lean ('wnba-total-shadow-v0', additive, SESSION-AUTHORED —
@@ -624,15 +629,20 @@ export default async function handler(req, res) {
         evRow?.start_time ? nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time, 'WNBA') : null,
       ])
       const oddsTotalWnba = evRow?.odds_total != null && Number(evRow.odds_total) > 0 ? Number(evRow.odds_total) : null
-      const t = wnbaTotal({
+      const inputsWnba = {
         homeScoredAvg: scoredAvg(hRows, homeName), homeConcededAvg: concededAvg(hRows, homeName),
         awayScoredAvg: scoredAvg(aRows, awayName), awayConcededAvg: concededAvg(aRows, awayName),
         restDaysHome, restDaysAway, oddsTotal: oddsTotalWnba,
-      })
+      }
+      const t = wnbaTotal(inputsWnba)
+      // Moneyline lean from the SAME per-side projections (arithmetic only, no new
+      // sources) — honest null below the 0.55 gate or on any missing input.
+      const sWnba = wnbaSide(inputsWnba)
+      const mlWnba = sWnba ? { pick: sWnba.pick, winProb: sWnba.winProb } : null
       wnbaTotalBlock = t
-        ? { lean: t.lean, proj: t.proj, edgePoints: t.edgePoints, confidence: t.confidence, strong: t.strong, line: oddsTotalWnba, modelVersion: t.modelVersion, shadow: true }
-        : { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true }
-    } catch { wnbaTotalBlock = { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true } }
+        ? { lean: t.lean, proj: t.proj, edgePoints: t.edgePoints, confidence: t.confidence, strong: t.strong, line: oddsTotalWnba, modelVersion: t.modelVersion, shadow: true, ml: mlWnba }
+        : { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true, ml: mlWnba }
+    } catch { wnbaTotalBlock = { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true, ml: null } }
   }
 
   return res.status(200).json({

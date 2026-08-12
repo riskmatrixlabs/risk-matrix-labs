@@ -21,10 +21,26 @@
 export const WNBA_TOTAL_MODEL_VERSION = 'wnba-total-shadow-v0'
 export const LEAGUE_REF_POINTS = 81   // league-average points per team per game (reference scale)
 export const EDGE_MIN_POINTS = 4      // emit only when |proj − line| ≥ 4 points
+// SESSION-AUTHORED const: WNBA final-score margin standard deviation ≈ 11.5 points
+// (typical spread of home−away margins around expectation in modern WNBA seasons).
+// Used only to map the projected margin onto a win probability via a normal CDF.
+export const WNBA_MARGIN_SD = 11.5
+// Matches the snapshot-lean ml gate (buildLeanRows requires ml_win_prob ≥ 0.55):
+// below it the model has no call — honest null, nothing snapshotted.
+export const ML_MIN_WIN_PROB = 0.55
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
 const fin = (n) => Number.isFinite(n)
 const round2 = (n) => Math.round(n * 100) / 100
+
+// Standard normal CDF Φ(z) via the Abramowitz–Stegun 7.1.26 erf approximation
+// (|error| < 1.5e-7 — far tighter than the model's own precision).
+export function normCdf(z) {
+  const x = Math.abs(z) / Math.SQRT2
+  const t = 1 / (1 + 0.3275911 * x)
+  const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)
+  return 0.5 * (1 + (z < 0 ? -erf : erf))
+}
 
 // Opponent-defense multiplier from real conceded averages. null unless finite.
 export function oppDefAdj(oppConcededAvg) {
@@ -44,6 +60,25 @@ export function sidePoints({ scoredAvg, oppConcededAvg, restDays }) {
   const rest = restAdj(restDays)
   if (!fin(scoredAvg) || def == null || rest == null) return null
   return scoredAvg * def * rest
+}
+
+// The SHADOW moneyline lean — pure arithmetic on the SAME per-side projections wnbaTotal
+// already computes (owner's standard: every model = moneyline + over/under + props where
+// relevant; no new data sources). winProb = Φ(projectedMargin / WNBA_MARGIN_SD).
+// Emits { pick, winProb, projHome, projAway, modelVersion } only when winProb ≥ 0.55
+// (the snapshot ml gate) — below it the model has no call. All-or-nothing null on any
+// missing input, same as wnbaTotal. Takes the same input object (oddsTotal unused: a
+// side call needs no market line).
+export function wnbaSide({ homeScoredAvg, homeConcededAvg, awayScoredAvg, awayConcededAvg,
+  restDaysHome, restDaysAway } = {}) {
+  const projHome = sidePoints({ scoredAvg: homeScoredAvg, oppConcededAvg: awayConcededAvg, restDays: restDaysHome })
+  const projAway = sidePoints({ scoredAvg: awayScoredAvg, oppConcededAvg: homeConcededAvg, restDays: restDaysAway })
+  if (projHome == null || projAway == null) return null
+  const pHome = normCdf((projHome - projAway) / WNBA_MARGIN_SD)
+  const pick = pHome >= 0.5 ? 'HOME' : 'AWAY'
+  const winProb = pick === 'HOME' ? pHome : 1 - pHome
+  if (winProb < ML_MIN_WIN_PROB) return null // no confident call — honest silence
+  return { pick, winProb: Math.round(winProb * 10000) / 10000, projHome: round2(projHome), projAway: round2(projAway), modelVersion: WNBA_TOTAL_MODEL_VERSION }
 }
 
 // The SHADOW total lean. Emits { lean, proj, edgePoints, confidence, strong, modelVersion }

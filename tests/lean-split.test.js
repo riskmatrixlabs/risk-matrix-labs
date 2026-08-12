@@ -154,3 +154,45 @@ describe('splitLeanRows — WNBA total shadow isolation (by model_version, not s
     expect(isWnba({ sport: null })).toBe(false)
   })
 })
+
+describe('splitLeanRows — shadow MONEYLINE isolation (WNBA + NHL ml from the totals projections)', () => {
+  const mlb = [
+    row({ market: 'total', strong: true, result: 'W', model_version: 'ou-s65-phase2' }),
+    row({ market: null, result: 'L' }),
+    row({ market: 'ml', game_date: '2026-07-01', result: 'W' }),
+    row({ market: 'rl', game_date: '2026-07-01', result: 'L' }),
+  ]
+  const shadowMl = [
+    row({ sport: 'WNBA', market: 'ml', model_version: 'wnba-total-shadow-v0', result: 'W' }),
+    row({ sport: 'wnba', market: 'ml', model_version: 'wnba-total-shadow-v0', result: 'L' }), // case-insensitive
+    row({ sport: 'WNBA', market: 'ml', model_version: 'wnba-total-shadow-v0' }),              // pending
+    row({ sport: 'NHL', market: 'ml', model_version: 'nhl-total-shadow-v0', result: 'W' }),
+    row({ sport: 'nhl', market: 'ml', model_version: 'nhl-total-shadow-v0' }),                // pending, case-insensitive
+    row({ sport: 'WNBA', market: 'total', model_version: 'wnba-total-shadow-v0', result: 'W' }), // totals row, NOT ml
+    row({ sport: 'NHL', market: 'total', model_version: 'nhl-total-shadow-v0', result: 'L' }),   // totals row, NOT ml
+  ]
+  const s = splitLeanRows([...mlb, ...shadowMl])
+
+  it('MLB-facing sets are byte-identical with or without the shadow ml rows (isShadowModel on base)', () => {
+    const before = splitLeanRows(mlb)
+    for (const k of ['totals', 'mlAll', 'rlAll', 'mlRows', 'rlRows', 'teamRows', 'strong']) {
+      expect(s[k]).toEqual(before[k])
+    }
+  })
+  it('no shadow ml row leaks into the MLB ML record', () => {
+    expect(s.mlAll.some(isShadowModel)).toBe(false)
+    expect(tally(s.mlRows)).toEqual({ w: 1, l: 0, p: 0, pending: 0 }) // MLB only
+  })
+  it('wnbaMl carries exactly the WNBA shadow ml rows, case-insensitive (not the totals rows)', () => {
+    expect(s.wnbaMl).toHaveLength(3)
+    expect(tally(s.wnbaMl)).toEqual({ w: 1, l: 1, p: 0, pending: 1 })
+  })
+  it('nhlMl carries exactly the NHL shadow ml rows, case-insensitive (not the totals rows)', () => {
+    expect(s.nhlMl).toHaveLength(2)
+    expect(tally(s.nhlMl)).toEqual({ w: 1, l: 0, p: 0, pending: 1 })
+  })
+  it('ml rows do not leak into the totals splits', () => {
+    expect(s.wnbaTotals).toHaveLength(1)
+    expect(s.nhlTotals).toHaveLength(1)
+  })
+})
