@@ -21,7 +21,10 @@ import { nhlTotal, NHL_TOTAL_MODEL_VERSION } from '../src/lib/nhlTotal.js'
 import { wnbaTotal, WNBA_TOTAL_MODEL_VERSION } from '../src/lib/wnbaTotal.js'
 import { scoredAvg, concededAvg } from './_lib/teamScoring.js'
 
-export const config = { maxDuration: 20 }
+// 60s (was 20): the MLB branch fans out to ~10 upstream fetches; slow ESPN/Statcast or a DB
+// hiccup pushed past 20s → hard timeouts (122 over 7 wks, clustered when upstream degrades —
+// Vercel error group first seen Jun 22). 60 turns those into slow successes.
+export const config = { maxDuration: 60 }
 
 // Model version tag — stamped on every snapshot so calibration can segment by model (the S65 analysis
 // showed we couldn't separate old vs new model on the record). Bump when the lean math changes.
