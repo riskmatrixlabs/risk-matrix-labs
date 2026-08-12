@@ -6,6 +6,7 @@ const SPORT_CATEGORIES = {
   NBASL: ['Points', 'Rebounds', 'Assists', 'Threes'],
   WNBA: ['Points', 'Rebounds', 'Assists', 'Threes'],
   NHL: ['Points', 'Shots', 'Goals', 'Saves'],
+  NFL: ['Passing', 'Rushing', 'Receiving', 'Touchdowns'],
 }
 
 const MARKET_MAP = {
@@ -49,11 +50,29 @@ const MARKET_MAP = {
     player_blocked_shots: 'Shots',
     player_power_play_points: 'Points',
   },
+  // NFL — scoring markets live in Touchdowns (that's how operators scan them), yardage/volume
+  // markets under the phase of play that produces them. Kicking points has no phase of its own;
+  // it rides in Touchdowns with the other scoring markets.
+  NFL: {
+    player_pass_yds: 'Passing',
+    player_pass_attempts: 'Passing',
+    player_pass_completions: 'Passing',
+    player_pass_interceptions: 'Passing',
+    player_rush_yds: 'Rushing',
+    player_rush_attempts: 'Rushing',
+    player_rush_reception_yds: 'Rushing',
+    player_reception_yds: 'Receiving',
+    player_receptions: 'Receiving',
+    player_pass_tds: 'Touchdowns',
+    player_anytime_td: 'Touchdowns',
+    player_1st_td: 'Touchdowns',
+    player_kicking_points: 'Touchdowns',
+  },
 }
 MARKET_MAP.WNBA = MARKET_MAP.NBA
 MARKET_MAP.NBASL = MARKET_MAP.NBA
 
-const FALLBACK = { MLB: 'Batter Props', NBA: 'Points', NBASL: 'Points', WNBA: 'Points', NHL: 'Points' }
+const FALLBACK = { MLB: 'Batter Props', NBA: 'Points', NBASL: 'Points', WNBA: 'Points', NHL: 'Points', NFL: 'Passing' }
 
 export function categoriesForSport(sport) {
   return SPORT_CATEGORIES[sport] || ['Props']

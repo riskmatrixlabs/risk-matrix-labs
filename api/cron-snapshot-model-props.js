@@ -14,6 +14,7 @@ import { PRIMARY_MARKET, pickPropPerPlayer, topModelPicks } from './_lib/modelPr
 import { wnbaVerdictsForGame } from './wnba-props.js'
 import { nbaVerdictsForGame } from './nba-props.js'
 import { nhlVerdictsForGame } from './nhl-props.js'
+import { nflVerdictsForGame } from './nfl-props.js'
 
 export const config = { maxDuration: 60 }
 
@@ -21,7 +22,7 @@ const MAX_GAMES = 20          // cap external work per run (across all sports)
 const TOP_PER_GAME = 8        // volume discipline — at most 8 snapshotted picks per game
 const MIN_SCORE = 52          // Caution floor (tier C) — below this we don't snapshot
 const PICK_TIERS = new Set(['A', 'B', 'C'])
-const SPORTS = ['WNBA', 'NBA', 'NBASL', 'NHL']   // NBASL = NBA model, own events/cache sport key
+const SPORTS = ['WNBA', 'NBA', 'NBASL', 'NHL', 'NFL']   // NBASL = NBA model, own events/cache sport key
 
 // Which verdict builder scores a given events-sport value.
 const VERDICTS_FOR = {
@@ -29,6 +30,7 @@ const VERDICTS_FOR = {
   NBA: nbaVerdictsForGame,
   NBASL: nbaVerdictsForGame,
   NHL: nhlVerdictsForGame,
+  NFL: nflVerdictsForGame,
 }
 
 function db() {

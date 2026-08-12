@@ -63,6 +63,36 @@ export function resolveStat(stats, market) {
   const m = norm(market)
   const v = (k) => (typeof stats[k] === 'number' ? stats[k] : null)
   const sum = (...ks) => { const xs = ks.map(v).filter(n => n != null); return xs.length ? xs.reduce((a, b) => a + b, 0) : null }
+  // ── NFL ────────────────────────────────────────────────────────────────────────────────
+  // Football markets are resolved FIRST and behind a football-token gate, because several of
+  // their names collide with earlier branches below ("kicking POINTS" would hit the basketball
+  // points branch; "receptions" would fall through to null). Keys come from an ESPN NFL box:
+  // passing/rushing/receiving/kicking categories, plus the slash-pairs parseBox expands
+  // (completions, passingAttempts, fieldGoalsMade...). Both the odds-api key form
+  // ('player_pass_yds') and the human label form ('Pass Yards') are matched.
+  // (No \b anchors: '_' is a word character, so `\bpass` would never match 'player_pass_yds'.)
+  if (/(pass|rush|reception|receiving|anytime|kicking|1st[ _]td|first td)/.test(m) && !/passed/.test(m)) {
+    if (/1st[ _]td|first td/.test(m)) return null                    // needs play order — not in a box score
+    if (/anytime/.test(m)) {
+      // Anytime TD scorer = any TD the PLAYER scored: rush, receiving, or a return/defensive
+      // score. Passing TDs are the QB throwing, not scoring — never counted here.
+      return sum('rushingTouchdowns', 'receivingTouchdowns', 'kickReturnTouchdowns', 'puntReturnTouchdowns', 'interceptionTouchdowns', 'defensiveTouchdowns')
+    }
+    if (/kicking/.test(m)) return v('totalKickingPoints')
+    if (/rush.*rec.*(yds|yards)/.test(m)) return sum('rushingYards', 'receivingYards')
+    if (/pass.*(tds|touchdown)/.test(m)) return v('passingTouchdowns')
+    if (/pass.*interception/.test(m)) return v('interceptions')
+    if (/pass.*attempt/.test(m)) return v('passingAttempts')
+    if (/completion/.test(m)) return v('completions')
+    if (/pass.*(yds|yards)/.test(m)) return v('passingYards')
+    if (/rush.*attempt/.test(m)) return v('rushingAttempts')
+    if (/rush.*(tds|touchdown)/.test(m)) return v('rushingTouchdowns')
+    if (/rush.*(yds|yards)/.test(m)) return v('rushingYards')
+    if (/(reception|receiving).*(tds|touchdown)/.test(m)) return v('receivingTouchdowns')
+    if (/(reception|receiving).*(yds|yards)/.test(m)) return v('receivingYards')
+    if (/reception/.test(m)) return v('receptions')
+    return null                                                       // unmapped football market
+  }
   if (/(h\s*\+\s*r\s*\+\s*r|hits\s*\+\s*runs\s*\+\s*rbi|hits runs rbis)/.test(m)) return sum('hits', 'runs', 'RBIs')
   if (/(p\s*\+\s*r\s*\+\s*a|pts\s*\+\s*reb\s*\+\s*ast|points rebounds assists|pra)/.test(m)) return sum('points', 'rebounds', 'assists')
   if (m.includes('strikeout') || /\bk'?s?\b/.test(m)) return v('strikeouts')

@@ -378,8 +378,9 @@ const SHADOW_SPORTS = ['WNBA', 'NHL', 'NFL']
 // Pull the { total, ml } pair out of a game-info response for a shadow sport. Pure + honest-null.
 export function shadowBlocks(j, sport) {
   if (!j) return { total: null, ml: null }
-  if (sport === 'WNBA' || sport === 'NHL') {
-    const b = sport === 'WNBA' ? j.wnbaTotal : j.nhlTotal
+  // NBA + NBASL (Summer League) read the same 'nba-total-shadow-v0' block.
+  if (sport === 'WNBA' || sport === 'NHL' || sport === 'NBA' || sport === 'NBASL') {
+    const b = sport === 'WNBA' ? j.wnbaTotal : sport === 'NHL' ? j.nhlTotal : j.nbaTotal
     return { total: b?.lean ? b : null, ml: b?.ml?.pick ? b.ml : null }
   }
   if (sport === 'NFL') {

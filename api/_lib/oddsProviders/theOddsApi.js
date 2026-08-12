@@ -17,6 +17,10 @@ export const SPORT_KEYS = {
   NBASL: 'basketball_nba_summer_league', // NBA Summer League (Las Vegas) — odds availability varies by season
   WNBA: 'basketball_wnba',
   NHL:  'icehockey_nhl',
+  // Preseason NFL games are served under the SAME key as the regular season (the provider has
+  // no separate preseason key) — registering NFL here is what lets props / line shop / EV run
+  // for the Aug preseason slate.
+  NFL:  'americanfootball_nfl',
 }
 
 // Normalize one provider game to RML's shape. The Odds API is already close; we map

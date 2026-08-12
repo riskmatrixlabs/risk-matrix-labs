@@ -4,6 +4,7 @@
 // (model is FREE — safe to poll, unlike paid scans). Tap a signal → onOpen(event) if provided.
 import { useState, useEffect, Fragment } from 'react'
 import { fetchEvents } from '../lib/events'
+import { pickSlate } from '../lib/shadowSlate'
 import { teamLeanLines } from '../lib/teamLean'
 import { NEON, NEON_T, MUTED, CARD, BORDER, TEXT } from './botShared.jsx'
 import CallChips from './CallChips.jsx'
@@ -17,6 +18,110 @@ function RankBadge({ rank }) {
       <span style={{ fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T }}>#{rank}</span>
     </span>
   )
+}
+
+// ── SHADOW model plumbing (shared by the NFL / NHL / WNBA / NBA Spotlight sections) ───────
+// Fire-and-forget snapshot; /api/snapshot-lean locks the first PRE-GAME lean per game/day.
+const snapshotLean = (token, body) => fetch('/api/snapshot-lean', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  body: JSON.stringify(body),
+}).catch(() => {})
+
+const gameIdOf = (ev) => String(ev.external_event_id || ev.id || '')
+const idBase = (ev) => ({
+  external_event_id: gameIdOf(ev), away_team: ev.away_team, home_team: ev.home_team,
+  away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time,
+})
+
+async function fetchGameInfo(sportParam, ev, token) {
+  const iso = `&iso=${encodeURIComponent(ev.start_time)}`
+  const r = await fetch(`/api/game-info?sport=${sportParam}&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`,
+    { headers: { Authorization: `Bearer ${token}` } })
+  return r.ok ? r.json() : null
+}
+
+// NFL — SIDE (spread, market 'rl') + TOTAL + the explicit MONEYLINE call, each its OWN
+// snapshot POST because buildLeanRows stamps ONE model_version per body.
+async function mapNflGame(ev, token) {
+  try {
+    const j = await fetchGameInfo('NFL', ev, token)
+    const n = j?.nfl
+    const ml = n?.ml || null
+    if (!n?.lean && !n?.total?.lean && !ml) return null // honest null — nothing to show or snapshot
+    const sp = ev.odds_spread_home != null ? Number(ev.odds_spread_home) : null
+    const sideSpread = n.lean && Number.isFinite(sp) ? (n.lean === 'HOME' ? sp : -sp) : null
+    const id = gameIdOf(ev)
+    if (n.lean && sideSpread != null && id) {
+      const fmtSp = sideSpread > 0 ? `+${sideSpread}` : `${sideSpread}`
+      snapshotLean(token, { sport: 'NFL', ...idBase(ev), rl_pick: `${n.lean} ${fmtSp}`, model_version: n.modelVersion })
+    }
+    // TOTAL shadow lean ('nfl-total-shadow-v0'); edge_runs carries POINTS for NFL.
+    if (n.total?.lean && n.total.line != null && id) {
+      snapshotLean(token, { sport: 'NFL', ...idBase(ev), lean: n.total.lean, total_line: n.total.line, confidence: n.total.confidence, strong: !!n.total.strong, edge_runs: n.total.edgePoints, model_version: n.total.modelVersion })
+    }
+    // MONEYLINE lean ('nfl-shadow-v0') — the explicit win/lose call, separate from the spread
+    // lean above. Exists only when winProb cleared 0.55, matching buildLeanRows' ml gate.
+    if (ml && id) {
+      snapshotLean(token, { sport: 'NFL', ...idBase(ev), ml_pick: ml.pick, ml_win_prob: ml.winProb, model_version: n.modelVersion })
+    }
+    return { ev, nfl: n, ml, spread: sideSpread }
+  } catch { return null }
+}
+
+// One mapper shape for the totals+ml shadow sports (NHL / WNBA / NBA): game-info returns a
+// { lean, line, confidence, strong, ml, modelVersion } block; total and ml snapshot separately.
+// sportParam === null → use the EVENT's own sport ('NBA' vs 'NBASL'), never a hardcoded league.
+const totalsShadowMapper = (sportParam, blockKey, edgeKey) => async (ev, token) => {
+  try {
+    const sk = sportParam || String(ev.sport || 'NBA').toUpperCase()
+    const j = await fetchGameInfo(sk, ev, token)
+    const t = j?.[blockKey]
+    const ml = t?.ml || null
+    const hasTotal = !!(t?.lean && t.line != null)
+    if (!hasTotal && !ml) return null // honest null — no total OR ml lean
+    const id = gameIdOf(ev)
+    if (hasTotal && id) {
+      snapshotLean(token, { sport: sk, ...idBase(ev), lean: t.lean, total_line: t.line, confidence: t.confidence, strong: !!t.strong, edge_runs: t[edgeKey], model_version: t.modelVersion })
+    }
+    if (ml && id) {
+      snapshotLean(token, { sport: sk, ...idBase(ev), ml_pick: ml.pick, ml_win_prob: ml.winProb, model_version: t.modelVersion })
+    }
+    return { ev, total: t, ml }
+  } catch { return null }
+}
+// Section ordering — module-level so the loader's effect deps stay stable across renders.
+const byNflScore = (a, b) => (b.nfl.score || 0) - (a.nfl.score || 0)
+const byGoalEdge = (a, b) => Math.abs(b.total?.edgeGoals || 0) - Math.abs(a.total?.edgeGoals || 0)
+const byPointEdge = (a, b) => Math.abs(b.total?.edgePoints || 0) - Math.abs(a.total?.edgePoints || 0)
+const mapNhlGame = totalsShadowMapper('NHL', 'nhlTotal', 'edgeGoals')
+const mapWnbaGame = totalsShadowMapper('WNBA', 'wnbaTotal', 'edgePoints')
+const mapNbaGame = totalsShadowMapper(null, 'nbaTotal', 'edgePoints')
+
+// Load one sport's shadow slate: today's pre-game games, else the next synced slate
+// (pickSlate — pure + tested in tests/shadow-slate.test.js). Refreshes every 3 min.
+function useShadowSlate(sportKey, token, mapGame, sortFn) {
+  const [state, setState] = useState({ rows: [], label: '' })
+  useEffect(() => {
+    if (!token) { setState({ rows: [], label: '' }); return }
+    let cancel = false
+    const load = async () => {
+      let todays = []
+      try { todays = (await fetchEvents(sportKey, 'today')).data || [] } catch { todays = [] }
+      let slate = pickSlate(todays, [])
+      if (!slate.games.length) {
+        let upcoming = []
+        try { upcoming = (await fetchEvents(sportKey, 'upcoming')).data || [] } catch { upcoming = [] }
+        slate = pickSlate(todays, upcoming)
+      }
+      if (!slate.games.length) { if (!cancel) setState({ rows: [], label: '' }); return }
+      const res = await Promise.all(slate.games.map((ev) => mapGame(ev, token)))
+      if (!cancel) setState({ rows: res.filter(Boolean).sort(sortFn), label: slate.label })
+    }
+    load()
+    const id = setInterval(load, 180000)
+    return () => { cancel = true; clearInterval(id) }
+  }, [sportKey, token, mapGame, sortFn]) // mapGame/sortFn are module-level constants — stable identities
+  return state
 }
 
 export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenRecord }) {
@@ -61,160 +166,22 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
     if (kbo.length === 0 && (kboYest?.games?.length > 0)) setKboView('yesterday')
   }, [kbo, kboYest])
 
-  // ⬡ NFL — SHADOW side model (BETA). Free: synced events + the server-side NFL branch of
-  // game-info (nflverse stats + synced odds/injuries/weather). Pre-game leans are snapshotted
-  // through the lean pipeline (market 'rl' — edge carries POINTS) so the record self-grades.
-  // Mirrors the KBO collapsed-section pattern below.
-  const [nflGames, setNflGames] = useState([])
+  // ── SHADOW slate loops (NFL / NHL / WNBA / NBA) ──────────────────────────────────────────
+  // All four were near-identical; they now share ONE loader. Behavior for a sport that HAS
+  // games today is unchanged — the only addition is the next-slate fallback (pickSlate):
+  // when nothing is pre-game today, we show the earliest already-synced future slate and put
+  // its date in the section header, so an empty section always means "no synced games", never
+  // "games exist but we only looked at today". Snapshotting stays on for the fallback slate:
+  // /api/snapshot-lean has its own pre-game guard and locks the first lean per game/day.
+  const nflSlate = useShadowSlate('nfl', token, mapNflGame, byNflScore)
+  const nhlSlate = useShadowSlate('nhl', token, mapNhlGame, byGoalEdge)
+  const wnbaSlate = useShadowSlate('wnba', token, mapWnbaGame, byPointEdge)
+  const nbaSlate = useShadowSlate('nba', token, mapNbaGame, byPointEdge)
+  const nflGames = nflSlate.rows, nhlGames = nhlSlate.rows, wnbaGames = wnbaSlate.rows, nbaGames = nbaSlate.rows
   const [nflOpen, setNflOpen] = useState(false)
-  useEffect(() => {
-    if (!token) { setNflGames([]); return }
-    let cancel = false
-    const load = async () => {
-      let todays = []
-      try {
-        const { data } = await fetchEvents('nfl', 'today')
-        todays = (data || []).filter(e => e.away_team && e.home_team)
-      } catch { todays = [] }
-      if (!todays.length) { if (!cancel) setNflGames([]); return }
-      const res = await Promise.all(todays.map(async (ev) => {
-        try {
-          // Pre-game only — the shadow lean is locked before kickoff, never re-read live.
-          if (!ev.start_time || Date.parse(ev.start_time) <= Date.now()) return null
-          const iso = `&iso=${encodeURIComponent(ev.start_time)}`
-          const r = await fetch(`/api/game-info?sport=NFL&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
-          if (!r.ok) return null
-          const j = await r.json()
-          const n = j?.nfl
-          if (!n?.lean && !n?.total?.lean) return null // honest null — no side OR total lean, nothing to show or snapshot
-          // Market spread for the leaned side, from the synced events row (home line flips for AWAY).
-          const sp = ev.odds_spread_home != null ? Number(ev.odds_spread_home) : null
-          const sideSpread = n.lean && Number.isFinite(sp) ? (n.lean === 'HOME' ? sp : -sp) : null
-          if (n.lean && sideSpread != null && (ev.external_event_id || ev.id)) {
-            const fmtSp = sideSpread > 0 ? `+${sideSpread}` : `${sideSpread}`
-            // Fire-and-forget snapshot; the endpoint locks the first pre-game lean per game/day.
-            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'NFL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, rl_pick: `${n.lean} ${fmtSp}`, model_version: n.modelVersion }) }).catch(() => {})
-          }
-          // TOTAL shadow lean ('nfl-total-shadow-v0') — its OWN snapshot POST so the total row
-          // carries the totals model version (buildLeanRows stamps one model_version per body).
-          // Body fields match buildLeanRows' total gate: lean OVER/UNDER + total_line required;
-          // confidence/strong recorded; edge_runs carries POINTS for NFL.
-          if (n.total?.lean && n.total.line != null && (ev.external_event_id || ev.id)) {
-            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'NFL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, lean: n.total.lean, total_line: n.total.line, confidence: n.total.confidence, strong: !!n.total.strong, edge_runs: n.total.edgePoints, model_version: n.total.modelVersion }) }).catch(() => {})
-          }
-          return { ev, nfl: n, spread: sideSpread }
-        } catch { return null }
-      }))
-      if (!cancel) setNflGames(res.filter(Boolean).sort((a, b) => (b.nfl.score || 0) - (a.nfl.score || 0)))
-    }
-    load()
-    const id = setInterval(load, 180000)
-    return () => { cancel = true; clearInterval(id) }
-  }, [token])
-
-  // ⬡ NHL — SHADOW game-total model (BETA), mirroring the NFL loop above. Free: synced events +
-  // the server-side NHL branch of game-info (our own scored/conceded averages + synced odds).
-  // Pre-game totals are snapshotted through the lean pipeline (market 'total' — graded
-  // sport-agnostically by cron-grade-leans). Honest empty: renders nothing off-season.
-  const [nhlGames, setNhlGames] = useState([])
   const [nhlOpen, setNhlOpen] = useState(false)
-  useEffect(() => {
-    if (!token) { setNhlGames([]); return }
-    let cancel = false
-    const load = async () => {
-      let todays = []
-      try {
-        const { data } = await fetchEvents('nhl', 'today')
-        todays = (data || []).filter(e => e.away_team && e.home_team)
-      } catch { todays = [] }
-      if (!todays.length) { if (!cancel) setNhlGames([]); return }
-      const res = await Promise.all(todays.map(async (ev) => {
-        try {
-          // Pre-game only — the shadow lean is locked before puck drop, never re-read live.
-          if (!ev.start_time || Date.parse(ev.start_time) <= Date.now()) return null
-          const iso = `&iso=${encodeURIComponent(ev.start_time)}`
-          const r = await fetch(`/api/game-info?sport=NHL&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
-          if (!r.ok) return null
-          const j = await r.json()
-          const t = j?.nhlTotal
-          const ml = t?.ml || null
-          const hasTotal = !!(t?.lean && t.line != null)
-          if (!hasTotal && !ml) return null // honest null — no total OR ml lean, nothing to show or snapshot
-          if (hasTotal && (ev.external_event_id || ev.id)) {
-            // Fire-and-forget snapshot; buildLeanRows' total gate needs lean + total_line.
-            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'NHL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, lean: t.lean, total_line: t.line, confidence: t.confidence, strong: !!t.strong, edge_runs: t.edgeGoals, model_version: t.modelVersion }) }).catch(() => {})
-          }
-          // ML shadow lean — its OWN snapshot POST (buildLeanRows stamps ONE model_version per
-          // body, same reason the NFL loop separates side and total). ml only exists when the
-          // model's winProb cleared the 0.55 gate, matching buildLeanRows' ml gate.
-          if (ml && (ev.external_event_id || ev.id)) {
-            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'NHL', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, ml_pick: ml.pick, ml_win_prob: ml.winProb, model_version: t.modelVersion }) }).catch(() => {})
-          }
-          return { ev, total: t, ml }
-        } catch { return null }
-      }))
-      if (!cancel) setNhlGames(res.filter(Boolean).sort((a, b) => Math.abs(b.total.edgeGoals || 0) - Math.abs(a.total.edgeGoals || 0)))
-    }
-    load()
-    const id = setInterval(load, 180000)
-    return () => { cancel = true; clearInterval(id) }
-  }, [token])
-
-  // ⬡ WNBA — SHADOW game-total model (BETA), mirroring the NHL loop above. SESSION-AUTHORED
-  // totals model (the MODELS.md WNBA engine is props-only). Free: synced events + the
-  // server-side WNBA branch of game-info (our own scored/conceded averages + synced odds).
-  // Pre-game totals are snapshotted through the lean pipeline (market 'total' — graded
-  // sport-agnostically by cron-grade-leans). Honest empty: renders nothing without leans.
-  const [wnbaGames, setWnbaGames] = useState([])
   const [wnbaOpen, setWnbaOpen] = useState(false)
-  useEffect(() => {
-    if (!token) { setWnbaGames([]); return }
-    let cancel = false
-    const load = async () => {
-      let todays = []
-      try {
-        const { data } = await fetchEvents('wnba', 'today')
-        todays = (data || []).filter(e => e.away_team && e.home_team)
-      } catch { todays = [] }
-      if (!todays.length) { if (!cancel) setWnbaGames([]); return }
-      const res = await Promise.all(todays.map(async (ev) => {
-        try {
-          // Pre-game only — the shadow lean is locked before tip-off, never re-read live.
-          if (!ev.start_time || Date.parse(ev.start_time) <= Date.now()) return null
-          const iso = `&iso=${encodeURIComponent(ev.start_time)}`
-          const r = await fetch(`/api/game-info?sport=WNBA&away=${encodeURIComponent(ev.away_team)}&home=${encodeURIComponent(ev.home_team)}${iso}`, { headers: { Authorization: `Bearer ${token}` } })
-          if (!r.ok) return null
-          const j = await r.json()
-          const t = j?.wnbaTotal
-          const ml = t?.ml || null
-          const hasTotal = !!(t?.lean && t.line != null)
-          if (!hasTotal && !ml) return null // honest null — no total OR ml lean, nothing to show or snapshot
-          if (hasTotal && (ev.external_event_id || ev.id)) {
-            // Fire-and-forget snapshot; buildLeanRows' total gate needs lean + total_line.
-            // edge_runs carries POINTS for WNBA.
-            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'WNBA', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, lean: t.lean, total_line: t.line, confidence: t.confidence, strong: !!t.strong, edge_runs: t.edgePoints, model_version: t.modelVersion }) }).catch(() => {})
-          }
-          // ML shadow lean — its OWN snapshot POST (buildLeanRows stamps ONE model_version per
-          // body, same reason the NFL loop separates side and total). ml only exists when the
-          // model's winProb cleared the 0.55 gate, matching buildLeanRows' ml gate.
-          if (ml && (ev.external_event_id || ev.id)) {
-            fetch('/api/snapshot-lean', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ sport: 'WNBA', external_event_id: String(ev.external_event_id || ev.id), away_team: ev.away_team, home_team: ev.home_team, away_abbr: ev.away_abbr, home_abbr: ev.home_abbr, start_time: ev.start_time, ml_pick: ml.pick, ml_win_prob: ml.winProb, model_version: t.modelVersion }) }).catch(() => {})
-          }
-          return { ev, total: t, ml }
-        } catch { return null }
-      }))
-      if (!cancel) setWnbaGames(res.filter(Boolean).sort((a, b) => Math.abs(b.total.edgePoints || 0) - Math.abs(a.total.edgePoints || 0)))
-    }
-    load()
-    const id = setInterval(load, 180000)
-    return () => { cancel = true; clearInterval(id) }
-  }, [token])
+  const [nbaOpen, setNbaOpen] = useState(false)
 
   useEffect(() => {
     if (!token) { setSignals([]); return }
@@ -506,14 +473,14 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
             return (
             <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
               <button onClick={() => setNflOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ NFL · SHADOW ({nflGames.length})</span>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ NFL · SHADOW ({nflGames.length}){nflSlate.label ? ` · ${nflSlate.label}` : ''}</span>
                 <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
                 <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: nflOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </button>
               {nflOpen && (<>
-              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — side leans shown for transparency while the record builds · not advice</div>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — side, game-total + moneyline leans shown for transparency while the record builds · not advice</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {nflGames.map(({ ev, nfl: n, spread }, i) => (
+                {nflGames.map(({ ev, nfl: n, ml, spread }, i) => (
                   <div key={ev.id || ev.external_event_id} onClick={() => onOpen?.(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                       <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{i + 1}</span>
@@ -528,6 +495,12 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
                         {n.total?.lean && n.total.line != null && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 6px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.04)', fontFamily: R, fontSize: '11px', fontWeight: 700, color: NEON_T, verticalAlign: 'middle' }}>
                             O/U {n.total.line} {n.total.lean}
+                          </span>
+                        )}
+                        {/* Explicit MONEYLINE call ('nfl-shadow-v0') — the win/lose read, separate from the spread lean. */}
+                        {ml && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 6px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.04)', fontFamily: R, fontSize: '11px', fontWeight: 700, color: ml.winProb >= 0.62 ? NEON : NEON_T, verticalAlign: 'middle' }}>
+                            {ml.pick === 'HOME' ? ev.home_abbr : ev.away_abbr} ML {Math.round(ml.winProb * 100)}%
                           </span>
                         )}
                         {n.lean && (
@@ -552,7 +525,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
             return (
             <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
               <button onClick={() => setNhlOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ NHL · SHADOW ({nhlGames.length})</span>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ NHL · SHADOW ({nhlGames.length}){nhlSlate.label ? ` · ${nhlSlate.label}` : ''}</span>
                 <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
                 <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: nhlOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </button>
@@ -596,7 +569,7 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
             return (
             <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
               <button onClick={() => setWnbaOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ WNBA · SHADOW ({wnbaGames.length})</span>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ WNBA · SHADOW ({wnbaGames.length}){wnbaSlate.label ? ` · ${wnbaSlate.label}` : ''}</span>
                 <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
                 <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: wnbaOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </button>
@@ -622,6 +595,52 @@ export default function SpotlightTicker({ token, onOpen, onAddToSlip, onOpenReco
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
                             <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
                             <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgePoints) >= 8 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgePoints > 0 ? '+' : ''}{t.edgePoints}</span>
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              </>)}
+            </div>
+            )
+          })()}
+          {nbaGames.length > 0 && (() => {
+            // NBA · SHADOW — collapsed game-total + moneyline section mirroring the WNBA one.
+            // SESSION-AUTHORED model ('nba-total-shadow-v0'; the MODELS.md NBA engine is
+            // props-only). Covers NBA and NBA Summer League ('NBASL') — the loop reads the
+            // events fold, and each game is modeled against its OWN league's history.
+            // Honest empty — renders nothing without leans.
+            return (
+            <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${BORDER}` }}>
+              <button onClick={() => setNbaOpen(o => !o)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontFamily: R, fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', color: NEON_T, textTransform: 'uppercase' }}>⬡ NBA · SHADOW ({nbaGames.length}){nbaSlate.label ? ` · ${nbaSlate.label}` : ''}</span>
+                <span style={{ fontSize: '7px', fontWeight: 700, letterSpacing: '0.1em', color: '#FFAE2B', background: 'rgba(255,174,43,0.12)', border: '1px solid rgba(255,174,43,0.35)', borderRadius: '3px', padding: '1px 4px' }}>BETA</span>
+                <span style={{ marginLeft: 'auto', fontSize: '8px', color: MUTED, transform: nbaOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+              </button>
+              {nbaOpen && (<>
+              <div style={{ fontFamily: R, fontSize: '9px', color: MUTED, margin: '8px 0 6px' }}>shadow model — game-total + moneyline leans shown for transparency while the record builds · not advice</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {nbaGames.map(({ ev, total: t, ml }, i) => (
+                  <div key={ev.id || ev.external_event_id} onClick={() => onOpen?.(ev)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', background: 'rgba(189,255,0,0.04)', border: `1px solid ${BORDER}`, borderRadius: '7px', padding: '7px 10px', cursor: onOpen ? 'pointer' : 'default' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                      <span style={{ fontFamily: R, fontSize: '15px', fontWeight: 700, color: NEON_T, flexShrink: 0, width: 22 }}>#{i + 1}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: TEXT }}>{ev.away_abbr}@{ev.home_abbr} </span>
+                        {t.lean && t.line != null && (
+                          <span style={{ fontFamily: R, fontSize: '12px', fontWeight: 700, color: t.strong ? NEON : NEON_T }}>O/U {t.line} {t.lean}</span>
+                        )}
+                        {/* Moneyline chip from the SAME projections ('nba-total-shadow-v0'). */}
+                        {ml && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6, padding: '0 6px', borderRadius: 5, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.04)', fontFamily: R, fontSize: '11px', fontWeight: 700, color: ml.winProb >= 0.62 ? NEON : NEON_T, verticalAlign: 'middle' }}>
+                            {ml.pick === 'HOME' ? ev.home_abbr : ev.away_abbr} ML {Math.round(ml.winProb * 100)}%
+                          </span>
+                        )}
+                        {t.lean && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 8, padding: '2px 8px', borderRadius: 6, border: `1px solid ${BORDER}`, background: 'rgba(255,255,255,0.03)', fontFamily: R, fontSize: '9px' }}>
+                            <span style={{ color: MUTED }}>PROJ</span><span style={{ color: TEXT, fontWeight: 700 }}>{t.proj}</span>
+                            <span style={{ color: MUTED }}>EDGE</span><span style={{ color: Math.abs(t.edgePoints) >= 11 ? NEON_T : TEXT, fontWeight: 700 }}>{t.edgePoints > 0 ? '+' : ''}{t.edgePoints}</span>
                           </span>
                         )}
                       </span>

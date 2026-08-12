@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { nflLean, deriveNflFactors, leagueAvgOffEpa, LEAGUE_AVG_EPA } from '../src/lib/nflLean.js'
+import { nflLean, nflMoneyline, deriveNflFactors, leagueAvgOffEpa, LEAGUE_AVG_EPA,
+  NFL_MARGIN_SD, NFL_ML_MIN_WIN_PROB, NFL_POINTS_PER_EPA } from '../src/lib/nflLean.js'
 
 // Hand-built inputs where every one of the nine factors is derivable.
 // HOME is clearly the stronger side (see hand math in the score test).
@@ -147,5 +148,59 @@ describe('deriveNflFactors — individual derivations', () => {
     })
     expect(f.offensiveLine).toBe(0)
     expect(f.explosivePlay).toBe(1)
+  })
+})
+
+// ── Moneyline (owner's standard: every model = moneyline + over/under + props) ──────────
+describe('nflMoneyline — explicit ML call from the SAME EPA differential', () => {
+  it('hand-computed HOME: epaDiff 0.32 × 25 = 8 pts → Φ(8/13.5) ≈ 0.7233', () => {
+    const out = nflMoneyline(base())
+    expect(out).not.toBe(null)
+    expect(out.pick).toBe('HOME')
+    expect(out.winProb).toBeCloseTo(0.7233, 3)
+    expect(out.modelVersion).toBe('nfl-shadow-v0')
+  })
+
+  it('mirror AWAY: swapping the two teams flips the pick, same winProb', () => {
+    const b = base()
+    const out = nflMoneyline({ ...b, homeStats: b.awayStats, awayStats: b.homeStats })
+    expect(out.pick).toBe('AWAY')
+    expect(out.winProb).toBeCloseTo(0.7233, 3)
+  })
+
+  it('uses the SAME points-per-EPA scaling as nflLean lineValue (25 pts per EPA/play)', () => {
+    expect(NFL_POINTS_PER_EPA).toBe(25)
+    // epaDiff 0.4 → margin 10 → Φ(10/13.5) = Φ(0.74074) ≈ 0.7706
+    const b = base()
+    const out = nflMoneyline({
+      ...b,
+      homeStats: { ...b.homeStats, offEpaPerPlay: 0.2, defEpaPerPlayAllowed: -0.1 },
+      awayStats: { ...b.awayStats, offEpaPerPlay: -0.05, defEpaPerPlayAllowed: 0.05 },
+    })
+    expect(out.winProb).toBeCloseTo(0.7706, 3)
+  })
+
+  it('small edge below the 0.55 gate → honest null', () => {
+    // epaDiff 0.05 → margin 1.25 → Φ(0.0926) ≈ 0.537 < 0.55
+    const b = base()
+    expect(nflMoneyline({
+      ...b,
+      homeStats: { ...b.homeStats, offEpaPerPlay: 0.05, defEpaPerPlayAllowed: 0 },
+      awayStats: { ...b.awayStats, offEpaPerPlay: 0.0, defEpaPerPlayAllowed: 0 },
+    })).toBe(null)
+  })
+
+  it('honest null on any missing EPA input', () => {
+    const b = base()
+    expect(nflMoneyline({ ...b, homeStats: null })).toBe(null)
+    expect(nflMoneyline({ ...b, awayStats: null })).toBe(null)
+    expect(nflMoneyline({ ...b, homeStats: { ...b.homeStats, offEpaPerPlay: null } })).toBe(null)
+    expect(nflMoneyline({ ...b, awayStats: { ...b.awayStats, defEpaPerPlayAllowed: undefined } })).toBe(null)
+    expect(nflMoneyline()).toBe(null)
+  })
+
+  it('documented constants: NFL margin sd 13.5, ml gate 0.55', () => {
+    expect(NFL_MARGIN_SD).toBe(13.5)
+    expect(NFL_ML_MIN_WIN_PROB).toBe(0.55)
   })
 })

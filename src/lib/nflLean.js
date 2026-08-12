@@ -51,8 +51,28 @@ export function leagueAvgOffEpa(statsByTeam) {
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : LEAGUE_AVG_EPA
 }
 
+// Points-per-EPA/play scaling — the SAME conversion nflLean's `lineValue` already uses
+// (modelMargin = epaDiff × 25), pulled out as a named const so the side model and the
+// moneyline model can never drift apart. Rationale: an NFL team runs ~63 plays a game, so
+// a +0.20 EPA/play net edge ≈ 12–13 points of margin; ×25 reproduces that scale.
+export const NFL_POINTS_PER_EPA = 25
+// SESSION-AUTHORED const: NFL final-score margin standard deviation ≈ 13.5 points (the
+// classic NFL margin sd). Used only to map the projected margin onto a win probability.
+export const NFL_MARGIN_SD = 13.5
+// Matches the snapshot-lean ml gate (buildLeanRows requires ml_win_prob ≥ 0.55).
+export const NFL_ML_MIN_WIN_PROB = 0.55
+
 const clamp01 = (n) => Math.min(1, Math.max(0, n))
 const fin = (n) => Number.isFinite(n)
+
+// Standard normal CDF Φ(z) via the Abramowitz–Stegun 7.1.26 erf approximation
+// (|error| < 1.5e-7 — far tighter than the model's own precision).
+export function normCdf(z) {
+  const x = Math.abs(z) / Math.SQRT2
+  const t = 1 / (1 + 0.3275911 * x)
+  const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)
+  return 0.5 * (1 + (z < 0 ? -erf : erf))
+}
 
 // Weighted injury burden from synced status counts. null unless all three are finite.
 function injuryWeight(inj) {
@@ -95,7 +115,7 @@ export function deriveNflFactors(own, opp, ctx) {
     injuryEdge: clamp01(0.5 + (oppInj - ownInj) * 0.08),
     restTravel: clamp01(0.5 + (ctx.restOwn - ctx.restOpp) * 0.07),
     weather: wx,
-    lineValue: clamp01(0.5 + (epaDiff * 25 - ctx.marketMargin) / 14),
+    lineValue: clamp01(0.5 + (epaDiff * NFL_POINTS_PER_EPA - ctx.marketMargin) / 14),
   }
 }
 
@@ -123,4 +143,31 @@ export function nflLean({ homeStats, awayStats, weather, injuries,
   if (score < NFL_LEAN_THRESHOLD) return null // no lean worth emitting — honest silence
   const factors = side === 'HOME' ? homeF : awayF
   return { side, score, tier: brandTier(score), factors, modelVersion: NFL_MODEL_VERSION }
+}
+
+// The SHADOW MONEYLINE lean ('nfl-shadow-v0') — the owner's standard is that every model
+// makes an explicit moneyline call, not only a spread lean. Today nflLean emits a SIDE
+// (snapshotted as market 'rl'); this is the straight win/lose call on the same game.
+//
+// Derivation (no new data sources — pure arithmetic on the EPA differential already used
+// by nflLean's lineValue factor, so the two can never disagree about who is better):
+//   epaDiff       = (home.off − home.defAllowed) − (away.off − away.defAllowed)
+//   projMargin    = epaDiff × NFL_POINTS_PER_EPA   (25 pts per EPA/play — see the const)
+//   winProb(HOME) = Φ(projMargin / NFL_MARGIN_SD)  (NFL margin sd 13.5)
+// Emits only when the winning side's probability ≥ 0.55 (the snapshot ml gate) — below it
+// the model has no call. HONEST NULL on any missing EPA input. It takes the same input
+// object as nflLean; weather/injuries/odds/rest are unused here because the margin comes
+// from the EPA differential alone — a call is made from what is genuinely derivable, and
+// nothing is fabricated to fill the rest.
+export function nflMoneyline({ homeStats, awayStats } = {}) {
+  if (!homeStats || !awayStats) return null
+  const vals = [homeStats.offEpaPerPlay, homeStats.defEpaPerPlayAllowed, awayStats.offEpaPerPlay, awayStats.defEpaPerPlayAllowed]
+  if (!vals.every(fin)) return null
+  const epaDiff = (homeStats.offEpaPerPlay - homeStats.defEpaPerPlayAllowed) - (awayStats.offEpaPerPlay - awayStats.defEpaPerPlayAllowed)
+  const projMargin = epaDiff * NFL_POINTS_PER_EPA
+  const pHome = normCdf(projMargin / NFL_MARGIN_SD)
+  const pick = pHome >= 0.5 ? 'HOME' : 'AWAY'
+  const winProb = pick === 'HOME' ? pHome : 1 - pHome
+  if (winProb < NFL_ML_MIN_WIN_PROB) return null // no confident call — honest silence
+  return { pick, winProb: Math.round(winProb * 10000) / 10000, modelVersion: NFL_MODEL_VERSION }
 }

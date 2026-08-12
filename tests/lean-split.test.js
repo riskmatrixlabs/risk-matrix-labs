@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tally, splitLeanRows, isNfl, isNhl, isWnba, isShadowSport, isShadowModel, ML_FIX_DATE } from '../api/_lib/leanSplit.js'
+import { tally, splitLeanRows, buildGamesMap, isNfl, isNhl, isWnba, isNba, isShadowSport, isShadowModel, ML_FIX_DATE } from '../api/_lib/leanSplit.js'
 
 const row = (o) => ({ game_date: '2026-08-01', ...o })
 
@@ -194,5 +194,90 @@ describe('splitLeanRows — shadow MONEYLINE isolation (WNBA + NHL ml from the t
   it('ml rows do not leak into the totals splits', () => {
     expect(s.wnbaTotals).toHaveLength(1)
     expect(s.nhlTotals).toHaveLength(1)
+  })
+})
+
+describe('splitLeanRows — NBA (incl. Summer League) shadow totals + ml, and the NFL ml split', () => {
+  const mlb = [
+    row({ market: 'total', strong: true, result: 'W', model_version: 'ou-s65-phase2' }),
+    row({ market: null, result: 'L' }),                          // legacy row, no model_version
+    row({ market: 'ml', game_date: '2026-07-01', result: 'W' }),
+    row({ market: 'rl', game_date: '2026-07-01', result: 'L' }),
+  ]
+  const shadow = [
+    row({ sport: 'NBA', market: 'total', model_version: 'nba-total-shadow-v0', strong: true, result: 'W' }),
+    row({ sport: 'nbasl', market: 'total', model_version: 'nba-total-shadow-v0', result: 'L' }), // Summer League, case-insensitive
+    row({ sport: 'NBA', market: 'total', model_version: 'nba-total-shadow-v0' }),                // pending
+    row({ sport: 'NBA', market: 'ml', model_version: 'nba-total-shadow-v0', result: 'W' }),
+    row({ sport: 'NBASL', market: 'ml', model_version: 'nba-total-shadow-v0' }),                 // pending
+    row({ sport: 'NFL', market: 'ml', model_version: 'nfl-shadow-v0', result: 'W' }),
+    row({ sport: 'nfl', market: 'ml', model_version: 'nfl-shadow-v0', result: 'L' }),            // case-insensitive
+    row({ sport: 'NFL', market: 'rl', model_version: 'nfl-shadow-v0', result: 'W' }),            // spread lean, NOT ml
+  ]
+  const s = splitLeanRows([...mlb, ...shadow])
+
+  it('MLB-facing sets are byte-identical with or without the NBA/NFL-ml shadow rows', () => {
+    const before = splitLeanRows(mlb)
+    for (const k of ['totals', 'mlAll', 'rlAll', 'mlRows', 'rlRows', 'teamRows', 'strong']) {
+      expect(s[k]).toEqual(before[k])
+    }
+  })
+  it('no NBA or NFL row leaks into any MLB-facing set', () => {
+    for (const k of ['totals', 'mlAll', 'rlAll', 'mlRows', 'rlRows', 'teamRows', 'strong']) {
+      expect(s[k].some(isNba)).toBe(false)
+      expect(s[k].some(isNfl)).toBe(false)
+    }
+    expect(tally(s.mlRows)).toEqual({ w: 1, l: 0, p: 0, pending: 0 }) // MLB only
+    expect(tally(s.totals)).toEqual({ w: 1, l: 1, p: 0, pending: 0 })
+  })
+  it('nbaTotals carries the NBA + NBASL shadow total rows', () => {
+    expect(s.nbaTotals).toHaveLength(3)
+    expect(tally(s.nbaTotals)).toEqual({ w: 1, l: 1, p: 0, pending: 1 })
+  })
+  it('nbaMl carries the NBA + NBASL shadow ml rows (not the totals rows)', () => {
+    expect(s.nbaMl).toHaveLength(2)
+    expect(tally(s.nbaMl)).toEqual({ w: 1, l: 0, p: 0, pending: 1 })
+  })
+  it('nflMl carries the NFL ml rows only — the rl spread lean stays in nflRl', () => {
+    expect(s.nflMl).toHaveLength(2)
+    expect(tally(s.nflMl)).toEqual({ w: 1, l: 1, p: 0, pending: 0 })
+    expect(s.nflRl).toHaveLength(1)
+    expect(s.nflMl.every(r => r.market === 'ml')).toBe(true)
+  })
+  it('WNBA/NHL splits stay empty — NBA rows never bleed across sports', () => {
+    expect(s.wnbaTotals).toHaveLength(0)
+    expect(s.wnbaMl).toHaveLength(0)
+    expect(s.nhlTotals).toHaveLength(0)
+    expect(s.nhlMl).toHaveLength(0)
+  })
+  it('isNba matches NBA + NBASL, case-insensitive, never WNBA', () => {
+    expect(isNba({ sport: 'NBA' })).toBe(true)
+    expect(isNba({ sport: 'nbasl' })).toBe(true)
+    expect(isNba({ sport: 'WNBA' })).toBe(false)
+    expect(isNba({ sport: null })).toBe(false)
+  })
+})
+
+describe('buildGamesMap — the NBA/NFL shadow rows reach the cards so they grade in public', () => {
+  const today = '2026-08-12', yesterday = '2026-08-11'
+  const rows = [
+    { external_event_id: 'nba1', game_date: today, sport: 'NBA', market: 'total', model_version: 'nba-total-shadow-v0', lean: 'OVER', total_line: 224.5, strong: true, result: 'W', final_total: 231 },
+    { external_event_id: 'nba1', game_date: today, sport: 'NBA', market: 'ml', model_version: 'nba-total-shadow-v0', pick_side: 'HOME', result: 'L' },
+    { external_event_id: 'sl1', game_date: yesterday, sport: 'NBASL', market: 'ml', model_version: 'nba-total-shadow-v0', pick_side: 'AWAY', result: 'W' },
+    { external_event_id: 'nfl1', game_date: today, sport: 'NFL', market: 'ml', model_version: 'nfl-shadow-v0', pick_side: 'AWAY', result: 'W' },
+    { external_event_id: 'nfl1', game_date: today, sport: 'NFL', market: 'rl', model_version: 'nfl-shadow-v0', pick_side: 'HOME -2.5', result: 'L' },
+  ]
+  const games = buildGamesMap(rows, today, yesterday)
+
+  it('an NBA shadow total lands as the top-level (totals) entry with its grade', () => {
+    expect(games.nba1).toMatchObject({ lean: 'OVER', line: 224.5, strong: true, result: 'W', finalTotal: 231 })
+  })
+  it('the NBA + NBASL moneyline calls land under .ml', () => {
+    expect(games.nba1.ml).toEqual({ pick: 'HOME', result: 'L', date: today })
+    expect(games.sl1.ml).toEqual({ pick: 'AWAY', result: 'W', date: yesterday })
+  })
+  it('the NFL ml and rl calls coexist on the same game entry', () => {
+    expect(games.nfl1.ml).toEqual({ pick: 'AWAY', result: 'W', date: today })
+    expect(games.nfl1.rl).toEqual({ pick: 'HOME -2.5', result: 'L', date: today })
   })
 })

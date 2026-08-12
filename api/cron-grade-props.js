@@ -31,6 +31,7 @@ const ESPN_PATH = {
   NBA: ['basketball', 'nba'],
   NBASL: ['basketball', 'nba-summer-las-vegas'],
   NHL: ['hockey', 'nhl'],
+  NFL: ['football', 'nfl'],   // preseason games live under the same league path
 }
 
 // Fetch the ESPN summary for one event (sport-aware path). Returns the parsed summary only

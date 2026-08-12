@@ -16,6 +16,7 @@ const SPORTS = {
   NBA:  { sport: 'basketball', league: 'nba'  },
   NBASL: { sport: 'basketball', league: 'nba-summer-las-vegas' },
   NHL:  { sport: 'hockey',     league: 'nhl'  },
+  NFL:  { sport: 'football',   league: 'nfl'  },
 }
 export const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 

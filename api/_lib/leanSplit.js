@@ -19,6 +19,9 @@ export function tally(rows) {
 export const isNfl = (r) => String(r.sport || '').toUpperCase() === 'NFL'
 export const isNhl = (r) => String(r.sport || '').toUpperCase() === 'NHL'
 export const isWnba = (r) => String(r.sport || '').toUpperCase() === 'WNBA'
+// NBA covers Summer League ('NBASL') too — the same 'nba-total-shadow-v0' model produces
+// both, and the record is read as one NBA shadow record. 'WNBA' must NOT match.
+export const isNba = (r) => ['NBA', 'NBASL'].includes(String(r.sport || '').toUpperCase())
 // Shadow-model sports — their rows must never pollute the MLB-facing sets. WNBA is NOT a
 // blanket shadow sport (it has legitimate prop rows — in prop_results, a different table):
 // its lean_results shadow rows are excluded by model_version instead (isShadowModel).
@@ -53,7 +56,16 @@ export function splitLeanRows(rows) {
   // 'ml' so a future non-shadow ml row for either sport can never be mistaken for these.
   const wnbaMl = rows.filter(r => isWnba(r) && isShadowModel(r) && r.market === 'ml')
   const nhlMl = rows.filter(r => isNhl(r) && isShadowModel(r) && r.market === 'ml')
-  return { totals, mlAll, rlAll, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals, wnbaTotals, wnbaMl, nhlMl }
+  // NBA (incl. Summer League) shadow splits — same posture as WNBA: NBA is NOT a blanket
+  // shadow sport (it has legitimate prop rows in prop_results), so these are keyed on
+  // sport + '-shadow-' model_version + market.
+  const nbaTotals = rows.filter(r => isNba(r) && isShadowModel(r) && (r.market || 'total') === 'total')
+  const nbaMl = rows.filter(r => isNba(r) && isShadowModel(r) && r.market === 'ml')
+  // NFL MONEYLINE — the explicit ML call ('nfl-shadow-v0'), separate from the SPREAD lean
+  // that snapshots as market 'rl'. NFL is already a blanket shadow sport, so nothing here
+  // can reach the MLB-facing sets.
+  const nflMl = rows.filter(r => isNfl(r) && r.market === 'ml')
+  return { totals, mlAll, rlAll, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals, wnbaTotals, wnbaMl, nhlMl, nbaTotals, nbaMl, nflMl }
 }
 
 // Per-game DISPLAY map for today + yesterday, keyed by external_event_id, so a card can grade

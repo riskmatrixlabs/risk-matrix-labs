@@ -12,6 +12,7 @@ export const PRIMARY_MARKET = {
   NBA: 'player_points',
   NBASL: 'player_points',   // Summer League games route through the NBA model
   NHL: 'player_shots_on_goal',
+  NFL: 'player_pass_yds',   // the highest-volume modeled football market
 }
 
 // rows: [{ player, market, point, evPct, ... }] → { [player]: chosenRow }

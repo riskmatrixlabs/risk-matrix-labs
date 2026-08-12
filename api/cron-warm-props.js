@@ -17,7 +17,7 @@ const WINDOW_BEFORE_H = 3, WINDOW_AHEAD_H = 10
 const PROP_WARM_FLOOR = 1500              // pause prop-warming below this many credits (protect balance)
 const WARM_REGIONS = ['us']               // us only — manual ↻ REFRESH adds us2 + us_ex/Novig on demand
 const REWARM_AGE_MS = 50 * 60 * 1000      // re-warm a game only once its cache is older than this
-const PROP_SPORTS = ['MLB', 'NBA', 'WNBA', 'NHL']
+export const PROP_SPORTS = ['MLB', 'NBA', 'WNBA', 'NHL', 'NFL']
 
 function db() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null

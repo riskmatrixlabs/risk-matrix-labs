@@ -15,10 +15,11 @@ import { loadUmpireDelta } from './_lib/umpire.js'
 import { gameProjection, deriveBets, anchorProjection } from './_lib/runModel.js'
 import { loadBullpenFatigue } from './_lib/bullpenFatigue.js'
 import { fetchNflTeamStats } from './_lib/nflTeamStats.js'
-import { nflLean, leagueAvgOffEpa, NFL_MODEL_VERSION } from '../src/lib/nflLean.js'
+import { nflLean, nflMoneyline, leagueAvgOffEpa, NFL_MODEL_VERSION } from '../src/lib/nflLean.js'
 import { nflTotal } from '../src/lib/nflTotal.js'
 import { nhlTotal, nhlSide, NHL_TOTAL_MODEL_VERSION } from '../src/lib/nhlTotal.js'
 import { wnbaTotal, wnbaSide, WNBA_TOTAL_MODEL_VERSION } from '../src/lib/wnbaTotal.js'
+import { nbaTotal, nbaSide, NBA_TOTAL_MODEL_VERSION } from '../src/lib/nbaTotal.js'
 import { scoredAvg, concededAvg } from './_lib/teamScoring.js'
 
 // 60s (was 20): the MLB branch fans out to ~10 upstream fetches; slow ESPN/Statcast or a DB
@@ -548,10 +549,15 @@ export default async function handler(req, res) {
       const total = tot
         ? { lean: tot.lean, proj: tot.proj, edgePoints: tot.edgePoints, confidence: tot.confidence, strong: tot.strong, line: oddsTotalNfl, modelVersion: tot.modelVersion }
         : null
+      // Explicit MONEYLINE call ('nfl-shadow-v0') — the owner's standard is ML + O/U on every
+      // model, and the side lean above is a SPREAD call. Derived from the same EPA differential
+      // (nflMoneyline), so ml and side can never disagree about who is better. Honest null.
+      const mlLean = nflMoneyline({ homeStats, awayStats })
+      const ml = mlLean ? { pick: mlLean.pick, winProb: mlLean.winProb } : null
       nfl = lean
-        ? { lean: lean.side, score: lean.score, tier: lean.tier, factors: lean.factors, modelVersion: lean.modelVersion, shadow: true, total }
-        : { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true, total }
-    } catch { nfl = { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true, total: null } }
+        ? { lean: lean.side, score: lean.score, tier: lean.tier, factors: lean.factors, modelVersion: lean.modelVersion, shadow: true, total, ml }
+        : { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true, total, ml }
+    } catch { nfl = { lean: null, modelVersion: NFL_MODEL_VERSION, shadow: true, total: null, ml: null } }
   }
 
   // NHL — SHADOW game-total lean ('nhl-total-shadow-v0', additive). All inputs real: our OWN
@@ -645,6 +651,55 @@ export default async function handler(req, res) {
     } catch { wnbaTotalBlock = { lean: null, modelVersion: WNBA_TOTAL_MODEL_VERSION, shadow: true, ml: null } }
   }
 
+  // NBA — SHADOW game-total + moneyline lean ('nba-total-shadow-v0', additive, SESSION-AUTHORED —
+  // the MODELS.md NBA engine is props-only). Mirrors the WNBA branch exactly. All inputs real:
+  // our OWN synced final events (scored/conceded averages), synced odds_total, rest days.
+  // Handles BOTH 'NBA' and 'NBASL' (Summer League): every query below is parameterized by the
+  // event's OWN sport value, so Summer League games are scored against Summer League history
+  // and never mixed with regular-season finals.
+  // HONEST NULL: any missing input (or edge below the noise band) → nbaTotal.lean null.
+  // Never blocks the card; `ou` stays null for NBA.
+  let nbaTotalBlock = null
+  if (sport === 'NBA' || sport === 'NBASL') {
+    try {
+      const sb = db()
+      const evRow = await nflEventRow(away, home, iso, sport)
+      const homeName = evRow?.home_team || home, awayName = evRow?.away_team || away
+      // Last ≤15 finals per team from our own synced events (same query as the WNBA branch).
+      const finals = async (team) => {
+        if (!sb || !team) return []
+        try {
+          const { data } = await sb.from('events')
+            .select('away_team, home_team, away_score, home_score, status')
+            .eq('sport', sport)
+            .or(`home_team.eq.${JSON.stringify(String(team))},away_team.eq.${JSON.stringify(String(team))}`)
+            .in('status', ['FT', 'AOT', 'FINAL', 'Final', 'final'])
+            .order('start_time', { ascending: false }).limit(15)
+          return data || []
+        } catch { return [] }
+      }
+      const [hRows, aRows, restDaysHome, restDaysAway] = await Promise.all([
+        finals(homeName), finals(awayName),
+        evRow?.start_time ? nflRestDays(evRow.home_abbr || hSide.abbr, evRow.start_time, sport) : null,
+        evRow?.start_time ? nflRestDays(evRow.away_abbr || aSide.abbr, evRow.start_time, sport) : null,
+      ])
+      const oddsTotalNba = evRow?.odds_total != null && Number(evRow.odds_total) > 0 ? Number(evRow.odds_total) : null
+      const inputsNba = {
+        homeScoredAvg: scoredAvg(hRows, homeName), homeConcededAvg: concededAvg(hRows, homeName),
+        awayScoredAvg: scoredAvg(aRows, awayName), awayConcededAvg: concededAvg(aRows, awayName),
+        restDaysHome, restDaysAway, oddsTotal: oddsTotalNba,
+      }
+      const t = nbaTotal(inputsNba)
+      // Moneyline lean from the SAME per-side projections (arithmetic only, no new
+      // sources) — honest null below the 0.55 gate or on any missing input.
+      const sNba = nbaSide(inputsNba)
+      const mlNba = sNba ? { pick: sNba.pick, winProb: sNba.winProb } : null
+      nbaTotalBlock = t
+        ? { lean: t.lean, proj: t.proj, edgePoints: t.edgePoints, confidence: t.confidence, strong: t.strong, line: oddsTotalNba, modelVersion: t.modelVersion, shadow: true, ml: mlNba }
+        : { lean: null, modelVersion: NBA_TOTAL_MODEL_VERSION, shadow: true, ml: mlNba }
+    } catch { nbaTotalBlock = { lean: null, modelVersion: NBA_TOTAL_MODEL_VERSION, shadow: true, ml: null } }
+  }
+
   return res.status(200).json({
     found: true,
     status: { state: st.state || 'pre', detail: st.shortDetail || st.detail || '', completed: !!st.completed },
@@ -652,6 +707,7 @@ export default async function handler(req, res) {
     ...(sport === 'NFL' ? { nfl } : {}),
     ...(sport === 'NHL' ? { nhlTotal: nhlTotalBlock } : {}),
     ...(sport === 'WNBA' ? { wnbaTotal: wnbaTotalBlock } : {}),
+    ...((sport === 'NBA' || sport === 'NBASL') ? { nbaTotal: nbaTotalBlock } : {}),
   })
   } catch (e) {
     return res.status(200).json({ found: false, error: String(e?.message || e) })

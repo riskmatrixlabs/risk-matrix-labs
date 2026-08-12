@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   // v480 and would otherwise pollute it). Team = ML + Run Line combined. NFL SHADOW rows
   // (sport 'NFL', market 'rl') are excluded from every existing field and tallied separately
   // as `nfl` — the ML-fix cutoff logic lives in _lib/leanSplit.js.
-  const { totals, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals, wnbaTotals, wnbaMl, nhlMl } = splitLeanRows(rows)
+  const { totals, mlRows, rlRows, teamRows, strong, nflRl, nflTotals, nhlTotals, wnbaTotals, wnbaMl, nhlMl, nbaTotals, nbaMl, nflMl } = splitLeanRows(rows)
   const rec = (set) => ({
     today: tally(set.filter(r => r.game_date === today)),
     yesterday: tally(set.filter(r => r.game_date === yesterday)),
@@ -42,5 +42,5 @@ export default async function handler(req, res) {
   // stay shadow-free.
   const games = buildGamesMap(rows, today, yesterday)
 
-  return res.status(200).json({ ok: true, all: rec(totals), strong: rec(strong), team: rec(teamRows), ml: rec(mlRows), rl: rec(rlRows), nfl: rec(nflRl), nflTotals: rec(nflTotals), nhlTotals: rec(nhlTotals), wnbaTotals: rec(wnbaTotals), wnbaMl: rec(wnbaMl), nhlMl: rec(nhlMl), games })
+  return res.status(200).json({ ok: true, all: rec(totals), strong: rec(strong), team: rec(teamRows), ml: rec(mlRows), rl: rec(rlRows), nfl: rec(nflRl), nflTotals: rec(nflTotals), nhlTotals: rec(nhlTotals), wnbaTotals: rec(wnbaTotals), wnbaMl: rec(wnbaMl), nhlMl: rec(nhlMl), nbaTotals: rec(nbaTotals), nbaMl: rec(nbaMl), nflMl: rec(nflMl), games })
 }

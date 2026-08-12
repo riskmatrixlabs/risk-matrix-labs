@@ -30,6 +30,12 @@ describe('shadowBlocks', () => {
   it('an ml block without a pick is not a call', () => {
     expect(shadowBlocks({ nhlTotal: { lean: 'OVER', ml: {} } }, 'NHL').ml).toBeNull()
   })
+  it('NBA and NBASL read j.nbaTotal (same shadow model for both)', () => {
+    const j = { nbaTotal: { lean: 'OVER', line: 224.5, proj: 231.2, edgePoints: 6.7, ml: { pick: 'AWAY', winProb: 0.58 } } }
+    expect(shadowBlocks(j, 'NBA').total).toMatchObject({ lean: 'OVER', line: 224.5 })
+    expect(shadowBlocks(j, 'NBASL').ml).toEqual({ pick: 'AWAY', winProb: 0.58 })
+    expect(shadowBlocks({ nbaTotal: { lean: null, shadow: true } }, 'NBA').total).toBeNull()
+  })
   it('MLB and unknown sports get nothing here (MLB has its own template flag)', () => {
     expect(shadowBlocks({ ou: { lean: 'OVER' } }, 'MLB')).toEqual({ total: null, ml: null })
     expect(shadowBlocks({}, 'NBA')).toEqual({ total: null, ml: null })

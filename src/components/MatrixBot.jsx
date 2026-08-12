@@ -1260,7 +1260,8 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
 
   // Model verdicts — once props load, score every player server-side (FREE sources, cached).
   // Dispatch by sport: MLB → PHLT v2.2 (/api/phlt, unchanged), WNBA → /api/wnba-props,
-  // NBA/NBASL → /api/nba-props, NHL → /api/nhl-props (all BETA, same verdicts contract).
+  // NBA/NBASL → /api/nba-props, NHL → /api/nhl-props, NFL → /api/nfl-props
+  // (all BETA, same verdicts contract).
   // Other sports: no model yet → no fetch (honest null, like before).
   useEffect(() => {
     // Modeled non-MLB sports share one contract: endpoint + primary market per sport.
@@ -1269,6 +1270,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
       NBA: { url: '/api/nba-props', primary: 'player_points' },
       NBASL: { url: '/api/nba-props', primary: 'player_points' },  // Summer League → NBA model
       NHL: { url: '/api/nhl-props', primary: 'player_shots_on_goal' },
+      NFL: { url: '/api/nfl-props', primary: 'player_pass_yds' },
     }
     const model = MODEL[sport]
     if (!token || (sport !== 'MLB' && !model) || !game?.away) { setPhlt({}); return }
@@ -1438,7 +1440,7 @@ function PropsPanel({ game, sport, token, searchedPlayer = null, onLogPosition, 
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       {phltBadge(v, true)}
                       <span style={{ minWidth: 0, flex: 1, textAlign: 'left', fontFamily: R, fontSize: '10px', fontWeight: 700, color: TEXT, letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {({ WNBA: 'W MODEL', NBA: 'NBA MODEL', NBASL: 'NBA MODEL', NHL: 'SOG MODEL' })[sport] || 'PHLT · TO HIT'}{v.vs ? ` · vs ${v.vs}` : ''}
+                        {({ WNBA: 'W MODEL', NBA: 'NBA MODEL', NBASL: 'NBA MODEL', NHL: 'SOG MODEL', NFL: 'NFL MODEL' })[sport] || 'PHLT · TO HIT'}{v.vs ? ` · vs ${v.vs}` : ''}
                       </span>
                       <span style={{ fontFamily: R, fontSize: '10px', color: MUTED, transform: exp ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}>▾</span>
                     </button>
